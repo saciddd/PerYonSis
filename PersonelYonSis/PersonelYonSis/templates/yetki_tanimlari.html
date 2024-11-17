@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<br>
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sol taraf: Yetki Tanımlama Formu -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Yeni Yetki Tanımlama</h3>
+                </div>
+                <div class="card-body">
+                    <form action="{% url 'add_permission' %}" method="post">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="permission_name">Yetki Adı</label>
+                            <input type="text" class="form-control" id="permission_name" name="permission_name" placeholder="Yetki Adı Girin" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Yetki Ekle</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ taraf: Yetki Listesi Tablosu -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Kayıtlı Yetkiler</h3>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered-sm">
+                        <thead>
+                            <tr>
+                                <th scope="col">Yetki ID</th>
+                                <th scope="col">Yetki Adı</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for permission in permissions %}
+                            <tr>
+                                <td>{{ permission.PermissionID }}</td>
+                                <td>{{ permission.PermissionName }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2">Kayıtlı yetki bulunmamaktadır.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

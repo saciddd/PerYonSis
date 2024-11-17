@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block content %}
+<br>
+{% if messages %}
+  <div class="alert-messages">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sistemdeki Kullanıcılar -->
+        <div class="col-md-12">
+            <h3 class="d-inline">Sistemdeki Kullanıcılar</h3>
+            <button class="btn btn-primary float-end" id="openAddUserForm">Yeni Kullanıcı Ekle</button>
+            <br>
+            <br>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Güncelle</th>
+                        <th>Kullanıcı Adı</th>
+                        <th>Ad Soyad</th>
+                        <th>Roller</th>
+                        <th>Aktif</th>
+                        <th>Şifre Sıfırla</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <button class="btn btn-primary" onclick="openEditUserForm('{{ user.UserID }}')">Güncelle</button>
+                        </td>
+                        <td>{{ user.Username }}</td>
+                        <td>{{ user.FullName }}</td>
+                        <td>
+                            {% for role in user.roles.all %}
+                            <span class="badge bg-secondary">{{ role.RoleName }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <form action="{% url 'update_active_status' user.UserID %}" method="post">
+                                {% csrf_token %}
+                                <input type="checkbox" name="is_active" {% if user.is_active %}checked{% endif %} onchange="this.form.submit()">
+                            </form>
+                        </td>
+                        <td>
+                            <form action="{% url 'reset_password' user.UserID %}" method="post">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-warning">Şifre Sıfırla</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Formların yerleştirilmesi için JS -->
+<script>
+    // Sayfa karartma ve form gösterme işlemi
+    function showForm(htmlContent) {
+        document.getElementById("sidePanel").innerHTML = htmlContent;
+        document.getElementById("sidePanel").classList.add("active");
+        document.getElementById("overlay").classList.add("active");
+
+        // Dinamik olarak yüklenen formda selectpicker'ı başlat
+        $('.selectpicker').selectpicker();  // Yeni ekleme
+    }
+
+    // Form kapatıldığında arka planı normale döndürme
+    function closeForm() {
+        document.getElementById("sidePanel").classList.remove("active");
+        document.getElementById("overlay").classList.remove("active");
+    }
+
+    // Yeni kullanıcı ekle formu
+    document.getElementById("openAddUserForm").addEventListener("click", function() {
+        fetch("{% url 'yeni_kullanici_form' %}")
+            .then(response => response.text())
+            .then(html => showForm(html));
+    });
+
+    // Kullanıcı düzenleme formu
+    function openEditUserForm(userID) {
+        fetch(`/kullanici-duzenle-form/${userID}/`)
+            .then(response => response.text())
+            .then(html => showForm(html));
+    }
+
+    // Overlay alanı tıklandığında formu kapat
+    document.getElementById("overlay").addEventListener("click", closeForm);
+</script>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 10;
+    }
+    .overlay.active {
+        display: block;
+    }
+    .side-panel {
+        display: none;
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 400px;
+        height: 100%;
+        background: white;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
+        z-index: 20;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    .side-panel.active {
+        display: block;
+    }
+    .navbar, .app-sidebar {
+    z-index: 10; /* Form ve overlay'den daha düşük z-index */
+}
+</style>
+{% endblock %}

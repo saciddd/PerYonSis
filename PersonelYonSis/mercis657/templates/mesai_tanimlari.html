@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block content %}
+<br>
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sol taraf: Yeni Mesai Tanımlama Formu -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Yeni Mesai Tanımlama</h3>
+                </div>
+                <div class="card-body">
+                    <form action="{% url 'mercis657:add_mesai_tanim' %}" method="post">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="Saat">Saat</label>
+                            <input type="text" class="form-control" id="Saat" name="Saat" placeholder="Mesai saatini girin" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="GunduzMesaisi">Gündüz Mesaisi</label>
+                            <input type="checkbox" id="GunduzMesaisi" name="GunduzMesaisi">
+                        </div>
+                        <div class="form-group">
+                            <label for="AksamMesaisi">Akşam Mesaisi</label>
+                            <input type="checkbox" id="AksamMesaisi" name="AksamMesaisi">
+                        </div>
+                        <div class="form-group">
+                            <label for="GeceMesaisi">Gece Mesaisi</label>
+                            <input type="checkbox" id="GeceMesaisi" name="GeceMesaisi">
+                        </div>
+                        <div class="form-group">
+                            <label for="IseGeldi">İşe Geldi</label>
+                            <input type="checkbox" id="IseGeldi" name="IseGeldi">
+                        </div>
+                        <div class="form-group">
+                            <label for="SonrakiGuneSarkiyor">Sonraki Güne Sarkıyor</label>
+                            <input type="checkbox" id="SonrakiGuneSarkiyor" name="SonrakiGuneSarkiyor">
+                        </div>
+                        <div class="form-group">
+                            <label for="AraDinlenme">Ara Dinlenme</label>
+                            <input type="time" class="form-control" id="AraDinlenme" name="AraDinlenme">
+                        </div>
+                        <div class="form-group">
+                            <label for="GecerliMesai">Geçerli Mesai</label>
+                            <input type="checkbox" id="GecerliMesai" name="GecerliMesai">
+                        </div>
+                        <div class="form-group">
+                            <label for="CKYS_BTF_Karsiligi">CKYS/BTF Karşılığı</label>
+                            <input type="text" class="form-control" id="CKYS_BTF_Karsiligi" name="CKYS_BTF_Karsiligi">
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Mesai Tanımı Ekle</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ taraf: Mesai Tanımları Listesi -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Kayıtlı Mesai Tanımları</h3>
+                </div>
+                <div class="card-body">
+                    <table id="mesaiTanimlariTable" class="table table-bordered-sm">
+                        <thead>
+                            <tr>
+                                <th>Düzenle</th> <!-- Düzenleme iconu için -->
+                                <th scope="col">Saat</th>
+                                <th scope="col">Gündüz Mesaisi</th>
+                                <th scope="col">Akşam Mesaisi</th>
+                                <th scope="col">Gece Mesaisi</th>
+                                <th scope="col">Geçerli Mesai</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mesai_tanim in mesai_tanimlari %}
+                            <tr data-id="{{ mesai_tanim.id }}"> <!-- ID'yi satıra ekleyin -->
+                                <td>
+                                    <!-- Düzenleme simgesi -->
+                                    <button class="edit-btn btn btn-sm btn-outline-primary" onclick="enableEdit(this)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <!-- Kaydet/Vazgeç simgeleri başlangıçta gizli -->
+                                    <button class="save-btn btn btn-sm btn-outline-success d-none" onclick="saveEdit(this)">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                    <button class="cancel-btn btn btn-sm btn-outline-danger d-none" onclick="cancelEdit(this)">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                    <!-- Silme simgesi - `data-id` olarak Mesai ID'sini doğrudan butona ekleyin -->
+                                    <button class="delete-btn btn btn-sm btn-outline-danger" onclick="deleteMesaiTanim(this)" data-id="{{ mesai_tanim.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                                <td contenteditable="false">{{ mesai_tanim.Saat }}</td>
+                                <td>{{ mesai_tanim.GunduzMesaisi|yesno:"Evet,Hayır" }}</td>
+                                <td>{{ mesai_tanim.AksamMesaisi|yesno:"Evet,Hayır" }}</td>
+                                <td>{{ mesai_tanim.GeceMesaisi|yesno:"Evet,Hayır" }}</td>
+                                <td>{{ mesai_tanim.GecerliMesai|yesno:"Evet,Hayır" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6">Kayıtlı mesai tanımı bulunmamaktadır.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function deleteMesaiTanim(button) {
+    if (!confirm("Bu kaydı silmek istediğinizden emin misiniz?")) return;
+
+    let row = $(button).closest('tr');
+    let mesaiID = $(button).data('id'); // Butondaki `data-id` özelliğinden Mesai ID'yi al
+
+    $.ajax({
+        url: '{% url "mercis657:delete_mesai_tanim" %}',  // Silme URL'si
+        method: 'POST',
+        data: {
+            mesai_id: mesaiID,  // Mesai ID'yi gönder
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        },
+        success: function(response) {
+            if (response.status === 'success') {
+                alert('Kayıt başarıyla silindi.');
+                row.remove(); // Satırı sayfadan kaldır
+            } else {
+                alert('Silme sırasında bir hata oluştu.');
+            }
+        },
+        error: function(xhr) {
+            alert('Bir hata oluştu.');
+        }
+    });
+}
+
+
+    function enableEdit(button) {
+        let row = $(button).closest('tr');
+        row.find('td[contenteditable="false"]').attr('contenteditable', 'true').addClass('editable');
+        
+        row.find('.edit-btn').addClass('d-none');
+        row.find('.save-btn, .cancel-btn').removeClass('d-none');
+    }
+
+    function saveEdit(button) {
+        let row = $(button).closest('tr');
+        let mesaiID = row.data('id'); // Mesai ID'yi alıyoruz
+        let saat = row.find('td.saat').text().trim(); // Saat hücresi
+
+        $.ajax({
+            url: `{% url 'mercis657:mesai_tanim_update' %}`,
+            method: 'POST',
+            data: {
+                mesai_id: mesaiID,
+                saat: saat,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    alert('Kayıt başarıyla güncellendi.');
+                    location.reload(); // Güncelleme sonrası sayfayı yeniden yükle
+                } else {
+                    alert('Güncelleme sırasında hata oluştu.');
+                }
+            },
+            error: function(xhr) {
+                alert('Bir hata oluştu.');
+            }
+        });
+
+        row.find('td[contenteditable="true"]').attr('contenteditable', 'false').removeClass('editable');
+        row.find('.save-btn, .cancel-btn').addClass('d-none');
+        row.find('.edit-btn').removeClass('d-none');
+    }
+
+    function cancelEdit(button) {
+        let row = $(button).closest('tr');
+        row.find('td[contenteditable="true"]').attr('contenteditable', 'false').removeClass('editable');
+        row.find('.save-btn, .cancel-btn').addClass('d-none');
+        row.find('.edit-btn').removeClass('d-none');
+    }
+</script>
+
+
+<style>
+    /* Düzenleme sırasında sarı arkaplan ve border */
+    .editable {
+        background-color: #f9f9c5;
+        border: 1px solid #ffc107;
+    }
+
+    /* Normal durumda hücre */
+    table td {
+        cursor: default;
+    }
+</style>
+
+{% endblock %}

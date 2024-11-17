@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<br>
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sol taraf: Birim Tanımlama Formu -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Yeni Birim Tanımlama</h3>
+                </div>
+                <div class="card-body">
+                    <form action="{% url 'hekim_cizelge:add_birim' %}" method="post">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="birim_adi">Birim Adı</label>
+                            <input type="text" class="form-control" id="birim_adi" name="birim_adi" placeholder="Birim Adı Girin" required>
+                        </div>
+                        <div class="form-group mt-3">
+                            <label for="varsayilan_hizmet">Varsayılan Hizmet</label>
+                            <select class="form-control" id="varsayilan_hizmet" name="varsayilan_hizmet" required>
+                                <option value="" disabled selected>Varsayılan Hizmeti Seçin</option>
+                                {% for hizmet in hizmetler %}
+                                <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group mt-3">
+                            <label for="diger_hizmetler">Diğer Hizmetler</label>
+                            <select class="form-control selectpicker" id="diger_hizmetler" name="diger_hizmetler" multiple data-live-search="true">
+                                {% for hizmet in hizmetler %}
+                                <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Birim Ekle</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ taraf: Birim Listesi Tablosu -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title">Kayıtlı Birimler</h3>
+                    <input type="text" class="form-control w-25" id="birim_ara" placeholder="Birim Ara...">
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered-sm" id="birim_tablosu">
+                        <thead>
+                            <tr>
+                                <th scope="col">Birim ID</th>
+                                <th scope="col">Birim Adı</th>
+                                <th scope="col">Varsayılan Hizmet</th>
+                                <th scope="col">Diğer Hizmetler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for birim in birimler %}
+                            <tr>
+                                <td>{{ birim.BirimID }}</td>
+                                <td>{{ birim.BirimAdi }}</td>
+                                <td>{{ birim.VarsayilanHizmet.HizmetName }}</td>
+                                <td>
+                                    {% for hizmet in birim.DigerHizmetler.all %}
+                                        {{ hizmet.HizmetName }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">Kayıtlı birim bulunmamaktadır.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tablo Arama Fonksiyonu -->
+<script>
+    document.getElementById('birim_ara').addEventListener('input', function() {
+        const searchValue = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#birim_tablosu tbody tr');
+        rows.forEach(row => {
+            const birimAdi = row.children[1].textContent.toLowerCase();
+            row.style.display = birimAdi.includes(searchValue) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

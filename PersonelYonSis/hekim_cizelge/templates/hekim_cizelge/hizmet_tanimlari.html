@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<br>
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sol taraf: Hizmet Tanımlama Formu -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Yeni Hizmet Tanımlama</h3>
+                </div>
+                <div class="card-body">
+                    <form action="{% url 'hekim_cizelge:add_hizmet' %}" method="post">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="hizmet_name">Hizmet Adı</label>
+                            <input type="text" class="form-control" id="hizmet_name" name="hizmet_name" placeholder="Hizmet Adı Girin" required>
+                        </div>
+                        <div class="form-group mt-3">
+                            <label for="hizmet_tipi">Hizmet Tipi</label>
+                            <select class="form-control" id="hizmet_tipi" name="hizmet_tipi" required>
+                                <option value="" disabled selected>Hizmet Tipini Seçin</option>
+                                <option value="Standart">Standart</option>
+                                <option value="Nöbet">Nöbet</option>
+                                <option value="İcap">İcap</option>
+                            </select>
+                        </div>
+                        <div class="form-group mt-3">
+                            <label for="hizmet_suresi">Hizmet Süresi (örn: 8:00:00)</label>
+                            <input type="text" class="form-control" id="hizmet_suresi" name="hizmet_suresi" placeholder="Süre Girin (hh:mm:ss formatında)" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Hizmet Ekle</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ taraf: Hizmet Listesi Tablosu -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Kayıtlı Hizmetler</h3>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered-sm">
+                        <thead>
+                            <tr>
+                                <th scope="col">Hizmet ID</th>
+                                <th scope="col">Hizmet Adı</th>
+                                <th scope="col">Hizmet Tipi</th>
+                                <th scope="col">Hizmet Süresi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for hizmet in hizmetler %}
+                            <tr>
+                                <td>{{ hizmet.HizmetID }}</td>
+                                <td>{{ hizmet.HizmetName }}</td>
+                                <td>{{ hizmet.HizmetTipi }}</td>
+                                <td>{{ hizmet.HizmetSuresi }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">Kayıtlı hizmet bulunmamaktadır.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}657 Çizelge İşlemleri{% endblock %}
+{% block content %}
+<br>
+<div class="container-fluid">
+    <!-- Üst kısımda Yıl, Ay Seçimi ve Mesai Girişi -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <label for="selectYear">Yıl Seçimi</label>
+            <select id="selectYear" class="form-control">
+                {% for year in years %}
+                <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="selectMonth">Ay Seçimi</label>
+            <select id="selectMonth" class="form-control">
+                {% for month in months %}
+                <option value="{{ month.value }}" {% if month.value == current_month %}selected{% endif %}>
+                    {{ month.label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 text-middle">
+            <br>
+            <button class="btn btn-primary" id="filterButton">Sorgula</button>
+        </div>
+        <div class="col-md-2">
+            <label for="mesaiSelection">Mesai Seçimi</label>
+            <select id="mesaiSelection" class="form-control">
+                <option value="">Mesai Seçin</option>
+                {% for mesai in mesai_options %}
+                <option value="{{ mesai }}">{{ mesai }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 text-end">
+            <br>
+            <button class="btn btn-success" id="saveButton">Kaydet</button>
+        </div>
+    </div>
+
+    <!-- Çizelge Tablosu -->
+    <table id="cizelgeTable" class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>Personel Adı</th>
+                <th>Personel Unvanı</th>
+                {% for day_num, day in days %}
+                <th>{{ day_num }}</th>  <!-- Sadece gün değeri görünecek -->
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for personel in personeller %}
+            <tr>
+                <td>{{ personel.PersonelName }}</td>
+                <td>{{ personel.PersonelTitle }}</td>
+                {% for day in days %}
+                  <td contenteditable="true" data-personel-id="{{ personel.PersonelID }}" data-date="{{ day }}" class="mesai-cell">
+                      {% for mesai in personel.mesai_data %}
+                          {% if mesai.MesaiDate == day %}
+                            {{ mesai.MesaiData }}
+                          {% endif %}
+                      {% endfor %}
+                  </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+</div>
+
+<script>
+    $(document).ready(function() {
+        // DataTables başlat
+        $('#cizelgeTable').DataTable({
+            "paging": true,
+            "searching": true,
+            "ordering": false, // Sıralama kapalı
+            "autoWidth": false,
+            "lengthChange": true,
+            "dom": 'Bfrtip',
+            "buttons": ['copy', 'excel', 'pdf', 'print'],
+        });
+
+        // Değişikliklerin izlenmesi için bir object
+        var changes = {};
+
+        // Hücre tıklanınca mesai bilgisi girme
+        $('.mesai-cell').on('click', function() {
+            let mesai = $('#mesaiSelection').val();
+            if (mesai) {
+                $(this).text(mesai);  // Mesai verisini hücreye ekle
+                let personelID = $(this).data('personel-id');
+                let date = $(this).data('date');
+                changes[personelID + '_' + date] = mesai;  // Değişiklikleri sakla
+            }
+        });
+
+        // Kaydet butonuna basıldığında tüm değişiklikleri gönder
+        $('#saveButton').on('click', function() {
+            if (Object.keys(changes).length === 0) {
+                alert("Herhangi bir değişiklik yapmadınız.");
+                return;
+            }
+
+            // Değişiklikleri sunucuya gönder
+            fetch("{% url 'mercis657:cizelge_kaydet' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(changes)
+            }).then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Değişiklikler kaydedildi.');
+                    changes = {}; // Değişiklikler kaydedildiği için sıfırla
+                } else {
+                    alert('Bir hata oluştu, lütfen tekrar deneyin.');
+                }
+            });
+        });
+
+        // Sorgula butonuna basıldığında tabloyu güncelle
+        $('#filterButton').on('click', function() {
+            let selectedYear = $('#selectYear').val();
+            let selectedMonth = $('#selectMonth').val();
+
+            window.location.href = `?year=${selectedYear}&month=${selectedMonth}`;
+        });
+    });
+</script>
+
+<style>
+    /* Tablo genişlik ve stil ayarları */
+    .dataTables_wrapper .dt-buttons {
+        float: right;
+    }
+
+    .mesai-cell {
+        padding: 2px;
+        text-align: center;
+    }
+
+    .mesai-cell:hover {
+        background-color: #bbe9f7;
+        cursor: pointer;
+    }
+
+    .dataTables_length select {
+        width: auto;
+    }
+
+    /* Satır hover */
+    #cizelgeTable tbody tr:hover {
+        background-color: #f0f8ff;
+    }
+</style>
+{% endblock %}

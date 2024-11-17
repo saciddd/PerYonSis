@@ -1,0 +1,25 @@
+<br>
+<h3>Kullanıcı Düzenle</h3>
+<br>
+<form action="{% url 'update_user' user.UserID %}" method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="username">Kullanıcı Adı</label>
+        <input type="text" class="form-control" id="username" name="username" value="{{ user.Username }}" disabled>
+    </div>
+    <div class="form-group">
+        <label for="fullname">Ad Soyad</label>
+        <input type="text" class="form-control" id="fullname" name="fullname" value="{{ user.FullName }}" required>
+    </div>
+    <br>
+    <div class="form-group">
+        <label for="roles">Kullanıcı Rolleri</label>
+        <select name="roles" id="roles" class="selectpicker" multiple data-live-search="true">
+            {% for role in roles %}
+                <option value="{{ role.RoleID }}" {% if role in user.roles.all %}selected{% endif %}>{{ role.RoleName }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">Kaydet</button>
+    <button type="button" class="btn btn-secondary mt-3" onclick="closeForm()">Kapat</button>
+</form>

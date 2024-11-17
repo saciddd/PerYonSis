@@ -1,0 +1,22 @@
+{% for item in menu.items %}
+    {% if item.is_parent %}
+        <li class="nav-item menu">
+            <a href="#" class="nav-link"> 
+                <i class="nav-icon {{ item.icon }}"></i>
+                <p>{{ item.name }}<i class="nav-arrow bi bi-chevron-right"></i></p>
+            </a>
+            <ul class="nav nav-treeview">
+                {% for subitem in menu.items %}
+                    {% if subitem.parent_menu == item.name %}
+                        <li class="nav-item">
+                            <a href="{% url subitem.url %}" class="nav-link">
+                                <i class="nav-icon {{ subitem.icon }}"></i>
+                                <p>{{ subitem.name }}</p>
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </li>
+    {% endif %}
+{% endfor %}

@@ -2,8 +2,12 @@ from datetime import timedelta
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
+from django.views.decorators.csrf import csrf_exempt
+import json
+import calendar
+from datetime import datetime
 
-from .models import Personel, Hizmet, Birim
+from .models import Personel, Hizmet, Birim, PersonelBirim, Mesai
 
 def hizmet_tanimlari(request):
     hizmetler = Hizmet.objects.all()
@@ -40,7 +44,18 @@ def add_hizmet(request):
 
 def personeller(request):
     personeller = Personel.objects.all()
-    return render(request, 'hekim_cizelge/personeller.html', {"personeller": personeller})
+    birimler = Birim.objects.all()
+
+    # Personel ile birim bilgilerini eşleştiriyoruz
+    personel_birimleri = PersonelBirim.objects.select_related('personel', 'birim')
+
+    return render(request, 'hekim_cizelge/personeller.html', {
+        'personeller': personeller,
+        'birimler': birimler,
+        'personel_birimleri': personel_birimleri
+    })
+
+
 
 # Personel Ekleme Formunu Geri Döndür
 def personel_ekle_form(request):
@@ -69,23 +84,23 @@ def personel_ekle(request):
 
 def personel_update(request):
     if request.method == 'POST':
-        personel_id = request.POST.get('id')
-        personel_name = request.POST.get('name')
-        personel_title = request.POST.get('title')
-        personel_branch = request.POST.get('branch')
+        personel_id = request.POST.get('id')  # Formdan gelen personel ID'si
+        birim_id = request.POST.get('birim')  # Formdan gelen birim ID'si
 
-        # Personeli bul
-        personel = get_object_or_404(Personel, PersonelID=personel_id)
-        
-        # Güncellenen alanlar
-        personel.PersonelName = personel_name
-        personel.PersonelTitle = personel_title
-        personel.PersonelBranch = personel_branch
-        personel.save()  # Değişiklikleri kaydet
-        
-        return JsonResponse({'status': 'success'})  # Başarı mesajı
+        # Modellerden ilgili kayıtları çekiyoruz
+        personel = Personel.objects.get(PersonelID=personel_id)
+        birim = Birim.objects.get(BirimID=birim_id)
 
-    return JsonResponse({'status': 'error'})  # Hatalı durum
+        # PersonelBirim kaydını güncelle veya oluştur
+        personel_birim, created = PersonelBirim.objects.update_or_create(
+            personel=personel,
+            defaults={'birim': birim}
+        )
+
+        return JsonResponse({'status': 'success', 'birim_adi': birim.BirimAdi})
+    return JsonResponse({'status': 'error', 'message': 'Hata oluştu.'})
+
+
 
 def birim_tanimlari(request):
     birimler = Birim.objects.prefetch_related('DigerHizmetler').select_related('VarsayilanHizmet').all()
@@ -135,4 +150,46 @@ def add_birim(request):
 
 
 def cizelge(request):
-    return render(request, 'hekim_cizelge/cizelge.html')
+    current_year = int(request.GET.get('year', datetime.now().year))
+    current_month = int(request.GET.get('month', datetime.now().month))
+
+    # Günleri oluştur
+    days_in_month = calendar.monthrange(current_year, current_month)[1]
+    days = [{'full_date': f"{current_year}-{current_month:02}-{day:02}"} for day in range(1, days_in_month + 1)]
+
+    # Tüm personelleri ve birimleri al
+    personeller = Personel.objects.all()
+    birimler = Birim.objects.all()
+
+    context = {
+        'personeller': personeller,
+        'days': days,
+        'birimler': birimler,
+        'current_month': current_month,
+        'current_year': current_year,
+        'months': [{'value': i, 'label': calendar.month_name[i]} for i in range(1, 13)],
+        'years': [year for year in range(2024, 2025)],
+    }
+
+    return render(request, 'hekim_cizelge/cizelge.html', context)
+
+def get_hizmetler(request, birim_id):
+    hizmetler = Hizmet.objects.filter(birim__BirimID=birim_id)
+    hizmet_list = [{'id': hizmet.HizmetID, 'name': hizmet.HizmetName} for hizmet in hizmetler]
+    return JsonResponse({'hizmetler': hizmet_list})
+
+@csrf_exempt
+def cizelge_kaydet(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        for key, hizmet_id in data.items():
+            personel_id, date = key.split('_')
+            personel = Personel.objects.get(PersonelID=personel_id)
+            hizmet = Hizmet.objects.get(HizmetID=hizmet_id)
+            mesai, created = Mesai.objects.get_or_create(
+                Personel=personel,
+                MesaiDate=date
+            )
+            mesai.Hizmetler.add(hizmet)
+        return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})

@@ -16,22 +16,21 @@
     <table id="personellerTable" class="display">
         <thead>
             <tr>
-                <th>Düzenle</th> <!-- Yeni sütun -->
+                <th>Düzenle</th>
                 <th>T.C. Kimlik No</th>
                 <th>Ad</th>
                 <th>Unvan</th>
                 <th>Branş</th>
+                <th>Çalıştığı Birim</th>
             </tr>
         </thead>
         <tbody>
             {% for personel in personeller %}
             <tr>
                 <td>
-                    <!-- Düzenleme simgesi -->
                     <button class="edit-btn btn btn-sm btn-outline-primary" onclick="enableEdit(this)">
                         <i class="bi bi-pencil"></i>
                     </button>
-                    <!-- Kaydet/Vazgeç simgeleri başlangıçta gizli -->
                     <button class="save-btn btn btn-sm btn-outline-success d-none" onclick="saveEdit(this)">
                         <i class="bi bi-check-lg"></i>
                     </button>
@@ -40,116 +39,120 @@
                     </button>
                 </td>
                 <td>{{ personel.PersonelID }}</td>
-                <td contenteditable="false">{{ personel.PersonelName }}</td> <!-- Düzenleme devre dışı -->
-                <td contenteditable="false">{{ personel.PersonelTitle }}</td> <!-- Düzenleme devre dışı -->
-                <td contenteditable="false">{{ personel.PersonelBranch }}</td> <!-- Düzenleme devre dışı -->
+                <td contenteditable="false">{{ personel.PersonelName }}</td>
+                <td contenteditable="false">{{ personel.PersonelTitle }}</td>
+                <td>{{ personel.PersonelBranch }}</td>
+                <td>
+                    <span id="birim-text-{{ personel.id }}" class="birim-text">
+                        {% for pb in personel_birimleri %}
+                            {% if pb.personel_id == personel.PersonelID %}
+                                {{ pb.birim.BirimAdi }}
+                            {% endif %}
+                        {% endfor %}
+                    </span>
+                    <select name="birim" id="birim-select-{{ personel.id }}" class="birim-select d-none">
+                        {% for birim in birimler %}
+                        <option value="{{ birim.BirimID }}" 
+                            {% if birim in personel.birim.all %}selected{% endif %}>
+                            {{ birim.BirimAdi }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </td>                
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    
-    <script>
-        function enableEdit(button) {
-            // İlgili satırı bul
-            let row = $(button).closest('tr');
-            
-            // Düzenlenecek hücreleri düzenlenebilir yap
-            row.find('td[contenteditable="false"]').attr('contenteditable', 'true').addClass('editable');
-    
-            // Düzenleme butonlarını göster, düzenleme simgesini gizle
-            row.find('.edit-btn').addClass('d-none');
-            row.find('.save-btn, .cancel-btn').removeClass('d-none');
-        }
-    
-        function saveEdit(button) {
-    // İlgili satırı bul
-    let row = $(button).closest('tr');
-    let personelID = row.find('td:eq(1)').text(); // T.C. Kimlik No hücresi
-    let personelName = row.find('td:eq(2)').text(); // Ad hücresi
-    let personelTitle = row.find('td:eq(3)').text(); // Unvan hücresi
-    let personelBranch = row.find('td:eq(4)').text(); // Branş hücresi
+</div>
 
-    // AJAX ile backend'e kaydetme işlemi
-    $.ajax({
-        url: '{% url "hekim_cizelge:personel_update" %}',
-        method: 'POST',
-        data: {
-            id: personelID,
-            name: personelName,
-            title: personelTitle,
-            branch: personelBranch,
-            csrfmiddlewaretoken: '{{ csrf_token }}'  // CSRF token
-        },
-        success: function(response) {
-            if (response.status === 'success') {
-                // Başarı mesajı
-                alert('Kayıt başarıyla güncellendi.');
+<script>
+    function enableEdit(button) {
+    let row = $(button).closest('tr');
+    row.find('td[contenteditable="false"]').attr('contenteditable', 'true').addClass('editable');
+    row.find('.birim-text').addClass('d-none');
+    row.find('.birim-select').removeClass('d-none');
+    row.find('.edit-btn').addClass('d-none');
+    row.find('.save-btn').removeClass('d-none');
+    row.find('.cancel-btn').removeClass('d-none');
+    }
+
+    function saveEdit(button) {
+        let row = $(button).closest('tr');
+        let personelID = row.find('td:eq(1)').text().trim();
+        let birimID = row.find('select[name="birim"]').val();
+        
+        $.ajax({
+            url: '{% url "hekim_cizelge:personel_update" %}',
+            method: 'POST',
+            data: {
+                id: personelID,
+                birim: birimID,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    alert('Personel başarıyla güncellendi.');
+                    row.find('td[contenteditable="true"]').attr('contenteditable', 'false').removeClass('editable');
+                    row.find('.birim-text').text(response.birim_adi).removeClass('d-none');
+                    row.find('.birim-select').addClass('d-none');
+                } else {
+                    alert('Hata: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('Bir hata oluştu.');
             }
-        },
-        error: function(xhr) {
-            alert('Bir hata oluştu.'); // Hata durumunda mesaj göster
-        }
+        });
+
+        row.find('.save-btn').addClass('d-none');
+        row.find('.cancel-btn').addClass('d-none');
+        row.find('.edit-btn').removeClass('d-none');
+    }
+
+    function cancelEdit(button) {
+        let row = $(button).closest('tr');
+        row.find('td[contenteditable="true"]').attr('contenteditable', 'false').removeClass('editable');
+        row.find('.birim-text').removeClass('d-none');
+        row.find('.birim-select').addClass('d-none');
+
+        row.find('.save-btn, .cancel-btn').addClass('d-none');
+        row.find('.edit-btn').removeClass('d-none');
+    }
+
+
+    $(document).ready(function() {
+        $('#personellerTable').DataTable({
+            "paging": true,
+            "searching": true,
+            "ordering": true,
+            "info": true,
+            "lengthChange": true,
+            "dom": 'Bfrtip',
+            "buttons": [
+                {
+                    extend: 'copy',
+                    text: 'Kopyala',
+                    className: 'btn btn-outline-secondary btn-sm'
+                },
+                {
+                    extend: 'csv',
+                    text: 'CSV',
+                    className: 'btn btn-outline-secondary btn-sm'
+                },
+                {
+                    extend: 'excel',
+                    text: 'Excel',
+                    className: 'btn btn-outline-success btn-sm'
+                },
+                {
+                    extend: 'print',
+                    text: 'Yazdır',
+                    className: 'btn btn-outline-secondary btn-sm'
+                }
+            ]
+        });
     });
 
-    // Hücreleri tekrar düzenlenemez yap
-    row.find('td[contenteditable="true"]').attr('contenteditable', 'false').removeClass('editable');
-
-    // Kaydet/Vazgeç butonlarını gizle, düzenleme simgesini göster
-    row.find('.save-btn, .cancel-btn').addClass('d-none');
-    row.find('.edit-btn').removeClass('d-none');
-}
-
-    
-        function cancelEdit(button) {
-            // İlgili satırı bul
-            let row = $(button).closest('tr');
-    
-            // Hücreleri tekrar düzenlenemez yap
-            row.find('td[contenteditable="true"]').attr('contenteditable', 'false').removeClass('editable');
-    
-            // Kaydet/Vazgeç butonlarını gizle, düzenleme simgesini göster
-            row.find('.save-btn, .cancel-btn').addClass('d-none');
-            row.find('.edit-btn').removeClass('d-none');
-        }
-    </script>
-    
-
-    <script>
-        $(document).ready(function() {
-            $('#personellerTable').DataTable({
-                "paging": true,  // Pagination
-                "searching": true,  // Arama
-                "ordering": true,  // Sıralama
-                "info": true,  // Bilgilendirme (Tabloda kaç kayıt olduğunu gösterir)
-                "lengthChange": true,  // Sayfa başına kaç kayıt gösterileceğini seçme
-                "dom": 'Bfrtip',  // Export butonları
-                "buttons": [
-                    'copy', 'csv', 'excel', 'pdf', 'print'
-                ]
-            });
-    
-        });
-    </script>
-
-<style>
-    /* Düzenleme modunda kullanılan stil */
-.editable {
-    background-color: #f9f9c5; /* Açık sarı renk */
-    border: 1px solid #ffc107; /* Sarı kenarlık */
-    cursor: text; /* Metin imleci göster */
-}
-
-/* Normal durumdaki hücre stili */
-table td {
-    cursor: default; /* Varsayılan imleç */
-}
-
-</style>
-{% endblock %}
-
-{% block extra_js %}
-<!-- Formların yerleştirilmesi için JS -->
-<script>
     // Sayfa karartma ve form gösterme işlemi
     function showForm(htmlContent) {
         document.getElementById("sidePanel").innerHTML = htmlContent;
@@ -162,7 +165,6 @@ table td {
         document.getElementById("sidePanel").classList.remove("active");
         document.getElementById("overlay").classList.remove("active");
     }
-
     // Yeni personel ekleme formunu gösterme
     document.getElementById("openAddPersonelForm").addEventListener("click", function() {
         fetch("{% url 'hekim_cizelge:personel_ekle_form' %}")
@@ -170,14 +172,12 @@ table td {
             .then(html => showForm(html));
     });
 
-    // Overlay alanı tıklandığında formu kapat
+    // Overlay alanı tıklandığında personel_ekle_form formunu kapat ve arka planı normale döndür
     document.getElementById("overlay").addEventListener("click", closeForm);
-
 </script>
-{% endblock %}
 
-{% block extra_css %}
 <style>
+    
     .overlay {
         display: none;
         position: fixed;
@@ -209,6 +209,53 @@ table td {
     }
     .navbar, .app-sidebar {
     z-index: 10; /* Form ve overlay'den daha düşük z-index */
-}
+    }
+    .editable {
+        background-color: #f9f9c5;
+        border: 1px solid #ffc107;
+        cursor: text;
+    }
+    #personellerTable {
+        font-family: Arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    #personellerTable td, #personellerTable th {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+
+    #personellerTable tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+
+    #personellerTable tr:hover {
+        background-color: #ddd;
+    }
+
+    #personellerTable th {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        text-align: left;
+        background-color: #045aaa;
+        color: white;
+    }
+    .dt-buttons .btn {
+        margin-right: 5px;
+    }
 </style>
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.dataTables.min.css">
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
+{% endblock %}
+
 {% endblock %}

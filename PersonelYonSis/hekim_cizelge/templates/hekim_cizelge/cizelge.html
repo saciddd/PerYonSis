@@ -1,10 +1,11 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}657 Çizelge İşlemleri{% endblock %}
+{% block title %}Hekim Çizelge İşlemleri{% endblock %}
 
 {% block content %}
 <br>
 <div class="container-fluid">
+    <!-- Üst Kısım: Ay, Yıl ve Birim Seçimi -->
     <div class="row mb-4">
         <div class="col-md-2">
             <label for="selectYear">Yıl Seçimi</label>
@@ -24,60 +25,45 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-4 text-middle">
-            <br>
-            <button class="btn btn-primary" id="filterButton">Sorgula</button>
+        <div class="col-md-2">
+            <label for="selectBirim">Birim Seçimi</label>
+            <select id="selectBirim" class="form-control">
+                {% for birim in birimler %}
+                <option value="{{ birim.BirimID }}">{{ birim.BirimAdi }}</option>
+                {% endfor %}
+            </select>
         </div>
         <div class="col-md-2">
-            <label for="mesaiSelection">Mesai Seçimi</label>
-            <select id="mesaiSelection" class="form-control">
-                <option value="">Mesai Seçin</option>
-                {% for mesai in mesai_options %}
-                <option value="{{ mesai.id }}">{{ mesai.Saat }}</option> <!-- Mesai id ve saat bilgisi -->
-                {% endfor %}
+            <label for="hizmetSelection">Hizmet Seçimi</label>
+            <select id="hizmetSelection" class="form-control">
+                <option value="">Hizmet Seçin</option>
+                <!-- Hizmetler dinamik olarak yüklenecek -->
             </select>
         </div>
         <div class="col-md-2 text-end">
             <br>
+            <button class="btn btn-primary" id="filterButton">Sorgula</button>
             <button class="btn btn-success" id="saveButton">Kaydet</button>
         </div>
     </div>
 
     <!-- Çizelge Tablosu -->
     <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
-        <colgroup>
-            <col style="width: 160px;">
-            <col style="width: 100px;">
-            {% for day in days %}
-            <col style="width: 40px;">
-            {% endfor %}
-        </colgroup>
-        
         <thead class="table-light">
             <tr>
-                <th onclick="sortTable(0)">Personel Adı</th>
-                <th onclick="sortTable(1)">Personel Unvanı</th>
-                {% for day in days %}
-                <th class="{% if day.is_weekend %}weekend{% endif %}">
-                    {{ day.day_num }}
-                </th>
+                <th>Tarih</th>
+                {% for personel in personeller %}
+                <th>{{ personel.PersonelName }}</th>
                 {% endfor %}
             </tr>
         </thead>
-        
         <tbody id="tableBody">
-            {% for personel in personeller %}
+            {% for day in days %}
             <tr>
-                <td>{{ personel.PersonelName }}</td>
-                <td>{{ personel.PersonelTitle }}</td>
-                {% for day in days %}
-                <td contenteditable="true" data-personel-id="{{ personel.PersonelID }}" data-date="{{ day.full_date }}" 
-                    class="mesai-cell {% if day.is_weekend %}weekend{% endif %}">
-                    {% for mesai in personel.mesai_data %}
-                        {% if mesai.MesaiDate == day.full_date %}
-                            {{ mesai.MesaiTanimSaat }}
-                        {% endif %}
-                    {% endfor %}
+                <td>{{ day.full_date }}</td>
+                {% for personel in personeller %}
+                <td contenteditable="true" data-personel-id="{{ personel.PersonelID }}" data-date="{{ day.full_date }}" class="mesai-cell">
+                    <!-- Hizmet bilgisi buraya gelecek -->
                 </td>
                 {% endfor %}
             </tr>
@@ -86,43 +72,52 @@
     </table>
 </div>
 
-
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.16.9/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.10/jspdf.plugin.autotable.min.js"></script>
-
-<!--Filtreleme ve Sıralama JS-->
-<script src="{% static 'js/tabloFiltre.js' %}"></script>
-<script src="{% static 'js/pagination.js' %}"></script> <!--  -->
-<script src="{% static 'js/exportExcelPdf.js' %}"></script>
-
 <script>
 var changes = {};
 
+// Birim seçildiğinde hizmetleri yükle
+document.getElementById('selectBirim').addEventListener('change', function() {
+    let birimID = this.value;
+    fetch(`/get_hizmetler/${birimID}/`)
+        .then(response => response.json())
+        .then(data => {
+            let hizmetSelect = document.getElementById('hizmetSelection');
+            hizmetSelect.innerHTML = '<option value="">Hizmet Seçin</option>';
+            data.hizmetler.forEach(hizmet => {
+                let option = document.createElement('option');
+                option.value = hizmet.id;
+                option.textContent = hizmet.name;
+                hizmetSelect.appendChild(option);
+            });
+        });
+});
+
+// Hücreye tıklayınca hizmet ekle
 document.querySelectorAll('.mesai-cell').forEach(function (cell) {
     cell.addEventListener('click', function () {
-        let mesaiID = document.getElementById('mesaiSelection').value;
-        if (mesaiID) {
-            cell.setAttribute('data-mesai-id', mesaiID);
-            cell.innerText = document.querySelector(`#mesaiSelection option[value="${mesaiID}"]`).textContent;
+        let hizmetID = document.getElementById('hizmetSelection').value;
+        if (hizmetID) {
+            cell.setAttribute('data-hizmet-id', hizmetID);
+            cell.innerText = document.querySelector(`#hizmetSelection option[value="${hizmetID}"]`).textContent;
 
             let personelID = cell.getAttribute('data-personel-id');
             let date = cell.getAttribute('data-date');
 
-            changes[`${personelID}_${date}`] = mesaiID;
+            changes[`${personelID}_${date}`] = hizmetID;
             cell.blur();
         }
     });
 });
 
+// Kaydet butonuna basıldığında değişiklikleri gönder
 document.getElementById('saveButton').addEventListener('click', function () {
     if (Object.keys(changes).length === 0) {
         alert("Herhangi bir değişiklik yapmadınız.");
         return;
     }
 
-    fetch("{% url 'mercis657:cizelge_kaydet' %}", {
+    fetch("{% url 'hekim_cizelge:cizelge_kaydet' %}", {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -141,7 +136,6 @@ document.getElementById('saveButton').addEventListener('click', function () {
     });
 });
 
-
 // Sorgula butonuna basıldığında tabloyu güncelle
 document.getElementById('filterButton').addEventListener('click', function () {
     let selectedYear = document.getElementById('selectYear').value;
@@ -152,35 +146,19 @@ document.getElementById('filterButton').addEventListener('click', function () {
 {% endblock %}
 
 <style>
-    
     /* Tablo stil ayarları */
-    /* Haftasonu sütunlarına özel renk */
-    #cizelgeTable .weekend {
-        background-color: #c2c2c2;  /* Kırmızımsı bir arka plan rengi */
-        color: #22272e;  /* Metin rengi */
-    }
-
-    /* Sabit sütun genişlikleri colgroup ile zaten ayarlandı, bu yüzden burada ek genişlik tanımlamaya gerek yok. */
     #cizelgeTable td, #cizelgeTable th {
         padding: 2px;
+        text-align: center;
     }
 
     #cizelgeTable td.mesai-cell:hover {
-        background-color: #bbe9f7;  /* Hücre hover */
+        background-color: #bbe9f7;
         cursor: pointer;
     }
 
     #cizelgeTable tbody tr:hover {
-        background-color: #f0f8ff;  /* Satır hover */
+        background-color: #f0f8ff;
     }
-
-    
-    /* Pagination butonları */
-    .pagination button {
-        padding: 5px 10px;
-        margin: 2px;
-        cursor: pointer;
-    }
-    </style>
-    
+</style>
 {% endblock %}

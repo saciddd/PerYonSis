@@ -40,13 +40,14 @@ class Personel(models.Model):
     PersonelName = models.CharField(max_length=100)  # Ad Soyad
     PersonelTitle = models.CharField(max_length=50)  # Unvan (ör. Uzman Tabip)
     PersonelBranch = models.CharField(max_length=100)  # Branş (ör. İç Hastalıkları)
-    PersonelBirimID = models.ForeignKey(
-        'Birim', on_delete=models.SET_NULL, null=True, related_name='personel'
-    )  # Çalıştığı birim
+    birim = models.ManyToManyField(Birim, through='PersonelBirim')
 
     def __str__(self):
         return f"{self.PersonelName} ({self.PersonelTitle})"
 
+class PersonelBirim(models.Model):
+    personel = models.ForeignKey(Personel, on_delete=models.CASCADE)
+    birim = models.ForeignKey(Birim, on_delete=models.CASCADE)
 class Mesai(models.Model):
     MesaiID = models.AutoField(primary_key=True)
     Personel = models.ForeignKey('Personel', on_delete=models.CASCADE)

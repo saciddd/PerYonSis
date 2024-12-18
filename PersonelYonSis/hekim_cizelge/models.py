@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 class Birim(models.Model):
     BirimID = models.AutoField(primary_key=True)
@@ -16,6 +17,16 @@ class Birim(models.Model):
 
     def __str__(self):
         return self.BirimAdi
+
+class UserBirim(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="yetkili_birimler")
+    birim = models.ForeignKey(Birim, on_delete=models.CASCADE, related_name="yetkili_kullanicilar")
+
+    class Meta:
+        unique_together = ('user', 'birim')  # Her kullanıcı-birim eşleşmesi benzersiz olmalı
+
+    def __str__(self):
+        return f"{self.user.username} - {self.birim.BirimAdi}"
 
 class Hizmet(models.Model):
     STANDART = 'Standart'

@@ -1,5 +1,5 @@
 from django.db import models
-from django.conf import settings
+from PersonelYonSis.models import User
 
 class Birim(models.Model):
     BirimID = models.AutoField(primary_key=True)
@@ -19,7 +19,7 @@ class Birim(models.Model):
         return self.BirimAdi
 
 class UserBirim(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="yetkili_birimler")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="yetkili_birimler")
     birim = models.ForeignKey(Birim, on_delete=models.CASCADE, related_name="yetkili_kullanicilar")
 
     class Meta:

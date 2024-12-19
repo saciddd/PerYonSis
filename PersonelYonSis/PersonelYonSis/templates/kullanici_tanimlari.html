@@ -36,6 +36,7 @@
                     <tr>
                         <td>
                             <button class="btn btn-primary" onclick="openEditUserForm('{{ user.UserID }}')">Güncelle</button>
+                            <button class="btn btn-primary" onclick="openBirimYetkileri('{{ user.UserID }}')">Birim Yetkileri</button>
                         </td>
                         <td>{{ user.Username }}</td>
                         <td>{{ user.FullName }}</td>
@@ -64,6 +65,29 @@
     </div>
 
 </div>
+
+<!-- Modal -->
+<div class="modal fade" id="birimYetkileriModal" tabindex="-1" aria-labelledby="birimYetkileriLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="birimYetkileriLabel">Birim Yetkileri</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <h6>Yetkili Olduğu Birimler</h6>
+                <ul id="yetkiliBirimler" class="list-group">
+                    <!-- Yetkili birimler buraya eklenecek -->
+                </ul>
+                <h6 class="mt-3">Tüm Birimler</h6>
+                <ul id="tumBirimler" class="list-group">
+                    <!-- Tüm birimler buraya eklenecek -->
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 {% endblock %}
 
@@ -102,6 +126,76 @@
 
     // Overlay alanı tıklandığında formu kapat
     document.getElementById("overlay").addEventListener("click", closeForm);
+
+    function openBirimYetkileri(userId) {
+    fetch(`/hekim_cizelge/birim_yetkileri/${userId}/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Birim yetkileri yüklenirken bir hata oluştu.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const yetkiliList = document.getElementById('yetkiliBirimler');
+            const tumList = document.getElementById('tumBirimler');
+
+            // Yetkili birimler listesini temizle ve yeniden oluştur
+            yetkiliList.innerHTML = '';
+            if (data.yetkili_birimler.length === 0) {
+                yetkiliList.innerHTML = '<li class="list-group-item">Bu kullanıcı için yetkili birim bulunmuyor.</li>';
+            } else {
+                data.yetkili_birimler.forEach(birim => {
+                    yetkiliList.innerHTML += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            ${birim.BirimAdi}
+                            <button class="btn btn-danger btn-sm" onclick="toggleBirim(${userId}, ${birim.BirimID}, false)">
+                                Kaldır
+                            </button>
+                        </li>
+                    `;
+                });
+            }
+
+            // Tüm birimler listesini temizle ve yeniden oluştur
+            tumList.innerHTML = '';
+            data.tum_birimler.forEach(birim => {
+                if (!data.yetkili_birimler.some(yb => yb.BirimID === birim.BirimID)) {
+                    tumList.innerHTML += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            ${birim.BirimAdi}
+                            <button class="btn btn-success btn-sm" onclick="toggleBirim(${userId}, ${birim.BirimID}, true)">
+                                Ekle
+                            </button>
+                        </li>
+                    `;
+                }
+            });
+
+            $('#birimYetkileriModal').modal('show');
+        })
+        .catch(error => {
+            alert(error.message);
+        });
+    }
+
+    function toggleBirim(userId, birimId, isAdd) {
+        $.post(`/hekim_cizelge/birim_yetkileri/${userId}/`, {
+            birim_id: birimId,
+            is_add: isAdd.toString(),
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        }, function(response) {
+            if (response.status === 'success') {
+                openBirimYetkileri(userId);
+            } else {
+                alert('İşlem sırasında bir hata oluştu: ' + response.message);
+            }
+        }).fail(function() {
+            alert('Sunucuya bağlanırken bir hata oluştu.');
+        });
+    }
+
+
+
 </script>
 
 {% endblock %}

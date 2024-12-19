@@ -15,6 +15,6 @@ urlpatterns = [
     path('add_hizmet/', views.add_hizmet, name='add_hizmet'),
     path('birim_tanimlari/', views.birim_tanimlari, name='birim_tanimlari'),
     path('add_birim/', views.add_birim, name='add_birim'),
-
+    path('birim_yetkileri/<int:user_id>/', views.birim_yetkileri, name='birim_yetkileri'),
 
 ]

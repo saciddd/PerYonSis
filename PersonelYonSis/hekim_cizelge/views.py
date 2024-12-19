@@ -6,8 +6,8 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import calendar
 from datetime import datetime
-
-from .models import Personel, Hizmet, Birim, PersonelBirim, Mesai
+from .models import Personel, Hizmet, Birim, PersonelBirim, Mesai, UserBirim
+from PersonelYonSis.models import User
 
 def hizmet_tanimlari(request):
     hizmetler = Hizmet.objects.all()
@@ -147,6 +147,37 @@ def add_birim(request):
 
     # GET isteği durumunda kullanıcı birim tanımlama sayfasına yönlendirilir
     return redirect('hekim_cizelge:birim_tanimlari')
+def birim_yetkileri(request, user_id):
+    user = get_object_or_404(User, UserID=user_id)
+
+    if request.method == 'GET':
+        # Kullanıcının yetkili olduğu birimler
+        yetkili_birimler = UserBirim.objects.filter(user=user).select_related('birim')
+        tum_birimler = Birim.objects.all()
+
+        yetkili_birimler_list = [{'BirimID': b.birim.BirimID, 'BirimAdi': b.birim.BirimAdi} for b in yetkili_birimler]
+        tum_birimler_list = [{'BirimID': b.BirimID, 'BirimAdi': b.BirimAdi} for b in tum_birimler]
+
+        # Eğer yetkili birim yoksa bile boş liste döner
+        return JsonResponse({
+            'yetkili_birimler': yetkili_birimler_list,
+            'tum_birimler': tum_birimler_list
+        })
+
+    elif request.method == 'POST':
+        birim_id = request.POST.get('birim_id')
+        is_add = request.POST.get('is_add')  # "true" veya "false"
+
+        birim = get_object_or_404(Birim, BirimID=birim_id)
+
+        if is_add == 'true':
+            UserBirim.objects.get_or_create(user=user, birim=birim)
+        elif is_add == 'false':
+            UserBirim.objects.filter(user=user, birim=birim).delete()
+
+        return JsonResponse({'status': 'success'})
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=400)
 
 
 def cizelge(request):

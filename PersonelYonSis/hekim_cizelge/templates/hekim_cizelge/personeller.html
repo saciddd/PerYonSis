@@ -76,9 +76,13 @@
     row.find('.cancel-btn').removeClass('d-none');
     }
 
+    // Personel Adı, Unvanı, Branşı ve Çalıştığı Birim bilgilerini güncelleme işlemi
     function saveEdit(button) {
         let row = $(button).closest('tr');
         let personelID = row.find('td:eq(1)').text().trim();
+        let personelName = row.find('td:eq(2)').text().trim();  
+        let personelTitle = row.find('td:eq(3)').text().trim();
+        let personelBranch = row.find('td:eq(4)').text().trim();
         let birimID = row.find('select[name="birim"]').val();
         
         $.ajax({
@@ -87,6 +91,9 @@
             data: {
                 id: personelID,
                 birim: birimID,
+                name: personelName,
+                title: personelTitle,
+                branch: personelBranch,
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             },
             success: function(response) {

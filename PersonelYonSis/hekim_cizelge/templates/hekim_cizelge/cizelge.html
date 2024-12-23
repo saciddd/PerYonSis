@@ -1,3 +1,4 @@
+<!-- hekim_cizelge/templates/hekim_cizelge/cizelge.html -->
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Hekim Çizelge İşlemleri{% endblock %}
@@ -29,41 +30,70 @@
             <label for="selectBirim">Birim Seçimi</label>
             <select id="selectBirim" class="form-control">
                 {% for birim in birimler %}
-                <option value="{{ birim.BirimID }}">{{ birim.BirimAdi }}</option>
+                <option value="{{ birim.BirimID }}" {% if birim.BirimID == selected_birim.BirimID %}selected{% endif %}>
+                    {{ birim.BirimAdi }}
+                </option>
                 {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label for="hizmetSelection">Hizmet Seçimi</label>
-            <select id="hizmetSelection" class="form-control">
-                <option value="">Hizmet Seçin</option>
-                <!-- Hizmetler dinamik olarak yüklenecek -->
             </select>
         </div>
         <div class="col-md-2 text-end">
             <br>
             <button class="btn btn-primary" id="filterButton">Sorgula</button>
+        </div>
+        <div class="col-md-2">
+            <label for="hizmetSelection">Hizmet Seçimi</label>
+            <select id="hizmetSelection" class="form-control">
+                <option value="">Hizmet Seçin</option>
+                {% for hizmet in hizmetler %}
+                    <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
+                {% endfor %}
+            </select>
+            <!-- Alanı boşalt seçeneği mavi Toggle switch element şeklinde -->
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="clearSelection">
+                <label class="form-check-label" for="clearSelection">
+                    Alanı boşalt
+                </label>
+            </div>
+        </div>
+        <div class="col-md-2 text-end">
+            <br>
             <button class="btn btn-success" id="saveButton">Kaydet</button>
         </div>
     </div>
+
+    <!-- Seçilen Birim -->
+    <div id="selectedBirim" class="mb-2">
+        {% if selected_birim %}
+            Seçilen Birim: {{ selected_birim.BirimAdi }}
+        {% endif %}
+    </div>
+    <br>
 
     <!-- Çizelge Tablosu -->
     <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
         <thead class="table-light">
             <tr>
+                <th>Gün</th>
                 <th>Tarih</th>
                 {% for personel in personeller %}
                 <th>{{ personel.PersonelName }}</th>
                 {% endfor %}
             </tr>
         </thead>
-        <tbody id="tableBody">
+        <tbody>
             {% for day in days %}
-            <tr>
+            <tr class="{% if day.is_weekend %}weekend{% endif %}">
+                <td>{{ day.day_num }}</td>
                 <td>{{ day.full_date }}</td>
                 {% for personel in personeller %}
-                <td contenteditable="true" data-personel-id="{{ personel.PersonelID }}" data-date="{{ day.full_date }}" class="mesai-cell">
-                    <!-- Hizmet bilgisi buraya gelecek -->
+                <td contenteditable="true" data-personel-id="{{ personel.PersonelID }}" data-date="{{ day.full_date }}"
+                    class="mesai-cell">
+                    {% for mesai in personel.mesai_data %}
+                    {% if mesai.MesaiDate == day.full_date %}
+                    {{ mesai.Hizmetler }}
+                    {% endif %}
+                    {% endfor %}
                 </td>
                 {% endfor %}
             </tr>
@@ -71,94 +101,110 @@
         </tbody>
     </table>
 </div>
+{% endblock %}
 
 {% block extra_js %}
 <script>
-var changes = {};
+    var changes = {};
+    var deletion = {};
 
-// Birim seçildiğinde hizmetleri yükle
-document.getElementById('selectBirim').addEventListener('change', function() {
-    let birimID = this.value;
-    fetch(`/get_hizmetler/${birimID}/`)
-        .then(response => response.json())
-        .then(data => {
-            let hizmetSelect = document.getElementById('hizmetSelection');
-            hizmetSelect.innerHTML = '<option value="">Hizmet Seçin</option>';
-            data.hizmetler.forEach(hizmet => {
-                let option = document.createElement('option');
-                option.value = hizmet.id;
-                option.textContent = hizmet.name;
-                hizmetSelect.appendChild(option);
-            });
-        });
-});
-
-// Hücreye tıklayınca hizmet ekle
-document.querySelectorAll('.mesai-cell').forEach(function (cell) {
-    cell.addEventListener('click', function () {
-        let hizmetID = document.getElementById('hizmetSelection').value;
-        if (hizmetID) {
-            cell.setAttribute('data-hizmet-id', hizmetID);
-            cell.innerText = document.querySelector(`#hizmetSelection option[value="${hizmetID}"]`).textContent;
-
+    // Hücreye tıklayınca hizmet ekle veya kaldır
+    document.querySelectorAll('.mesai-cell').forEach(function (cell) {
+        cell.addEventListener('click', function () {
+            let hizmetID = document.getElementById('hizmetSelection').value;
             let personelID = cell.getAttribute('data-personel-id');
             let date = cell.getAttribute('data-date');
+            let clearSelection = document.getElementById('clearSelection').checked;
 
-            changes[`${personelID}_${date}`] = hizmetID;
+            if (clearSelection) {
+                // Alanı boşalt seçeneği aktifse
+                cell.removeAttribute('data-hizmet-id');
+                cell.innerText = '';
+                deletion[`${personelID}_${date}`] = true;
+                delete changes[`${personelID}_${date}`];
+            } else {
+                if (hizmetID) {
+                    if (cell.getAttribute('data-hizmet-id') === hizmetID) {
+                        // Hizmet zaten varsa, kaldır
+                        cell.removeAttribute('data-hizmet-id');
+                        cell.innerText = '';
+                        deletion[`${personelID}_${date}`] = true;
+                        delete changes[`${personelID}_${date}`];
+                    } else {
+                        // Hizmet yoksa, ekle
+                        cell.setAttribute('data-hizmet-id', hizmetID);
+                        cell.innerText = document.querySelector(`#hizmetSelection option[value="${hizmetID}"]`).textContent;
+                        changes[`${personelID}_${date}`] = hizmetID;
+                        delete deletion[`${personelID}_${date}`];
+                    }
+                }
+            }
             cell.blur();
-        }
+        });
     });
-});
 
-// Kaydet butonuna basıldığında değişiklikleri gönder
-document.getElementById('saveButton').addEventListener('click', function () {
-    if (Object.keys(changes).length === 0) {
-        alert("Herhangi bir değişiklik yapmadınız.");
-        return;
-    }
-
-    fetch("{% url 'hekim_cizelge:cizelge_kaydet' %}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: JSON.stringify(changes)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            alert('Değişiklikler kaydedildi.');
-            changes = {};
-        } else {
-            alert('Bir hata oluştu, lütfen tekrar deneyin.');
+    // Kaydet butonuna basıldığında değişiklikleri gönder
+    document.getElementById('saveButton').addEventListener('click', function () {
+        if (Object.keys(changes).length === 0 && Object.keys(deletion).length === 0) {
+            alert("Herhangi bir değişiklik yapmadınız.");
+            return;
         }
-    });
-});
 
-// Sorgula butonuna basıldığında tabloyu güncelle
-document.getElementById('filterButton').addEventListener('click', function () {
-    let selectedYear = document.getElementById('selectYear').value;
-    let selectedMonth = document.getElementById('selectMonth').value;
-    window.location.href = `?year=${selectedYear}&month=${selectedMonth}`;
-});
+        fetch("{% url 'hekim_cizelge:cizelge_kaydet' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ changes: changes, deletion: deletion })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Değişiklikler kaydedildi.');
+                    changes = {};
+                    deletion = {};
+                } else {
+                    alert('Bir hata oluştu, lütfen tekrar deneyin.');
+                }
+            });
+    });
+
+    // Sorgula butonuna basıldığında tabloyu güncelle
+    document.getElementById('filterButton').addEventListener('click', function () {
+        let selectedYear = document.getElementById('selectYear').value;
+        let selectedMonth = document.getElementById('selectMonth').value;
+        let selectedBirim = document.getElementById('selectBirim').value;
+        window.location.href = `?year=${selectedYear}&month=${selectedMonth}&birim_id=${selectedBirim}`;
+    });
 </script>
 {% endblock %}
 
+{% block extra_css %}
 <style>
     /* Tablo stil ayarları */
-    #cizelgeTable td, #cizelgeTable th {
-        padding: 2px;
-        text-align: center;
-    }
-
     #cizelgeTable td.mesai-cell:hover {
-        background-color: #bbe9f7;
+        background-color: #488d5d;
         cursor: pointer;
     }
 
     #cizelgeTable tbody tr:hover {
-        background-color: #f0f8ff;
+        background-color: #5c82a3;
+    }
+
+    #cizelgeTable .weekend {
+    background-color: #c2c2c2 !important; /* Arka plan rengi */
+    color: #22272e !important; /* Metin rengi */
+}
+    .mesai-cell {
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    #cizelgeTable td,
+    #cizelgeTable th {
+        padding: 2px;
+        text-align: center;
     }
 </style>
 {% endblock %}

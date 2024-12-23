@@ -8,11 +8,11 @@ class Birim(models.Model):
         'Hizmet',
         on_delete=models.SET_NULL,
         null=True,
-        related_name='varsayilan_hizmet_birimleri'
+        related_name='varsayilan_birim_hizmetleri'
     )
     DigerHizmetler = models.ManyToManyField(
         'Hizmet',
-        related_name='diger_hizmet_birimleri'
+        related_name='diger_birim_hizmetleri'
     )
 
     def __str__(self):

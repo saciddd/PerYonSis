@@ -4,9 +4,10 @@
 <br>
 <div class="container-fluid">
     <div class="row">
-        <!-- Sol taraf: Birim Tanımlama Formu -->
+        <!-- Sol taraf: Birim Tanımlama ve Düzenleme Formları -->
         <div class="col-md-4">
-            <div class="card">
+            <!-- Yeni Birim Tanımlama Formu -->
+            <div class="card" id="yeniBirimFormu">
                 <div class="card-header">
                     <h3 class="card-title">Yeni Birim Tanımlama</h3>
                 </div>
@@ -38,6 +39,41 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Birim Düzenleme Formu -->
+            <div class="card d-none" id="birimDuzenleFormu">
+                <div class="card-header">
+                    <h3 class="card-title">Birim Düzenle</h3>
+                </div>
+                <div class="card-body">
+                    <form id="duzenleForm" method="post">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="duzenle_birim_adi">Birim Adı</label>
+                            <input type="text" class="form-control" id="duzenle_birim_adi" name="birim_adi" required>
+                        </div>
+                        <div class="form-group mt-3">
+                            <label for="duzenle_varsayilan_hizmet">Varsayılan Hizmet</label>
+                            <select class="form-control" id="duzenle_varsayilan_hizmet" name="varsayilan_hizmet" required>
+                                <option value="" disabled selected>Varsayılan Hizmeti Seçin</option>
+                                {% for hizmet in hizmetler %}
+                                <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group mt-3">
+                            <label for="duzenle_diger_hizmetler">Diğer Hizmetler</label>
+                            <select class="form-control selectpicker" id="duzenle_diger_hizmetler" name="diger_hizmetler" multiple data-live-search="true">
+                                {% for hizmet in hizmetler %}
+                                <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Kaydet</button>
+                        <button type="button" class="btn btn-secondary mt-3" onclick="cancelEdit()">İptal</button>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <!-- Sağ taraf: Birim Listesi Tablosu -->
@@ -51,7 +87,7 @@
                     <table class="table table-bordered-sm" id="birim_tablosu">
                         <thead>
                             <tr>
-                                <th scope="col">Birim ID</th>
+                                <th scope="col">Düzenle</th>
                                 <th scope="col">Birim Adı</th>
                                 <th scope="col">Varsayılan Hizmet</th>
                                 <th scope="col">Diğer Hizmetler</th>
@@ -60,12 +96,18 @@
                         <tbody>
                             {% for birim in birimler %}
                             <tr>
-                                <td>{{ birim.BirimID }}</td>
+                                <!-- Ortalanmış Pencil square iconlu düzenle butonu -->
+                                <td class="text-center">
+                                    <button class="btn btn-outline-success btn-sm" onclick="editBirim('{{ birim.BirimID }}')">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                </td>
                                 <td>{{ birim.BirimAdi }}</td>
                                 <td>{{ birim.VarsayilanHizmet.HizmetName }}</td>
+                                <!-- Diğer hizmetleri badge görünümünde listeleme -->
                                 <td>
                                     {% for hizmet in birim.DigerHizmetler.all %}
-                                        {{ hizmet.HizmetName }}{% if not forloop.last %}, {% endif %}
+                                        <span class="badge bg-primary">{{ hizmet.HizmetName }}</span>
                                     {% endfor %}
                                 </td>
                             </tr>
@@ -92,5 +134,34 @@
             row.style.display = birimAdi.includes(searchValue) ? '' : 'none';
         });
     });
+    // Birim Düzenleme Fonksiyonu
+    function editBirim(birimID) {
+        fetch(`/hekim_cizelge/birim_duzenle_form/${birimID}/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Sunucu hatası: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('yeniBirimFormu').classList.add('d-none');
+                document.getElementById('birimDuzenleFormu').classList.remove('d-none');
+
+                document.getElementById('duzenle_birim_adi').value = data.birim.BirimAdi;
+                document.getElementById('duzenle_varsayilan_hizmet').value = data.birim.VarsayilanHizmetID;
+                $('#duzenle_diger_hizmetler').selectpicker('val', data.birim.DigerHizmetler);
+
+                document.getElementById('duzenleForm').action = `/hekim_cizelge/birim_duzenle/${birimID}/`;
+            })
+            .catch(error => {
+                alert('Birim bilgileri yüklenirken bir hata oluştu: ' + error.message);
+            });
+    }
+
+    function cancelEdit() {
+        document.getElementById('birimDuzenleFormu').classList.add('d-none');
+        document.getElementById('yeniBirimFormu').classList.remove('d-none');
+    }
 </script>
+
 {% endblock %}

@@ -1,7 +1,7 @@
 from io import BytesIO
 import os
 import pandas as pd
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
 import calendar
 from datetime import datetime, timedelta
 import json
@@ -11,13 +11,16 @@ from PersonelYonSis import settings
 from .models import Mesai, Mesai_Tanimlari, Personel
 import locale
 
-locale.setlocale(locale.LC_ALL, 'tr_TR.UTF-8')  # Türkçe ayarlayın
-
-import os
-import pandas as pd
-from openpyxl import load_workbook, Workbook
-from django.http import HttpResponse
-from io import BytesIO
+try:
+    # Windows için
+    locale.setlocale(locale.LC_ALL, 'turkish')
+except locale.Error:
+    try:
+        # Linux/Unix için
+        locale.setlocale(locale.LC_ALL, 'tr_TR.UTF-8')
+    except locale.Error:
+        # Hiçbiri çalışmazsa varsayılan locale kullan
+        locale.setlocale(locale.LC_ALL, '')
 from django.conf import settings
 
 def excel_export(request):

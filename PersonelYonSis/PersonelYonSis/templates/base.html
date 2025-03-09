@@ -17,7 +17,7 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css">
     </head>
 
-<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+<body class="layout-fixed sidebar-expand-lg bg-body-tertiary sidebar-collapse">
     <div class="app-wrapper">
         <!-- Başlık -->
         <nav class="app-header navbar navbar-expand bg-body">
@@ -115,6 +115,7 @@
 <script>
     $(document).ready(function() {
         $('.selectpicker').selectpicker({multiple: true}); // Burada başlatıyoruz
+        $('body').addClass('sidebar-collapse'); // Yan menüyü otomatik olarak kapat
     });
 </script>
 

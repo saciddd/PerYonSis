@@ -285,7 +285,7 @@ def cizelge(request):
         'current_month': current_month,
         'current_year': current_year,
         'months': [{'value': i, 'label': calendar.month_name[i]} for i in range(1, 13)],
-        'years': [year for year in range(2024, 2025)],
+        'years': [year for year in range(current_year - 1, current_year + 2)],
         'hizmetler': hizmetler,
         'selected_birim': selected_birim,
     }
@@ -301,26 +301,24 @@ def cizelge_kaydet(request):
             deletion = data.get('deletion', {})
 
             # Değişiklikleri işle
-            for key, hizmetID in changes.items():
+            for key, hizmetIDs in changes.items():
                 personel_id, date = key.split('_')
-                # Personel nesnesini al
                 personel = Personel.objects.get(PersonelID=personel_id)
-                # Hizmet nesnesini al
-                hizmet = Hizmet.objects.get(HizmetID=hizmetID)
+                
                 # Mesai kaydını güncelle veya oluştur
-                mesai, created = Mesai.objects.update_or_create(
+                mesai, created = Mesai.objects.get_or_create(
                     Personel=personel,
                     MesaiDate=date
                 )
-                # Hizmetler alanını güncelle
-                mesai.Hizmetler.set([hizmet])
+                
+                # Hizmetleri güncelle
+                hizmetler = Hizmet.objects.filter(HizmetID__in=hizmetIDs)
+                mesai.Hizmetler.set(hizmetler)
 
             # Silme işlemlerini yap
             for key in deletion.keys():
                 personel_id, date = key.split('_')
-                # Personel nesnesini al
                 personel = Personel.objects.get(PersonelID=personel_id)
-                # Mesai kaydını sil
                 Mesai.objects.filter(Personel=personel, MesaiDate=date).delete()
 
             return JsonResponse({'status': 'success'})

@@ -48,7 +48,17 @@
                     <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
                 {% endfor %}
             </select>
-            <!-- Alanı boşalt seçeneği mavi Toggle switch element şeklinde -->
+            <!-- Hekim seçim alanı (Hizmet bazlı görünüm için) -->
+            <div id="hekimSelectionDiv" style="display: none;">
+                <label for="hekimSelection" class="mt-2">Hekim Seçimi</label>
+                <select id="hekimSelection" class="form-control">
+                    <option value="">Hekim Seçin</option>
+                    {% for personel in personeller %}
+                        <option value="{{ personel.PersonelID }}">{{ personel.PersonelName }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Alanı boşalt seçeneği -->
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" id="clearSelection">
                 <label class="form-check-label" for="clearSelection">
@@ -60,6 +70,12 @@
             <br>
             <button class="btn btn-success" id="saveButton">Kaydet</button>
         </div>
+        <div class="col-md-2 text-end">
+            <br>
+            <button class="btn btn-info" id="toggleView">
+                <i class="bi bi-arrow-repeat"></i> Görünümü Değiştir
+            </button>
+        </div>
     </div>
 
     <!-- Seçilen Birim -->
@@ -70,36 +86,76 @@
     </div>
     <br>
 
-    <!-- Çizelge Tablosu -->
-    <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
-        <thead class="table-light">
-            <tr>
-                <th>Gün</th>
-                <th>Tarih</th>
-                {% for personel in personeller %}
-                <th>{{ personel.PersonelName }}</th>
+    <!-- Hekim Bazlı Tablo -->
+    <div id="hekimView">
+        <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Gün</th>
+                    <th>Tarih</th>
+                    {% for personel in personeller %}
+                    <th>{{ personel.PersonelName }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for day in days %}
+                <tr class="{% if day.is_weekend %}weekend{% endif %}">
+                    <td>{{ day.day_num }}</td>
+                    <td>{{ day.full_date }}</td>
+                    {% for personel in personeller %}
+                    <td contenteditable="true" data-personel-id="{{ personel.PersonelID }}" data-date="{{ day.full_date }}"
+                        class="mesai-cell">
+                        {% for mesai in personel.mesai_data %}
+                        {% if mesai.MesaiDate == day.full_date %}
+                        {{ mesai.Hizmetler }}
+                        {% endif %}
+                        {% endfor %}
+                    </td>
+                    {% endfor %}
+                </tr>
                 {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for day in days %}
-            <tr class="{% if day.is_weekend %}weekend{% endif %}">
-                <td>{{ day.day_num }}</td>
-                <td>{{ day.full_date }}</td>
-                {% for personel in personeller %}
-                <td contenteditable="true" data-personel-id="{{ personel.PersonelID }}" data-date="{{ day.full_date }}"
-                    class="mesai-cell">
-                    {% for mesai in personel.mesai_data %}
-                    {% if mesai.MesaiDate == day.full_date %}
-                    {{ mesai.Hizmetler }}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Hizmet Bazlı Tablo -->
+    <div id="hizmetView" style="display: none;">
+        <table id="hizmetTable" class="table table-sm table-bordered table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Gün</th>
+                    <th>Tarih</th>
+                    {% for hizmet in hizmetler %}
+                    {% if hizmet.HizmetID != selected_birim.VarsayilanHizmet.HizmetID %}
+                    <th>{{ hizmet.HizmetName }}</th>
                     {% endif %}
                     {% endfor %}
-                </td>
+                </tr>
+            </thead>
+            <tbody>
+                {% for day in days %}
+                <tr class="{% if day.is_weekend %}weekend{% endif %}">
+                    <td>{{ day.day_num }}</td>
+                    <td>{{ day.full_date }}</td>
+                    {% for hizmet in hizmetler %}
+                    {% if hizmet.HizmetID != selected_birim.VarsayilanHizmet.HizmetID %}
+                    <td class="hizmet-cell" data-date="{{ day.full_date }}" data-hizmet-id="{{ hizmet.HizmetID }}">
+                        {% for personel in personeller %}
+                            {% for mesai in personel.mesai_data %}
+                                {% if mesai.MesaiDate == day.full_date and hizmet.HizmetName in mesai.Hizmetler %}
+                                    <span class="badge bg-info">{{ personel.PersonelName }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                    </td>
+                    {% endif %}
+                    {% endfor %}
+                </tr>
                 {% endfor %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}
 
@@ -107,8 +163,9 @@
 <script>
     var changes = {};
     var deletion = {};
+    const varsayilanHizmetID = "{{ selected_birim.VarsayilanHizmet.HizmetID }}";
 
-    // Hücreye tıklayınca hizmet ekle veya kaldır
+    // Hücreye tıklayınca hizmet ekle veya kaldır (Hekim bazlı görünüm)
     document.querySelectorAll('.mesai-cell').forEach(function (cell) {
         cell.addEventListener('click', function () {
             let hizmetID = document.getElementById('hizmetSelection').value;
@@ -117,30 +174,94 @@
             let clearSelection = document.getElementById('clearSelection').checked;
 
             if (clearSelection) {
-                // Alanı boşalt seçeneği aktifse
-                cell.removeAttribute('data-hizmet-id');
-                cell.innerText = '';
+                // Tüm hizmetleri temizle
+                cell.innerHTML = '';
                 deletion[`${personelID}_${date}`] = true;
                 delete changes[`${personelID}_${date}`];
-            } else {
-                if (hizmetID) {
-                    if (cell.getAttribute('data-hizmet-id') === hizmetID) {
-                        // Hizmet zaten varsa, kaldır
-                        cell.removeAttribute('data-hizmet-id');
-                        cell.innerText = '';
-                        deletion[`${personelID}_${date}`] = true;
-                        delete changes[`${personelID}_${date}`];
-                    } else {
-                        // Hizmet yoksa, ekle
-                        cell.setAttribute('data-hizmet-id', hizmetID);
-                        cell.innerText = document.querySelector(`#hizmetSelection option[value="${hizmetID}"]`).textContent;
-                        changes[`${personelID}_${date}`] = hizmetID;
-                        delete deletion[`${personelID}_${date}`];
+            } else if (hizmetID) {
+                let currentServices = [];
+                let badges = cell.getElementsByClassName('badge');
+                
+                // Mevcut hizmetleri topla
+                Array.from(badges).forEach(badge => {
+                    let hizmetText = badge.textContent;
+                    let option = Array.from(document.getElementById('hizmetSelection').options)
+                        .find(opt => opt.textContent === hizmetText);
+                    if (option) currentServices.push(option.value);
+                });
+
+                if (hizmetID === varsayilanHizmetID) {
+                    // Varsayılan hizmet ekleniyorsa, diğer hizmetleri koru
+                    if (!currentServices.includes(hizmetID)) {
+                        currentServices.push(hizmetID);
+                    }
+                } else {
+                    // Varsayılan olmayan hizmet ekleniyorsa
+                    // Varsayılan hizmeti koru, diğerlerini kaldır
+                    currentServices = currentServices.filter(id => id === varsayilanHizmetID);
+                    if (!currentServices.includes(hizmetID)) {
+                        currentServices.push(hizmetID);
                     }
                 }
+
+                // Hücreyi güncelle
+                cell.innerHTML = currentServices.map(serviceID => {
+                    let option = document.querySelector(`#hizmetSelection option[value="${serviceID}"]`);
+                    let badgeClass = serviceID === varsayilanHizmetID ? 'bg-primary' : 'bg-secondary';
+                    return `<span class="badge ${badgeClass}">${option.textContent}</span>`;
+                }).join(' ');
+
+                changes[`${personelID}_${date}`] = currentServices;
+                delete deletion[`${personelID}_${date}`];
             }
             cell.blur();
         });
+    });
+
+    // Hizmet bazlı görünüm için hücre tıklama
+    document.querySelectorAll('.hizmet-cell').forEach(function(cell) {
+        cell.addEventListener('click', function() {
+            const date = this.getAttribute('data-date');
+            const hizmetID = this.getAttribute('data-hizmet-id');
+            const selectedHekimID = document.getElementById('hekimSelection').value;
+            const clearSelection = document.getElementById('clearSelection').checked;
+            
+            if (clearSelection) {
+                cell.innerHTML = '';
+                deletion[`${selectedHekimID}_${date}`] = true;
+            } else if (selectedHekimID) {
+                const selectedHekim = document.querySelector(`#hekimSelection option[value="${selectedHekimID}"]`);
+                cell.innerHTML = `<span class="badge bg-info">${selectedHekim.textContent}</span>`;
+                
+                // Varsayılan hizmeti koru, seçili hizmeti ekle
+                let currentServices = [varsayilanHizmetID];
+                if (hizmetID !== varsayilanHizmetID) {
+                    currentServices.push(hizmetID);
+                }
+                
+                changes[`${selectedHekimID}_${date}`] = currentServices;
+            }
+        });
+    });
+
+    // Görünüm değiştirme butonu için event listener
+    document.getElementById('toggleView').addEventListener('click', function() {
+        const hekimView = document.getElementById('hekimView');
+        const hizmetView = document.getElementById('hizmetView');
+        const button = document.getElementById('toggleView');
+        const hekimSelectionDiv = document.getElementById('hekimSelectionDiv');
+
+        if (hekimView.style.display !== 'none') {
+            hekimView.style.display = 'none';
+            hizmetView.style.display = 'block';
+            hekimSelectionDiv.style.display = 'block';
+            button.innerHTML = '<i class="bi bi-arrow-repeat"></i> Hekim Bazlı Görünüm';
+        } else {
+            hekimView.style.display = 'block';
+            hizmetView.style.display = 'none';
+            hekimSelectionDiv.style.display = 'none';
+            button.innerHTML = '<i class="bi bi-arrow-repeat"></i> Hizmet Bazlı Görünüm';
+        }
     });
 
     // Kaydet butonuna basıldığında değişiklikleri gönder
@@ -158,16 +279,16 @@
             },
             body: JSON.stringify({ changes: changes, deletion: deletion })
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    alert('Değişiklikler kaydedildi.');
-                    changes = {};
-                    deletion = {};
-                } else {
-                    alert('Bir hata oluştu, lütfen tekrar deneyin.');
-                }
-            });
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Değişiklikler kaydedildi.');
+                changes = {};
+                deletion = {};
+            } else {
+                alert('Bir hata oluştu, lütfen tekrar deneyin.');
+            }
+        });
     });
 
     // Sorgula butonuna basıldığında tabloyu güncelle
@@ -205,6 +326,53 @@
     #cizelgeTable th {
         padding: 2px;
         text-align: center;
+    }
+
+    .mesai-cell .badge {
+        margin: 2px;
+    }
+    
+    .badge.bg-primary {
+        font-weight: normal;
+    }
+    
+    .badge.bg-secondary {
+        font-weight: normal;
+    }
+
+    .hizmet-cell {
+        text-align: center;
+        vertical-align: middle;
+        cursor: pointer;
+    }
+
+    .hizmet-cell:hover {
+        background-color: #488d5d;
+    }
+
+    #hizmetTable .badge {
+        margin: 2px;
+    }
+
+    /* Hizmet bazlı tablo için hafta sonu stilleri */
+    #hizmetTable .weekend {
+        background-color: #c2c2c2 !important;
+        color: #22272e !important;
+    }
+
+    .hizmet-cell {
+        text-align: center;
+        vertical-align: middle;
+        cursor: pointer;
+        padding: 2px;
+    }
+
+    .hizmet-cell:hover {
+        background-color: #488d5d;
+    }
+
+    #hizmetTable .badge {
+        margin: 2px;
     }
 </style>
 {% endblock %}

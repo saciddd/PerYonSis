@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Onay Bekleyen Mesailer{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <h4>Onay Bekleyen Mesailer</h4>
+    
+    <!-- Birimler Listesi -->
+    <div class="row">
+        {% for birim in birimler %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ birim.BirimAdi }}</h5>
+                    <p class="card-text">
+                        Bekleyen Değişiklik: <span class="badge bg-warning">{{ birim.bekleyen_mesai }}</span>
+                    </p>
+                    <button class="btn btn-primary" onclick="goToCizelge('{{ birim.BirimID }}')">
+                        Değişiklikleri Görüntüle
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                Onay bekleyen değişiklik bulunmamaktadır.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function goToCizelge(birimId) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = today.getMonth() + 1;
+        window.location.href = `{% url 'hekim_cizelge:cizelge' %}?year=${year}&month=${month}&birim_id=${birimId}&mode=approval`;
+    }
+</script>
+{% endblock %}

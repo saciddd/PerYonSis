@@ -1,14 +1,15 @@
 <!-- hekim_cizelge/templates/hekim_cizelge/cizelge.html -->
 {% extends "base.html" %}
 {% load static %}
+{% load hekim_filters %}
 {% block title %}Hekim Çizelge İşlemleri{% endblock %}
 
 {% block content %}
 <br>
 <div class="container-fluid">
     <!-- Üst Kısım: Ay, Yıl ve Birim Seçimi -->
-    <div class="row mb-4">
-        <div class="col-md-2">
+    <div class="row mb-n1">
+        <div class="col-md-1">
             <label for="selectYear">Yıl Seçimi</label>
             <select id="selectYear" class="form-control">
                 {% for year in years %}
@@ -16,7 +17,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-1">
             <label for="selectMonth">Ay Seçimi</label>
             <select id="selectMonth" class="form-control">
                 {% for month in months %}
@@ -36,45 +37,67 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-2 text-end">
+        <div class="col-md-1 text-end">
             <br>
             <button class="btn btn-primary" id="filterButton">Sorgula</button>
         </div>
-        <div class="col-md-2">
-            <label for="hizmetSelection">Hizmet Seçimi</label>
-            <select id="hizmetSelection" class="form-control">
-                <option value="">Hizmet Seçin</option>
-                {% for hizmet in hizmetler %}
-                    <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
-                {% endfor %}
-            </select>
-            <!-- Hekim seçim alanı (Hizmet bazlı görünüm için) -->
-            <div id="hekimSelectionDiv" style="display: none;">
-                <label for="hekimSelection" class="mt-2">Hekim Seçimi</label>
-                <select id="hekimSelection" class="form-control">
-                    <option value="">Hekim Seçin</option>
-                    {% for personel in personeller %}
-                        <option value="{{ personel.PersonelID }}">{{ personel.PersonelName }}</option>
-                    {% endfor %}
-                </select>
+        
+        <!-- Hizmet ve Hekim seçimi (approval modda gizli) -->
+        {% if not is_approval_mode %}
+        <div class="col-md-4">
+            <div class="row">
+                <div class="col-6"> <!-- ilk sütun -->
+                    <label for="hizmetSelection">Hizmet Seçimi</label>
+                    <select id="hizmetSelection" class="form-control">
+                        <option value="">Hizmet Seçin</option>
+                        {% for hizmet in hizmetler %}
+                            <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6"> <!-- ikinci sütun gizli olacak -->
+                    <div id="hekimSelectionDiv" style="display: none;">
+                        <label for="hekimSelection">Hekim Seçimi</label>
+                        <select id="hekimSelection" class="form-control">
+                            <option value="">Hekim Seçin</option>
+                            {% for personel in personeller %}
+                                <option value="{{ personel.PersonelID }}">{{ personel.PersonelName }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
             </div>
             <!-- Alanı boşalt seçeneği -->
-            <div class="form-check form-switch">
+            <div class="form-check form-switch mt-2">
                 <input class="form-check-input" type="checkbox" id="clearSelection">
                 <label class="form-check-label" for="clearSelection">
                     Alanı boşalt
                 </label>
             </div>
         </div>
-        <div class="col-md-2 text-end">
+        {% endif %}
+        
+        <div class="col-md-3 text-end">
             <br>
-            <button class="btn btn-success" id="saveButton">Kaydet</button>
-        </div>
-        <div class="col-md-2 text-end">
-            <br>
-            <button class="btn btn-info" id="toggleView">
+            {% if not is_approval_mode %}
+            <button class="btn btn-primary" id="toggleView">
                 <i class="bi bi-arrow-repeat"></i> Görünümü Değiştir
             </button>
+            {% else %}
+            <button class="btn btn-primary" id="topluOnayButton">
+                <i class="bi bi-check-all"></i> Tüm Değişiklikleri Onayla
+            </button>
+            {% endif %}
+            <button class="btn btn-success" id="saveButton">Kaydet</button>
+        </div>
+    </div>
+
+    <!-- Üst kısma onay durumu göstergesi ekleyelim -->
+    <div class="row mb-2">
+        <div class="col-md-2">
+            <div id="onayDurumu" class="alert alert-info" style="display: none;">
+                Onay Durumu: <span id="onayDurumuText"></span>
+            </div>
         </div>
     </div>
 
@@ -105,11 +128,22 @@
                     <td>{{ day.full_date }}</td>
                     {% for personel in personeller %}
                     <td contenteditable="true" data-personel-id="{{ personel.PersonelID }}" data-date="{{ day.full_date }}"
-                        class="mesai-cell">
+                        class="mesai-cell position-relative">
                         {% for mesai in personel.mesai_data %}
-                        {% if mesai.MesaiDate == day.full_date %}
-                        {{ mesai.Hizmetler }}
-                        {% endif %}
+                            {% if mesai.MesaiDate == day.full_date %}
+                                <span class="position-absolute top-0 end-0 p-1">
+                                    <i class="bi bi-check-circle-fill {% if mesai.OnayDurumu == 1 %}text-success{% else %}text-warning{% endif %}"></i>
+                                </span>
+                                {% with hizmetler=mesai.Hizmetler|split:"," %}
+                                    {% for hizmet in hizmetler %}
+                                        {% if hizmet.strip == selected_birim.VarsayilanHizmet.HizmetName %}
+                                            <span class="badge bg-primary">{{ hizmet }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ hizmet }}</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endwith %}
+                            {% endif %}
                         {% endfor %}
                     </td>
                     {% endfor %}
@@ -144,7 +178,7 @@
                         {% for personel in personeller %}
                             {% for mesai in personel.mesai_data %}
                                 {% if mesai.MesaiDate == day.full_date and hizmet.HizmetName in mesai.Hizmetler %}
-                                    <span class="badge bg-info">{{ personel.PersonelName }}</span>
+                                    <span class="badge bg-primary">{{ personel.PersonelName }}</span>
                                 {% endif %}
                             {% endfor %}
                         {% endfor %}
@@ -231,11 +265,21 @@
                 deletion[`${selectedHekimID}_${date}`] = true;
             } else if (selectedHekimID) {
                 const selectedHekim = document.querySelector(`#hekimSelection option[value="${selectedHekimID}"]`);
-                cell.innerHTML = `<span class="badge bg-info">${selectedHekim.textContent}</span>`;
+                cell.innerHTML = `<span class="badge bg-success">${selectedHekim.textContent}</span>`;
                 
-                // Varsayılan hizmeti koru, seçili hizmeti ekle
-                let currentServices = [varsayilanHizmetID];
-                if (hizmetID !== varsayilanHizmetID) {
+                // Mevcut servisleri kontrol et
+                let currentServices = [];
+                if (changes[`${selectedHekimID}_${date}`]) {
+                    currentServices = changes[`${selectedHekimID}_${date}`];
+                }
+                
+                // Eğer varsayılan hizmet zaten varsa koru, yoksa ekleme
+                if (!currentServices.includes(varsayilanHizmetID)) {
+                    // Varsayılan hizmet yoksa, sadece seçili hizmeti ekle
+                    currentServices = [hizmetID];
+                } else {
+                    // Varsayılan hizmet varsa, koru ve yeni hizmeti ekle
+                    currentServices = currentServices.filter(id => id === varsayilanHizmetID);
                     currentServices.push(hizmetID);
                 }
                 
@@ -298,6 +342,95 @@
         let selectedBirim = document.getElementById('selectBirim').value;
         window.location.href = `?year=${selectedYear}&month=${selectedMonth}&birim_id=${selectedBirim}`;
     });
+
+    // Onay durumu kontrolü
+    function checkOnayDurumu() {
+        const mesaiId = getCurrentMesaiId(); // Mevcut mesai ID'sini al
+        if (!mesaiId) return;
+
+        fetch(`/hekim_cizelge/mesai/onay-durumu/${mesaiId}/`)
+            .then(response => response.json())
+            .then(data => {
+                const onayDiv = document.getElementById('onayDurumu');
+                const onayText = document.getElementById('onayDurumuText');
+                
+                onayDiv.style.display = 'block';
+                onayText.textContent = data.onay_durumu === 1 ? 'Onaylandı' : 
+                                     data.onay_durumu === 2 ? 'Reddedildi' : 'Beklemede';
+                
+                // Onay durumuna göre stil değiştir
+                onayDiv.className = `alert alert-${data.onay_durumu === 1 ? 'success' : 
+                                                  data.onay_durumu === 2 ? 'danger' : 'info'}`;
+            });
+    }
+
+    // Sayfa yüklendiğinde onay durumunu kontrol et
+    document.addEventListener('DOMContentLoaded', checkOnayDurumu);
+
+    // Onay modu için click handler
+    var isApprovalMode = {{ is_approval_mode|yesno:"true,false" }};
+    if (isApprovalMode) {
+        document.querySelectorAll('.mesai-cell').forEach(function(cell) {
+            cell.addEventListener('click', function() {
+                const mesaiId = this.getAttribute('data-mesai-id');
+                if (!mesaiId) return;
+                
+                if (confirm('Bu mesai kaydını onaylamak istiyor musunuz?')) {
+                    fetch(`/hekim_cizelge/mesai/onay/${mesaiId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({ onay_durumu: 1 })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Hücreyi güncelle
+                            const checkIcon = this.querySelector('.bi-check-circle-fill');
+                            if (checkIcon) {
+                                checkIcon.classList.remove('text-warning');
+                                checkIcon.classList.add('text-success');
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        // Toplu onay butonu için event listener
+        document.getElementById('topluOnayButton')?.addEventListener('click', function() {
+            const birimId = document.getElementById('selectBirim').value;
+            const onaysizMesaiSayisi = document.querySelectorAll('.bi-check-circle-fill.text-warning').length;
+            
+            if (onaysizMesaiSayisi === 0) {
+                alert('Onaylanacak değişiklik bulunmamaktadır.');
+                return;
+            }
+
+            if (confirm(`Listede yer alan onaysız durumdaki ${onaysizMesaiSayisi} adet değişiklik onaylanacak. Onaylıyor musunuz?`)) {
+                fetch(`/hekim_cizelge/toplu-onay/${birimId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Tüm onay ikonlarını güncelle
+                        document.querySelectorAll('.bi-check-circle-fill.text-warning').forEach(icon => {
+                            icon.classList.remove('text-warning');
+                            icon.classList.add('text-success');
+                        });
+                        alert(data.message);
+                    }
+                });
+            }
+        });
+    }
 </script>
 {% endblock %}
 
@@ -320,14 +453,14 @@
     .mesai-cell {
         text-align: center;
         vertical-align: middle;
+        min-height: 40px;  /* Onay ikonu için minimum yükseklik */
     }
 
-    #cizelgeTable td,
-    #cizelgeTable th {
-        padding: 2px;
-        text-align: center;
+    .bi-check-circle-fill {
+        font-size: 14px;
+        opacity: 0.8;
     }
-
+    
     .mesai-cell .badge {
         margin: 2px;
     }

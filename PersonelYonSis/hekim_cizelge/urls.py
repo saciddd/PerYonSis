@@ -17,6 +17,8 @@ urlpatterns = [
     path('birim_yetkileri/<int:user_id>/', views.birim_yetkileri, name='birim_yetkileri'),
     path('birim_duzenle_form/<int:birim_id>/', views.birim_duzenle_form, name='birim_duzenle_form'),
     path('birim_duzenle/<int:birim_id>/', views.birim_duzenle, name='birim_duzenle'),
-
-
+    path('mesai/onay/<int:mesai_id>/', views.mesai_onay, name='mesai_onay'),
+    path('mesai/onay-durumu/<int:mesai_id>/', views.mesai_onay_durumu, name='mesai_onay_durumu'),
+    path('onay-bekleyen-mesailer/', views.onay_bekleyen_mesailer, name='onay_bekleyen_mesailer'),
+    path('toplu-onay/<int:birim_id>/', views.toplu_onay, name='toplu_onay'),
 ]

@@ -6,8 +6,9 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import calendar
 from datetime import datetime
-from .models import Personel, Hizmet, Birim, PersonelBirim, Mesai, UserBirim
+from .models import Personel, Hizmet, Birim, PersonelBirim, Mesai, UserBirim  # Removed MesaiOnay
 from PersonelYonSis.models import User
+from django.db import models
 
 def hizmet_tanimlari(request):
     hizmetler = Hizmet.objects.all()
@@ -273,11 +274,16 @@ def cizelge(request):
         personel.mesai_data = [
             {
                 'MesaiDate': mesai.MesaiDate.strftime("%Y-%m-%d"),
-                'Hizmetler': ", ".join(hizmet.HizmetName for hizmet in mesai.Hizmetler.all())
+                'Hizmetler': ", ".join(hizmet.HizmetName for hizmet in mesai.Hizmetler.all()),
+                'OnayDurumu': mesai.OnayDurumu,
+                'MesaiID': mesai.MesaiID
             }
             for mesai in mesailer.filter(Personel=personel)
         ]
 
+    # Approval mode kontrolü
+    is_approval_mode = request.GET.get('mode') == 'approval'
+    
     context = {
         'personeller': personeller,
         'days': days,
@@ -288,6 +294,7 @@ def cizelge(request):
         'years': [year for year in range(current_year - 1, current_year + 2)],
         'hizmetler': hizmetler,
         'selected_birim': selected_birim,
+        'is_approval_mode': is_approval_mode,
     }
 
     return render(request, 'hekim_cizelge/cizelge.html', context)
@@ -308,8 +315,17 @@ def cizelge_kaydet(request):
                 # Mesai kaydını güncelle veya oluştur
                 mesai, created = Mesai.objects.get_or_create(
                     Personel=personel,
-                    MesaiDate=date
+                    MesaiDate=date,
+                    defaults={
+                        'OnayDurumu': 0,
+                        'Degisiklik': True
+                    }
                 )
+                
+                if not created:
+                    mesai.OnayDurumu = 0  # Değişiklik yapıldığında onayı sıfırla
+                    mesai.Degisiklik = True
+                    mesai.save()
                 
                 # Hizmetleri güncelle
                 hizmetler = Hizmet.objects.filter(HizmetID__in=hizmetIDs)
@@ -326,4 +342,86 @@ def cizelge_kaydet(request):
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
+
+@csrf_exempt
+def mesai_onay(request, mesai_id):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            mesai = get_object_or_404(Mesai, MesaiID=mesai_id)
+            
+            # Update Mesai object directly instead of creating MesaiOnay
+            mesai.OnayDurumu = data.get('onay_durumu', 0)
+            mesai.Onaylayan = request.user
+            mesai.OnayTarihi = datetime.now()
+            mesai.Degisiklik = False
+            mesai.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'mesai_id': mesai_id
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+
+def mesai_onay_durumu(request, mesai_id):
+    mesai = get_object_or_404(Mesai, MesaiID=mesai_id)
+    return JsonResponse({
+        'mesai_id': mesai_id,
+        'onay_durumu': mesai.OnayDurumu,
+        'onay_tarihi': mesai.OnayTarihi.isoformat() if mesai.OnayTarihi else None,
+        'onaylayan': mesai.Onaylayan.username if mesai.Onaylayan else None
+    })
+
+def onay_bekleyen_mesailer(request):
+    # Kullanıcının yetkili olduğu birimler
+    user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
+    
+    # Değişiklik olan ve onay bekleyen mesaileri birim bazlı grupla
+    birimler = Birim.objects.filter(BirimID__in=user_birimler).annotate(
+        bekleyen_mesai=models.Count(
+            'personelbirim__personel__mesai',
+            filter=models.Q(
+                personelbirim__personel__mesai__OnayDurumu=0,
+                personelbirim__personel__mesai__Degisiklik=True
+            )
+        )
+    ).filter(bekleyen_mesai__gt=0)
+
+    return render(request, 'hekim_cizelge/onay_bekleyen_mesailer.html', {
+        'birimler': birimler
+    })
+
+@csrf_exempt
+def toplu_onay(request, birim_id):
+    if request.method == 'POST':
+        try:
+            mesailer = Mesai.objects.filter(
+                Personel__personelbirim__birim_id=birim_id,
+                OnayDurumu=0,
+                Degisiklik=True
+            )
+            onay_sayisi = mesailer.count()
+            
+            mesailer.update(
+                OnayDurumu=1,
+                Onaylayan=request.user,
+                OnayTarihi=datetime.now(),
+                Degisiklik=False
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': f'{onay_sayisi} adet mesai onaylandı.'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })

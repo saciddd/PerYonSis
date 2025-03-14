@@ -59,11 +59,16 @@ class Personel(models.Model):
 class PersonelBirim(models.Model):
     personel = models.ForeignKey(Personel, on_delete=models.CASCADE)
     birim = models.ForeignKey(Birim, on_delete=models.CASCADE)
+
 class Mesai(models.Model):
     MesaiID = models.AutoField(primary_key=True)
     Personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
     MesaiDate = models.DateField(null=False)
     Hizmetler = models.ManyToManyField('Hizmet', related_name='mesai_hizmetleri')
+    OnayDurumu = models.IntegerField(default=0)  # 0: Beklemede, 1: Onaylandı
+    OnayTarihi = models.DateTimeField(null=True, blank=True)
+    Onaylayan = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+    Degisiklik = models.BooleanField(default=True)  # True: Değişiklik var, False: Değişiklik yok
 
     def __str__(self):
         return f"Mesai {self.MesaiDate} - {self.Personel.PersonelName}"

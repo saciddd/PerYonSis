@@ -9,3 +9,11 @@ def split(value, arg):
     Usage: {{ value|split:"," }}
     """
     return value.split(arg)
+
+@register.filter(name='filter_by_name')
+def filter_by_name(hizmetler, hizmet_name):
+    """Hizmet listesinden isimle eşleşen hizmeti bulur"""
+    for hizmet in hizmetler:
+        if hizmet.HizmetName.strip() == hizmet_name.strip():
+            return hizmet
+    return None

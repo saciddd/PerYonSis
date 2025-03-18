@@ -27,8 +27,26 @@
                             </select>
                         </div>
                         <div class="form-group mt-3">
-                            <label for="hizmet_suresi">Hizmet Süresi (örn: 8:00:00)</label>
-                            <input type="text" class="form-control" id="hizmet_suresi" name="hizmet_suresi" placeholder="Süre Girin (hh:mm:ss formatında)" required>
+                            <label for="hizmet_suresi_hafta_ici">Hafta İçi Hizmet Süresi (örn: 08:00)</label>
+                            <input type="text" class="form-control" id="hizmet_suresi_hafta_ici" 
+                                   name="hizmet_suresi_hafta_ici" 
+                                   pattern="^([0-9]{1,2}):([0-5][0-9])$"
+                                   placeholder="Süre Girin (ss:dd formatında)" required>
+                        </div>
+                        <div class="form-group mt-3">
+                            <label for="hizmet_suresi_hafta_sonu">Hafta Sonu Hizmet Süresi (örn: 24:00)</label>
+                            <input type="text" class="form-control" id="hizmet_suresi_hafta_sonu" 
+                                   name="hizmet_suresi_hafta_sonu"
+                                   pattern="^([0-9]{1,2}):([0-5][0-9])$"
+                                   placeholder="Süre Girin (ss:dd formatında)">
+                        </div>
+                        <div class="form-group mt-3">
+                            <label for="max_hekim">Maksimum Hekim Sayısı</label>
+                            <input type="number" class="form-control" id="max_hekim" name="max_hekim" value="1" min="1">
+                        </div>
+                        <div class="form-check mt-3">
+                            <input type="checkbox" class="form-check-input" id="nobet_ertesi_izinli" name="nobet_ertesi_izinli">
+                            <label class="form-check-label" for="nobet_ertesi_izinli">Nöbet Ertesi İzinli</label>
                         </div>
                         <button type="submit" class="btn btn-primary mt-3">Hizmet Ekle</button>
                     </form>
@@ -49,7 +67,10 @@
                                 <th scope="col">Hizmet ID</th>
                                 <th scope="col">Hizmet Adı</th>
                                 <th scope="col">Hizmet Tipi</th>
-                                <th scope="col">Hizmet Süresi</th>
+                                <th scope="col">Hafta İçi Süre</th>
+                                <th scope="col">Hafta Sonu Süre</th>
+                                <th scope="col">Max Hekim</th>
+                                <th scope="col">Nöbet Ertesi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -58,11 +79,14 @@
                                 <td>{{ hizmet.HizmetID }}</td>
                                 <td>{{ hizmet.HizmetName }}</td>
                                 <td>{{ hizmet.HizmetTipi }}</td>
-                                <td>{{ hizmet.HizmetSuresi }}</td>
+                                <td>{{ hizmet.HizmetSuresiHaftaIci }}</td>
+                                <td>{{ hizmet.HizmetSuresiHaftaSonu|default:"-" }}</td>
+                                <td>{{ hizmet.MaxHekimSayisi }}</td>
+                                <td>{% if hizmet.NobetErtesiIzinli %}Evet{% else %}Hayır{% endif %}</td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="4">Kayıtlı hizmet bulunmamaktadır.</td>
+                                <td colspan="7">Kayıtlı hizmet bulunmamaktadır.</td>
                             </tr>
                             {% endfor %}
                         </tbody>

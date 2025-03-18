@@ -6,7 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import calendar
 from datetime import datetime
-from .models import Personel, Hizmet, Birim, PersonelBirim, Mesai, UserBirim  # Removed MesaiOnay
+from .models import MesaiKontrol, Personel, Hizmet, Birim, PersonelBirim, Mesai, UserBirim  # Removed MesaiOnay
 from PersonelYonSis.models import User
 from django.db import models
 
@@ -16,28 +16,41 @@ def hizmet_tanimlari(request):
 
 def add_hizmet(request):
     if request.method == 'POST':
-        hizmet_name = request.POST.get('hizmet_name')
-        hizmet_tipi = request.POST.get('hizmet_tipi')
-        hizmet_suresi = request.POST.get('hizmet_suresi')
+        try:
+            hizmet_name = request.POST.get('hizmet_name')
+            hizmet_tipi = request.POST.get('hizmet_tipi')
+            hafta_ici_suresi = request.POST.get('hizmet_suresi_hafta_ici')
+            hafta_sonu_suresi = request.POST.get('hizmet_suresi_hafta_sonu')
+            max_hekim = request.POST.get('max_hekim', 1)
+            nobet_ertesi_izinli = bool(request.POST.get('nobet_ertesi_izinli'))
 
-        if hizmet_name and hizmet_tipi and hizmet_suresi:
-            try:
-                # Süreyi timedelta formatına dönüştür
-                hours, minutes, seconds = map(int, hizmet_suresi.split(':'))
-                duration = timedelta(hours=hours, minutes=minutes, seconds=seconds)
+            # Süreleri dakikaya çevir (saat:dakika formatından)
+            def sure_to_dakika(sure_str):
+                if not sure_str:
+                    return None
+                saat, dakika = map(int, sure_str.split(':'))
+                return saat * 60 + dakika
 
-                # Hizmet oluştur
-                Hizmet.objects.create(
-                    HizmetName=hizmet_name,
-                    HizmetTipi=hizmet_tipi,
-                    HizmetSuresi=duration
-                )
-            except ValueError:
-                # Süre formatı hatalı
-                return render(request, 'hekim_cizelge/hizmet_tanimlari.html', {
-                    "hata": "Süre formatı hatalı! (örn: 8:00:00)",
-                    "hizmetler": Hizmet.objects.all()
-                })
+            hafta_ici_dakika = sure_to_dakika(hafta_ici_suresi)
+            hafta_sonu_dakika = sure_to_dakika(hafta_sonu_suresi) if hafta_sonu_suresi else None
+
+            if hafta_ici_dakika is None:
+                raise ValueError("Hafta içi süresi gereklidir")
+
+            Hizmet.objects.create(
+                HizmetName=hizmet_name,
+                HizmetTipi=hizmet_tipi,
+                HizmetSuresiHaftaIci=hafta_ici_dakika,
+                HizmetSuresiHaftaSonu=hafta_sonu_dakika,
+                MaxHekimSayisi=max_hekim,
+                NobetErtesiIzinli=nobet_ertesi_izinli
+            )
+
+            messages.success(request, "Hizmet başarıyla eklendi.")
+        except ValueError as e:
+            messages.error(request, str(e))
+        except Exception as e:
+            messages.error(request, f"Hizmet eklenirken bir hata oluştu: {str(e)}")
 
         return redirect('hekim_cizelge:hizmet_tanimlari')
 
@@ -262,24 +275,34 @@ def cizelge(request):
         hizmetler = []
         selected_birim = None
 
-    # Mesai verilerini al
+    # Mesai verilerini al ve tüm hizmet ilişkilerini prefetch et
     mesailer = Mesai.objects.filter(
         Personel__in=personeller,
         MesaiDate__year=current_year,
         MesaiDate__month=current_month
-    ).select_related('Personel').prefetch_related('Hizmetler')
+    ).select_related('Personel').prefetch_related(
+        'Hizmetler'
+    )
 
-    # Personellere mesai verilerini ekle
+    # Personel bilgilerini ve JSON olarak tam mesai verilerini ekle
+    personel_dict = {p.PersonelID: p.PersonelName for p in personeller}
     for personel in personeller:
-        personel.mesai_data = [
-            {
+        personel.mesai_data = []
+        for mesai in mesailer.filter(Personel=personel):
+            hizmet_list = []
+            for hizmet in mesai.Hizmetler.all():
+                hizmet_list.append({
+                    'name': hizmet.HizmetName,
+                    'type': hizmet.HizmetTipi,
+                    'is_varsayilan': hizmet.HizmetID == selected_birim.VarsayilanHizmet.HizmetID
+                })
+            
+            personel.mesai_data.append({
                 'MesaiDate': mesai.MesaiDate.strftime("%Y-%m-%d"),
-                'Hizmetler': ", ".join(hizmet.HizmetName for hizmet in mesai.Hizmetler.all()),
+                'Hizmetler': hizmet_list,
                 'OnayDurumu': mesai.OnayDurumu,
                 'MesaiID': mesai.MesaiID
-            }
-            for mesai in mesailer.filter(Personel=personel)
-        ]
+            })
 
     # Approval mode kontrolü
     is_approval_mode = request.GET.get('mode') == 'approval'
@@ -307,12 +330,31 @@ def cizelge_kaydet(request):
             changes = data.get('changes', {})
             deletion = data.get('deletion', {})
 
-            # Değişiklikleri işle
             for key, hizmetIDs in changes.items():
                 personel_id, date = key.split('_')
                 personel = Personel.objects.get(PersonelID=personel_id)
                 
-                # Mesai kaydını güncelle veya oluştur
+                # Hizmet çakışma kontrolü - varsayılan hizmet hariç
+                for hizmet_id in hizmetIDs:
+                    if str(hizmet_id) != str(personel.birim.first().VarsayilanHizmet.HizmetID):
+                        mevcut_personel = Mesai.objects.filter(
+                            MesaiDate=date,
+                            Hizmetler__HizmetID=hizmet_id,
+                            Personel__personelbirim__birim=personel.birim.first()
+                        ).exclude(
+                            Personel=personel
+                        ).first()
+
+                        if mevcut_personel:
+                            raise ValueError(
+                                f'Bu hizmet zaten {mevcut_personel.Personel.PersonelName} isimli personele tanımlanmış!'
+                            )
+                
+                # Nöbet ertesi kontrolü
+                if not MesaiKontrol.nobet_ertesi_kontrol(personel_id, date):
+                    raise ValueError(f'Nöbet ertesi mesai girilemez!')
+
+                # Mesai kaydını oluştur/güncelle
                 mesai, created = Mesai.objects.get_or_create(
                     Personel=personel,
                     MesaiDate=date,
@@ -323,15 +365,14 @@ def cizelge_kaydet(request):
                 )
                 
                 if not created:
-                    mesai.OnayDurumu = 0  # Değişiklik yapıldığında onayı sıfırla
+                    mesai.OnayDurumu = 0
                     mesai.Degisiklik = True
                     mesai.save()
                 
-                # Hizmetleri güncelle
                 hizmetler = Hizmet.objects.filter(HizmetID__in=hizmetIDs)
                 mesai.Hizmetler.set(hizmetler)
 
-            # Silme işlemlerini yap
+            # Silme işlemleri
             for key in deletion.keys():
                 personel_id, date = key.split('_')
                 personel = Personel.objects.get(PersonelID=personel_id)
@@ -339,8 +380,13 @@ def cizelge_kaydet(request):
 
             return JsonResponse({'status': 'success'})
 
-        except Exception as e:
+        except ValueError as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error', 
+                'message': f'Beklenmeyen bir hata oluştu: {str(e)}'
+            })
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
 

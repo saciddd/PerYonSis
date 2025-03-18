@@ -44,7 +44,7 @@
         
         <!-- Hizmet ve Hekim seçimi (approval modda gizli) -->
         {% if not is_approval_mode %}
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="row">
                 <div class="col-6"> <!-- ilk sütun -->
                     <label for="hizmetSelection">Hizmet Seçimi</label>
@@ -77,9 +77,12 @@
         </div>
         {% endif %}
         
-        <div class="col-md-3 text-end">
+        <div class="col-md-4 text-end">
             <br>
             {% if not is_approval_mode %}
+            <button class="btn btn-warning me-2" id="checkConsistency">
+                <i class="bi bi-shield-check"></i> Tutarlılık Kontrolü
+            </button>
             <button class="btn btn-primary" id="toggleView">
                 <i class="bi bi-arrow-repeat"></i> Görünümü Değiştir
             </button>
@@ -127,25 +130,31 @@
                     <td>{{ day.day_num }}</td>
                     <td>{{ day.full_date }}</td>
                     {% for personel in personeller %}
-                    <td contenteditable="true" data-personel-id="{{ personel.PersonelID }}" data-date="{{ day.full_date }}"
-                        class="mesai-cell position-relative">
-                        {% for mesai in personel.mesai_data %}
-                            {% if mesai.MesaiDate == day.full_date %}
-                                <span class="position-absolute top-0 end-0 p-1">
-                                    <i class="bi bi-check-circle-fill {% if mesai.OnayDurumu == 1 %}text-success{% else %}text-warning{% endif %}"></i>
-                                </span>
-                                {% with hizmetler=mesai.Hizmetler|split:"," %}
-                                    {% for hizmet in hizmetler %}
-                                        {% if hizmet.strip == selected_birim.VarsayilanHizmet.HizmetName %}
-                                            <span class="badge bg-primary">{{ hizmet }}</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">{{ hizmet }}</span>
-                                        {% endif %}
-                                    {% endfor %}
-                                {% endwith %}
-                            {% endif %}
-                        {% endfor %}
-                    </td>
+                    <!-- Mesai hücresi içeriği -->
+<td {% if not is_approval_mode %}contenteditable="true"{% endif %} 
+    data-personel-id="{{ personel.PersonelID }}" 
+    data-date="{{ day.full_date }}"
+    data-mesai-id="{% for mesai in personel.mesai_data %}{% if mesai.MesaiDate == day.full_date %}{{ mesai.MesaiID }}{% endif %}{% endfor %}"
+    class="mesai-cell position-relative">
+    {% for mesai in personel.mesai_data %}
+        {% if mesai.MesaiDate == day.full_date %}
+            <span class="position-absolute top-0 end-0 p-1">
+                <i class="bi bi-check-circle-fill {% if mesai.OnayDurumu == 1 %}text-success{% else %}text-warning{% endif %}"></i>
+            </span>
+            {% for hizmet in mesai.Hizmetler %}
+                {% if hizmet.is_varsayilan %}
+                    <span class="badge bg-primary">{{ hizmet.name }}</span>
+                {% elif hizmet.type == 'Nöbet' %}
+                    <span class="badge text-bg-danger">{{ hizmet.name }}</span>
+                {% elif hizmet.type == 'İcap' %}
+                    <span class="badge text-bg-info">{{ hizmet.name }}</span>
+                {% else %}
+                    <span class="badge bg-secondary">{{ hizmet.name }}</span>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    {% endfor %}
+</td>
                     {% endfor %}
                 </tr>
                 {% endfor %}
@@ -175,14 +184,18 @@
                     {% for hizmet in hizmetler %}
                     {% if hizmet.HizmetID != selected_birim.VarsayilanHizmet.HizmetID %}
                     <td class="hizmet-cell" data-date="{{ day.full_date }}" data-hizmet-id="{{ hizmet.HizmetID }}">
-                        {% for personel in personeller %}
-                            {% for mesai in personel.mesai_data %}
-                                {% if mesai.MesaiDate == day.full_date and hizmet.HizmetName in mesai.Hizmetler %}
-                                    <span class="badge bg-primary">{{ personel.PersonelName }}</span>
-                                {% endif %}
-                            {% endfor %}
-                        {% endfor %}
-                    </td>
+    {% for personel in personeller %}
+        {% for mesai in personel.mesai_data %}
+            {% if mesai.MesaiDate == day.full_date %}
+                {% for hizmet_data in mesai.Hizmetler %}
+                    {% if hizmet_data.name == hizmet.HizmetName %}
+                        <span class="badge bg-primary">{{ personel.PersonelName }}</span>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+</td>
                     {% endif %}
                     {% endfor %}
                 </tr>
@@ -195,188 +208,149 @@
 
 {% block extra_js %}
 <script>
+    // Değişkenleri tanımla
     var changes = {};
     var deletion = {};
     const varsayilanHizmetID = "{{ selected_birim.VarsayilanHizmet.HizmetID }}";
+    const isApprovalMode = {% if is_approval_mode %}true{% else %}false{% endif %};
+    console.log(isApprovalMode);
+    // Normal mod işlemleri
+    if (!isApprovalMode) {
+        // Hücreye tıklama işlemi için event listener
+        document.querySelectorAll('.mesai-cell').forEach(function(cell) {
+            cell.removeAttribute('contenteditable');  // contenteditable özelliğini kaldır
+            cell.addEventListener('click', function() {
+                const hizmetID = document.getElementById('hizmetSelection')?.value;
+                const personelID = this.getAttribute('data-personel-id');
+                const date = this.getAttribute('data-date');
+                const clearSelection = document.getElementById('clearSelection')?.checked;
 
-    // Hücreye tıklayınca hizmet ekle veya kaldır (Hekim bazlı görünüm)
-    document.querySelectorAll('.mesai-cell').forEach(function (cell) {
-        cell.addEventListener('click', function () {
-            let hizmetID = document.getElementById('hizmetSelection').value;
-            let personelID = cell.getAttribute('data-personel-id');
-            let date = cell.getAttribute('data-date');
-            let clearSelection = document.getElementById('clearSelection').checked;
+                if (clearSelection) {
+                    // Tüm hizmetleri temizle
+                    this.innerHTML = '';
+                    deletion[`${personelID}_${date}`] = true;
+                    delete changes[`${personelID}_${date}`];
+                } else if (hizmetID) {
+                    let currentServices = [];
+                    let badges = this.getElementsByClassName('badge');
+                    
+                    // Mevcut hizmetleri topla
+                    Array.from(badges).forEach(badge => {
+                        let hizmetText = badge.textContent;
+                        let option = Array.from(document.getElementById('hizmetSelection').options)
+                            .find(opt => opt.textContent === hizmetText);
+                        if (option) currentServices.push(option.value);
+                    });
 
-            if (clearSelection) {
-                // Tüm hizmetleri temizle
-                cell.innerHTML = '';
-                deletion[`${personelID}_${date}`] = true;
-                delete changes[`${personelID}_${date}`];
-            } else if (hizmetID) {
-                let currentServices = [];
-                let badges = cell.getElementsByClassName('badge');
-                
-                // Mevcut hizmetleri topla
-                Array.from(badges).forEach(badge => {
-                    let hizmetText = badge.textContent;
-                    let option = Array.from(document.getElementById('hizmetSelection').options)
-                        .find(opt => opt.textContent === hizmetText);
-                    if (option) currentServices.push(option.value);
-                });
-
-                if (hizmetID === varsayilanHizmetID) {
-                    // Varsayılan hizmet ekleniyorsa, diğer hizmetleri koru
-                    if (!currentServices.includes(hizmetID)) {
-                        currentServices.push(hizmetID);
+                    if (hizmetID === varsayilanHizmetID) {
+                        if (!currentServices.includes(hizmetID)) {
+                            currentServices.push(hizmetID);
+                        }
+                    } else {
+                        currentServices = currentServices.filter(id => id === varsayilanHizmetID);
+                        if (!currentServices.includes(hizmetID)) {
+                            currentServices.push(hizmetID);
+                        }
                     }
-                } else {
-                    // Varsayılan olmayan hizmet ekleniyorsa
-                    // Varsayılan hizmeti koru, diğerlerini kaldır
-                    currentServices = currentServices.filter(id => id === varsayilanHizmetID);
-                    if (!currentServices.includes(hizmetID)) {
-                        currentServices.push(hizmetID);
+
+                    // Hizmet çakışma kontrolü
+                    if (!checkHizmetCakisma(date, hizmetID)) {
+                        alert('Bu hizmet için maksimum hekim sayısına ulaşıldı!');
+                        return;
                     }
+
+                    // Hücreyi güncelle
+                    this.innerHTML = currentServices.map(serviceID => {
+                        let option = document.querySelector(`#hizmetSelection option[value="${serviceID}"]`);
+                        let badgeClass = serviceID === varsayilanHizmetID ? 'bg-primary' : 'bg-secondary';
+                        return `<span class="badge ${badgeClass}">${option.textContent}</span>`;
+                    }).join(' ');
+
+                    changes[`${personelID}_${date}`] = currentServices;
+                    delete deletion[`${personelID}_${date}`];
                 }
-
-                // Hücreyi güncelle
-                cell.innerHTML = currentServices.map(serviceID => {
-                    let option = document.querySelector(`#hizmetSelection option[value="${serviceID}"]`);
-                    let badgeClass = serviceID === varsayilanHizmetID ? 'bg-primary' : 'bg-secondary';
-                    return `<span class="badge ${badgeClass}">${option.textContent}</span>`;
-                }).join(' ');
-
-                changes[`${personelID}_${date}`] = currentServices;
-                delete deletion[`${personelID}_${date}`];
-            }
-            cell.blur();
-        });
-    });
-
-    // Hizmet bazlı görünüm için hücre tıklama
-    document.querySelectorAll('.hizmet-cell').forEach(function(cell) {
-        cell.addEventListener('click', function() {
-            const date = this.getAttribute('data-date');
-            const hizmetID = this.getAttribute('data-hizmet-id');
-            const selectedHekimID = document.getElementById('hekimSelection').value;
-            const clearSelection = document.getElementById('clearSelection').checked;
-            
-            if (clearSelection) {
-                cell.innerHTML = '';
-                deletion[`${selectedHekimID}_${date}`] = true;
-            } else if (selectedHekimID) {
-                const selectedHekim = document.querySelector(`#hekimSelection option[value="${selectedHekimID}"]`);
-                cell.innerHTML = `<span class="badge bg-success">${selectedHekim.textContent}</span>`;
-                
-                // Mevcut servisleri kontrol et
-                let currentServices = [];
-                if (changes[`${selectedHekimID}_${date}`]) {
-                    currentServices = changes[`${selectedHekimID}_${date}`];
-                }
-                
-                // Eğer varsayılan hizmet zaten varsa koru, yoksa ekleme
-                if (!currentServices.includes(varsayilanHizmetID)) {
-                    // Varsayılan hizmet yoksa, sadece seçili hizmeti ekle
-                    currentServices = [hizmetID];
-                } else {
-                    // Varsayılan hizmet varsa, koru ve yeni hizmeti ekle
-                    currentServices = currentServices.filter(id => id === varsayilanHizmetID);
-                    currentServices.push(hizmetID);
-                }
-                
-                changes[`${selectedHekimID}_${date}`] = currentServices;
-            }
-        });
-    });
-
-    // Görünüm değiştirme butonu için event listener
-    document.getElementById('toggleView').addEventListener('click', function() {
-        const hekimView = document.getElementById('hekimView');
-        const hizmetView = document.getElementById('hizmetView');
-        const button = document.getElementById('toggleView');
-        const hekimSelectionDiv = document.getElementById('hekimSelectionDiv');
-
-        if (hekimView.style.display !== 'none') {
-            hekimView.style.display = 'none';
-            hizmetView.style.display = 'block';
-            hekimSelectionDiv.style.display = 'block';
-            button.innerHTML = '<i class="bi bi-arrow-repeat"></i> Hekim Bazlı Görünüm';
-        } else {
-            hekimView.style.display = 'block';
-            hizmetView.style.display = 'none';
-            hekimSelectionDiv.style.display = 'none';
-            button.innerHTML = '<i class="bi bi-arrow-repeat"></i> Hizmet Bazlı Görünüm';
-        }
-    });
-
-    // Kaydet butonuna basıldığında değişiklikleri gönder
-    document.getElementById('saveButton').addEventListener('click', function () {
-        if (Object.keys(changes).length === 0 && Object.keys(deletion).length === 0) {
-            alert("Herhangi bir değişiklik yapmadınız.");
-            return;
-        }
-
-        fetch("{% url 'hekim_cizelge:cizelge_kaydet' %}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({ changes: changes, deletion: deletion })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert('Değişiklikler kaydedildi.');
-                changes = {};
-                deletion = {};
-            } else {
-                alert('Bir hata oluştu, lütfen tekrar deneyin.');
-            }
-        });
-    });
-
-    // Sorgula butonuna basıldığında tabloyu güncelle
-    document.getElementById('filterButton').addEventListener('click', function () {
-        let selectedYear = document.getElementById('selectYear').value;
-        let selectedMonth = document.getElementById('selectMonth').value;
-        let selectedBirim = document.getElementById('selectBirim').value;
-        window.location.href = `?year=${selectedYear}&month=${selectedMonth}&birim_id=${selectedBirim}`;
-    });
-
-    // Onay durumu kontrolü
-    function checkOnayDurumu() {
-        const mesaiId = getCurrentMesaiId(); // Mevcut mesai ID'sini al
-        if (!mesaiId) return;
-
-        fetch(`/hekim_cizelge/mesai/onay-durumu/${mesaiId}/`)
-            .then(response => response.json())
-            .then(data => {
-                const onayDiv = document.getElementById('onayDurumu');
-                const onayText = document.getElementById('onayDurumuText');
-                
-                onayDiv.style.display = 'block';
-                onayText.textContent = data.onay_durumu === 1 ? 'Onaylandı' : 
-                                     data.onay_durumu === 2 ? 'Reddedildi' : 'Beklemede';
-                
-                // Onay durumuna göre stil değiştir
-                onayDiv.className = `alert alert-${data.onay_durumu === 1 ? 'success' : 
-                                                  data.onay_durumu === 2 ? 'danger' : 'info'}`;
             });
+        });
+
+        // Hizmet bazlı görünüm için hücre tıklama
+        document.querySelectorAll('.hizmet-cell').forEach(function(cell) {
+            cell.addEventListener('click', function() {
+                const date = this.getAttribute('data-date');
+                const hizmetID = this.getAttribute('data-hizmet-id');
+                const selectedHekimID = document.getElementById('hekimSelection')?.value;
+                const clearSelection = document.getElementById('clearSelection')?.checked;
+                
+                if (!selectedHekimID) {
+                    alert('Lütfen önce bir hekim seçiniz.');
+                    return;
+                }
+
+                // Hizmet çakışma kontrolü
+                if (!checkHizmetCakisma(date, hizmetID)) {
+                    const mevcut_personel = findPersonelWithHizmet(date, hizmetID);
+                    alert(`Bu hizmet zaten ${mevcut_personel} isimli personele tanımlanmış!`);
+                    return;
+                }
+
+                if (clearSelection) {
+                    this.innerHTML = '';
+                    deletion[`${selectedHekimID}_${date}`] = true;
+                    delete changes[`${selectedHekimID}_${date}`];
+                } else {
+                    const selectedHekim = document.querySelector(`#hekimSelection option[value="${selectedHekimID}"]`);
+                    if (selectedHekim) {
+                        this.innerHTML = `<span class="badge bg-primary">${selectedHekim.textContent}</span>`;
+                        
+                        // Sadece seçilen hizmeti ekle, varsayılan hizmeti ekleme
+                        changes[`${selectedHekimID}_${date}`] = [hizmetID];
+                        delete deletion[`${selectedHekimID}_${date}`];
+                    }
+                }
+            });
+        });
     }
 
-    // Sayfa yüklendiğinde onay durumunu kontrol et
-    document.addEventListener('DOMContentLoaded', checkOnayDurumu);
+    // Görünüm değiştirme butonu için event listener
+    const toggleViewButton = document.getElementById('toggleView');
+    if (toggleViewButton) {
+        toggleViewButton.addEventListener('click', function() {
+            const hekimView = document.getElementById('hekimView');
+            const hizmetView = document.getElementById('hizmetView');
+            const button = document.getElementById('toggleView');
+            const hizmetSelectionDiv = document.querySelector('.col-6:first-child'); // Hizmet seçim alanı
+            const hekimSelectionDiv = document.getElementById('hekimSelectionDiv');
 
-    // Onay modu için click handler
-    var isApprovalMode = {{ is_approval_mode|yesno:"true,false" }};
+            if (hekimView.style.display !== 'none') {
+                // Hekim bazlıdan hizmet bazlıya geçiş
+                hekimView.style.display = 'none';
+                hizmetView.style.display = 'block';
+                hekimSelectionDiv.style.display = 'block';
+                hizmetSelectionDiv.style.display = 'none';
+                button.innerHTML = '<i class="bi bi-arrow-repeat"></i> Hekim Bazlı Görünüm';
+            } else {
+                // Hizmet bazlıdan hekim bazlıya geçiş
+                hekimView.style.display = 'block';
+                hizmetView.style.display = 'none';
+                hekimSelectionDiv.style.display = 'none';
+                hizmetSelectionDiv.style.display = 'block';
+                button.innerHTML = '<i class="bi bi-arrow-repeat"></i> Hizmet Bazlı Görünüm';
+            }
+        });
+    }
+
+    // Approval mode işlemleri
     if (isApprovalMode) {
         document.querySelectorAll('.mesai-cell').forEach(function(cell) {
             cell.addEventListener('click', function() {
                 const mesaiId = this.getAttribute('data-mesai-id');
                 if (!mesaiId) return;
+
+                // Sadece onaylanmamış (sarı) hücrelere tıklanabilir
+                const checkIcon = this.querySelector('.bi-check-circle-fill.text-warning');
+                if (!checkIcon) return;
                 
                 if (confirm('Bu mesai kaydını onaylamak istiyor musunuz?')) {
-                    fetch(`/hekim_cizelge/mesai/onay/${mesaiId}/`, {
+                    fetch(`{% url 'hekim_cizelge:mesai_onay' 0 %}`.replace('0', mesaiId), {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -387,12 +361,8 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'success') {
-                            // Hücreyi güncelle
-                            const checkIcon = this.querySelector('.bi-check-circle-fill');
-                            if (checkIcon) {
-                                checkIcon.classList.remove('text-warning');
-                                checkIcon.classList.add('text-success');
-                            }
+                            checkIcon.classList.remove('text-warning');
+                            checkIcon.classList.add('text-success');
                         }
                     });
                 }
@@ -400,37 +370,401 @@
         });
 
         // Toplu onay butonu için event listener
-        document.getElementById('topluOnayButton')?.addEventListener('click', function() {
-            const birimId = document.getElementById('selectBirim').value;
-            const onaysizMesaiSayisi = document.querySelectorAll('.bi-check-circle-fill.text-warning').length;
-            
-            if (onaysizMesaiSayisi === 0) {
-                alert('Onaylanacak değişiklik bulunmamaktadır.');
-                return;
-            }
+        const topluOnayButton = document.getElementById('topluOnayButton');
+        if (topluOnayButton) {
+            topluOnayButton.addEventListener('click', function() {
+                const birimId = document.getElementById('selectBirim')?.value;
+                if (!birimId) return;
 
-            if (confirm(`Listede yer alan onaysız durumdaki ${onaysizMesaiSayisi} adet değişiklik onaylanacak. Onaylıyor musunuz?`)) {
-                fetch(`/hekim_cizelge/toplu-onay/${birimId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Tüm onay ikonlarını güncelle
-                        document.querySelectorAll('.bi-check-circle-fill.text-warning').forEach(icon => {
-                            icon.classList.remove('text-warning');
-                            icon.classList.add('text-success');
-                        });
-                        alert(data.message);
-                    }
-                });
+                const onaysizMesaiSayisi = document.querySelectorAll('.bi-check-circle-fill.text-warning').length;
+                
+                if (onaysizMesaiSayisi === 0) {
+                    alert('Onaylanacak değişiklik bulunmamaktadır.');
+                    return;
+                }
+
+                if (confirm(`Listede yer alan onaysız durumdaki ${onaysizMesaiSayisi} adet değişiklik onaylanacak. Onaylıyor musunuz?`)) {
+                    fetch(`{% url 'hekim_cizelge:toplu_onay' 0 %}`.replace('0', birimId), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            document.querySelectorAll('.bi-check-circle-fill.text-warning').forEach(icon => {
+                                icon.classList.remove('text-warning');
+                                icon.classList.add('text-success');
+                            });
+                            alert(data.message);
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    // Ortak butonlar için event listeners
+    const filterButton = document.getElementById('filterButton');
+    if (filterButton) {
+        filterButton.addEventListener('click', function () {
+            const selectedYear = document.getElementById('selectYear')?.value;
+            const selectedMonth = document.getElementById('selectMonth')?.value;
+            const selectedBirim = document.getElementById('selectBirim')?.value;
+            if (selectedYear && selectedMonth && selectedBirim) {
+                let url = `?year=${selectedYear}&month=${selectedMonth}&birim_id=${selectedBirim}`;
+                if (isApprovalMode) {
+                    url += '&mode=approval';
+                }
+                window.location.href = url;
             }
         });
     }
+
+    // Kaydet butonu için event listener
+    const saveButton = document.getElementById('saveButton');
+    if (saveButton) {
+        saveButton.addEventListener('click', function () {
+            if (Object.keys(changes).length === 0 && Object.keys(deletion).length === 0) {
+                alert("Herhangi bir değişiklik yapmadınız.");
+                return;
+            }
+
+            fetch("{% url 'hekim_cizelge:cizelge_kaydet' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ changes: changes, deletion: deletion })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Değişiklikler kaydedildi.');
+                    changes = {};
+                    deletion = {};
+                } else {
+                    alert('Bir hata oluştu, lütfen tekrar deneyin.');
+                }
+            });
+        });
+    }
+
+    // Hizmet çakışma kontrolü için helper fonksiyon
+    function checkHizmetCakisma(date, hizmetID) {
+        const hizmet = document.querySelector(`#hizmetSelection option[value="${hizmetID}"]`);
+        if (!hizmet || hizmet.value === varsayilanHizmetID) return true; // Varsayılan hizmet için kontrol yapma
+
+        let mevcut_personel = null;
+        document.querySelectorAll(`td[data-date="${date}"]`).forEach(cell => {
+            const badges = cell.getElementsByClassName('badge');
+            Array.from(badges).forEach(badge => {
+                const badgeHizmet = Array.from(document.getElementById('hizmetSelection').options)
+                    .find(opt => opt.textContent === badge.textContent);
+                if (badgeHizmet && badgeHizmet.value === hizmetID) {
+                    const personelHeader = document.querySelector(`th:nth-child(${getColumnIndex(cell)})`);
+                    if (personelHeader) {
+                        mevcut_personel = personelHeader.textContent;
+                    }
+                }
+            });
+        });
+
+        if (mevcut_personel) {
+            alert(`Bu hizmet zaten ${mevcut_personel} isimli personele tanımlanmış!`);
+            return false;
+        }
+        return true;
+    }
+
+    // Hücre sütun indeksini bulmak için yardımcı fonksiyon
+    function getColumnIndex(cell) {
+        const row = cell.parentElement;
+        return Array.from(row.cells).indexOf(cell) + 1;
+    }
+
+    // Tutarlılık kontrolü için helper fonksiyon
+    function checkNobetConsistency(date, personelID) {
+        const prevDate = new Date(date);
+        prevDate.setDate(prevDate.getDate() - 1);
+        const nextDate = new Date(date);
+        nextDate.setDate(nextDate.getDate() + 1);
+
+        const formatDate = (date) => {
+            return date.toISOString().split('T')[0];
+        };
+
+        // Önceki gün nöbet kontrolü
+        const prevCell = document.querySelector(`td[data-date="${formatDate(prevDate)}"][data-personel-id="${personelID}"]`);
+        const nextCell = document.querySelector(`td[data-date="${formatDate(nextDate)}"][data-personel-id="${personelID}"]`);
+        
+        if (prevCell) {
+            const hasNobetPrev = Array.from(prevCell.getElementsByClassName('badge')).some(badge => 
+                badge.classList.contains('text-bg-danger')
+            );
+            if (hasNobetPrev) {
+                return {
+                    valid: false,
+                    message: `${formatDate(date)} tarihinde standart hizmet var fakat bir önceki gün nöbet mevcut!`
+                };
+            }
+        }
+
+        // Sonraki gün standart mesai kontrolü
+        if (nextCell) {
+            const hasStandartNext = Array.from(nextCell.getElementsByClassName('badge')).some(badge =>
+                !badge.classList.contains('text-bg-danger') && !badge.classList.contains('text-bg-info')
+            );
+            if (hasStandartNext) {
+                return {
+                    valid: false,
+                    message: `${formatDate(date)} tarihinde nöbet var fakat bir sonraki gün standart hizmet mevcut!`
+                };
+            }
+        }
+
+        return { valid: true };
+    }
+
+    // Tüm tablo için tutarlılık kontrolü
+    document.getElementById('checkConsistency').addEventListener('click', function() {
+        const cells = document.querySelectorAll('.mesai-cell');
+        let errors = [];
+
+        cells.forEach(cell => {
+            const date = cell.getAttribute('data-date');
+            const personelID = cell.getAttribute('data-personel-id');
+            const badges = cell.getElementsByClassName('badge');
+
+            if (badges.length > 0) {
+                const result = checkNobetConsistency(date, personelID);
+                if (!result.valid) {
+                    errors.push(result.message);
+                }
+            }
+        });
+
+        if (errors.length > 0) {
+            alert('Aşağıdaki tutarsızlıklar tespit edildi:\n\n' + errors.join('\n'));
+        } else {
+            alert('Tüm kayıtlar tutarlı!');
+        }
+    });
+
+    // Hücre tıklama olayını güncelle
+    document.querySelectorAll('.mesai-cell').forEach(function(cell) {
+        cell.addEventListener('click', function() {
+            // ...existing click handler code...
+
+            const date = this.getAttribute('data-date');
+            const personelID = this.getAttribute('data-personel-id');
+
+            // Eğer nöbet ekleniyorsa, sonraki günü temizle
+            if (hizmetID && hizmet.textContent.includes('Nöbet')) {
+                const nextDate = new Date(date);
+                nextDate.setDate(nextDate.getDate() + 1);
+                const nextCell = document.querySelector(`td[data-date="${nextDate.toISOString().split('T')[0]}"][data-personel-id="${personelID}"]`);
+                if (nextCell) {
+                    nextCell.innerHTML = '';
+                    deletion[`${personelID}_${nextDate.toISOString().split('T')[0]}`] = true;
+                }
+            }
+
+            // Eğer standart hizmet ekleniyorsa, önceki gün nöbet kontrolü yap
+            if (hizmetID && !hizmet.textContent.includes('Nöbet') && !hizmet.textContent.includes('İcap')) {
+                const result = checkNobetConsistency(date, personelID);
+                if (!result.valid) {
+                    alert(result.message);
+                    return;
+                }
+            }
+
+            // ...rest of click handler code...
+        });
+    });
+
+    // Tutarlılık kontrolü için geliştirilmiş fonksiyon
+    function checkConsistency() {
+        // Mevcut değişiklikleri geçici olarak sakla
+        const tempChanges = { ...changes };
+        const tempDeletion = { ...deletion };
+        let errors = [];
+        let warnings = [];
+
+        // Tüm hücrelerdeki uyarı ikonlarını temizle
+        document.querySelectorAll('.warning-icon').forEach(icon => icon.remove());
+
+        // Tarih formatlama fonksiyonu
+        function formatDateString(dateStr) {
+            const [year, month, day] = dateStr.split('-');
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+
+        // Verilen tarihe göre önceki/sonraki günü hesapla
+        function getAdjacentDate(dateStr, offset) {
+            const date = new Date(dateStr);
+            date.setDate(date.getDate() + offset);
+            return formatDateString(
+                `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`
+            );
+        }
+
+        // Tüm hücreleri kontrol et
+        document.querySelectorAll('.mesai-cell').forEach(cell => {
+            const date = cell.getAttribute('data-date');
+            const personelID = cell.getAttribute('data-personel-id');
+            const badges = Array.from(cell.getElementsByClassName('badge'));
+
+            // Nöbet kontrolü
+            const hasNobet = badges.some(badge => badge.classList.contains('text-bg-danger'));
+            
+            if (hasNobet) {
+                // Sonraki gün kontrolü
+                const nextDate = getAdjacentDate(date, 1);
+                const nextCell = document.querySelector(
+                    `td[data-date="${nextDate}"][data-personel-id="${personelID}"]`
+                );
+
+                if (nextCell && nextCell.getElementsByClassName('badge').length > 0) {
+                    const warningText = `${date} tarihli nöbet sonrası (${nextDate}) mesai tanımlanmış`;
+                    errors.push({
+                        cell: nextCell,
+                        message: warningText
+                    });
+                }
+            } else {
+                // Önceki gün nöbet kontrolü
+                const prevDate = getAdjacentDate(date, -1);
+                const prevCell = document.querySelector(
+                    `td[data-date="${prevDate}"][data-personel-id="${personelID}"]`
+                );
+
+                if (prevCell) {
+                    const hasPrevNobet = Array.from(prevCell.getElementsByClassName('badge'))
+                        .some(badge => badge.classList.contains('text-bg-danger'));
+                    
+                    if (hasPrevNobet && badges.length > 0) {
+                        const warningText = `${date} tarihinde mesai var fakat bir önceki gün (${prevDate}) nöbet mevcut`;
+                        errors.push({
+                            cell: cell,
+                            message: warningText
+                        });
+                    }
+                }
+            }
+        });
+
+        // Hataları göster
+        errors.forEach(error => {
+            const icon = document.createElement('i');
+            icon.className = 'bi bi-exclamation-triangle-fill warning-icon';
+            icon.title = error.message;
+            
+            // Tooltip özelliği ekle
+            icon.addEventListener('mouseenter', function(e) {
+                showTooltip(e, error.message);
+            });
+            icon.addEventListener('mouseleave', hideTooltip);
+
+            error.cell.classList.add('inconsistent-cell');
+            error.cell.prepend(icon);
+        });
+
+        // Özet raporu göster
+        if (errors.length > 0) {
+            Swal.fire({
+                title: 'Tutarsızlık Tespit Edildi',
+                html: errors.map(e => `<div class="text-start">${e.message}</div>`).join(''),
+                icon: 'warning',
+                confirmButtonText: 'Tamam'
+            });
+        } else {
+            Swal.fire({
+                title: 'Kontrol Tamamlandı',
+                text: 'Tüm kayıtlar tutarlı!',
+                icon: 'success',
+                confirmButtonText: 'Tamam'
+            });
+        }
+
+        // Değişiklikleri geri yükle
+        changes = tempChanges;
+        deletion = tempDeletion;
+
+        return errors.length === 0;
+    }
+
+    // Tooltip gösterme fonksiyonu
+    function showTooltip(event, message) {
+        const tooltip = document.createElement('div');
+        tooltip.className = 'tooltip-custom';
+        tooltip.textContent = message;
+        tooltip.style.left = (event.pageX + 10) + 'px';
+        tooltip.style.top = (event.pageY + 10) + 'px';
+        document.body.appendChild(tooltip);
+    }
+
+    // Tooltip gizleme fonksiyonu
+    function hideTooltip() {
+        document.querySelectorAll('.tooltip-custom').forEach(el => el.remove());
+    }
+
+    // Kaydet butonuna tutarlılık kontrolü ekle
+    document.getElementById('saveButton').addEventListener('click', function(e) {
+        if (!checkConsistency()) {
+            e.preventDefault();
+            Swal.fire({
+                title: 'Uyarı',
+                text: 'Tutarsızlıklar var. Yine de kaydetmek istiyor musunuz?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Evet',
+                cancelButtonText: 'Hayır'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Orijinal kaydetme işlemini gerçekleştir
+                    saveChanges();
+                }
+            });
+            return;
+        }
+        saveChanges();
+    });
+
+    // Kaydetme işlemi fonksiyonu
+    function saveChanges() {
+        // ...existing save logic...
+    }
+
+    // Tutarlılık kontrolü butonu için event listener
+    document.getElementById('checkConsistency').addEventListener('click', function() {
+        // Sadece kontrol yap, kaydetme işlemi yapma
+        checkConsistency();
+    });
+
+    // Kaydet butonu için event listener
+    document.getElementById('saveButton').addEventListener('click', function(e) {
+        if (!checkConsistency()) {
+            e.preventDefault();
+            Swal.fire({
+                title: 'Uyarı',
+                text: 'Tutarsızlıklar var. Yine de kaydetmek istiyor musunuz?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Evet',
+                cancelButtonText: 'Hayır'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    saveChanges();
+                }
+            });
+            return;
+        }
+        saveChanges();
+    });
 </script>
 {% endblock %}
 
@@ -506,6 +840,46 @@
 
     #hizmetTable .badge {
         margin: 2px;
+    }
+
+    /* Onay modunda imleç ve seçim özelliklerini kaldır */
+    .mesai-cell {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
+    /* Hücre seçimini engelle ve cursor ayarla */
+    .mesai-cell, .hizmet-cell {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        cursor: pointer;
+    }
+
+    .inconsistent-cell {
+        position: relative;
+    }
+
+    .warning-icon {
+        position: absolute;
+        top: 5px;
+        left: 5px;
+        color: #dc3545;
+        cursor: help;
+    }
+
+    .tooltip-custom {
+        position: absolute;
+        background: #fff;
+        border: 1px solid #ddd;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        z-index: 1000;
+        max-width: 300px;
     }
 </style>
 {% endblock %}

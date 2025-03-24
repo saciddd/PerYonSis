@@ -6,7 +6,10 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import calendar
 from datetime import datetime
-from .models import MesaiKontrol, Personel, Hizmet, Birim, PersonelBirim, Mesai, UserBirim  # Removed MesaiOnay
+
+from hekim_cizelge.forms import BildirimForm
+from hekim_cizelge.utils import hesapla_fazla_mesai, hesapla_icap_suresi
+from .models import Bildirim, Izin, MesaiKontrol, Personel, Hizmet, Birim, PersonelBirim, Mesai, ResmiTatil, UserBirim  # Removed MesaiOnay
 from PersonelYonSis.models import User
 from django.db import models
 
@@ -162,20 +165,18 @@ def add_birim(request):
 
         return redirect('hekim_cizelge:birim_tanimlari')
 
-    # GET isteği durumunda kullanıcı birim tanımlama sayfasına yönlendirilir
+    # GET isteği durumunda kullanıcı birim tanımlama sayfasına yönlendirilirr
     return redirect('hekim_cizelge:birim_tanimlari')
 def birim_yetkileri(request, user_id):
     user = get_object_or_404(User, UserID=user_id)
 
     if request.method == 'GET':
-        # Kullanıcının yetkili olduğu birimler
         yetkili_birimler = UserBirim.objects.filter(user=user).select_related('birim')
         tum_birimler = Birim.objects.all()
 
         yetkili_birimler_list = [{'BirimID': b.birim.BirimID, 'BirimAdi': b.birim.BirimAdi} for b in yetkili_birimler]
         tum_birimler_list = [{'BirimID': b.BirimID, 'BirimAdi': b.BirimAdi} for b in tum_birimler]
 
-        # Eğer yetkili birim yoksa bile boş liste döner
         return JsonResponse({
             'yetkili_birimler': yetkili_birimler_list,
             'tum_birimler': tum_birimler_list
@@ -183,7 +184,7 @@ def birim_yetkileri(request, user_id):
 
     elif request.method == 'POST':
         birim_id = request.POST.get('birim_id')
-        is_add = request.POST.get('is_add')  # "true" veya "false"
+        is_add = request.POST.get('is_add')
 
         birim = get_object_or_404(Birim, BirimID=birim_id)
 
@@ -196,7 +197,6 @@ def birim_yetkileri(request, user_id):
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'}, status=400)
 
-# Düzenlenecek birim bilgilerini JSON olarak döndürüyoruz
 def birim_duzenle_form(request, birim_id):
     birim = get_object_or_404(Birim, BirimID=birim_id)
     hizmetler = Hizmet.objects.all()
@@ -208,14 +208,12 @@ def birim_duzenle_form(request, birim_id):
     }
     return JsonResponse({'birim': birim_data, 'hizmetler': list(hizmetler.values())})
 
-# Birim Düzenleme İşlemini Kaydetme
 def birim_duzenle(request, birim_id):
     if request.method == 'POST':
         birim_adi = request.POST.get('birim_adi')
         varsayilan_hizmet_id = request.POST.get('varsayilan_hizmet')
         diger_hizmetler_ids = request.POST.getlist('diger_hizmetler')
 
-        # VarsayilanHizmet ve diger_hizmetler kontrolü
         if not varsayilan_hizmet_id:
             messages.error(request, "Varsayılan hizmet seçilmelidir.")
             return redirect('hekim_cizelge:birim_duzenle_form', birim_id)
@@ -224,7 +222,6 @@ def birim_duzenle(request, birim_id):
             messages.error(request, "Birim adı boş bırakılamaz.")
             return redirect('hekim_cizelge:birim_duzenle_form', birim_id)
 
-        # birim düzenleme işlemi
         try:
             varsayilan_hizmet = Hizmet.objects.get(HizmetID=varsayilan_hizmet_id)
             birim = Birim.objects.get(BirimID=birim_id)
@@ -232,7 +229,6 @@ def birim_duzenle(request, birim_id):
             birim.VarsayilanHizmet = varsayilan_hizmet
             birim.save()
 
-            # Diğer hizmetleri ManyToMany ilişkisinde ekleme
             if diger_hizmetler_ids:
                 diger_hizmetler = Hizmet.objects.filter(HizmetID__in=diger_hizmetler_ids)
                 birim.DigerHizmetler.set(diger_hizmetler)
@@ -249,7 +245,6 @@ def cizelge(request):
     current_year = int(request.GET.get('year', datetime.now().year))
     current_month = int(request.GET.get('month', datetime.now().month))
 
-    # Günlerin tam tarihleri ve hafta sonu bilgilerini oluştur
     days_in_month = calendar.monthrange(current_year, current_month)[1]
     days = [
         {
@@ -260,11 +255,9 @@ def cizelge(request):
         for day in range(1, days_in_month + 1)
     ]
 
-    # Kullanıcının yetkili olduğu birimleri al
     user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
     birimler = Birim.objects.filter(BirimID__in=user_birimler)
 
-    # Seçili birimdeki personelleri ve hizmetleri al
     selected_birim_id = request.GET.get('birim_id')
     if selected_birim_id:
         personeller = Personel.objects.filter(personelbirim__birim_id=selected_birim_id)
@@ -275,16 +268,14 @@ def cizelge(request):
         hizmetler = []
         selected_birim = None
 
-    # Mesai verilerini al ve tüm hizmet ilişkilerini prefetch et
     mesailer = Mesai.objects.filter(
         Personel__in=personeller,
         MesaiDate__year=current_year,
         MesaiDate__month=current_month
-    ).select_related('Personel').prefetch_related(
+    ).select_related('Personel', 'Izin').prefetch_related(
         'Hizmetler'
     )
 
-    # Personel bilgilerini ve JSON olarak tam mesai verilerini ekle
     personel_dict = {p.PersonelID: p.PersonelName for p in personeller}
     for personel in personeller:
         personel.mesai_data = []
@@ -297,14 +288,22 @@ def cizelge(request):
                     'is_varsayilan': hizmet.HizmetID == selected_birim.VarsayilanHizmet.HizmetID
                 })
             
-            personel.mesai_data.append({
+            mesai_data = {
                 'MesaiDate': mesai.MesaiDate.strftime("%Y-%m-%d"),
                 'Hizmetler': hizmet_list,
                 'OnayDurumu': mesai.OnayDurumu,
                 'MesaiID': mesai.MesaiID
-            })
+            }
 
-    # Approval mode kontrolü
+            if mesai.Izin:
+                mesai_data['Izin'] = {
+                    'id': mesai.Izin.IzinID,
+                    'tip': mesai.Izin.IzinTipi,
+                    'renk': mesai.Izin.IzinRenk
+                }
+            
+            personel.mesai_data.append(mesai_data)
+
     is_approval_mode = request.GET.get('mode') == 'approval'
     
     context = {
@@ -316,6 +315,7 @@ def cizelge(request):
         'months': [{'value': i, 'label': calendar.month_name[i]} for i in range(1, 13)],
         'years': [year for year in range(current_year - 1, current_year + 2)],
         'hizmetler': hizmetler,
+        'izinler': Izin.objects.all(),
         'selected_birim': selected_birim,
         'is_approval_mode': is_approval_mode,
     }
@@ -328,63 +328,65 @@ def cizelge_kaydet(request):
         try:
             data = json.loads(request.body)
             changes = data.get('changes', {})
-            deletion = data.get('deletion', {})
 
-            for key, hizmetIDs in changes.items():
+            for key, value in changes.items():
                 personel_id, date = key.split('_')
                 personel = Personel.objects.get(PersonelID=personel_id)
                 
-                # Hizmet çakışma kontrolü - varsayılan hizmet hariç
-                for hizmet_id in hizmetIDs:
-                    if str(hizmet_id) != str(personel.birim.first().VarsayilanHizmet.HizmetID):
-                        mevcut_personel = Mesai.objects.filter(
-                            MesaiDate=date,
-                            Hizmetler__HizmetID=hizmet_id,
-                            Personel__personelbirim__birim=personel.birim.first()
-                        ).exclude(
-                            Personel=personel
-                        ).first()
+                if value.get('type') == 'hizmet':
+                    # Hizmet kombinasyonunu kontrol ett
+                    hizmetler = Hizmet.objects.filter(HizmetID__in=value.get('hizmetler', []))
+                    is_valid, errors = MesaiKontrol.validate_hizmet_combination(hizmetler)
+                    
+                    if not is_valid:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': '\n'.join(errors)
+                        })
 
-                        if mevcut_personel:
-                            raise ValueError(
-                                f'Bu hizmet zaten {mevcut_personel.Personel.PersonelName} isimli personele tanımlanmış!'
-                            )
-                
-                # Nöbet ertesi kontrolü
-                if not MesaiKontrol.nobet_ertesi_kontrol(personel_id, date):
-                    raise ValueError(f'Nöbet ertesi mesai girilemez!')
-
-                # Mesai kaydını oluştur/güncelle
                 mesai, created = Mesai.objects.get_or_create(
                     Personel=personel,
                     MesaiDate=date,
                     defaults={
                         'OnayDurumu': 0,
-                        'Degisiklik': True
+                        'Degisiklik': True,
+                        'SilindiMi': False
                     }
                 )
-                
+
                 if not created:
                     mesai.OnayDurumu = 0
                     mesai.Degisiklik = True
                     mesai.save()
-                
-                hizmetler = Hizmet.objects.filter(HizmetID__in=hizmetIDs)
-                mesai.Hizmetler.set(hizmetler)
 
-            # Silme işlemleri
-            for key in deletion.keys():
-                personel_id, date = key.split('_')
-                personel = Personel.objects.get(PersonelID=personel_id)
-                Mesai.objects.filter(Personel=personel, MesaiDate=date).delete()
+                if value.get('type') == 'clear':
+                    mesai.Hizmetler.clear()
+                    mesai.Izin = None
+                    mesai.save()
+                elif value.get('type') == 'hizmet':
+                    mesai.Izin = None
+                    mesai.save()
+                    # Buradaki hatayı düzelttim - parantezleri kaldırdımm
+                    hizmetler = Hizmet.objects.filter(HizmetID__in=value.get('hizmetler', []))
+                    mesai.Hizmetler.set(hizmetler)
+                elif value.get('type') == 'izin':
+                    mesai.Hizmetler.clear()
+                    if value.get('izin'):
+                        izin = Izin.objects.get(IzinID=value.get('izin'))
+                        mesai.Izin = izin
+                    else:
+                        mesai.Izin = None
+                    mesai.save()
 
             return JsonResponse({'status': 'success'})
-
         except ValueError as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-        except Exception as e:
             return JsonResponse({
                 'status': 'error', 
+                'message': f'Veri format hatası: {str(e)}'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
                 'message': f'Beklenmeyen bir hata oluştu: {str(e)}'
             })
 
@@ -397,7 +399,6 @@ def mesai_onay(request, mesai_id):
             data = json.loads(request.body)
             mesai = get_object_or_404(Mesai, MesaiID=mesai_id)
             
-            # Update Mesai object directly instead of creating MesaiOnay
             mesai.OnayDurumu = data.get('onay_durumu', 0)
             mesai.Onaylayan = request.user
             mesai.OnayTarihi = datetime.now()
@@ -425,10 +426,8 @@ def mesai_onay_durumu(request, mesai_id):
     })
 
 def onay_bekleyen_mesailer(request):
-    # Kullanıcının yetkili olduğu birimler
     user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
     
-    # Değişiklik olan ve onay bekleyen mesaileri birim bazlı grupla
     birimler = Birim.objects.filter(BirimID__in=user_birimler).annotate(
         bekleyen_mesai=models.Count(
             'personelbirim__personel__mesai',
@@ -471,3 +470,501 @@ def toplu_onay(request, birim_id):
                 'status': 'error',
                 'message': str(e)
             })
+
+@csrf_exempt
+def auto_fill_default(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            year = int(data.get('year'))
+            month = int(data.get('month'))
+            birim_id = data.get('birim_id')
+
+            birim = Birim.objects.get(BirimID=birim_id)
+            personeller = Personel.objects.filter(personelbirim__birim=birim)
+            
+            days_in_month = calendar.monthrange(year, month)[1]
+            dates = [
+                datetime(year, month, day) 
+                for day in range(1, days_in_month + 1)
+                if calendar.weekday(year, month, day) < 5
+            ]
+
+            count = 0
+            for personel in personeller:
+                for date in dates:
+                    current_date = date.date()
+                    
+                    prev_date = current_date - timedelta(days=1)
+                    
+                    has_previous_nobet = Mesai.objects.filter(
+                        Personel=personel,
+                        MesaiDate=prev_date,
+                        Hizmetler__HizmetTipi='Nöbet',
+                        Hizmetler__NobetErtesiIzinli=True,
+                        SilindiMi=False
+                    ).exists()
+                    
+                    if has_previous_nobet:
+                        continue
+                    
+                    mesai = Mesai.objects.filter(
+                        Personel=personel,
+                        MesaiDate=current_date
+                    ).first()
+
+                    if not mesai:
+                        mesai = Mesai.objects.create(
+                            Personel=personel,
+                            MesaiDate=current_date,
+                            OnayDurumu=0,
+                            Degisiklik=True,
+                            SilindiMi=False
+                        )
+                        mesai.Hizmetler.add(birim.VarsayilanHizmet)
+                        count += 1
+                    elif mesai.SilindiMi or not mesai.Hizmetler.exists():
+                        mesai.SilindiMi = False
+                        mesai.OnayDurumu = 0
+                        mesai.Degisiklik = True
+                        mesai.save()
+                        mesai.Hizmetler.clear()
+                        mesai.Hizmetler.add(birim.VarsayilanHizmet)
+                        count += 1
+
+            return JsonResponse({
+                'status': 'success',
+                'count': count,
+                'message': f'{count} adet varsayılan hizmet eklendi.'
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
+
+def bildirimler(request):
+    current_year = int(request.GET.get('year', datetime.now().year))
+    current_month = int(request.GET.get('month', datetime.now().month))
+    current_mode = request.GET.get('mode', 'MESAI')  # MESAI veya ICAP
+
+    # Yetkili olunan birimleri all
+    user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
+    birimler = Birim.objects.filter(BirimID__in=user_birimler)
+
+    # Seçili birimi al
+    selected_birim_id = request.GET.get('birim_id')
+    selected_birim = None
+    personeller = None
+    bildirimler = None
+
+    if selected_birim_id:
+        selected_birim = get_object_or_404(Birim, BirimID=selected_birim_id)
+        personeller = Personel.objects.filter(personelbirim__birim=selected_birim)
+        
+        donem = datetime(current_year, current_month, 1).date()
+        bildirimler = Bildirim.objects.filter(
+            PersonelBirim__birim=selected_birim,
+            DonemBaslangic=donem,
+            BildirimTipi=current_mode,
+            SilindiMi=False
+        ).select_related('Personel', 'PersonelBirim')
+
+    # Ay içindeki günleri hesapla
+    days = []
+    if selected_birim_id:
+        days_in_month = calendar.monthrange(current_year, current_month)[1]
+        days = [
+            {
+                'day_num': day,
+                'is_weekend': calendar.weekday(current_year, current_month, day) >= 5,
+                'is_holiday': ResmiTatil.objects.filter(
+                    TatilTarihi=datetime(current_year, current_month, day).date()
+                ).exists()
+            }
+            for day in range(1, days_in_month + 1)
+        ]
+
+    context = {
+        'current_year': current_year,
+        'current_month': current_month,
+        'current_mode': current_mode,
+        'birimler': birimler,
+        'selected_birim': selected_birim,
+        'personeller': personeller,
+        'bildirimler': bildirimler,
+        'months': [{'value': i, 'label': calendar.month_name[i]} for i in range(1, 13)],
+        'years': range(current_year - 1, current_year + 2),
+        'days': days,
+    }
+
+    return render(request, 'hekim_cizelge/bildirimler.html', context)
+
+@csrf_exempt 
+def bildirim_olustur(request, tip):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            personel_id = data.get('personel_id')
+            birim_id = data.get('birim_id')
+            donem = datetime.strptime(data.get('donem'), '%Y-%m').date()
+
+            # PersonelBirim kaydını al
+            personel_birim = get_object_or_404(
+                PersonelBirim, 
+                personel_id=personel_id, # personel_id yerine personel
+                birim_id=birim_id     # birim_id yerine birim
+            )
+
+            # Mevcut bildirimi kontrol et veya yeni oluştur
+            bildirim, created = Bildirim.objects.get_or_create(
+                PersonelBirim=personel_birim,
+                DonemBaslangic=donem,
+                BildirimTipi=tip,
+                defaults={
+                    'OlusturanKullanici': request.user
+                }
+            )
+
+            # Süreleri hesapla ve güncelle
+            if tip == 'MESAI':
+                mesai_detay = hesapla_fazla_mesai(personel_id, donem)
+                bildirim.NormalFazlaMesai = mesai_detay['normal']
+                bildirim.BayramFazlaMesai = mesai_detay['bayram']
+                bildirim.RiskliNormalFazlaMesai = mesai_detay['riskli_normal']
+                bildirim.RiskliBayramFazlaMesai = mesai_detay['riskli_bayram']
+                bildirim.MesaiDetay = mesai_detay['gunluk_detay']
+            else:
+                icap_detay = hesapla_icap_suresi(personel_id, donem)
+                bildirim.NormalIcap = icap_detay['normal']
+                bildirim.BayramIcap = icap_detay['bayram']
+                bildirim.IcapDetay = icap_detay['gunluk_detay']
+
+            bildirim.save()
+
+            # Yanıt verisi hazırla
+            response_data = {
+                'status': 'success',
+                'bildirim_id': bildirim.BildirimID,
+                'bildirim_data': {
+                    'normal_mesai': float(bildirim.NormalFazlaMesai),
+                    'bayram_mesai': float(bildirim.BayramFazlaMesai),
+                    'riskli_normal': float(bildirim.RiskliNormalFazlaMesai),
+                    'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai),
+                    'normal_icap': float(bildirim.NormalIcap),
+                    'bayram_icap': float(bildirim.BayramIcap),
+                    'toplam_mesai': float(bildirim.ToplamFazlaMesai),
+                    'toplam_icap': float(bildirim.ToplamIcap)
+                }
+            }
+
+            return JsonResponse(response_data)
+
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+def bildirim_toplu_olustur(request, birim_id):
+    """Birim personellerinin tümü için bildirim oluşturur"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            year = int(data.get('year'))
+            month = int(data.get('month'))
+            tip = data.get('tip')
+            
+            birim = get_object_or_404(Birim, BirimID=birim_id)
+            personeller = Personel.objects.filter(personelbirim__birim=birim)
+            count = 0
+
+            donem = datetime(year, month, 1).date()
+            for personel in personeller:
+                personel_birim = PersonelBirim.objects.get(personel=personel, birim=birim)
+                
+                # Mevcut bildirim kontrolü
+                bildirim = Bildirim.objects.filter(
+                    PersonelBirim=personel_birim,
+                    DonemBaslangic=donem,
+                    BildirimTipi=tip,
+                    SilindiMi=False
+                ).first()
+
+                if not bildirim:
+                    bildirim = Bildirim(
+                        PersonelBirim=personel_birim,
+                        DonemBaslangic=donem,
+                        BildirimTipi=tip,
+                        OlusturanKullanici=request.user
+                    )
+                    
+                    if tip == 'MESAI':
+                        mesai_detay = hesapla_fazla_mesai(personel.PersonelID, donem)
+                        bildirim.NormalFazlaMesai = mesai_detay['normal']
+                        bildirim.BayramFazlaMesai = mesai_detay['bayram']
+                        bildirim.RiskliNormalFazlaMesai = mesai_detay['riskli_normal']
+                        bildirim.RiskliBayramFazlaMesai = mesai_detay['riskli_bayram']
+                        bildirim.MesaiDetay = mesai_detay['gunluk_detay']
+                    else:
+                        icap_detay = hesapla_icap_suresi(personel.PersonelID, donem)
+                        bildirim.NormalIcap = icap_detay['normal']
+                        bildirim.BayramIcap = icap_detay['bayram']
+                        bildirim.IcapDetay = icap_detay['gunluk_detay']
+                        
+                    bildirim.save()
+                    count += 1
+
+            return JsonResponse({
+                'status': 'success',
+                'count': count
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@csrf_exempt
+def bildirim_form(request, bildirim_id):
+    """Bildirim formunu PDF olarak oluşturur"""
+    try:
+        bildirim = get_object_or_404(Bildirim, BildirimID=bildirim_id)
+        
+        # PDF oluştur
+        pdf = BildirimForm.create_pdf(bildirim)
+        
+        # Dosya adını oluştur
+        filename = f'bildirim_{bildirim.BildirimTipi}_{bildirim.DonemBaslangic.strftime("%Y%m")}_{bildirim.Personel.PersonelID}.pdf'
+        
+        response = HttpResponse(content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.write(pdf)
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f'Form oluşturulurken hata: {str(e)}')
+        return redirect('hekim_cizelge:bildirimler')
+
+@csrf_exempt
+def bildirim_listele(request, yil, ay, birim_id):
+    """Birime ait bildirimleri listeler"""
+    try:
+        donem = datetime(yil, ay, 1).date()
+        bildirimler = Bildirim.objects.filter(
+            PersonelBirim__birim_id=birim_id,
+            DonemBaslangic=donem,
+            SilindiMi=False
+        ).select_related(
+            'PersonelBirim__personel'
+        )
+        
+        data = []
+        for bildirim in bildirimler:
+            item = {
+                'id': bildirim.BildirimID,
+                'personel_id': bildirim.PersonelBirim.personel.PersonelID,
+                'personel': bildirim.PersonelBirim.personel.PersonelName,
+                'tip': bildirim.BildirimTipi,
+                'normal_mesai': float(bildirim.NormalFazlaMesai),
+                'bayram_mesai': float(bildirim.BayramFazlaMesai),
+                'riskli_normal': float(bildirim.RiskliNormalFazlaMesai),
+                'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai),
+                'normal_icap': float(bildirim.NormalIcap),
+                'bayram_icap': float(bildirim.BayramIcap),
+                'toplam_mesai': float(bildirim.ToplamFazlaMesai),
+                'toplam_icap': float(bildirim.ToplamIcap),
+                'onay_durumu': bildirim.OnayDurumu,
+                'MesaiDetay': bildirim.MesaiDetay,
+                'IcapDetay': bildirim.IcapDetay
+            }
+            data.append(item)
+            
+        return JsonResponse({'status': 'success', 'data': data})
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
+
+@csrf_exempt
+def bildirim_guncelle(request, bildirim_id):
+    """Bildirim detaylarını günceller"""
+    if request.method == 'POST':
+        try:
+            bildirim = get_object_or_404(Bildirim, BildirimID=bildirim_id)
+            
+            # Onaylı bildirimleri güncelleme
+            if bildirim.OnayDurumu == 1:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Onaylanmış bildirimler güncellenemez'
+                })
+            
+            data = json.loads(request.body)
+            donem = datetime.strptime(data.get('donem'), '%Y-%m').date()
+            
+            # Bildirim tipine göre hesaplama yap
+            if bildirim.BildirimTipi == 'MESAI':
+                mesai_detay = hesapla_fazla_mesai(bildirim.Personel.PersonelID, donem)
+                bildirim.NormalFazlaMesai = mesai_detay['normal']  
+                bildirim.BayramFazlaMesai = mesai_detay['bayram']
+                bildirim.RiskliNormalFazlaMesai = mesai_detay['riskli_normal']
+                bildirim.RiskliBayramFazlaMesai = mesai_detay['riskli_bayram']
+                bildirim.MesaiDetay = mesai_detay['gunluk_detay']
+            else:
+                icap_detay = hesapla_icap_suresi(bildirim.Personel.PersonelID, donem)
+                bildirim.NormalIcap = icap_detay['normal']
+                bildirim.BayramIcap = icap_detay['bayram']
+                bildirim.IcapDetay = icap_detay['gunluk_detay']
+            
+            bildirim.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'bildirim_id': bildirim.BildirimID
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@csrf_exempt
+def bildirim_sil(request, bildirim_id):
+    """Bildirimi soft-delete yapar"""
+    if request.method == 'POST':
+        try:
+            bildirim = get_object_or_404(Bildirim, BildirimID=bildirim_id)
+            
+            # Onaylı bildirimleri silme
+            if bildirim.OnayDurumu == 1:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Onaylanmış bildirimler silinemez'
+                })
+            
+            bildirim.SilindiMi = True
+            bildirim.save()
+            
+            return JsonResponse({'status': 'success'})
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@csrf_exempt 
+def bildirim_toplu_onay(request, birim_id):
+    """Birime ait bildirimleri toplu onaylar/onaylarını kaldırır"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            year = int(data.get('year'))
+            month = int(data.get('month'))
+            tip = data.get('tip')
+            onay_durumu = int(data.get('onay_durumu'))
+            
+            donem = datetime(year, month, 1).date()
+            
+            # Filtre kriterlerini güncelle
+            filtre = {
+                'PersonelBirim__birim_id': birim_id,
+                'DonemBaslangic': donem,
+                'BildirimTipi': tip,
+                'SilindiMi': False
+            }
+            
+            # Onay durumuna göre filtreleme (onay için 0, onay kaldırma için 1)
+            if onay_durumu == 1:
+                filtre['OnayDurumu'] = 0
+            else:
+                filtre['OnayDurumu'] = 1
+            
+            bildirimler = Bildirim.objects.filter(**filtre)
+            islem_sayisi = bildirimler.count()
+            
+            if islem_sayisi == 0:
+                mesaj = 'Onaylanacak bildirim bulunamadı.' if onay_durumu == 1 else 'Onayı kaldırılacak bildirim bulunamadı.'
+                return JsonResponse({
+                    'status': 'error',
+                    'message': mesaj
+                })
+            
+            # Bildirimleri güncelle
+            bildirimler.update(
+                OnayDurumu=onay_durumu,
+                OnaylayanKullanici=request.user if onay_durumu == 1 else None,
+                OnayTarihi=datetime.now() if onay_durumu == 1 else None
+            )
+            
+            mesaj = f'{islem_sayisi} adet bildirim onaylandı.' if onay_durumu == 1 else f'{islem_sayisi} adet bildirimin onayı kaldırıldı.'
+            
+            return JsonResponse({
+                'status': 'success',
+                'count': islem_sayisi,
+                'message': mesaj
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+def resmi_tatiller(request):
+    tatiller = ResmiTatil.objects.all().order_by('TatilTarihi')
+    return render(request, 'hekim_cizelge/resmi_tatiller.html', {
+        'tatiller': tatiller
+    })
+
+@csrf_exempt
+def tatil_ekle(request):
+    if request.method == 'POST':
+        try:
+            tarih = request.POST.get('tarih')
+            aciklama = request.POST.get('aciklama')
+            tip = request.POST.get('tip')
+
+            ResmiTatil.objects.create(
+                TatilTarihi=tarih,
+                Aciklama=aciklama,
+                TatilTipi=tip
+            )
+            messages.success(request, "Resmi tatil başarıyla eklendi.")
+        except Exception as e:
+            messages.error(request, f"Hata oluştu: {str(e)}")
+            
+    return redirect('hekim_cizelge:resmi_tatiller')
+
+@csrf_exempt
+def tatil_sil(request, tatil_id):
+    """Resmi tatil kaydını siler"""
+    if request.method == 'POST':
+        try:
+            tatil = get_object_or_404(ResmiTatil, TatilID=tatil_id)
+            tatil.delete()
+            messages.success(request, "Resmi tatil başarıyla silindi.")
+        except Exception as e:
+            messages.error(request, f"Silme işlemi başarısız: {str(e)}")
+            
+        return redirect('hekim_cizelge:resmi_tatiller')
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})

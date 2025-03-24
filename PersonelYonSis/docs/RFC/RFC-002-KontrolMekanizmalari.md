@@ -40,6 +40,27 @@ class HizmetKontrol:
         return personel_yetkinlikleri.contains(hizmet_id)
 ```
 
+### 3. Hizmet Kombinasyon Kontrolleri
+```python
+def validate_hizmet_combination(hizmetler):
+    """Hizmet kombinasyonlarının geçerliliğini kontrol eder"""
+    errors = []
+    
+    # Standart hizmet sayısı kontrolü (varsayılan + max 1)
+    standart_hizmetler = [h for h in hizmetler if h.HizmetTipi == 'Standart']
+    if len(standart_hizmetler) > 2:
+        errors.append("En fazla 2 standart hizmet tanımlanabilir")
+
+    # Nöbet ve İcap kontrolü
+    nobet_hizmetler = [h for h in hizmetler if h.HizmetTipi == 'Nöbet']
+    icap_hizmetler = [h for h in hizmetler if h.HizmetTipi == 'İcap']
+    
+    if nobet_hizmetler and icap_hizmetler:
+        errors.append("Nöbet ve İcap hizmetleri aynı güne tanımlanamaz")
+        
+    return not errors, errors
+```
+
 ## Onay Süreci
 1. Mesai Girişi -> İlk Kontrol
 2. İdare Onayı

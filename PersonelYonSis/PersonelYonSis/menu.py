@@ -33,9 +33,11 @@ class Menu:
             MenuItem('Hekim Çizelge Sistemi', '#', 'bi bi-h-square', is_parent=True),
             MenuItem('Çizelge', 'hekim_cizelge:cizelge', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Çizelge Onay', 'hekim_cizelge:onay_bekleyen_mesailer', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
+            MenuItem('Bildirim İşlemleri', 'hekim_cizelge:bildirimler', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Personeller', 'hekim_cizelge:personeller', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Hizmet Tanımları', 'hekim_cizelge:hizmet_tanimlari', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Birim Tanımları', 'hekim_cizelge:birim_tanimlari', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
+            MenuItem('Resmi Tatil Tanımları', 'hekim_cizelge:resmi_tatiller', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             
         ]
         

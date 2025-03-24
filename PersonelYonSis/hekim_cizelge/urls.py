@@ -21,4 +21,19 @@ urlpatterns = [
     path('mesai/onay-durumu/<int:mesai_id>/', views.mesai_onay_durumu, name='mesai_onay_durumu'),
     path('onay-bekleyen-mesailer/', views.onay_bekleyen_mesailer, name='onay_bekleyen_mesailer'),
     path('toplu-onay/<int:birim_id>/', views.toplu_onay, name='toplu_onay'),
+    path('auto_fill_default/', views.auto_fill_default, name='auto_fill_default'),
+]
+
+urlpatterns += [
+    path('bildirimler/', views.bildirimler, name='bildirimler'),
+    path('bildirim/olustur/<str:tip>/', views.bildirim_olustur, name='bildirim_olustur'),
+    path('bildirim/listele/<int:yil>/<int:ay>/<int:birim_id>/', views.bildirim_listele, name='bildirim_listele'),
+    path('bildirim/guncelle/<int:bildirim_id>/', views.bildirim_guncelle, name='bildirim_guncelle'),
+    path('bildirim/sil/<int:bildirim_id>/', views.bildirim_sil, name='bildirim_sil'),
+    path('bildirim/toplu-olustur/<int:birim_id>/', views.bildirim_toplu_olustur, name='bildirim_toplu_olustur'),
+    path('bildirim/toplu-onay/<int:birim_id>/', views.bildirim_toplu_onay, name='bildirim_toplu_onay'),
+    path('bildirim/form/<int:bildirim_id>/', views.bildirim_form, name='bildirim_form'),
+    path('resmi-tatiller/', views.resmi_tatiller, name='resmi_tatiller'),
+    path('tatil-ekle/', views.tatil_ekle, name='tatil_ekle'),
+    path('tatil-sil/<int:tatil_id>/', views.tatil_sil, name='tatil_sil'),
 ]

@@ -97,15 +97,39 @@ class PersonelBirim(models.Model):
     personel = models.ForeignKey(Personel, on_delete=models.CASCADE)
     birim = models.ForeignKey(Birim, on_delete=models.CASCADE)
 
+class Izin(models.Model):
+    YILLIK_IZIN = 'Yıllık İzin'
+    NOBET_IZNI = 'Nöbet İzni'
+    SENDIKA_IZNI = 'Sendika İzni'
+    IDARI_IZIN = 'İdari İzin'
+    MAZERET_IZNI = 'Mazeret İzni'
+
+    IZIN_TIPLERI = [
+        (YILLIK_IZIN, 'Yıllık İzin'),
+        (NOBET_IZNI, 'Nöbet İzni'),
+        (SENDIKA_IZNI, 'Sendika İzni'),
+        (IDARI_IZIN, 'İdari İzin'),
+        (MAZERET_IZNI, 'Mazeret İzni'),
+    ]
+
+    IzinID = models.AutoField(primary_key=True)
+    IzinTipi = models.CharField(max_length=50, choices=IZIN_TIPLERI)
+    IzinRenk = models.CharField(max_length=20, default='bg-warning')  # Bootstrap renk sınıfı
+
+    def __str__(self):
+        return self.IzinTipi
+
 class Mesai(models.Model):
     MesaiID = models.AutoField(primary_key=True)
     Personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
     MesaiDate = models.DateField(null=False)
-    Hizmetler = models.ManyToManyField('Hizmet', related_name='mesai_hizmetleri')
+    Hizmetler = models.ManyToManyField('Hizmet', related_name='mesai_hizmetleri', blank=True)
+    Izin = models.ForeignKey('Izin', on_delete=models.SET_NULL, null=True, blank=True)
     OnayDurumu = models.IntegerField(default=0)  # 0: Beklemede, 1: Onaylandı
     OnayTarihi = models.DateTimeField(null=True, blank=True)
     Onaylayan = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
     Degisiklik = models.BooleanField(default=True)  # True: Değişiklik var, False: Değişiklik yok
+    SilindiMi = models.BooleanField(default=False)  # Soft delete için
 
     def __str__(self):
         return f"Mesai {self.MesaiDate} - {self.Personel.PersonelName}"
@@ -173,3 +197,93 @@ class MesaiKontrol:
             'icap': icap_sure,
             'toplam': standart_sure + nobet_sure  # İcap süresi toplama dahil edilmez
         }
+
+    @staticmethod
+    def validate_hizmet_combination(hizmetler):
+        """Hizmet kombinasyonunun geçerliliğini kontrol eder"""
+        if not hizmetler:
+            return True, None
+
+        standart_hizmetler = [h for h in hizmetler if h.HizmetTipi == Hizmet.STANDART]
+        nobet_hizmetler = [h for h in hizmetler if h.HizmetTipi == Hizmet.NOBET]
+        icap_hizmetler = [h for h in hizmetler if h.HizmetTipi == Hizmet.ICAP]
+
+        errors = []
+        
+        # Standart hizmet sayısı kontrolü (varsayılan + max 1 ek)
+        if len(standart_hizmetler) > 2:
+            errors.append("En fazla 2 standart hizmet (varsayılan + 1) tanımlanabilir")
+
+        # Nöbet ve İcap birlikte olamaz kontrolü
+        if nobet_hizmetler and icap_hizmetler:
+            errors.append("Nöbet ve İcap hizmetleri aynı güne tanımlanamaz")
+
+        # Nöbet/İcap sayısı kontrolü
+        if len(nobet_hizmetler) > 1:
+            errors.append("Birden fazla nöbet hizmeti tanımlanamaz")
+        if len(icap_hizmetler) > 1:
+            errors.append("Birden fazla icap hizmeti tanımlanamaz")
+
+        return not bool(errors), errors
+
+class Bildirim(models.Model):
+    BildirimID = models.AutoField(primary_key=True)
+    PersonelBirim = models.ForeignKey('PersonelBirim', on_delete=models.CASCADE)
+    DonemBaslangic = models.DateField()
+    BildirimTipi = models.CharField(max_length=10, choices=[('MESAI', 'Mesai'), ('ICAP', 'İcap')])
+    
+    # Mesai süreleri (saat cinsinden)
+    NormalFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    BayramFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    RiskliNormalFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    RiskliBayramFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    
+    # İcap süreleri (saat cinsinden)
+    NormalIcap = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    BayramIcap = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    
+    # Günlük detaylar
+    MesaiDetay = models.JSONField(null=True, blank=True)  # {date: hours}
+    IcapDetay = models.JSONField(null=True, blank=True)   # {date: hours}
+    
+    # İşlem bilgileri
+    OlusturanKullanici = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='olusturan_bildirimler')
+    OlusturmaTarihi = models.DateTimeField(auto_now_add=True)
+    OnaylayanKullanici = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='onaylayan_bildirimler')
+    OnayTarihi = models.DateTimeField(null=True)
+    OnayDurumu = models.IntegerField(default=0)  # 0: Bekliyor, 1: Onaylandı
+    SilindiMi = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = [['PersonelBirim', 'DonemBaslangic', 'BildirimTipi']]
+
+    @property
+    def ToplamFazlaMesai(self):
+        """Toplam fazla mesai saati"""
+        return (self.NormalFazlaMesai + self.BayramFazlaMesai + 
+                self.RiskliNormalFazlaMesai + self.RiskliBayramFazlaMesai)
+
+    @property
+    def ToplamIcap(self):
+        """Toplam icap saati"""
+        return self.NormalIcap + self.BayramIcap
+
+class ResmiTatil(models.Model):
+    TatilID = models.AutoField(primary_key=True)
+    TatilTarihi = models.DateField()
+    Aciklama = models.CharField(max_length=200)
+    TatilTipi = models.CharField(
+        max_length=10,
+        choices=[('TAM', 'Tam Gün'), ('YARIM', 'Yarım Gün')],
+        default='TAM'
+    )
+
+    class Meta:
+        ordering = ['TatilTarihi']
+
+    @property
+    def Suresi(self):
+        return 8 if self.TatilTipi == 'TAM' else 3
+
+    def __str__(self):
+        return f"{self.TatilTarihi.strftime('%d.%m.%Y')} - {self.Aciklama}"

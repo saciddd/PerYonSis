@@ -52,6 +52,20 @@ POST /api/cizelge/kopyala/{kaynak_ay}/{hedef_ay}/
 - Çizelge kopyalama
 - Onay akışı yönetimi
 
+## Hizmet Kombinasyon Kuralları
+- Varsayılan hizmet + max 1 ek standart hizmet
+- Maximum 1 nöbet veya 1 icap hizmeti 
+- Nöbet ve icap hizmetleri aynı güne tanımlanamaz
+
+### Veri Modeli Güncellemesi
+```python
+class Mesai:
+    # ...existing fields...
+    Hizmetler = models.ManyToManyField('Hizmet')  # Çoklu hizmet desteği
+    Izin = models.ForeignKey('Izin', null=True)   # İzin kaydı
+    Degisiklik = models.BooleanField(default=True) # Onay takibi için
+```
+
 ## Kabul Kriterleri
 1. Kullanıcılar aylık çizelge oluşturabilmeli
 2. Farklı görünümler arasında geçiş yapabilmeli

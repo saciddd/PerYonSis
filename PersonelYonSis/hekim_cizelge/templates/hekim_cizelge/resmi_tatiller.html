@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sol taraf: Tatil Ekleme Formu -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Yeni Resmi Tatil Ekle</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{% url 'hekim_cizelge:tatil_ekle' %}" method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="tarih" class="form-label">Tatil Tarihi</label>
+                            <input type="date" class="form-control" id="tarih" name="tarih" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="aciklama" class="form-label">Açıklama</label>
+                            <input type="text" class="form-control" id="aciklama" name="aciklama" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tip" class="form-label">Tatil Tipi</label>
+                            <select class="form-control" id="tip" name="tip" required>
+                                <option value="TAM">Tam Gün (8 Saat)</option>
+                                <option value="YARIM">Yarım Gün (3 Saat)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ taraf: Tatil Listesi -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Resmi Tatiller</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Açıklama</th>
+                                <th>Tip</th>
+                                <th>Süre</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tatil in tatiller %}
+                            <tr>
+                                <td>{{ tatil.TatilTarihi|date:"d.m.Y" }}</td>
+                                <td>{{ tatil.Aciklama }}</td>
+                                <td>{{ tatil.get_TatilTipi_display }}</td>
+                                <td>{{ tatil.Suresi }} Saat</td>
+                                <td>
+                                    <form action="{% url 'hekim_cizelge:tatil_sil' tatil.TatilID %}" method="post" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-danger" 
+                                                onclick="return confirm('Bu tatil kaydını silmek istediğinize emin misiniz?')">
+                                            <i class="bi bi-trash"></i> Sil
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

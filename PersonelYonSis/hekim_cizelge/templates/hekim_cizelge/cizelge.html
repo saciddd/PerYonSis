@@ -42,29 +42,40 @@
             <button class="btn btn-primary" id="filterButton">Sorgula</button>
         </div>
         
-        <!-- Hizmet ve Hekim seçimi (approval modda gizli) -->
+        <!-- Hizmet, İzin ve Hekim seçimi (approval modda gizli) -->
         {% if not is_approval_mode %}
         <div class="col-md-3">
             <div class="row">
-                <div class="col-6"> <!-- ilk sütun -->
-                    <label for="hizmetSelection">Hizmet Seçimi</label>
-                    <select id="hizmetSelection" class="form-control">
-                        <option value="">Hizmet Seçin</option>
-                        {% for hizmet in hizmetler %}
-                            <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-6"> <!-- ikinci sütun gizli olacak -->
-                    <div id="hekimSelectionDiv" style="display: none;">
-                        <label for="hekimSelection">Hekim Seçimi</label>
-                        <select id="hekimSelection" class="form-control">
-                            <option value="">Hekim Seçin</option>
-                            {% for personel in personeller %}
-                                <option value="{{ personel.PersonelID }}">{{ personel.PersonelName }}</option>
+                <div class="col-6">
+                    <div id="hizmetSelectionDiv">
+                        <label for="hizmetSelection">Hizmet Seçimi</label>
+                        <select id="hizmetSelection" class="form-control">
+                            <option value="">Hizmet Seçin</option>
+                            {% for hizmet in hizmetler %}
+                                <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
                             {% endfor %}
                         </select>
                     </div>
+                </div>
+                <div class="col-6">
+                    <div id="izinSelectionDiv">
+                        <label for="izinSelection">İzin Seçimi</label>
+                        <select id="izinSelection" class="form-control">
+                            <option value="">İzin Seçin</option>
+                            {% for izin in izinler %}
+                                <option value="{{ izin.IzinID }}" data-color="{{ izin.IzinRenk }}">{{ izin.IzinTipi }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div id="hekimSelectionDiv" style="display: none;">
+                    <label for="hekimSelection">Hekim Seçimi</label>
+                    <select id="hekimSelection" class="form-control">
+                        <option value="">Hekim Seçin</option>
+                        {% for personel in personeller %}
+                            <option value="{{ personel.PersonelID }}">{{ personel.PersonelName }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
             <!-- Alanı boşalt seçeneği -->
@@ -80,10 +91,13 @@
         <div class="col-md-4 text-end">
             <br>
             {% if not is_approval_mode %}
-            <button class="btn btn-warning me-2" id="checkConsistency">
+            <button class="btn btn-info me-2 btn-sm" id="autoFillDefault">
+                <i class="bi bi-calendar-plus"></i> Varsayılan Hizmet Doldur
+            </button>
+            <button class="btn btn-warning me-2 btn-sm" id="checkConsistency">
                 <i class="bi bi-shield-check"></i> Tutarlılık Kontrolü
             </button>
-            <button class="btn btn-primary" id="toggleView">
+            <button class="btn btn-primary btn-sm" id="toggleView">
                 <i class="bi bi-arrow-repeat"></i> Görünümü Değiştir
             </button>
             {% else %}
@@ -91,7 +105,7 @@
                 <i class="bi bi-check-all"></i> Tüm Değişiklikleri Onayla
             </button>
             {% endif %}
-            <button class="btn btn-success" id="saveButton">Kaydet</button>
+            <button class="btn btn-success btn-sm" id="saveButton">Kaydet</button>
         </div>
     </div>
 
@@ -107,7 +121,7 @@
     <!-- Seçilen Birim -->
     <div id="selectedBirim" class="mb-2">
         {% if selected_birim %}
-            Seçilen Birim: {{ selected_birim.BirimAdi }}
+            Seçilen Birim: {{ selected_birim.BirimAdi }} (<span id="viewModeText">Hekim Bazlı Görünüm</span>)
         {% endif %}
     </div>
     <br>
@@ -141,17 +155,21 @@
             <span class="position-absolute top-0 end-0 p-1">
                 <i class="bi bi-check-circle-fill {% if mesai.OnayDurumu == 1 %}text-success{% else %}text-warning{% endif %}"></i>
             </span>
-            {% for hizmet in mesai.Hizmetler %}
-                {% if hizmet.is_varsayilan %}
-                    <span class="badge bg-primary">{{ hizmet.name }}</span>
-                {% elif hizmet.type == 'Nöbet' %}
-                    <span class="badge text-bg-danger">{{ hizmet.name }}</span>
-                {% elif hizmet.type == 'İcap' %}
-                    <span class="badge text-bg-info">{{ hizmet.name }}</span>
-                {% else %}
-                    <span class="badge bg-secondary">{{ hizmet.name }}</span>
-                {% endif %}
-            {% endfor %}
+            {% if mesai.Izin %}
+                <span class="badge {{ mesai.Izin.renk }}">{{ mesai.Izin.tip }}</span>
+            {% else %}
+                {% for hizmet in mesai.Hizmetler %}
+                    {% if hizmet.is_varsayilan %}
+                        <span class="badge bg-primary">{{ hizmet.name }}</span>
+                    {% elif hizmet.type == 'Nöbet' %}
+                        <span class="badge text-bg-danger">{{ hizmet.name }}</span>
+                    {% elif hizmet.type == 'İcap' %}
+                        <span class="badge text-bg-info">{{ hizmet.name }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary">{{ hizmet.name }}</span>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
         {% endif %}
     {% endfor %}
 </td>
@@ -220,17 +238,26 @@
         document.querySelectorAll('.mesai-cell').forEach(function(cell) {
             cell.removeAttribute('contenteditable');  // contenteditable özelliğini kaldır
             cell.addEventListener('click', function() {
-                const hizmetID = document.getElementById('hizmetSelection')?.value;
                 const personelID = this.getAttribute('data-personel-id');
                 const date = this.getAttribute('data-date');
                 const clearSelection = document.getElementById('clearSelection')?.checked;
+                const hizmetID = document.getElementById('hizmetSelection')?.value;
+                const izinID = document.getElementById('izinSelection')?.value;
 
                 if (clearSelection) {
-                    // Tüm hizmetleri temizle
+                    // Sadece görsel temizleme
                     this.innerHTML = '';
-                    deletion[`${personelID}_${date}`] = true;
-                    delete changes[`${personelID}_${date}`];
-                } else if (hizmetID) {
+                    
+                    // Değişiklikleri kaydet
+                    changes[`${personelID}_${date}`] = {
+                        type: 'clear',
+                        hizmetler: [],
+                        izin: null
+                    };
+                    
+                    // Silme işlemini iptal et
+                    delete deletion[`${personelID}_${date}`];
+                } else if (hizmetID || izinID) {
                     let currentServices = [];
                     let badges = this.getElementsByClassName('badge');
                     
@@ -242,31 +269,51 @@
                         if (option) currentServices.push(option.value);
                     });
 
-                    if (hizmetID === varsayilanHizmetID) {
-                        if (!currentServices.includes(hizmetID)) {
-                            currentServices.push(hizmetID);
+                    if (hizmetID) {
+                        // Hizmet kombinasyonunu kontrol et
+                        const validationResult = validateHizmetCombination(currentServices, hizmetID);
+                        if (!validationResult.isValid) {
+                            alert(validationResult.errors.join('\n'));
+                            return;
                         }
-                    } else {
-                        currentServices = currentServices.filter(id => id === varsayilanHizmetID);
-                        if (!currentServices.includes(hizmetID)) {
-                            currentServices.push(hizmetID);
+
+                        // Hizmet seçimi işlemi
+                        if (hizmetID === varsayilanHizmetID) {
+                            if (!currentServices.includes(hizmetID)) {
+                                currentServices.push(hizmetID);
+                            }
+                        } else {
+                            currentServices = currentServices.filter(id => id === varsayilanHizmetID);
+                            if (!currentServices.includes(hizmetID)) {
+                                currentServices.push(hizmetID);
+                            }
                         }
+
+                        // Hücreyi güncelle
+                        this.innerHTML = currentServices.map(serviceID => {
+                            let option = document.querySelector(`#hizmetSelection option[value="${serviceID}"]`);
+                            let badgeClass = serviceID === varsayilanHizmetID ? 'bg-primary' : 'bg-secondary';
+                            return `<span class="badge ${badgeClass}">${option.textContent}</span>`;
+                        }).join(' ');
+
+                        changes[`${personelID}_${date}`] = {
+                            type: 'hizmet',
+                            hizmetler: currentServices,
+                            izin: null
+                        };
+                    } else if (izinID) {
+                        // İzin seçimi işlemi
+                        const izinOption = document.querySelector(`#izinSelection option[value="${izinID}"]`);
+                        const izinRenk = izinOption.getAttribute('data-color');
+                        this.innerHTML = `<span class="badge ${izinRenk}">${izinOption.textContent}</span>`;
+
+                        changes[`${personelID}_${date}`] = {
+                            type: 'izin',
+                            hizmetler: [],
+                            izin: izinID
+                        };
                     }
-
-                    // Hizmet çakışma kontrolü
-                    if (!checkHizmetCakisma(date, hizmetID)) {
-                        alert('Bu hizmet için maksimum hekim sayısına ulaşıldı!');
-                        return;
-                    }
-
-                    // Hücreyi güncelle
-                    this.innerHTML = currentServices.map(serviceID => {
-                        let option = document.querySelector(`#hizmetSelection option[value="${serviceID}"]`);
-                        let badgeClass = serviceID === varsayilanHizmetID ? 'bg-primary' : 'bg-secondary';
-                        return `<span class="badge ${badgeClass}">${option.textContent}</span>`;
-                    }).join(' ');
-
-                    changes[`${personelID}_${date}`] = currentServices;
+                    
                     delete deletion[`${personelID}_${date}`];
                 }
             });
@@ -317,8 +364,11 @@
             const hekimView = document.getElementById('hekimView');
             const hizmetView = document.getElementById('hizmetView');
             const button = document.getElementById('toggleView');
-            const hizmetSelectionDiv = document.querySelector('.col-6:first-child'); // Hizmet seçim alanı
-            const hekimSelectionDiv = document.getElementById('hekimSelectionDiv');
+            const viewModeText = document.getElementById('viewModeText');
+
+            const hizmetSelectionDiv = document.getElementById('hizmetSelection').parentElement;
+            const izinSelectionDiv = document.getElementById('izinSelection').parentElement;
+            const hekimSelectionDiv = document.getElementById('hekimSelection').parentElement;
 
             if (hekimView.style.display !== 'none') {
                 // Hekim bazlıdan hizmet bazlıya geçiş
@@ -326,14 +376,18 @@
                 hizmetView.style.display = 'block';
                 hekimSelectionDiv.style.display = 'block';
                 hizmetSelectionDiv.style.display = 'none';
+                izinSelectionDiv.style.display = 'none';
                 button.innerHTML = '<i class="bi bi-arrow-repeat"></i> Hekim Bazlı Görünüm';
+                viewModeText.textContent = 'Hizmet Bazlı Görünüm';
             } else {
                 // Hizmet bazlıdan hekim bazlıya geçiş
                 hekimView.style.display = 'block';
                 hizmetView.style.display = 'none';
                 hekimSelectionDiv.style.display = 'none';
                 hizmetSelectionDiv.style.display = 'block';
+                izinSelectionDiv.style.display = 'block';
                 button.innerHTML = '<i class="bi bi-arrow-repeat"></i> Hizmet Bazlı Görünüm';
+                viewModeText.textContent = 'Hekim Bazlı Görünüm';
             }
         });
     }
@@ -424,34 +478,34 @@
     }
 
     // Kaydet butonu için event listener
-    const saveButton = document.getElementById('saveButton');
-    if (saveButton) {
-        saveButton.addEventListener('click', function () {
-            if (Object.keys(changes).length === 0 && Object.keys(deletion).length === 0) {
-                alert("Herhangi bir değişiklik yapmadınız.");
-                return;
-            }
+    // const saveButton = document.getElementById('saveButton');
+    // if (saveButton) {
+    //     saveButton.addEventListener('click', function () {
+    //         if (Object.keys(changes).length === 0 && Object.keys(deletion).length === 0) {
+    //             alert("Herhangi bir değişiklik yapmadınız.");
+    //             return;
+    //         }
 
-            fetch("{% url 'hekim_cizelge:cizelge_kaydet' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({ changes: changes, deletion: deletion })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    alert('Değişiklikler kaydedildi.');
-                    changes = {};
-                    deletion = {};
-                } else {
-                    alert('Bir hata oluştu, lütfen tekrar deneyin.');
-                }
-            });
-        });
-    }
+    //         fetch("{% url 'hekim_cizelge:cizelge_kaydet' %}", {
+    //             method: 'POST',
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //                 'X-CSRFToken': '{{ csrf_token }}'
+    //             },
+    //             body: JSON.stringify({ changes: changes, deletion: deletion })
+    //         })
+    //         .then(response => response.json())
+    //         .then(data => {
+    //             if (data.status === 'success') {
+    //                 alert('Değişiklikler kaydedildi.');
+    //                 changes = {};
+    //                 deletion = {};
+    //             } else {
+    //                 alert('Bir hata oluştu, lütfen tekrar deneyin.');
+    //             }
+    //         });
+    //     });
+    // }
 
     // Hizmet çakışma kontrolü için helper fonksiyon
     function checkHizmetCakisma(date, hizmetID) {
@@ -736,7 +790,28 @@
 
     // Kaydetme işlemi fonksiyonu
     function saveChanges() {
-        // ...existing save logic...
+        if (Object.keys(changes).length === 0) {
+            alert("Herhangi bir değişiklik yapmadınız.");
+            return;
+        }
+
+        fetch("{% url 'hekim_cizelge:cizelge_kaydet' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ changes: changes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Değişiklikler kaydedildi.');
+                changes = {};
+            } else {
+                alert('Bir hata oluştu, lütfen tekrar deneyin.');
+            }
+        });
     }
 
     // Tutarlılık kontrolü butonu için event listener
@@ -765,6 +840,124 @@
         }
         saveChanges();
     });
+
+    // İzin ve Hizmet seçimi için event listeners
+    document.getElementById('hizmetSelection')?.addEventListener('change', function() {
+        if (this.value) {
+            document.getElementById('izinSelection').value = '';
+        }
+    });
+
+    document.getElementById('izinSelection')?.addEventListener('change', function() {
+        if (this.value) {
+            document.getElementById('hizmetSelection').value = '';
+        }
+    });
+
+    // Varsayılan hizmet doldurma butonu için event listener
+    document.getElementById('autoFillDefault').addEventListener('click', function() {
+        if (!confirm('Hafta içi tüm boş günlere varsayılan hizmet eklenecek. Onaylıyor musunuz?')) {
+            return;
+        }
+
+        const selectedYear = document.getElementById('selectYear').value;
+        const selectedMonth = document.getElementById('selectMonth').value;
+        const selectedBirim = document.getElementById('selectBirim').value;
+
+        fetch("{% url 'hekim_cizelge:auto_fill_default' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                year: selectedYear,
+                month: selectedMonth,
+                birim_id: selectedBirim
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Varsayılan hizmetler başarıyla eklendi.\nEklenen kayıt sayısı: ' + data.count);
+                window.location.reload();
+            } else {
+                alert('Bir hata oluştu: ' + data.message);
+            }
+        });
+    });
+
+    // Hizmet kombinasyon kontrolü için yardımcı fonksiyon
+    function validateHizmetCombination(currentServices, newHizmetID) {
+        const hizmetler = currentServices.map(id => {
+            const option = document.querySelector(`#hizmetSelection option[value="${id}"]`);
+            return {
+                id: id,
+                name: option.textContent,
+                type: option.textContent.includes('Nöbet') ? 'Nöbet' : 
+                      option.textContent.includes('İcap') ? 'İcap' : 'Standart'
+            };
+        });
+
+        // Yeni hizmeti ekle
+        if (newHizmetID) {
+            const newOption = document.querySelector(`#hizmetSelection option[value="${newHizmetID}"]`);
+            hizmetler.push({
+                id: newHizmetID,
+                name: newOption.textContent,
+                type: newOption.textContent.includes('Nöbet') ? 'Nöbet' : 
+                      newOption.textContent.includes('İcap') ? 'İcap' : 'Standart'
+            });
+        }
+
+        const standardHizmetler = hizmetler.filter(h => h.type === 'Standart');
+        const nobetHizmetler = hizmetler.filter(h => h.type === 'Nöbet');
+        const icapHizmetler = hizmetler.filter(h => h.type === 'İcap');
+
+        const errors = [];
+
+        // Standart hizmet sayısı kontrolü
+        if (standardHizmetler.length > 2) {
+            errors.push("En fazla 2 standart hizmet tanımlanabilir (varsayılan + 1)");
+        }
+
+        // Nöbet ve İcap birlikte olamaz
+        if (nobetHizmetler.length > 0 && icapHizmetler.length > 0) {
+            errors.push("Nöbet ve İcap hizmetleri aynı güne tanımlanamaz");
+        }
+
+        // Nöbet/İcap sayısı kontrolü
+        if (nobetHizmetler.length > 1) {
+            errors.push("Birden fazla nöbet hizmeti tanımlanamaz");
+        }
+        if (icapHizmetler.length > 1) {
+            errors.push("Birden fazla icap hizmeti tanımlanamaz");
+        }
+
+        return {
+            isValid: errors.length === 0,
+            errors: errors
+        };
+    }
+
+    // Hücre tıklama event listener'ında validasyon kontrolünü ekle
+    cell.addEventListener('click', function() {
+        // ...existing code...
+
+        if (hizmetID) {
+            // Hizmet kombinasyonunu kontrol et
+            const validationResult = validateHizmetCombination(currentServices, hizmetID);
+            if (!validationResult.isValid) {
+                alert(validationResult.errors.join('\n'));
+                return;
+            }
+            
+            // Devam eden hizmet ekleme işlemleri...
+        }
+
+        // ...existing code...
+    });
+
 </script>
 {% endblock %}
 

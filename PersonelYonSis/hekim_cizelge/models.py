@@ -230,7 +230,6 @@ class Bildirim(models.Model):
     BildirimID = models.AutoField(primary_key=True)
     PersonelBirim = models.ForeignKey('PersonelBirim', on_delete=models.CASCADE)
     DonemBaslangic = models.DateField()
-    BildirimTipi = models.CharField(max_length=10, choices=[('MESAI', 'Mesai'), ('ICAP', 'İcap')])
     
     # Mesai süreleri (saat cinsinden)
     NormalFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
@@ -255,7 +254,7 @@ class Bildirim(models.Model):
     SilindiMi = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = [['PersonelBirim', 'DonemBaslangic', 'BildirimTipi']]
+        unique_together = [['PersonelBirim', 'DonemBaslangic']]
 
     @property
     def ToplamFazlaMesai(self):

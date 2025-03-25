@@ -135,3 +135,13 @@ def hesapla_icap_suresi(personel_id, donem_baslangic):
         sonuc['gunluk_detay'][date.strftime('%Y-%m-%d')] = gun_toplam
 
     return sonuc
+
+def hesapla_bildirim_verileri(personel_id, donem_baslangic):
+    """Hem mesai hem icap verilerini tek seferde hesaplar"""
+    mesai_detay = hesapla_fazla_mesai(personel_id, donem_baslangic)
+    icap_detay = hesapla_icap_suresi(personel_id, donem_baslangic)
+    
+    return {
+        'mesai': mesai_detay,
+        'icap': icap_detay
+    }

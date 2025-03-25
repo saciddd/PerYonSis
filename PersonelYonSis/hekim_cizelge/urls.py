@@ -26,7 +26,7 @@ urlpatterns = [
 
 urlpatterns += [
     path('bildirimler/', views.bildirimler, name='bildirimler'),
-    path('bildirim/olustur/<str:tip>/', views.bildirim_olustur, name='bildirim_olustur'),
+    path('bildirim/olustur/', views.bildirim_olustur, name='bildirim_olustur'), 
     path('bildirim/listele/<int:yil>/<int:ay>/<int:birim_id>/', views.bildirim_listele, name='bildirim_listele'),
     path('bildirim/guncelle/<int:bildirim_id>/', views.bildirim_guncelle, name='bildirim_guncelle'),
     path('bildirim/sil/<int:bildirim_id>/', views.bildirim_sil, name='bildirim_sil'),

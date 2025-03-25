@@ -38,13 +38,10 @@
             <button class="btn btn-secondary me-2" id="queryBtn">
                 <i class="bi bi-search"></i> Sorgula
             </button>
-            <button class="btn btn-primary me-2" id="toggleMode">
-                {{ current_mode|yesno:"İcap,Mesai" }} Moduna Geç
-            </button>
             <button class="btn btn-success me-2" id="createAllBtn" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-plus-circle"></i> Tüm Personele Bildirim
             </button>
-            <button class="btn btn-info" id="downloadFormBtn" {% if not selected_birim %}disabled{% endif %}>
+            <button class="btn btn-info me-2" id="downloadFormBtn" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-download"></i> Bildirim Formu
             </button>
             <button class="btn btn-success me-2" id="bulkApproveBtn" {% if not selected_birim %}disabled{% endif %}>
@@ -59,38 +56,50 @@
     <!-- Başlık -->
     <div class="row mb-3">
         <div class="col">
-            <h4>{{ current_mode }} Bildirim İşlemleri</h4>
+            <h4>Bildirim İşlemleri</h4>
             {% if selected_birim %}
             <small class="text-muted">{{ selected_birim.BirimAdi }}</small>
             {% endif %}
         </div>
     </div>
 
-    <!-- Tablo -->
+    <!-- Birleşik Tablo Yapısı -->
     <div class="table-responsive">
         <table class="table table-sm table-bordered table-hover" id="bildirimTable">
             <thead class="table-light">
                 <tr>
                     <th>Sıra</th>
                     <th>Personel</th>
-                    {% if current_mode == 'MESAI' %}
-                    <th>Normal Fazla Mesai</th>
-                    <th>Bayram Mesai</th>
-                    <th>Riskli Normal</th>
-                    <th>Riskli Bayram</th>
-                    {% else %}
-                    <th>Normal İcap</th>
-                    <th>Bayram İcap</th>
-                    {% endif %}
-                    <th>Toplam</th>
-                    <!-- Günlük sütunlar -->
+                    <!-- Mesai Sütunları -->
+                    <th colspan="5" class="text-center bg-light">Mesai Süreleri (Saat)</th>
+                    <!-- İcap Sütunları -->
+                    <th colspan="3" class="text-center bg-info text-white">İcap Süreleri (Saat)</th>
+                    <!-- Günler -->
                     {% for day in days %}
                     <th class="{% if day.is_weekend %}bg-light{% endif %} {% if day.is_holiday %}bg-warning{% endif %}">
                         {{ day.day_num }}
                     </th>
                     {% endfor %}
-                    <th>Onay Durumu</th>
-                    <th>İşlemler</th>
+                    <th>Onay</th>
+                    <th>İşlem</th>
+                </tr>
+                <tr>
+                    <th colspan="2"></th>
+                    <!-- Mesai Alt Başlıklar -->
+                    <th class="bg-light">Normal</th>
+                    <th class="bg-light">Bayram</th>
+                    <th class="bg-light">Riskli N.</th>
+                    <th class="bg-light">Riskli B.</th>
+                    <th class="bg-light">Toplam</th>
+                    <!-- İcap Alt Başlıklar -->
+                    <th class="bg-info text-white">Normal</th>
+                    <th class="bg-info text-white">Bayram</th>
+                    <th class="bg-info text-white">Toplam</th>
+                    {% for day in days %}
+                    <th></th>
+                    {% endfor %}
+                    <th></th>
+                    <th></th>
                 </tr>
             </thead>
             <tbody>
@@ -99,34 +108,38 @@
                 <tr data-personel-id="{{ personel.PersonelID }}">
                     <td>{{ forloop.counter }}</td>
                     <td>{{ personel.PersonelName }}</td>
-                    {% if current_mode == 'MESAI' %}
+                    <!-- Mesai Değerleri -->
                     <td class="normal-mesai">-</td>
                     <td class="bayram-mesai">-</td>
                     <td class="riskli-normal">-</td>
                     <td class="riskli-bayram">-</td>
-                    {% else %}
+                    <td class="toplam-mesai">-</td>
+                    <!-- İcap Değerleri -->
                     <td class="normal-icap">-</td>
                     <td class="bayram-icap">-</td>
-                    {% endif %}
-                    <td class="toplam">-</td>
-                    <!-- Günlük süreler -->
+                    <td class="toplam-icap">-</td>
+                    <!-- Günlük Veriler -->
                     {% for day in days %}
-                    <td class="gun-{{ day.day_num }} {% if day.is_weekend %}bg-light{% endif %} {% if day.is_holiday %}bg-warning{% endif %}">-</td>
+                    <td class="gun-{{ day.day_num }} {% if day.is_weekend %}bg-light{% endif %} {% if day.is_holiday %}bg-warning{% endif %}">
+                        <div class="sure-container">
+                            <div class="mesai-sure">-</div>
+                            <div class="icap-sure">-</div>
+                        </div>
+                    </td>
                     {% endfor %}
-                    <td class="onay-durumu">-</td>
+                    <td class="onay-durumu">
+                        <i class="bi bi-circle-fill text-secondary"></i>
+                    </td>
                     <td>
                         <button class="btn btn-sm btn-primary create-btn" data-personel-id="{{ personel.PersonelID }}">
-                            <i class="bi bi-plus"></i> Bildirim Oluştur
-                        </button>
-                        <button class="btn btn-sm btn-success onay-btn" style="display:none" data-personel-id="{{ personel.PersonelID }}">
-                            <i class="bi bi-check"></i> Onayla
+                            <i class="bi bi-plus"></i>
                         </button>
                     </td>
                 </tr>
                 {% endfor %}
                 {% else %}
                 <tr>
-                    <td colspan="8" class="text-center">Lütfen bir birim seçin ve sorgulayın.</td>
+                    <td colspan="20" class="text-center">Lütfen bir birim seçin ve sorgulayın.</td>
                 </tr>
                 {% endif %}
             </tbody>
@@ -143,12 +156,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const year = urlParams.get('year');
     const month = urlParams.get('month');
     const birimId = urlParams.get('birim_id');
-    const mode = urlParams.get('mode') || '{{ current_mode }}';
 
     if (year && month && birimId) {
-        fetchBildirimler(year, month, birimId, mode);
+        fetchBildirimler(year, month, birimId);
     }
-function fetchBildirimler(year, month, birimId, mode) {
+function fetchBildirimler(year, month, birimId) {
     fetch(`/hekim_cizelge/bildirim/listele/${year}/${month}/${birimId}/`)
         .then(response => response.json())
         .then(data => {
@@ -161,20 +173,12 @@ function fetchBildirimler(year, month, birimId, mode) {
         .catch(error => console.error('Veri getirme hatası:', error));
 }
 
-    // Mod değiştirme butonu
-    document.getElementById('toggleMode').addEventListener('click', function() {
-        const currentMode = '{{ current_mode }}';
-        const newMode = currentMode === 'MESAI' ? 'ICAP' : 'MESAI';
-        window.location.href = updateQueryParam('mode', newMode);
-    });
-
     // Sorgula butonu - tek event listener
     document.getElementById('queryBtn').addEventListener('click', function() {
         const birimId = document.getElementById('selectBirim').value;
         const year = document.getElementById('selectYear').value;
         const month = document.getElementById('selectMonth').value;
-        const mode = '{{ current_mode }}';
-        const newUrl = `{% url 'hekim_cizelge:bildirimler' %}?year=${year}&month=${month}&birim_id=${birimId}&mode=${mode}`;
+        const newUrl = `{% url 'hekim_cizelge:bildirimler' %}?year=${year}&month=${month}&birim_id=${birimId}`;
         // newUrl adresine yönlendirme yap
         window.open(newUrl, '_self');
     });
@@ -183,8 +187,7 @@ function fetchBildirimler(year, month, birimId, mode) {
     // Tüm personele bildirim oluşturma
     document.getElementById('createAllBtn').addEventListener('click', function() {
         const selectedBirim = document.getElementById('selectBirim').value;
-        const currentMode = '{{ current_mode }}';
-        if (!confirm(`Tüm personel için ${currentMode} bildirimi oluşturulacak. Onaylıyor musunuz?`)) {
+        if (!confirm(`Tüm personel için bildirim oluşturulacak. Onaylıyor musunuz?`)) {
             return;
         }
 
@@ -195,7 +198,6 @@ function fetchBildirimler(year, month, birimId, mode) {
                 'X-CSRFToken': '{{ csrf_token }}'
             },
             body: JSON.stringify({
-                tip: currentMode,
                 year: document.getElementById('selectYear').value,
                 month: document.getElementById('selectMonth').value
             })
@@ -217,10 +219,9 @@ function fetchBildirimler(year, month, birimId, mode) {
         const selectedBirim = document.getElementById('selectBirim').value;
         const year = document.getElementById('selectYear').value;
         const month = document.getElementById('selectMonth').value;
-        const mode = '{{ current_mode }}';
 
         window.location.href = `{% url 'hekim_cizelge:bildirim_form' 0 %}`.replace('0', selectedBirim) + 
-            `?year=${year}&month=${month}&mode=${mode}`;
+            `?year=${year}&month=${month}`;
     });
 
     // Bildirim oluşturma/güncelleme butonu için event listener
@@ -231,7 +232,8 @@ function fetchBildirimler(year, month, birimId, mode) {
             const year = document.getElementById('selectYear').value;
             const month = document.getElementById('selectMonth').value;
 
-            fetch("{% url 'hekim_cizelge:bildirim_olustur' current_mode %}", {
+            // Birleşik endpoint'i kullan
+            fetch("{% url 'hekim_cizelge:bildirim_olustur' %}", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -260,7 +262,6 @@ function fetchBildirimler(year, month, birimId, mode) {
         const birimId = document.getElementById('selectBirim').value;
         const year = document.getElementById('selectYear').value;
         const month = document.getElementById('selectMonth').value;
-        const mode = '{{ current_mode }}';
 
         fetch("{% url 'hekim_cizelge:bildirim_toplu_onay' 0 %}".replace('0', birimId), {
             method: 'POST',
@@ -271,7 +272,6 @@ function fetchBildirimler(year, month, birimId, mode) {
             body: JSON.stringify({
                 year: year,
                 month: month,
-                tip: mode,
                 onay_durumu: 1
             })
         })
@@ -279,7 +279,7 @@ function fetchBildirimler(year, month, birimId, mode) {
         .then(data => {
             if (data.status === 'success') {
                 // Bildirimleri yeniden yükle
-                fetchBildirimler(year, month, birimId, mode);
+                fetchBildirimler(year, month, birimId);
                 
                 Swal.fire({
                     title: 'Başarılı',
@@ -302,7 +302,6 @@ function fetchBildirimler(year, month, birimId, mode) {
         const birimId = document.getElementById('selectBirim').value;
         const year = document.getElementById('selectYear').value;
         const month = document.getElementById('selectMonth').value;
-        const mode = '{{ current_mode }}';
 
         // Önce onaylı bildirim var mı kontrol et
         const onayliBildirimVar = document.querySelectorAll('.text-success').length > 0;
@@ -336,14 +335,13 @@ function fetchBildirimler(year, month, birimId, mode) {
                     body: JSON.stringify({
                         year: year,
                         month: month,
-                        tip: mode,
                         onay_durumu: 0
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        fetchBildirimler(year, month, birimId, mode);
+                        fetchBildirimler(year, month, birimId);
                         Swal.fire(
                             'Başarılı!',
                             data.message,
@@ -373,74 +371,55 @@ function updateQueryParam(key, value) {
 // Bildirim row güncelleme fonksiyonu - tek bir tanımlama
 function updateBildirimRow(personelId, data) {
     const row = document.querySelector(`tr[data-personel-id="${personelId}"]`);
-    if (!row) {
-        console.log('Satır henüz oluşturulmamış, sayfa yenileniyor...'); 
-        return;
+    if (!row) return;
+
+    // Ana verileri doldur
+    row.querySelector('.normal-mesai').textContent = Math.round(data.normal_mesai);
+    row.querySelector('.bayram-mesai').textContent = Math.round(data.bayram_mesai);
+    row.querySelector('.riskli-normal').textContent = Math.round(data.riskli_normal);
+    row.querySelector('.riskli-bayram').textContent = Math.round(data.riskli_bayram);
+    row.querySelector('.toplam-mesai').textContent = Math.round(data.toplam_mesai);
+    row.querySelector('.normal-icap').textContent = Math.round(data.normal_icap);
+    row.querySelector('.bayram-icap').textContent = Math.round(data.bayram_icap);
+    row.querySelector('.toplam-icap').textContent = Math.round(data.toplam_icap);
+
+    // Günlük detayları doldur
+    if (data.MesaiDetay) {
+        Object.entries(data.MesaiDetay).forEach(([tarih, sure]) => {
+            const gun = parseInt(tarih.split('-')[2]);
+            const cell = row.querySelector(`.gun-${gun}`);
+            if (cell) {
+                cell.querySelector('.mesai-sure').textContent = Math.round(sure) || '-';
+            }
+        });
     }
 
-    console.log('Row güncelleniyor:', personelId, data); // Kontrol için log
-
-    // Ana verileri doldur - tam sayı formatında
-    if ('{{ current_mode }}' === 'MESAI') {
-        console.log('Mesai modu'); // Kontrol için log
-        row.querySelector('.normal-mesai').textContent = Math.round(data.normal_mesai);
-        row.querySelector('.bayram-mesai').textContent = Math.round(data.bayram_mesai);
-        row.querySelector('.riskli-normal').textContent = Math.round(data.riskli_normal);
-        row.querySelector('.riskli-bayram').textContent = Math.round(data.riskli_bayram);
-        row.querySelector('.toplam').textContent = Math.round(data.toplam_mesai);
-        
-        // Günlük detayları doldur
-        if (data.MesaiDetay) {
-            Object.entries(data.MesaiDetay).forEach(([tarih, sure]) => {
-                const gun = parseInt(tarih.split('-')[2]);
-                const gunCell = row.querySelector(`.gun-${gun}`);
-                if (gunCell) {
-                    gunCell.textContent = Math.round(sure);
-                    gunCell.classList.remove('bg-light-blue');
-                    if (sure > 0) {
-                        gunCell.classList.add('bg-light-blue');
-                    }
-                }
-            });
-        }
-    } else {
-        console.log('İcap modu'); // Kontrol için log
-        row.querySelector('.normal-icap').textContent = Math.round(data.normal_icap);
-        row.querySelector('.bayram-icap').textContent = Math.round(data.bayram_icap);
-        row.querySelector('.toplam').textContent = Math.round(data.toplam_icap);
-        
-        // İcap verilerini doldur
-        if (data.IcapDetay) {
-            Object.entries(data.IcapDetay).forEach(([tarih, sure]) => {
-                const gun = parseInt(tarih.split('-')[2]);
-                const gunCell = row.querySelector(`.gun-${gun}`);
-                if (gunCell) {
-                    gunCell.textContent = Math.round(sure);
-                    if (sure > 0) {
-                        gunCell.classList.add('bg-light-blue');
-                    }
-                }
-            });
-        }
+    if (data.IcapDetay) {
+        Object.entries(data.IcapDetay).forEach(([tarih, sure]) => {
+            const gun = parseInt(tarih.split('-')[2]);
+            const cell = row.querySelector(`.gun-${gun}`);
+            if (cell) {
+                cell.querySelector('.icap-sure').textContent = Math.round(sure) || '-';
+            }
+        });
     }
 
     // Onay durumunu güncelle
-    const onayDurumuCell = row.querySelector('.onay-durumu');
-    onayDurumuCell.textContent = data.onay_durumu === 1 ? 'Onaylandı' : 'Bekliyor';
-    onayDurumuCell.className = `onay-durumu ${data.onay_durumu === 1 ? 'text-success' : 'text-warning'}`;
+    const onayIcon = row.querySelector('.onay-durumu i');
+    onayIcon.className = `bi bi-circle-fill ${data.onay_durumu === 1 ? 'text-success' : 'text-warning'}`;
 
-    // Butonları güncelle
+    // İşlem butonunu güncelle
     const createBtn = row.querySelector('.create-btn');
     if (data.onay_durumu === 1) {
         createBtn.disabled = true;
-        createBtn.innerHTML = '<i class="bi bi-check-circle"></i> Onaylı';
         createBtn.classList.remove('btn-primary', 'btn-warning');
         createBtn.classList.add('btn-success');
+        createBtn.innerHTML = '<i class="bi bi-check"></i>';
     } else {
         createBtn.disabled = false;
-        createBtn.innerHTML = '<i class="bi bi-pencil"></i> Güncelle';
         createBtn.classList.remove('btn-primary', 'btn-success');
         createBtn.classList.add('btn-warning');
+        createBtn.innerHTML = '<i class="bi bi-pencil"></i>';
     }
 }
 </script>
@@ -467,5 +446,46 @@ th[class*="gun-"].bg-warning {
 td[class*="gun-"].bg-light-blue {
     background-color: #e3f2fd !important;
 } */
+
+.sure-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 2px;
+}
+
+.mesai-sure {
+    color: #0d6efd;  /* Bootstrap primary color */
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
+.icap-sure {
+    color: #0dcaf0;  /* Bootstrap info color */
+    font-size: 0.8rem;
+    line-height: 1;
+    border-top: 1px dotted #dee2e6;
+    padding-top: 2px;
+}
+
+.gun-cell {
+    min-width: 40px;
+    padding: 0 !important;
+}
+
+/* Sıfır değerler için opacity */
+.mesai-sure:empty, .icap-sure:empty,
+.mesai-sure:contains("-"), .icap-sure:contains("-") {
+    opacity: 0.3;
+}
+
+/* Onay durumu ikonları */
+.onay-durumu {
+    text-align: center;
+}
+
+.onay-durumu i {
+    font-size: 0.8rem;
+}
 </style>
 {% endblock %}

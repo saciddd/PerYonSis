@@ -8,7 +8,7 @@ import calendar
 from datetime import datetime
 
 from hekim_cizelge.forms import BildirimForm
-from hekim_cizelge.utils import hesapla_fazla_mesai, hesapla_icap_suresi
+from hekim_cizelge.utils import hesapla_bildirim_verileri, hesapla_fazla_mesai, hesapla_icap_suresi
 from .models import Bildirim, Izin, MesaiKontrol, Personel, Hizmet, Birim, PersonelBirim, Mesai, ResmiTatil, UserBirim  # Removed MesaiOnay
 from PersonelYonSis.models import User
 from django.db import models
@@ -544,14 +544,14 @@ def auto_fill_default(request):
                 'message': str(e)
             })
 
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 def bildirimler(request):
+    """Mesai ve İcap bildirimlerini birleşik görüntüler"""
     current_year = int(request.GET.get('year', datetime.now().year))
     current_month = int(request.GET.get('month', datetime.now().month))
-    current_mode = request.GET.get('mode', 'MESAI')  # MESAI veya ICAP
 
-    # Yetkili olunan birimleri all
+    # Yetkili olunan birimleri al
     user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
     birimler = Birim.objects.filter(BirimID__in=user_birimler)
 
@@ -566,14 +566,13 @@ def bildirimler(request):
         personeller = Personel.objects.filter(personelbirim__birim=selected_birim)
         
         donem = datetime(current_year, current_month, 1).date()
+        # Hem mesai hem icap bildirimlerini al
         bildirimler = Bildirim.objects.filter(
             PersonelBirim__birim=selected_birim,
             DonemBaslangic=donem,
-            BildirimTipi=current_mode,
             SilindiMi=False
-        ).select_related('Personel', 'PersonelBirim')
+        ).select_related('PersonelBirim__personel')
 
-    # Ay içindeki günleri hesapla
     days = []
     if selected_birim_id:
         days_in_month = calendar.monthrange(current_year, current_month)[1]
@@ -591,7 +590,6 @@ def bildirimler(request):
     context = {
         'current_year': current_year,
         'current_month': current_month,
-        'current_mode': current_mode,
         'birimler': birimler,
         'selected_birim': selected_birim,
         'personeller': personeller,
@@ -604,7 +602,8 @@ def bildirimler(request):
     return render(request, 'hekim_cizelge/bildirimler.html', context)
 
 @csrf_exempt 
-def bildirim_olustur(request, tip):
+def bildirim_olustur(request):
+    """Birleşik mesai/icap bildirimi oluşturur"""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -612,43 +611,34 @@ def bildirim_olustur(request, tip):
             birim_id = data.get('birim_id')
             donem = datetime.strptime(data.get('donem'), '%Y-%m').date()
 
-            # PersonelBirim kaydını al
             personel_birim = get_object_or_404(
                 PersonelBirim, 
-                personel_id=personel_id, # personel_id yerine personel
-                birim_id=birim_id     # birim_id yerine birim
+                personel_id=personel_id,
+                birim_id=birim_id
             )
 
-            # Mevcut bildirimi kontrol et veya yeni oluştur
-            bildirim, created = Bildirim.objects.get_or_create(
+            # Birleşik hesaplama yap
+            bildirim_verileri = hesapla_bildirim_verileri(personel_id, donem)
+            
+            # Tek bildirim oluştur/güncelle
+            bildirim, _ = Bildirim.objects.update_or_create(
                 PersonelBirim=personel_birim,
                 DonemBaslangic=donem,
-                BildirimTipi=tip,
                 defaults={
-                    'OlusturanKullanici': request.user
+                    'OlusturanKullanici': request.user,
+                    'NormalFazlaMesai': bildirim_verileri['mesai']['normal'],
+                    'BayramFazlaMesai': bildirim_verileri['mesai']['bayram'],
+                    'RiskliNormalFazlaMesai': bildirim_verileri['mesai']['riskli_normal'],
+                    'RiskliBayramFazlaMesai': bildirim_verileri['mesai']['riskli_bayram'],
+                    'NormalIcap': bildirim_verileri['icap']['normal'],
+                    'BayramIcap': bildirim_verileri['icap']['bayram'],
+                    'MesaiDetay': bildirim_verileri['mesai']['gunluk_detay'],
+                    'IcapDetay': bildirim_verileri['icap']['gunluk_detay']
                 }
             )
 
-            # Süreleri hesapla ve güncelle
-            if tip == 'MESAI':
-                mesai_detay = hesapla_fazla_mesai(personel_id, donem)
-                bildirim.NormalFazlaMesai = mesai_detay['normal']
-                bildirim.BayramFazlaMesai = mesai_detay['bayram']
-                bildirim.RiskliNormalFazlaMesai = mesai_detay['riskli_normal']
-                bildirim.RiskliBayramFazlaMesai = mesai_detay['riskli_bayram']
-                bildirim.MesaiDetay = mesai_detay['gunluk_detay']
-            else:
-                icap_detay = hesapla_icap_suresi(personel_id, donem)
-                bildirim.NormalIcap = icap_detay['normal']
-                bildirim.BayramIcap = icap_detay['bayram']
-                bildirim.IcapDetay = icap_detay['gunluk_detay']
-
-            bildirim.save()
-
-            # Yanıt verisi hazırla
             response_data = {
                 'status': 'success',
-                'bildirim_id': bildirim.BildirimID,
                 'bildirim_data': {
                     'normal_mesai': float(bildirim.NormalFazlaMesai),
                     'bayram_mesai': float(bildirim.BayramFazlaMesai),
@@ -657,7 +647,10 @@ def bildirim_olustur(request, tip):
                     'normal_icap': float(bildirim.NormalIcap),
                     'bayram_icap': float(bildirim.BayramIcap),
                     'toplam_mesai': float(bildirim.ToplamFazlaMesai),
-                    'toplam_icap': float(bildirim.ToplamIcap)
+                    'toplam_icap': float(bildirim.ToplamIcap),
+                    'MesaiDetay': bildirim.MesaiDetay,
+                    'IcapDetay': bildirim.IcapDetay,
+                    'onay_durumu': bildirim.OnayDurumu
                 }
             }
 
@@ -678,7 +671,6 @@ def bildirim_toplu_olustur(request, birim_id):
             data = json.loads(request.body)
             year = int(data.get('year'))
             month = int(data.get('month'))
-            tip = data.get('tip')
             
             birim = get_object_or_404(Birim, BirimID=birim_id)
             personeller = Personel.objects.filter(personelbirim__birim=birim)
@@ -692,31 +684,26 @@ def bildirim_toplu_olustur(request, birim_id):
                 bildirim = Bildirim.objects.filter(
                     PersonelBirim=personel_birim,
                     DonemBaslangic=donem,
-                    BildirimTipi=tip,
                     SilindiMi=False
                 ).first()
 
                 if not bildirim:
+                    # Birleşik hesaplama yap
+                    bildirim_verileri = hesapla_bildirim_verileri(personel.PersonelID, donem)
+                    
                     bildirim = Bildirim(
                         PersonelBirim=personel_birim,
                         DonemBaslangic=donem,
-                        BildirimTipi=tip,
-                        OlusturanKullanici=request.user
+                        OlusturanKullanici=request.user,
+                        NormalFazlaMesai=bildirim_verileri['mesai']['normal'],
+                        BayramFazlaMesai=bildirim_verileri['mesai']['bayram'],
+                        RiskliNormalFazlaMesai=bildirim_verileri['mesai']['riskli_normal'],
+                        RiskliBayramFazlaMesai=bildirim_verileri['mesai']['riskli_bayram'],
+                        NormalIcap=bildirim_verileri['icap']['normal'],
+                        BayramIcap=bildirim_verileri['icap']['bayram'],
+                        MesaiDetay=bildirim_verileri['mesai']['gunluk_detay'],
+                        IcapDetay=bildirim_verileri['icap']['gunluk_detay']
                     )
-                    
-                    if tip == 'MESAI':
-                        mesai_detay = hesapla_fazla_mesai(personel.PersonelID, donem)
-                        bildirim.NormalFazlaMesai = mesai_detay['normal']
-                        bildirim.BayramFazlaMesai = mesai_detay['bayram']
-                        bildirim.RiskliNormalFazlaMesai = mesai_detay['riskli_normal']
-                        bildirim.RiskliBayramFazlaMesai = mesai_detay['riskli_bayram']
-                        bildirim.MesaiDetay = mesai_detay['gunluk_detay']
-                    else:
-                        icap_detay = hesapla_icap_suresi(personel.PersonelID, donem)
-                        bildirim.NormalIcap = icap_detay['normal']
-                        bildirim.BayramIcap = icap_detay['bayram']
-                        bildirim.IcapDetay = icap_detay['gunluk_detay']
-                        
                     bildirim.save()
                     count += 1
 
@@ -774,7 +761,6 @@ def bildirim_listele(request, yil, ay, birim_id):
                 'id': bildirim.BildirimID,
                 'personel_id': bildirim.PersonelBirim.personel.PersonelID,
                 'personel': bildirim.PersonelBirim.personel.PersonelName,
-                'tip': bildirim.BildirimTipi,
                 'normal_mesai': float(bildirim.NormalFazlaMesai),
                 'bayram_mesai': float(bildirim.BayramFazlaMesai),
                 'riskli_normal': float(bildirim.RiskliNormalFazlaMesai),
@@ -887,7 +873,6 @@ def bildirim_toplu_onay(request, birim_id):
             filtre = {
                 'PersonelBirim__birim_id': birim_id,
                 'DonemBaslangic': donem,
-                'BildirimTipi': tip,
                 'SilindiMi': False
             }
             

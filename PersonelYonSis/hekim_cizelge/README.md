@@ -94,3 +94,8 @@ Hekim Çizelge modülü, hastanedeki hekim personelinin çalışma çizelgelerin
 - Temel CRUD işlemleri
 - Basit onay mekanizması
 - Tekli hizmet desteği
+
+## Önemli Açıklama
+- PDF raporlama işlemi için htmp to pdf indirip kurduk ve aşağıdaki kütüphaneleri yükledik
+https://wkhtmltopdf.org/downloads.html
+- pip install pdfkit

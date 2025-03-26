@@ -1,0 +1,96 @@
+{% load hekim_filters %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Fazla Çalışma ve İcap Bildirim Formu</title>
+</head>
+<body>
+    {% for bildirim in bildirimler %}
+    <div class="bildirim-form {% if not forloop.last %}page-break{% endif %}">
+        <header>
+            <h1>FAZLA ÇALIŞMA VE İCAP NÖBETİ BİLDİRİM FORMU</h1>
+            <div class="info">
+                <p><strong>Personel:</strong> {{ bildirim.personel }}</p>
+                <p><strong>Birim:</strong> {{ bildirim.birim }}</p>
+                <p><strong>Dönem:</strong> {{ bildirim.donem }}</p>
+            </div>
+        </header>
+
+        <section class="summary">
+            <table class="summary-table">
+                <tr>
+                    <th colspan="2">FAZLA ÇALIŞMA</th>
+                    <th colspan="2">İCAP NÖBETİ</th>
+                </tr>
+                <tr>
+                    <td>Normal Mesai</td>
+                    <td>{{ bildirim.normal_mesai|floatformat:2 }} saat</td>
+                    <td>Normal İcap</td>
+                    <td>{{ bildirim.normal_icap|floatformat:2 }} saat</td>
+                </tr>
+                <tr>
+                    <td>Bayram Mesai</td>
+                    <td>{{ bildirim.bayram_mesai|floatformat:2 }} saat</td>
+                    <td>Bayram İcap</td>
+                    <td>{{ bildirim.bayram_icap|floatformat:2 }} saat</td>
+                </tr>
+                <tr class="total">
+                    <td>TOPLAM MESAİ</td>
+                    <td>{{ bildirim.toplam_mesai|floatformat:2 }} saat</td>
+                    <td>TOPLAM İCAP</td>
+                    <td>{{ bildirim.toplam_icap|floatformat:2 }} saat</td>
+                </tr>
+            </table>
+        </section>
+
+        <section class="details">
+            <table class="details-table">
+                <thead>
+                    <tr>
+                        <th>Tarih</th>
+                        <th>Mesai (saat)</th>
+                        <th>İcap (saat)</th>
+                        <th>Not</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for gun in bildirim.mesai_detay %}
+                    <tr>
+                        <td>{{ gun.tarih }}</td>
+                        <td>{{ gun.sure|floatformat:2 }}</td>
+                        <td>
+                            {% with icap_sure=bildirim.icap_detay_dict|get_item:gun.tarih %}
+                                {% if icap_sure %}{{ icap_sure|floatformat:2 }}{% else %}-{% endif %}
+                            {% endwith %}
+                        </td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="signatures">
+            <table class="signature-table">
+                <tr>
+                    <td>Personel İmzası</td>
+                    <td>Birim Sorumlusu</td>
+                    <td>İdare Onayı</td>
+                </tr>
+                <tr>
+                    <td class="sign-space">&nbsp;</td>
+                    <td class="sign-space">&nbsp;</td>
+                    <td class="sign-space">&nbsp;</td>
+                </tr>
+                <tr>
+                    <td>Tarih: .../.../...</td>
+                    <td>Tarih: .../.../...</td>
+                    <td>Tarih: .../.../...</td>
+                </tr>
+            </table>
+        </section>
+    </div>
+    {% endfor %}
+</body>
+</html>

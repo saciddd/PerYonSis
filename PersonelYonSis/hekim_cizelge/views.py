@@ -721,62 +721,38 @@ def bildirim_toplu_olustur(request, birim_id):
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 @csrf_exempt
-def bildirim_form(request, bildirim_id):
+def bildirim_form(request, birim_id):
     """Bildirim formunu PDF olarak oluşturur"""
     try:
-        bildirim = get_object_or_404(Bildirim, BildirimID=bildirim_id)
+        # URL'den yıl, ay parametrelerini al
+        year = request.GET.get('year')
+        month = request.GET.get('month')
+        if not year or not month:
+            raise ValueError("Yıl ve ay parametreleri gerekli")
+            
+        donem = datetime(int(year), int(month), 1).date()
         
-        # PDF oluştur
-        pdf = BildirimForm.create_pdf(bildirim)
-        
-        # Dosya adını oluştur
-        filename = f'bildirim_{bildirim.BildirimTipi}_{bildirim.DonemBaslangic.strftime("%Y%m")}_{bildirim.Personel.PersonelID}.pdf'
-        
-        response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        response.write(pdf)
-        
-        return response
-        
-    except Exception as e:
-        messages.error(request, f'Form oluşturulurken hata: {str(e)}')
-        return redirect('hekim_cizelge:bildirimler')
-
-@csrf_exempt
-def bildirim_listele(request, yil, ay, birim_id):
-    """Birime ait bildirimleri listeler"""
-    try:
-        donem = datetime(yil, ay, 1).date()
+        # Birim ve dönem bilgisiyle bildirimleri sorgula
         bildirimler = Bildirim.objects.filter(
             PersonelBirim__birim_id=birim_id,
             DonemBaslangic=donem,
             SilindiMi=False
-        ).select_related(
-            'PersonelBirim__personel'
-        )
+        ).select_related('PersonelBirim__personel', 'PersonelBirim__birim')
         
-        data = []
-        for bildirim in bildirimler:
-            item = {
-                'id': bildirim.BildirimID,
-                'personel_id': bildirim.PersonelBirim.personel.PersonelID,
-                'personel': bildirim.PersonelBirim.personel.PersonelName,
-                'normal_mesai': float(bildirim.NormalFazlaMesai),
-                'bayram_mesai': float(bildirim.BayramFazlaMesai),
-                'riskli_normal': float(bildirim.RiskliNormalFazlaMesai),
-                'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai),
-                'normal_icap': float(bildirim.NormalIcap),
-                'bayram_icap': float(bildirim.BayramIcap),
-                'toplam_mesai': float(bildirim.ToplamFazlaMesai),
-                'toplam_icap': float(bildirim.ToplamIcap),
-                'onay_durumu': bildirim.OnayDurumu,
-                'MesaiDetay': bildirim.MesaiDetay,
-                'IcapDetay': bildirim.IcapDetay
-            }
-            data.append(item)
-            
-        return JsonResponse({'status': 'success', 'data': data})
-    
+        if not bildirimler.exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Bu dönem için bildirim bulunamadı.'
+            })
+        
+        # PDF oluştur
+        pdf = BildirimForm.create_pdf_multiple(bildirimler)
+        
+        # HTTP response oluştur
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="bildirimler_{year}_{month}.pdf"'
+        return response
+        
     except Exception as e:
         return JsonResponse({
             'status': 'error',
@@ -953,3 +929,42 @@ def tatil_sil(request, tatil_id):
             
         return redirect('hekim_cizelge:resmi_tatiller')
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
+
+@csrf_exempt
+def bildirim_listele(request, yil, ay, birim_id):
+    """Birime ait bildirimleri listeler"""
+    try:
+        donem = datetime(yil, ay, 1).date()
+        bildirimler = Bildirim.objects.filter(
+            PersonelBirim__birim_id=birim_id,
+            DonemBaslangic=donem,
+            SilindiMi=False
+        ).select_related(
+            'PersonelBirim__personel'
+        )
+        
+        data = []
+        for bildirim in bildirimler:
+            item = {
+                'personel_id': bildirim.PersonelBirim.personel.PersonelID,
+                'normal_mesai': float(bildirim.NormalFazlaMesai),
+                'bayram_mesai': float(bildirim.BayramFazlaMesai),
+                'riskli_normal': float(bildirim.RiskliNormalFazlaMesai),
+                'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai),
+                'normal_icap': float(bildirim.NormalIcap),
+                'bayram_icap': float(bildirim.BayramIcap),
+                'toplam_mesai': float(bildirim.ToplamFazlaMesai),
+                'toplam_icap': float(bildirim.ToplamIcap),
+                'onay_durumu': bildirim.OnayDurumu,
+                'MesaiDetay': bildirim.MesaiDetay,
+                'IcapDetay': bildirim.IcapDetay
+            }
+            data.append(item)
+            
+        return JsonResponse({'status': 'success', 'data': data})
+    
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })

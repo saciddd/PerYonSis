@@ -1,9 +1,9 @@
 from django import forms
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
-from reportlab.lib.units import cm
-from io import BytesIO
+from django.template.loader import render_to_string
+from django.conf import settings
+import pdfkit
+from pathlib import Path
+import os
 
 class BildirimForm:
     """Bildirim formu PDF oluşturma sınıfı"""
@@ -24,30 +24,40 @@ class BildirimForm:
         ]
 
         # Çalışma detayları
-        if bildirim.BildirimTipi == 'MESAI':
-            detail_data = [
-                ['Normal Fazla Mesai:', f'{bildirim.NormalFazlaMesai:.2f} saat'],
-                ['Bayram Fazla Mesai:', f'{bildirim.BayramFazlaMesai:.2f} saat'],
-                ['Riskli Normal Fazla Mesai:', f'{bildirim.RiskliNormalFazlaMesai:.2f} saat'],  
-                ['Riskli Bayram Fazla Mesai:', f'{bildirim.RiskliBayramFazlaMesai:.2f} saat'],
-                ['Toplam:', f'{bildirim.ToplamFazlaMesai:.2f} saat']
-            ]
-        else:
-            detail_data = [
-                ['Normal İcap:', f'{bildirim.NormalIcap:.2f} saat'],
-                ['Bayram İcap:', f'{bildirim.BayramIcap:.2f} saat'],
-                ['Toplam:', f'{bildirim.ToplamIcap:.2f} saat']
-            ]
+        detail_data = [
+            ['Normal Fazla Mesai:', f'{bildirim.NormalFazlaMesai:.2f} saat'],
+            ['Bayram Fazla Mesai:', f'{bildirim.BayramFazlaMesai:.2f} saat'],
+            ['Riskli Normal Fazla Mesai:', f'{bildirim.RiskliNormalFazlaMesai:.2f} saat'],  
+            ['Riskli Bayram Fazla Mesai:', f'{bildirim.RiskliBayramFazlaMesai:.2f} saat'],
+            ['Normal İcap:', f'{bildirim.NormalIcap:.2f} saat'],
+            ['Bayram İcap:', f'{bildirim.BayramIcap:.2f} saat'],
+            ['Toplam Fazla Mesai:', f'{bildirim.ToplamFazlaMesai:.2f} saat'],
+            ['Toplam İcap:', f'{bildirim.ToplamIcap:.2f} saat']
+        ]
 
         # Günlük detay tablosu
         daily_data = []
-        daily_header = ['Gün', 'Süre (saat)', 'Not']
+        daily_header = ['Gün', 'Mesai (saat)', 'İcap (saat)', 'Not']
         daily_data.append(daily_header)
 
-        detay = bildirim.MesaiDetay if bildirim.BildirimTipi == 'MESAI' else bildirim.IcapDetay
-        for tarih, sure in detay.items():
-            if sure > 0:
-                daily_data.append([tarih, f'{sure:.2f}', ''])
+        # Tüm günleri birleştir
+        all_dates = set()
+        if bildirim.MesaiDetay:
+            all_dates.update(bildirim.MesaiDetay.keys())
+        if bildirim.IcapDetay:
+            all_dates.update(bildirim.IcapDetay.keys())
+
+        for tarih in sorted(all_dates):
+            mesai_sure = bildirim.MesaiDetay.get(tarih, 0) if bildirim.MesaiDetay else 0
+            icap_sure = bildirim.IcapDetay.get(tarih, 0) if bildirim.IcapDetay else 0
+            
+            if mesai_sure > 0 or icap_sure > 0:
+                daily_data.append([
+                    tarih, 
+                    f'{mesai_sure:.2f}' if mesai_sure > 0 else '-',
+                    f'{icap_sure:.2f}' if icap_sure > 0 else '-',
+                    ''
+                ])
 
         # Tabloları oluştur
         header_table = Table(header_data, colWidths=[19*cm])
@@ -90,3 +100,67 @@ class BildirimForm:
         buffer.close()
         
         return pdf
+
+    @staticmethod
+    def create_pdf_multiple(bildirimler):
+        try:
+            # Template context hazırla
+            context = {
+                'bildirimler': [
+                    {
+                        'personel': bildirim.PersonelBirim.personel.PersonelName,
+                        'birim': bildirim.PersonelBirim.birim.BirimAdi,
+                        'donem': bildirim.DonemBaslangic.strftime("%B %Y"),
+                        'normal_mesai': float(bildirim.NormalFazlaMesai),
+                        'bayram_mesai': float(bildirim.BayramFazlaMesai),
+                        'riskli_normal': float(bildirim.RiskliNormalFazlaMesai),
+                        'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai),
+                        'normal_icap': float(bildirim.NormalIcap),
+                        'bayram_icap': float(bildirim.BayramIcap),
+                        'toplam_mesai': float(bildirim.ToplamFazlaMesai),
+                        'toplam_icap': float(bildirim.ToplamIcap),
+                        'mesai_detay': sorted([
+                            {'tarih': k, 'sure': v} 
+                            for k, v in (bildirim.MesaiDetay or {}).items()
+                            if v > 0
+                        ], key=lambda x: x['tarih']),
+                        'icap_detay_dict': bildirim.IcapDetay or {}
+                    }
+                    for bildirim in bildirimler
+                ]
+            }
+
+            # HTML template render et
+            html_string = render_to_string('hekim_cizelge/bildirim_form.html', context)
+
+            # PDF ayarları
+            options = {
+                'page-size': 'A4',
+                'orientation': 'Landscape',
+                'margin-top': '1.0cm',
+                'margin-right': '1.0cm',
+                'margin-bottom': '1.0cm',
+                'margin-left': '1.0cm',
+                'encoding': "UTF-8",
+                'enable-local-file-access': None,
+            }
+
+            # CSS dosyasının tam yolu
+            css_path = str(Path(__file__).resolve().parent.parent / 'static' / 'css' / 'bildirim_form.css')
+            
+            # wkhtmltopdf yolunu doğrudan belirt
+            config = pdfkit.configuration(wkhtmltopdf='C:/Program Files/wkhtmltopdf/bin/wkhtmltopdf.exe')
+            
+            # PDF oluştur
+            pdf = pdfkit.from_string(
+                html_string, 
+                False, 
+                options=options,
+                css=css_path,
+                configuration=config
+            )
+            
+            return pdf
+
+        except Exception as e:
+            raise Exception(f"PDF oluşturma hatası: {str(e)}")

@@ -17,3 +17,8 @@ def filter_by_name(hizmetler, hizmet_name):
         if hizmet.HizmetName.strip() == hizmet_name.strip():
             return hizmet
     return None
+
+@register.filter
+def get_item(dictionary, key):
+    """Dictionary'den key ile değer alma filter'ı"""
+    return dictionary.get(key)

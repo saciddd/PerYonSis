@@ -1,95 +1,111 @@
+{% load static %}
 {% load hekim_filters %}
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Fazla Çalışma ve İcap Bildirim Formu</title>
+    <title>Fazla Çalışma ve İcap Nöbeti Bildirim Formu</title>
 </head>
 <body>
     {% for bildirim in bildirimler %}
     <div class="bildirim-form {% if not forloop.last %}page-break{% endif %}">
-        <header>
-            <h1>FAZLA ÇALIŞMA VE İCAP NÖBETİ BİLDİRİM FORMU</h1>
-            <div class="info">
-                <p><strong>Personel:</strong> {{ bildirim.personel }}</p>
-                <p><strong>Birim:</strong> {{ bildirim.birim }}</p>
-                <p><strong>Dönem:</strong> {{ bildirim.donem }}</p>
+        <header class="header">
+            <img src="{% static 'assets/KDHLogoSm.png' %}" alt="Logo" class="logo">
+            
+            <div class="kurum-baslik">
+                <h1>T.C.</h1>
+                <h1>SAĞLIK BAKANLIĞI</h1>
+                <h1>Kayseri Devlet Hastanesi</h1>
+                <h2>{{ bildirim.donem|date:"Y" }} Yılı {{ bildirim.donem|date:"F" }} Ayı Fazla Mesai ve İcap Nöbeti Bildirim Formu</h2>
+            </div>
+
+            <div class="timestamp">
+                Oluşturma Tarihi: {% now "d.m.Y H:i" %}
+            </div>
+
+            <div class="birim-bilgi">
+                <strong>Birim:</strong> {{ bildirim.birim }}
             </div>
         </header>
 
-        <section class="summary">
-            <table class="summary-table">
+        <!-- Bildirimler tablosu -->
+        <table class="table">
+            <thead>
                 <tr>
-                    <th colspan="2">FAZLA ÇALIŞMA</th>
-                    <th colspan="2">İCAP NÖBETİ</th>
-                </tr>
-                <tr>
-                    <td>Normal Mesai</td>
-                    <td>{{ bildirim.normal_mesai|floatformat:2 }} saat</td>
-                    <td>Normal İcap</td>
-                    <td>{{ bildirim.normal_icap|floatformat:2 }} saat</td>
+                    <th rowspan="2">Personel</th>
+                    <th colspan="5" class="text-center bg-light">Mesai Süreleri (Saat)</th>
+                    <th colspan="3" class="text-center bg-info">İcap Süreleri (Saat)</th>
+                    <th rowspan="2">Onay Durumu</th>
                 </tr>
                 <tr>
-                    <td>Bayram Mesai</td>
-                    <td>{{ bildirim.bayram_mesai|floatformat:2 }} saat</td>
-                    <td>Bayram İcap</td>
-                    <td>{{ bildirim.bayram_icap|floatformat:2 }} saat</td>
+                    <th class="bg-light">Normal</th>
+                    <th class="bg-light">Bayram</th>
+                    <th class="bg-light">Riskli N.</th>
+                    <th class="bg-light">Riskli B.</th>
+                    <th class="bg-light">Toplam</th>
+                    <th class="bg-info">Normal</th>
+                    <th class="bg-info">Bayram</th>
+                    <th class="bg-info">Toplam</th>
                 </tr>
-                <tr class="total">
-                    <td>TOPLAM MESAİ</td>
-                    <td>{{ bildirim.toplam_mesai|floatformat:2 }} saat</td>
-                    <td>TOPLAM İCAP</td>
-                    <td>{{ bildirim.toplam_icap|floatformat:2 }} saat</td>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ bildirim.personel }}</td>
+                    <td>{{ bildirim.normal_mesai|floatformat:0 }}</td>
+                    <td>{{ bildirim.bayram_mesai|floatformat:0 }}</td>
+                    <td>{{ bildirim.riskli_normal|floatformat:0 }}</td>
+                    <td>{{ bildirim.riskli_bayram|floatformat:0 }}</td>
+                    <td class="fw-bold">{{ bildirim.toplam_mesai|floatformat:0 }}</td>
+                    <td>{{ bildirim.normal_icap|floatformat:0 }}</td>
+                    <td>{{ bildirim.bayram_icap|floatformat:0 }}</td>
+                    <td class="fw-bold">{{ bildirim.toplam_icap|floatformat:0 }}</td>
+                    <td>{{ bildirim.onay_tarihi|date:"d.m.Y H:i"|default:"-" }}</td>
                 </tr>
-            </table>
-        </section>
+            </tbody>
+        </table>
 
-        <section class="details">
-            <table class="details-table">
-                <thead>
-                    <tr>
-                        <th>Tarih</th>
-                        <th>Mesai (saat)</th>
-                        <th>İcap (saat)</th>
-                        <th>Not</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for gun in bildirim.mesai_detay %}
-                    <tr>
-                        <td>{{ gun.tarih }}</td>
-                        <td>{{ gun.sure|floatformat:2 }}</td>
-                        <td>
-                            {% with icap_sure=bildirim.icap_detay_dict|get_item:gun.tarih %}
-                                {% if icap_sure %}{{ icap_sure|floatformat:2 }}{% else %}-{% endif %}
-                            {% endwith %}
-                        </td>
-                        <td></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </section>
-
-        <section class="signatures">
-            <table class="signature-table">
+        <!-- Günlük detay tablosu -->
+        <table class="details-table">
+            <thead>
                 <tr>
-                    <td>Personel İmzası</td>
+                    <th>Tarih</th>
+                    <th>Mesai (saat)</th>
+                    <th>İcap (saat)</th>
+                    <th>Not</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for gun in bildirim.mesai_detay %}
+                <tr>
+                    <td>{{ gun.tarih }}</td>
+                    <td style="color: black;">{{ gun.sure|floatformat:0 }}</td>
+                    <td style="color: black;">
+                        {% with icap_sure=bildirim.icap_detay_dict|get_item:gun.tarih %}
+                            {% if icap_sure %}{{ icap_sure|floatformat:0 }}{% else %}-{% endif %}
+                        {% endwith %}
+                    </td>
+                    <td></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="signatures">
+            <table>
+                <tr>
                     <td>Birim Sorumlusu</td>
                     <td>İdare Onayı</td>
                 </tr>
                 <tr>
                     <td class="sign-space">&nbsp;</td>
                     <td class="sign-space">&nbsp;</td>
-                    <td class="sign-space">&nbsp;</td>
                 </tr>
                 <tr>
                     <td>Tarih: .../.../...</td>
                     <td>Tarih: .../.../...</td>
-                    <td>Tarih: .../.../...</td>
                 </tr>
             </table>
-        </section>
+        </div>
     </div>
     {% endfor %}
 </body>

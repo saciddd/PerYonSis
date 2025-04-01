@@ -1,0 +1,4 @@
+.table {
+    --bs-table-bg: inherit; /* Tablo varsayılan arka plan rengini kaldır */
+    --bs-table-color: inherit; /* Tablo varsayılan metin rengini kaldır */
+}

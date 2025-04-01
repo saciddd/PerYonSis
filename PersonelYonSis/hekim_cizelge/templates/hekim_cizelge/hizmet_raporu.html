@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Hizmet Raporu</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Filtre Formu -->
+                    <form id="raporFiltreForm" class="mb-4">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Başlangıç Tarihi</label>
+                                    <input type="date" class="form-control" id="baslangicTarihi" required>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Bitiş Tarihi</label>
+                                    <input type="date" class="form-control" id="bitisTarihi" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Hizmetler</label>
+                                    <select class="form-control select2" id="hizmetler" multiple>
+                                        {% for hizmet in hizmetler %}
+                                        <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <button type="submit" class="btn btn-primary btn-block">Raporla</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Rapor Tablosu -->
+                    <div id="raporTablo" style="display: none;">
+                        <div class="d-flex justify-content-between mb-3">
+                            <h4>Rapor Sonuçları</h4>
+                            <button id="pdfExport" class="btn btn-success">
+                                <i class="fas fa-file-pdf"></i> PDF Olarak İndir
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" id="raporTable">
+                                <thead>
+                                    <tr>
+                                        <th>Tarih</th>
+                                        <th>Personel</th>
+                                        <th>Hizmetler</th>
+                                        <th>Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Select2 başlatma
+    $('.select2').select2({
+        placeholder: "Hizmet seçiniz",
+        allowClear: true
+    });
+
+    // Form submit
+    $('#raporFiltreForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const baslangicTarihi = $('#baslangicTarihi').val();
+        const bitisTarihi = $('#bitisTarihi').val();
+        const hizmetler = $('#hizmetler').val();
+
+        if (!baslangicTarihi || !bitisTarihi || !hizmetler || hizmetler.length === 0) {
+            alert('Lütfen tüm alanları doldurunuz.');
+            return;
+        }
+
+        // AJAX isteği
+        $.ajax({
+            url: '{% url "hekim_cizelge:hizmet_raporu" %}',
+            method: 'POST',
+            data: {
+                baslangic_tarihi: baslangicTarihi,
+                bitis_tarihi: bitisTarihi,
+                hizmetler: hizmetler,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.status === 'success') {
+                    // Tabloyu doldur
+                    const tbody = $('#raporTable tbody');
+                    tbody.empty();
+
+                    response.data.forEach(function(gun) {
+                        // Günlük özet satırı
+                        tbody.append(`
+                            <tr class="table-primary">
+                                <td colspan="4">
+                                    <strong>${gun.tarih}</strong> | 
+                                    Toplam Hekim: ${gun.ozet.hekim_sayisi} | 
+                                    Onaylı: ${gun.ozet.onayli_sayisi} | 
+                                    Bekleyen: ${gun.ozet.bekleyen_sayisi}
+                                </td>
+                            </tr>
+                        `);
+
+                        // Detay satırları
+                        gun.detaylar.forEach(function(detay) {
+                            tbody.append(`
+                                <tr>
+                                    <td></td>
+                                    <td>${detay.personel}</td>
+                                    <td>${detay.hizmetler}</td>
+                                    <td>${detay.durum}</td>
+                                </tr>
+                            `);
+                        });
+                    });
+
+                    // Tabloyu göster
+                    $('#raporTablo').show();
+                } else {
+                    alert('Hata: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('Bir hata oluştu. Lütfen tekrar deneyiniz.');
+            }
+        });
+    });
+
+    // PDF Export
+    $('#pdfExport').on('click', function() {
+        const baslangicTarihi = $('#baslangicTarihi').val();
+        const bitisTarihi = $('#bitisTarihi').val();
+        const hizmetler = $('#hizmetler').val();
+
+        // PDF indirme URL'sini oluştur
+        const url = `{% url "hekim_cizelge:hizmet_raporu_pdf" %}?baslangic=${baslangicTarihi}&bitis=${bitisTarihi}&hizmetler=${hizmetler.join(',')}`;
+        
+        // Yeni sekmede aç
+        window.open(url, '_blank');
+    });
+});
+</script>
+{% endblock %} 

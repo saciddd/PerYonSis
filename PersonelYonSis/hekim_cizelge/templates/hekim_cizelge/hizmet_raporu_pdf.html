@@ -1,0 +1,139 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Hizmet Raporu</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.5cm;
+            margin-bottom: 1.1cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            height: 135px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .logo {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100px;
+            width: auto;
+        }
+        .kurum-baslik {
+            margin-left: 120px;
+            text-align: center;
+            padding-top: 10px;
+        }
+        .kurum-baslik h1 {
+            margin: 5px 0;
+            font-size: 14pt;
+        }
+        .kurum-baslik h2 {
+            margin: 5px 0;
+            font-size: 12pt;
+        }
+        .timestamp {
+            position: absolute;
+            right: 0;
+            top: 0;
+            font-size: 10pt;
+        }
+        .rapor-bilgi {
+            margin: 20px 0;
+            font-size: 12pt;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 4px;
+            font-size: 9pt;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            background-color: #fff;
+            padding: 10px 1.5cm;
+            border-top: 1px solid #000;
+        }
+        .footer table {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <img src="{% static 'assets/KDHLogoSm.png' %}" alt="Logo" class="logo">
+        
+        <div class="kurum-baslik">
+            <h1>T.C.</h1>
+            <h1>SAĞLIK BAKANLIĞI</h1>
+            <h1>Kayseri Devlet Hastanesi</h1>
+            <h2>Hizmet Raporu</h2>
+        </div>
+
+        <div class="timestamp">
+            Oluşturma Tarihi: {% now "d.m.Y H:i" %}
+        </div>
+    </header>
+
+    <div class="rapor-bilgi">
+        <p><strong>Rapor Aralığı:</strong> {{ rapor.baslangic_tarihi }} - {{ rapor.bitis_tarihi }}</p>
+        <p><strong>Seçilen Hizmetler:</strong> {{ rapor.hizmetler|join:", " }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Tarih</th>
+                <th>Personel</th>
+                <th>Hizmetler</th>
+                <th>Durum</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mesai in rapor.mesailer %}
+            <tr>
+                <td>{{ mesai.tarih }}</td>
+                <td>{{ mesai.personel }}</td>
+                <td>{{ mesai.hizmetler }}</td>
+                <td class="text-center">{{ mesai.durum }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <table style="width: 100%; border: none;">
+            <tr>
+                <td style="border: none; width: 33%; text-align: center;">Birim Sorumlusu</td>
+                <td style="border: none; width: 33%; text-align: center;">Sayfa 1/1</td>
+                <td style="border: none; width: 33%; text-align: center;">İdare Onayı</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html> 

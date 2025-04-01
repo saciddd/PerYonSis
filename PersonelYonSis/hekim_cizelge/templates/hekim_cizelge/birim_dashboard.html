@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Birim Dashboard</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Birim Seçimi -->
+                    <form method="GET" class="mb-4">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Birim Seçiniz</label>
+                                    <select name="birim_id" class="form-control" onchange="this.form.submit()" id="birim_select">
+                                        <option value="">Birim Seçiniz</option>
+                                        {% for birim in birimler %}
+                                        <option value="{{ birim.BirimID }}" {% if dashboard_data and dashboard_data.selected_birim.BirimID == birim.BirimID %}selected{% endif %}>
+                                            {{ birim.BirimAdi }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    {% if dashboard_data %}
+                    <!-- Grafikler -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Hekimlerin Toplam Nöbet Sayıları</h4>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="nobetChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 class="card-title">Hekimlerin Toplam İcap Sayıları</h4>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="icapChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Personel İstatistikleri -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">Personel İstatistikleri</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Personel</th>
+                                            <th>İlk Görev Tarihi</th>
+                                            <th>Toplam Nöbet Sayısı</th>
+                                            <th>Toplam İcap Sayısı</th>
+                                            <th>Nöbet Katsayısı</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for stat in dashboard_data.personel_stats %}
+                                        <tr>
+                                            <td>{{ stat.personel.PersonelName }}</td>
+                                            <td>{{ stat.ilk_tarih|date:"d.m.Y"|default:"-" }}</td>
+                                            <td>{{ stat.nobet_sayisi }}</td>
+                                            <td>{{ stat.icap_sayisi }}</td>
+                                            <td>{{ stat.nobet_katsayisi|default:"-" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if dashboard_data %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Birim seçimi değiştiğinde sayfayı yenile
+    document.getElementById('birim_select').addEventListener('change', function() {
+        window.location.href = '?birim_id=' + this.value;
+    });
+
+    // Django'dan gelen veriyi JavaScript'e aktar
+    const nobetLabels = {{ dashboard_data.nobet_labels|safe }};
+    const nobetValues = {{ dashboard_data.nobet_values|safe }};
+    const icapLabels = {{ dashboard_data.icap_labels|safe }};
+    const icapValues = {{ dashboard_data.icap_values|safe }};
+
+    // Nöbet grafiği
+    const nobetCtx = document.getElementById('nobetChart').getContext('2d');
+    new Chart(nobetCtx, {
+        type: 'bar',
+        data: {
+            labels: nobetLabels,
+            datasets: [{
+                label: 'Nöbet Sayısı',
+                data: nobetValues,
+                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                borderColor: 'rgb(75, 192, 192)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Nöbet Sayısı'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Hekimler'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    // İcap grafiği
+    const icapCtx = document.getElementById('icapChart').getContext('2d');
+    new Chart(icapCtx, {
+        type: 'bar',
+        data: {
+            labels: icapLabels,
+            datasets: [{
+                label: 'İcap Sayısı',
+                data: icapValues,
+                backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                borderColor: 'rgb(255, 99, 132)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'İcap Sayısı'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Hekimler'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %} 

@@ -22,6 +22,9 @@ urlpatterns = [
     path('onay-bekleyen-mesailer/', views.onay_bekleyen_mesailer, name='onay_bekleyen_mesailer'),
     path('toplu-onay/<int:birim_id>/', views.toplu_onay, name='toplu_onay'),
     path('auto_fill_default/', views.auto_fill_default, name='auto_fill_default'),
+    path('hizmet-raporu/', views.hizmet_raporu, name='hizmet_raporu'),
+    path('hizmet-raporu/pdf/', views.hizmet_raporu_pdf, name='hizmet_raporu_pdf'),
+    path('birim-dashboard/', views.birim_dashboard, name='birim_dashboard'),
 ]
 
 urlpatterns += [

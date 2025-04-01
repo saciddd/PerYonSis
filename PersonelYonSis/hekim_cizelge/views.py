@@ -6,12 +6,20 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import calendar
 from datetime import datetime
+from django.template.loader import get_template
+import pdfkit
+from django.conf import settings
+from django.db.models import Count
+from django.db.models.functions import TruncMonth
 
 from hekim_cizelge.forms import BildirimForm
 from hekim_cizelge.utils import hesapla_bildirim_verileri, hesapla_fazla_mesai, hesapla_icap_suresi
 from .models import Bildirim, Izin, MesaiKontrol, Personel, Hizmet, Birim, PersonelBirim, Mesai, ResmiTatil, UserBirim  # Removed MesaiOnay
 from PersonelYonSis.models import User
 from django.db import models
+
+# PDFKit yapılandırması
+config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
 
 def hizmet_tanimlari(request):
     hizmetler = Hizmet.objects.all()
@@ -745,8 +753,68 @@ def bildirim_form(request, birim_id):
                 'message': 'Bu dönem için bildirim bulunamadı.'
             })
         
+        # Ayın günlerini oluştur
+        days_in_month = calendar.monthrange(int(year), int(month))[1]
+        days = []
+        for day in range(1, days_in_month + 1):
+            current_date = datetime(int(year), int(month), day).date()
+            days.append({
+                'day_num': day,
+                'full_date': current_date.strftime('%Y-%m-%d'),
+                'is_weekend': calendar.weekday(int(year), int(month), day) >= 5,
+                'is_holiday': ResmiTatil.objects.filter(TatilTarihi=current_date).exists()
+            })
+        
+        # Birim bilgisini al
+        birim = Birim.objects.get(BirimID=birim_id)
+        
+        # Bildirimleri hazırla
+        bildirim_data = {
+            'donem': donem,
+            'birim': birim.BirimAdi,
+            'days': days,
+            'personeller': []
+        }
+        
+        for bildirim in bildirimler:
+            personel_data = {
+                'PersonelID': bildirim.PersonelBirim.personel.PersonelID,
+                'PersonelName': bildirim.PersonelBirim.personel.PersonelName,
+                'normal_mesai': float(bildirim.NormalFazlaMesai),
+                'bayram_mesai': float(bildirim.BayramFazlaMesai),
+                'riskli_normal': float(bildirim.RiskliNormalFazlaMesai),
+                'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai),
+                'normal_icap': float(bildirim.NormalIcap),
+                'bayram_icap': float(bildirim.BayramIcap),
+                'toplam_mesai': float(bildirim.ToplamFazlaMesai),
+                'toplam_icap': float(bildirim.ToplamIcap),
+                'onay_durumu': bildirim.OnayDurumu,
+                'mesai_detay': bildirim.MesaiDetay,
+                'icap_detay': bildirim.IcapDetay
+            }
+            bildirim_data['personeller'].append(personel_data)
+        
         # PDF oluştur
-        pdf = BildirimForm.create_pdf_multiple(bildirimler)
+        template = get_template('hekim_cizelge/bildirim_form.html')
+        html = template.render({'bildirimler': [bildirim_data]})
+        
+        # PDF oluşturma seçenekleri
+        options = {
+            'page-size': 'A4',
+            'orientation': 'Landscape',
+            'margin-top': '1.5cm',
+            'margin-right': '1.5cm',
+            'margin-bottom': '1.1cm',
+            'margin-left': '1.5cm',
+            'encoding': 'UTF-8',
+            'no-outline': None,
+            'enable-local-file-access': True,
+            'enable-external-links': True,
+            'quiet': ''
+        }
+        
+        # PDF oluştur
+        pdf = pdfkit.from_string(html, False, options=options, configuration=config)
         
         # HTTP response oluştur
         response = HttpResponse(pdf, content_type='application/pdf')
@@ -967,4 +1035,251 @@ def bildirim_listele(request, yil, ay, birim_id):
         return JsonResponse({
             'status': 'error',
             'message': str(e)
+        })
+
+@csrf_exempt
+def hizmet_raporu(request):
+    """Hizmet raporu sayfasını gösterir"""
+    if request.method == 'GET':
+        hizmetler = Hizmet.objects.all()
+        return render(request, 'hekim_cizelge/hizmet_raporu.html', {
+            'hizmetler': hizmetler
+        })
+    
+    elif request.method == 'POST':
+        try:
+            baslangic_tarihi = request.POST.get('baslangic_tarihi')
+            bitis_tarihi = request.POST.get('bitis_tarihi')
+            hizmet_ids = request.POST.getlist('hizmetler[]')
+
+            if not all([baslangic_tarihi, bitis_tarihi, hizmet_ids]):
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Tüm alanları doldurunuz.'
+                })
+
+            # Tarihleri datetime objesine çevir
+            baslangic = datetime.strptime(baslangic_tarihi, '%Y-%m-%d').date()
+            bitis = datetime.strptime(bitis_tarihi, '%Y-%m-%d').date()
+
+            # Mesaileri sorgula
+            mesailer = Mesai.objects.filter(
+                MesaiDate__range=[baslangic, bitis],
+                Hizmetler__HizmetID__in=hizmet_ids,
+                SilindiMi=False
+            ).select_related('Personel').prefetch_related('Hizmetler')
+
+            # Sonuçları hazırla
+            rapor_data = []
+            gunluk_ozet = {}
+            
+            for mesai in mesailer:
+                tarih = mesai.MesaiDate.strftime('%d.%m.%Y')
+                hizmet_isimleri = ', '.join([h.HizmetName for h in mesai.Hizmetler.all()])
+                durum = 'Onaylı' if mesai.OnayDurumu == 1 else 'Beklemede'
+                
+                # Günlük özet bilgilerini güncelle
+                if tarih not in gunluk_ozet:
+                    gunluk_ozet[tarih] = {
+                        'tarih': tarih,
+                        'hekim_sayisi': 0,
+                        'onayli_sayisi': 0,
+                        'bekleyen_sayisi': 0,
+                        'detaylar': []
+                    }
+                
+                gunluk_ozet[tarih]['hekim_sayisi'] += 1
+                if mesai.OnayDurumu == 1:
+                    gunluk_ozet[tarih]['onayli_sayisi'] += 1
+                else:
+                    gunluk_ozet[tarih]['bekleyen_sayisi'] += 1
+                
+                # Detay bilgilerini ekle
+                gunluk_ozet[tarih]['detaylar'].append({
+                    'personel': mesai.Personel.PersonelName,
+                    'hizmetler': hizmet_isimleri,
+                    'durum': durum
+                })
+
+            # Günlük özetleri sıralı şekilde rapor_data'ya ekle
+            for tarih in sorted(gunluk_ozet.keys()):
+                ozet = gunluk_ozet[tarih]
+                rapor_data.append({
+                    'tarih': tarih,
+                    'ozet': {
+                        'hekim_sayisi': ozet['hekim_sayisi'],
+                        'onayli_sayisi': ozet['onayli_sayisi'],
+                        'bekleyen_sayisi': ozet['bekleyen_sayisi']
+                    },
+                    'detaylar': ozet['detaylar']
+                })
+
+            return JsonResponse({
+                'status': 'success',
+                'data': rapor_data
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+
+def hizmet_raporu_pdf(request):
+    """Hizmet raporunu PDF olarak oluşturur"""
+    try:
+        baslangic_tarihi = request.GET.get('baslangic')
+        bitis_tarihi = request.GET.get('bitis')
+        hizmet_ids = request.GET.get('hizmetler').split(',')
+
+        if not all([baslangic_tarihi, bitis_tarihi, hizmet_ids]):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Eksik parametre.'
+            })
+
+        # Tarihleri datetime objesine çevir
+        baslangic = datetime.strptime(baslangic_tarihi, '%Y-%m-%d').date()
+        bitis = datetime.strptime(bitis_tarihi, '%Y-%m-%d').date()
+
+        # Mesaileri sorgula
+        mesailer = Mesai.objects.filter(
+            MesaiDate__range=[baslangic, bitis],
+            Hizmetler__HizmetID__in=hizmet_ids,
+            SilindiMi=False
+        ).select_related('Personel').prefetch_related('Hizmetler')
+
+        # Rapor verilerini hazırla
+        rapor_data = {
+            'baslangic_tarihi': baslangic.strftime('%d.%m.%Y'),
+            'bitis_tarihi': bitis.strftime('%d.%m.%Y'),
+            'hizmetler': Hizmet.objects.filter(HizmetID__in=hizmet_ids).values_list('HizmetName', flat=True),
+            'mesailer': []
+        }
+
+        for mesai in mesailer:
+            hizmet_isimleri = ', '.join([h.HizmetName for h in mesai.Hizmetler.all()])
+            durum = 'Onaylı' if mesai.OnayDurumu == 1 else 'Beklemede'
+            
+            rapor_data['mesailer'].append({
+                'tarih': mesai.MesaiDate.strftime('%d.%m.%Y'),
+                'personel': mesai.Personel.PersonelName,
+                'hizmetler': hizmet_isimleri,
+                'durum': durum
+            })
+
+        # Tarihe göre sırala
+        rapor_data['mesailer'].sort(key=lambda x: datetime.strptime(x['tarih'], '%d.%m.%Y'))
+
+        # PDF oluştur
+        template = get_template('hekim_cizelge/hizmet_raporu_pdf.html')
+        html = template.render({'rapor': rapor_data})
+
+        # PDF oluşturma seçenekleri
+        options = {
+            'page-size': 'A4',
+            'orientation': 'Portrait',
+            'margin-top': '1.5cm',
+            'margin-right': '1.5cm',
+            'margin-bottom': '1.1cm',
+            'margin-left': '1.5cm',
+            'encoding': 'UTF-8',
+            'no-outline': None,
+            'enable-local-file-access': True,
+            'enable-external-links': True,
+            'quiet': ''
+        }
+
+        # PDF oluştur
+        pdf = pdfkit.from_string(html, False, options=options, configuration=config)
+
+        # HTTP response oluştur
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="hizmet_raporu_{baslangic_tarihi}_{bitis_tarihi}.pdf"'
+        return response
+
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
+
+def birim_dashboard(request):
+    """Birim bazlı dashboard sayfası"""
+    if request.method == 'GET':
+        # Kullanıcının yetkili olduğu birimleri al
+        user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
+        birimler = Birim.objects.filter(BirimID__in=user_birimler)
+        
+        # Seçili birimi al
+        selected_birim_id = request.GET.get('birim_id')
+        dashboard_data = None
+        
+        if selected_birim_id:
+            selected_birim = get_object_or_404(Birim, BirimID=selected_birim_id)
+            
+            # Birime ait personelleri al
+            personeller = Personel.objects.filter(personelbirim__birim=selected_birim)
+            
+            # Her personel için istatistikleri hesapla
+            personel_stats = []
+            nobet_labels = []
+            nobet_values = []
+            icap_labels = []
+            icap_values = []
+            
+            for personel in personeller:
+                # Personelin ilk mesai tarihini bul
+                ilk_mesai = Mesai.objects.filter(
+                    Personel=personel,
+                    SilindiMi=False
+                ).order_by('MesaiDate').first()
+                
+                ilk_tarih = ilk_mesai.MesaiDate if ilk_mesai else None
+                
+                # Nöbet ve icap sayılarını hesapla
+                nobet_sayisi = Mesai.objects.filter(
+                    Personel=personel,
+                    Hizmetler__HizmetTipi='Nöbet',
+                    SilindiMi=False
+                ).count()
+                
+                icap_sayisi = Mesai.objects.filter(
+                    Personel=personel,
+                    Hizmetler__HizmetTipi='İcap',
+                    SilindiMi=False
+                ).count()
+                
+                # Nöbet katsayısını hesapla
+                nobet_katsayisi = None
+                if ilk_tarih and nobet_sayisi > 0:
+                    calisma_suresi = (datetime.now().date() - ilk_tarih).days
+                    nobet_katsayisi = round(calisma_suresi / nobet_sayisi, 2)
+                
+                personel_stats.append({
+                    'personel': personel,
+                    'ilk_tarih': ilk_tarih,
+                    'nobet_sayisi': nobet_sayisi,
+                    'icap_sayisi': icap_sayisi,
+                    'nobet_katsayisi': nobet_katsayisi
+                })
+                
+                # Grafik için personel bazlı verileri ekle
+                nobet_labels.append(personel.PersonelName)
+                nobet_values.append(nobet_sayisi)
+                icap_labels.append(personel.PersonelName)
+                icap_values.append(icap_sayisi)
+            
+            dashboard_data = {
+                'selected_birim': selected_birim,
+                'personel_stats': personel_stats,
+                'nobet_labels': nobet_labels,
+                'nobet_values': nobet_values,
+                'icap_labels': icap_labels,
+                'icap_values': icap_values
+            }
+        
+        return render(request, 'hekim_cizelge/birim_dashboard.html', {
+            'birimler': birimler,
+            'dashboard_data': dashboard_data
         })

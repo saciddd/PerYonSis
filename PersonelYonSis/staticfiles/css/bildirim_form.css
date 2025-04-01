@@ -1,0 +1,120 @@
+.bildirim-form {
+    padding: 1cm;
+    font-family: Arial, sans-serif;
+}
+
+.page-break {
+    page-break-after: always;
+}
+
+.header {
+    position: relative;
+    margin-bottom: 2cm;
+    height: 4cm;
+}
+
+.logo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 3cm;
+}
+
+.kurum-baslik {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+}
+
+.timestamp {
+    position: absolute;
+    top: 0;
+    right: 0;
+    font-size: 9pt;
+    color: #666;
+}
+
+.birim-bilgi {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    font-weight: bold;
+}
+
+.kurum-baslik h1 {
+    font-size: 12pt;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+}
+
+.kurum-baslik h2 {
+    font-size: 14pt;
+    margin: 10px 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1cm;
+}
+
+th, td {
+    border: 1px solid #000;
+    padding: 6px;
+    text-align: left;
+    font-size: 10pt;
+}
+
+th {
+    background-color: #f0f0f0;
+}
+
+.total td {
+    font-weight: bold;
+}
+
+.signatures {
+    position: fixed;
+    bottom: 2cm;
+    left: 1cm;
+    right: 1cm;
+    text-align: center;
+}
+
+.signatures table {
+    border: none;
+}
+
+.signatures td {
+    border: none;
+    width: 33.33%;
+    padding: 10px;
+}
+
+.sign-space {
+    height: 1cm;
+}
+
+.bg-light {
+    background-color: #f8f9fa;
+}
+
+.bg-info {
+    background-color: #cff4fc;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.fw-bold {
+    font-weight: bold;
+}
+
+.table thead th {
+    text-align: center;
+    vertical-align: middle;
+}

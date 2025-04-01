@@ -32,8 +32,10 @@ class Menu:
             # Hekim Çizelge Sistemi ve Alt Menüleri
             MenuItem('Hekim Çizelge Sistemi', '#', 'bi bi-h-square', is_parent=True),
             MenuItem('Çizelge', 'hekim_cizelge:cizelge', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
+            MenuItem('Birim Verileri', 'hekim_cizelge:birim_dashboard', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Çizelge Onay', 'hekim_cizelge:onay_bekleyen_mesailer', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Bildirim İşlemleri', 'hekim_cizelge:bildirimler', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
+            MenuItem('Hizmet Raporu', 'hekim_cizelge:hizmet_raporu', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Personeller', 'hekim_cizelge:personeller', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Hizmet Tanımları', 'hekim_cizelge:hizmet_tanimlari', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Birim Tanımları', 'hekim_cizelge:birim_tanimlari', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),

@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Mutemetlik İşlemleri</h3>
+                </div>
+                <div class="card-body">
+                    <form id="raporForm" method="GET">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="year">Yıl</label>
+                                    <select class="form-control" id="year" name="year" required>
+                                        {% for year in years %}
+                                        <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="month">Ay</label>
+                                    <select class="form-control" id="month" name="month" required>
+                                        {% for month in months %}
+                                        <option value="{{ month.value }}" {% if month.value == current_month %}selected{% endif %}>{{ month.label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="tc_kimlik">T.C. Kimlik No</label>
+                                    <input type="text" class="form-control" id="tc_kimlik" name="tc_kimlik" maxlength="11">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <button type="submit" class="btn btn-primary btn-block">Sorgula</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                    {% if bildirimler %}
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <strong>Onaylı Kayıt Sayısı:</strong> {{ onayli_sayisi }} |
+                                <strong>Onaysız Kayıt Sayısı:</strong> {{ onaysiz_sayisi }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>T.C. Kimlik No</th>
+                                            <th>Ad</th>
+                                            <th>Soyad</th>
+                                            <th>Birim</th>
+                                            <th>Normal Fazla Mesai</th>
+                                            <th>Bayram Fazla Mesai</th>
+                                            <th>Riskli Normal Fazla Mesai</th>
+                                            <th>Riskli Bayram Fazla Mesai</th>
+                                            <th>Normal İcap</th>
+                                            <th>Bayram İcap</th>
+                                            <th>Durum</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for bildirim in bildirimler %}
+                                        <tr>
+                                            <td>{{ bildirim.PersonelBirim.personel.PersonelID }}</td>
+                                            <td>{{ bildirim.PersonelBirim.personel.FirstName }}</td>
+                                            <td>{{ bildirim.PersonelBirim.personel.LastName }}</td>
+                                            <td>{{ bildirim.PersonelBirim.birim.BirimAdi }}</td>
+                                            <td>{{ bildirim.NormalFazlaMesai }}</td>
+                                            <td>{{ bildirim.BayramFazlaMesai }}</td>
+                                            <td>{{ bildirim.RiskliNormalFazlaMesai }}</td>
+                                            <td>{{ bildirim.RiskliBayramFazlaMesai }}</td>
+                                            <td>{{ bildirim.NormalIcap }}</td>
+                                            <td>{{ bildirim.BayramIcap }}</td>
+                                            <td>
+                                                {% if bildirim.OnayDurumu == 1 %}
+                                                <span class="text-success">Onaylı</span>
+                                                {% else %}
+                                                <span class="text-danger">Onaysız</span>
+                                                {% endif %}
+                                                {% if bildirim.MutemetKilidi %}
+                                                <span class="badge badge-danger">Kilitli</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if bildirim.OnayDurumu == 1 %}
+                                                    {% if bildirim.MutemetKilidi %}
+                                                    <button class="btn btn-sm btn-warning kilit-ac" data-bildirim-id="{{ bildirim.BildirimID }}">
+                                                        <i class="fas fa-lock-open"></i> Kilidi Aç
+                                                    </button>
+                                                    {% else %}
+                                                    <button class="btn btn-sm btn-danger kilit" data-bildirim-id="{{ bildirim.BildirimID }}">
+                                                        <i class="fas fa-lock"></i> Kilitle
+                                                    </button>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if onayli_sayisi > 0 %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <button id="excelIndir" class="btn btn-success">
+                                <i class="fas fa-file-excel"></i> Excel'e Aktar
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Kilit işlemleri
+    $('.kilit').click(function() {
+        var bildirimId = $(this).data('bildirim-id');
+        if (confirm('Bu bildirimi kilitlemek istediğinize emin misiniz?')) {
+            $.post(`/hekim_cizelge/bildirim-kilit/${bildirimId}/`, function(response) {
+                if (response.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('Hata: ' + response.message);
+                }
+            });
+        }
+    });
+
+    $('.kilit-ac').click(function() {
+        var bildirimId = $(this).data('bildirim-id');
+        if (confirm('Bu bildirimin kilidini açmak istediğinize emin misiniz?')) {
+            $.post(`/hekim_cizelge/bildirim-kilit-ac/${bildirimId}/`, function(response) {
+                if (response.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('Hata: ' + response.message);
+                }
+            });
+        }
+    });
+
+    // Excel indirme
+    $('#excelIndir').click(function() {
+        var year = $('#year').val();
+        var month = $('#month').val();
+        var tc_kimlik = $('#tc_kimlik').val();
+        
+        window.location.href = `/hekim_cizelge/bildirim-excel/?year=${year}&month=${month}&tc_kimlik=${tc_kimlik}`;
+    });
+});
+</script>
+{% endblock %}

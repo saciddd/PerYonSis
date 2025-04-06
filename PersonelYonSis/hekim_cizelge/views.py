@@ -109,18 +109,22 @@ def personel_update(request):
     if request.method == 'POST':
         personel_id = request.POST.get('id')  # Formdan gelen personel ID'si
         birim_id = request.POST.get('birim')  # Formdan gelen birim ID'si
-        personel_name = request.POST.get('name')  # Formdan gelen personel adı
+        first_name = request.POST.get('first_name')  # Formdan gelen personel adı
+        last_name = request.POST.get('last_name')  # Formdan gelen personel soyadı
         personel_title = request.POST.get('title')  # Formdan gelen personel unvanı
         personel_branch = request.POST.get('branch')  # Formdan gelen personel branşı
 
         # Modellerden ilgili kayıtları çekiyoruz
         personel = Personel.objects.get(PersonelID=personel_id)
         birim = Birim.objects.get(BirimID=birim_id)
-        # PersonelAdi, PersonelUnvan, PersonelBranş, PersonelBirim bilgilerini güncelle
-        personel.PersonelName = personel_name
+        
+        # Personel bilgilerini güncelle
+        personel.FirstName = first_name
+        personel.LastName = last_name
         personel.PersonelTitle = personel_title
         personel.PersonelBranch = personel_branch
         personel.save()
+        
         # PersonelBirim kaydını güncelle veya oluştur
         personel_birim, created = PersonelBirim.objects.update_or_create(
             personel=personel,
@@ -1209,7 +1213,7 @@ def birim_dashboard(request):
     if request.method == 'GET':
         # Kullanıcının yetkili olduğu birimleri al
         user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
-        birimler = Birim.objects.filter(BirimID__in=user_birimler)
+        birimler = Birim.objects.filter(BirimID__in(user_birimler))
         
         # Seçili birimi al
         selected_birim_id = request.GET.get('birim_id')
@@ -1283,3 +1287,125 @@ def birim_dashboard(request):
             'birimler': birimler,
             'dashboard_data': dashboard_data
         })
+
+import os
+from io import BytesIO
+from django.conf import settings
+import openpyxl
+
+def mutemetlik_islemleri(request):
+    """Mutemetlik işlemleri sayfası"""
+    # Mevcut yıl ve ay bilgisini al
+    current_year = int(request.GET.get('year', datetime.now().year))
+    current_month = int(request.GET.get('month', datetime.now().month))
+    tc_kimlik = request.GET.get('tc_kimlik', '')
+
+    # Kullanıcının yetkili olduğu birimleri al
+    user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
+    birimler = Birim.objects.filter(BirimID__in=user_birimler)
+
+    # Sorgu parametreleri hazırla
+    filtre = {
+        'DonemBaslangic': datetime(current_year, current_month, 1).date(),
+        'OnayDurumu': 1,  # Sadece onaylı bildirimleri getir
+        'SilindiMi': False,
+        'PersonelBirim__birim__in': birimler  # Sadece yetkili olunan birimlerin bildirimlerini getir
+    }
+
+    if tc_kimlik:
+        filtre['PersonelBirim__personel__TCKimlikNo'] = tc_kimlik
+
+    # Bildirimleri sorgula
+    bildirimler = Bildirim.objects.filter(**filtre).select_related(
+        'PersonelBirim__personel',
+        'PersonelBirim__birim'
+    )
+
+    # İstatistik hesapla
+    onayli_sayisi = bildirimler.count()
+    onaysiz_sayisi = Bildirim.objects.filter(
+        DonemBaslangic=filtre['DonemBaslangic'],
+        OnayDurumu=0,
+        SilindiMi=False,
+        PersonelBirim__birim__in=birimler
+    ).count()
+
+    context = {
+        'current_year': current_year,
+        'current_month': current_month,
+        'years': range(current_year - 1, current_year + 2),
+        'months': [{'value': i, 'label': calendar.month_name[i]} for i in range(1, 13)],
+        'bildirimler': bildirimler,
+        'onayli_sayisi': onayli_sayisi,
+        'onaysiz_sayisi': onaysiz_sayisi,
+        'birimler': birimler  # Add birimler to context
+    }
+
+    return render(request, 'hekim_cizelge/mutemetlik_islemleri.html', context)
+
+def bildirim_excel(request):
+    """Bildirimleri Excel formatında indir"""
+    try:
+        year = int(request.GET.get('year'))
+        month = int(request.GET.get('month'))
+        tc_kimlik = request.GET.get('tc_kimlik', '')
+
+        # Sorgu parametreleri hazırla
+        filtre = {
+            'DonemBaslangic': datetime(year, month, 1).date(),
+            'OnayDurumu': 1,
+            'SilindiMi': False
+        }
+
+        if tc_kimlik:
+            filtre['PersonelBirim__personel__TCKimlikNo'] = tc_kimlik
+
+        bildirimler = Bildirim.objects.filter(**filtre).select_related(
+            'PersonelBirim__personel',
+            'PersonelBirim__birim'
+        )
+
+        if not bildirimler.exists():
+            messages.warning(request, "İndirilebilecek onaylı bildirim bulunamadı.")
+            return redirect('hekim_cizelge:mutemetlik_islemleri')
+
+        # Şablon dosyasını aç
+        template_path = os.path.join(settings.STATIC_ROOT, 'excels', 'BildirimSablon.xlsx')
+        wb = openpyxl.load_workbook(template_path)
+        ws = wb.active
+        
+        # Verileri yaz (2. satırdan başla)
+        row = 2
+        for bildirim in bildirimler:
+            personel = bildirim.PersonelBirim.personel
+            birim = bildirim.PersonelBirim.birim
+            
+            ws.cell(row=row, column=1, value=personel.PersonelID)
+            ws.cell(row=row, column=2, value=personel.FirstName)
+            ws.cell(row=row, column=3, value=personel.LastName)
+            ws.cell(row=row, column=4, value=1)
+            ws.cell(row=row, column=5, value=float(bildirim.NormalFazlaMesai or 0))
+            ws.cell(row=row, column=7, value=float(bildirim.BayramFazlaMesai or 0))
+            ws.cell(row=row, column=8, value=float(bildirim.RiskliNormalFazlaMesai or 0))
+            ws.cell(row=row, column=9, value=float(bildirim.RiskliBayramFazlaMesai or 0))
+            ws.cell(row=row, column=10, value=float(bildirim.NormalIcap or 0))
+            ws.cell(row=row, column=11, value=float(bildirim.BayramIcap or 0))
+            ws.cell(row=row, column=12, value=birim.BirimAdi)
+            row += 1
+        
+        # Excel dosyasını kaydet
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        # HTTP response oluştur
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="bildirimler_{year}_{month}.xlsx"'
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Excel oluşturulurken hata: {str(e)}")
+        return redirect('hekim_cizelge:mutemetlik_islemleri')

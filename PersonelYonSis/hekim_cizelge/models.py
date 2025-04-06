@@ -85,10 +85,16 @@ class Hizmet(models.Model):
 
 class Personel(models.Model):
     PersonelID = models.AutoField(primary_key=True)
-    PersonelName = models.CharField(max_length=100)  # Ad Soyad
+    # PersonelName = models.CharField(max_length=100)  # Ad Soyad
+    FirstName = models.CharField(max_length=50, null=True, blank=True)
+    LastName = models.CharField(max_length=50, null=True, blank=True)
     PersonelTitle = models.CharField(max_length=50)  # Unvan (ör. Uzman Tabip)
     PersonelBranch = models.CharField(max_length=100)  # Branş (ör. İç Hastalıkları)
     birim = models.ManyToManyField(Birim, through='PersonelBirim')
+
+    @property
+    def PersonelName(self):
+        return f"{self.FirstName} {self.LastName}".strip()
 
     def __str__(self):
         return f"{self.PersonelName} ({self.PersonelTitle})"

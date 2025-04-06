@@ -25,9 +25,6 @@ urlpatterns = [
     path('hizmet-raporu/', views.hizmet_raporu, name='hizmet_raporu'),
     path('hizmet-raporu/pdf/', views.hizmet_raporu_pdf, name='hizmet_raporu_pdf'),
     path('birim-dashboard/', views.birim_dashboard, name='birim_dashboard'),
-]
-
-urlpatterns += [
     path('bildirimler/', views.bildirimler, name='bildirimler'),
     path('bildirim/olustur/', views.bildirim_olustur, name='bildirim_olustur'), 
     path('bildirim/listele/<int:yil>/<int:ay>/<int:birim_id>/', views.bildirim_listele, name='bildirim_listele'),
@@ -36,6 +33,8 @@ urlpatterns += [
     path('bildirim/toplu-olustur/<int:birim_id>/', views.bildirim_toplu_olustur, name='bildirim_toplu_olustur'),
     path('bildirim/toplu-onay/<int:birim_id>/', views.bildirim_toplu_onay, name='bildirim_toplu_onay'),
     path('bildirim/form/<int:birim_id>/', views.bildirim_form, name='bildirim_form'),
+    path('mutemetlik_islemleri/', views.mutemetlik_islemleri, name='mutemetlik_islemleri'),
+    path('bildirim-excel/', views.bildirim_excel, name='bildirim_excel'),
     path('resmi-tatiller/', views.resmi_tatiller, name='resmi_tatiller'),
     path('tatil-ekle/', views.tatil_ekle, name='tatil_ekle'),
     path('tatil-sil/<int:tatil_id>/', views.tatil_sil, name='tatil_sil'),

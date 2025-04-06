@@ -19,6 +19,7 @@
                 <th>Düzenle</th>
                 <th>T.C. Kimlik No</th>
                 <th>Ad</th>
+                <th>Soyad</th>
                 <th>Unvan</th>
                 <th>Branş</th>
                 <th>Çalıştığı Birim</th>
@@ -39,7 +40,8 @@
                     </button>
                 </td>
                 <td>{{ personel.PersonelID }}</td>
-                <td contenteditable="false">{{ personel.PersonelName }}</td>
+                <td contenteditable="false">{{ personel.FirstName }}</td>
+                <td contenteditable="false">{{ personel.LastName }}</td>
                 <td contenteditable="false">{{ personel.PersonelTitle }}</td>
                 <td>{{ personel.PersonelBranch }}</td>
                 <td>
@@ -80,9 +82,10 @@
     function saveEdit(button) {
         let row = $(button).closest('tr');
         let personelID = row.find('td:eq(1)').text().trim();
-        let personelName = row.find('td:eq(2)').text().trim();  
-        let personelTitle = row.find('td:eq(3)').text().trim();
-        let personelBranch = row.find('td:eq(4)').text().trim();
+        let firstName = row.find('td:eq(2)').text().trim();  
+        let lastName = row.find('td:eq(3)').text().trim();  
+        let personelTitle = row.find('td:eq(4)').text().trim();
+        let personelBranch = row.find('td:eq(5)').text().trim();
         let birimID = row.find('select[name="birim"]').val();
         
         $.ajax({
@@ -91,7 +94,8 @@
             data: {
                 id: personelID,
                 birim: birimID,
-                name: personelName,
+                first_name: firstName,
+                last_name: lastName,
                 title: personelTitle,
                 branch: personelBranch,
                 csrfmiddlewaretoken: '{{ csrf_token }}'

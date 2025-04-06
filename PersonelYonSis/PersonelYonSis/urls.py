@@ -25,6 +25,6 @@ urlpatterns = [
     path('mercis657/', include('mercis657.urls')),
     path('hekim_cizelge/', include('hekim_cizelge.urls')),
     path('admin/', admin.site.urls),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

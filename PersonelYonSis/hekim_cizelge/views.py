@@ -11,6 +11,7 @@ import pdfkit
 from django.conf import settings
 from django.db.models import Count
 from django.db.models.functions import TruncMonth
+from django.utils.timezone import now
 
 from hekim_cizelge.forms import BildirimForm
 from hekim_cizelge.utils import hesapla_bildirim_verileri, hesapla_fazla_mesai, hesapla_icap_suresi
@@ -565,7 +566,7 @@ def bildirimler(request):
 
     # Yetkili olunan birimleri al
     user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
-    birimler = Birim.objects.filter(BirimID__in=user_birimler)
+    birimler = Birim.objects.filter(BirimID__in(user_birimler))
 
     # Seçili birimi al
     selected_birim_id = request.GET.get('birim_id')
@@ -1343,8 +1344,72 @@ def mutemetlik_islemleri(request):
 
     return render(request, 'hekim_cizelge/mutemetlik_islemleri.html', context)
 
+@csrf_exempt
+def bildirim_kilit(request, bildirim_id):
+    """Locks a specific record."""
+    try:
+        bildirim = get_object_or_404(Bildirim, BildirimID=bildirim_id)
+        if bildirim.MutemetKilit:
+            return JsonResponse({'status': 'error', 'message': 'Bildirim zaten kilitli.'})
+        bildirim.MutemetKilit = True
+        bildirim.MutemetKilitUser = request.user
+        bildirim.MutemetKilitTime = now()
+        bildirim.save()
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+@csrf_exempt
+def bildirim_kilit_ac(request, bildirim_id):
+    """Unlocks a specific record."""
+    try:
+        bildirim = get_object_or_404(Bildirim, BildirimID=bildirim_id)
+        if not bildirim.MutemetKilit:
+            return JsonResponse({'status': 'error', 'message': 'Bildirim zaten kilitli değil.'})
+        bildirim.MutemetKilit = False
+        bildirim.MutemetKilitUser = None
+        bildirim.MutemetKilitTime = None
+        bildirim.save()
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+@csrf_exempt
+def toplu_kilit(request):
+    """Locks or unlocks all filtered records."""
+    try:
+        data = json.loads(request.body)
+        year = int(data.get('year'))
+        month = int(data.get('month'))
+        tc_kimlik = data.get('tc_kimlik', '')
+        action = data.get('action')  # 'lock' or 'unlock'
+
+        filtre = {
+            'DonemBaslangic': datetime(year, month, 1).date(),
+            'SilindiMi': False
+        }
+        if tc_kimlik:
+            filtre['PersonelBirim__personel__TCKimlikNo'] = tc_kimlik
+
+        bildirimler = Bildirim.objects.filter(**filtre)
+        if action == 'lock':
+            bildirimler.update(
+                MutemetKilit=True,
+                MutemetKilitUser=request.user,
+                MutemetKilitTime=now()
+            )
+        elif action == 'unlock':
+            bildirimler.update(
+                MutemetKilit=False,
+                MutemetKilitUser=None,
+                MutemetKilitTime=None
+            )
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
 def bildirim_excel(request):
-    """Bildirimleri Excel formatında indir"""
+    """Exports records to Excel and locks them."""
     try:
         year = int(request.GET.get('year'))
         month = int(request.GET.get('month'))
@@ -1368,6 +1433,13 @@ def bildirim_excel(request):
         if not bildirimler.exists():
             messages.warning(request, "İndirilebilecek onaylı bildirim bulunamadı.")
             return redirect('hekim_cizelge:mutemetlik_islemleri')
+
+        # Lock all records before exporting
+        bildirimler.update(
+            MutemetKilit=True,
+            MutemetKilitUser=request.user,
+            MutemetKilitTime=now()
+        )
 
         # Şablon dosyasını aç
         template_path = os.path.join(settings.STATIC_ROOT, 'excels', 'BildirimSablon.xlsx')

@@ -96,13 +96,13 @@
                                                 {% else %}
                                                 <span class="text-danger">Onaysız</span>
                                                 {% endif %}
-                                                {% if bildirim.MutemetKilidi %}
+                                                {% if bildirim.MutemetKilit %}
                                                 <span class="badge badge-danger">Kilitli</span>
                                                 {% endif %}
                                             </td>
                                             <td>
                                                 {% if bildirim.OnayDurumu == 1 %}
-                                                    {% if bildirim.MutemetKilidi %}
+                                                    {% if bildirim.MutemetKilit %}
                                                     <button class="btn btn-sm btn-warning kilit-ac" data-bildirim-id="{{ bildirim.BildirimID }}">
                                                         <i class="fas fa-lock-open"></i> Kilidi Aç
                                                     </button>
@@ -126,6 +126,12 @@
                         <div class="col-12">
                             <button id="excelIndir" class="btn btn-success">
                                 <i class="fas fa-file-excel"></i> Excel'e Aktar
+                            </button>
+                            <button id="topluKilit" class="btn btn-danger">
+                                <i class="fas fa-lock"></i> Toplu Kilitle
+                            </button>
+                            <button id="topluKilitAc" class="btn btn-warning">
+                                <i class="fas fa-lock-open"></i> Toplu Kilit Aç
                             </button>
                         </div>
                     </div>
@@ -169,13 +175,63 @@ $(document).ready(function() {
         }
     });
 
-    // Excel indirme
+    // Excel export with confirmation
     $('#excelIndir').click(function() {
+        Swal.fire({
+            title: 'Onaylıyor musunuz?',
+            text: "Excele aktarılan kayıtlar kilitlenecek, güncelleme yapılamayacaktır.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, onaylıyorum!',
+            cancelButtonText: 'Hayır, iptal et'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                var year = $('#year').val();
+                var month = $('#month').val();
+                var tc_kimlik = $('#tc_kimlik').val();
+                window.location.href = `/hekim_cizelge/bildirim-excel/?year=${year}&month=${month}&tc_kimlik=${tc_kimlik}`;
+            }
+        });
+    });
+
+    // Bulk lock
+    $('#topluKilit').click(function() {
         var year = $('#year').val();
         var month = $('#month').val();
         var tc_kimlik = $('#tc_kimlik').val();
-        
-        window.location.href = `/hekim_cizelge/bildirim-excel/?year=${year}&month=${month}&tc_kimlik=${tc_kimlik}`;
+        $.ajax({
+            url: '/hekim_cizelge/toplu-kilit/',
+            method: 'POST',
+            data: JSON.stringify({ year, month, tc_kimlik, action: 'lock' }),
+            contentType: 'application/json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('Hata: ' + response.message);
+                }
+            }
+        });
+    });
+
+    // Bulk unlock
+    $('#topluKilitAc').click(function() {
+        var year = $('#year').val();
+        var month = $('#month').val();
+        var tc_kimlik = $('#tc_kimlik').val();
+        $.ajax({
+            url: '/hekim_cizelge/toplu-kilit/',
+            method: 'POST',
+            data: JSON.stringify({ year, month, tc_kimlik, action: 'unlock' }),
+            contentType: 'application/json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('Hata: ' + response.message);
+                }
+            }
+        });
     });
 });
 </script>

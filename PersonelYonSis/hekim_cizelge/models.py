@@ -258,6 +258,11 @@ class Bildirim(models.Model):
     OnayTarihi = models.DateTimeField(null=True)
     OnayDurumu = models.IntegerField(default=0)  # 0: Bekliyor, 1: Onaylandı
     SilindiMi = models.BooleanField(default=False)
+    MutemetKilit = models.BooleanField(default=False)  # Kilit durumu
+    MutemetKilitUser = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='mutemet_kilit_kullanicilar'
+    )  # Kilitleyen kullanıcı
+    MutemetKilitTime = models.DateTimeField(null=True, blank=True)  # Kilitleme zamanı
 
     class Meta:
         unique_together = [['PersonelBirim', 'DonemBaslangic']]

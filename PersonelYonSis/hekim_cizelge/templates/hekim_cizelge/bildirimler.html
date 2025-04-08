@@ -128,12 +128,14 @@
                     </td>
                     {% endfor %}
                     <td class="onay-durumu">
-                        <i class="bi bi-circle-fill text-secondary"></i>
+                        <i class="bi bi-check-circle-fill text-success"></i>
                     </td>
                     <td>
                         <button class="btn btn-sm btn-primary create-btn" data-personel-id="{{ personel.PersonelID }}">
                             <i class="bi bi-plus"></i>
                         </button>
+                        <!-- Bu alana tekil onaylama butonlarını taşıyacağız -->
+                        
                     </td>
                 </tr>
                 {% endfor %}
@@ -145,6 +147,76 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Bildirimler tablosu -->
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Personel</th>
+                <th colspan="5">Mesai Süreleri (Saat)</th>
+                <th colspan="3">İcap Süreleri (Saat)</th>
+                <th>Onay Durumu</th>
+                <th>İşlemler</th>
+            </tr>
+            <tr>
+                <th></th>
+                <th>Normal</th>
+                <th>Bayram</th>
+                <th>Riskli N.</th>
+                <th>Riskli B.</th>
+                <th>Toplam</th>
+                <th>Normal</th>
+                <th>Bayram</th>
+                <th>Toplam</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for bildirim in bildirimler %}
+            <tr>
+                <td>{{ bildirim.PersonelBirim.personel.PersonelName }}</td>
+                <td>{{ bildirim.NormalFazlaMesai|floatformat:0 }}</td>
+                <td>{{ bildirim.BayramFazlaMesai|floatformat:0 }}</td>
+                <td>{{ bildirim.RiskliNormalFazlaMesai|floatformat:0 }}</td>  
+                <td>{{ bildirim.RiskliBayramFazlaMesai|floatformat:0 }}</td>
+                <td class="fw-bold">{{ bildirim.ToplamFazlaMesai|floatformat:0 }}</td>
+                <td>{{ bildirim.NormalIcap|floatformat:0 }}</td>
+                <td>{{ bildirim.BayramIcap|floatformat:0 }}</td>
+                <td class="fw-bold">{{ bildirim.ToplamIcap|floatformat:0 }}</td>
+                <td class="text-center">
+                    {% if bildirim.OnayDurumu %}
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                    {% else %}
+                        <i class="bi bi-clock text-warning"></i>
+                    {% endif %}
+                </td>
+                <td class="text-center">
+                    {% if not bildirim.MutemetKilit %}
+                        {% if bildirim.OnayDurumu == 0 %}
+                            <button class="btn btn-sm btn-success onay-btn" 
+                                data-bildirim-id="{{ bildirim.BildirimID }}"
+                                data-action="onay">
+                                <i class="bi bi-check-circle"></i> Onayla
+                            </button>
+                        {% else %}
+                            <button class="btn btn-sm btn-warning onay-btn" 
+                                data-bildirim-id="{{ bildirim.BildirimID }}"
+                                data-action="kaldir">
+                                <i class="bi bi-x-circle"></i> Onay Kaldır
+                            </button>
+                        {% endif %}
+                    {% else %}
+                        <span class="badge bg-danger">
+                            <i class="bi bi-lock-fill"></i> Kilitli
+                        </span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
 </div>
 
 {% endblock %}
@@ -359,6 +431,125 @@ function fetchBildirimler(year, month, birimId) {
             }
         });
     });
+
+    // Tekil onay/onay kaldırma işlemi
+    document.querySelectorAll('.onay-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const bildirimId = this.dataset.bildirimId;
+            const action = this.dataset.action;
+            
+            try {
+                const response = await fetch(`/hekim_cizelge/bildirim/toplu-onay/${bildirimId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        year: {{ current_year }},
+                        month: {{ current_month }},
+                        onay_durumu: action === 'onay' ? 1 : 0
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    location.reload();
+                } else if (data.status === 'error' && data.message.includes('kilitli')) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'İşlem Başarısız',
+                        text: 'Bu kayıt kilitli olduğu için işlem yapılamaz!'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Hata',
+                        text: data.message
+                    });
+                }
+            } catch (error) {
+                console.error('Hata:', error);
+            }
+        });
+    });
+
+    // Toplu onay işlemi
+    document.getElementById('topluOnayBtn').addEventListener('click', async function() {
+        const result = await Swal.fire({
+            title: 'Toplu Onay',
+            text: 'Tüm bildirimleri onaylamak istediğinize emin misiniz?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Evet',
+            cancelButtonText: 'Hayır'
+        });
+
+        if (result.isConfirmed) {
+            await topluIslem('onay', 1);
+        }
+    });
+
+    // Toplu onay kaldırma işlemi
+    document.getElementById('topluOnayKaldirBtn').addEventListener('click', async function() {
+        const result = await Swal.fire({
+            title: 'Toplu Onay Kaldırma',
+            text: 'Tüm bildirimlerin onayını kaldırmak istediğinize emin misiniz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet',
+            cancelButtonText: 'Hayır'
+        });
+
+        if (result.isConfirmed) {
+            await topluIslem('kaldir', 0);
+        }
+    });
+
+    // Toplu işlem fonksiyonu
+    async function topluIslem(islemTipi, onayDurumu) {
+        try {
+            const response = await fetch(`/hekim_cizelge/bildirim/toplu-onay/{{ selected_birim.BirimID }}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    year: {{ current_year }},
+                    month: {{ current_month }},
+                    onay_durumu: onayDurumu
+                })
+            });
+
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'İşlem Başarılı',
+                    text: data.message
+                }).then(() => {
+                    location.reload();
+                });
+            } else if (data.message.includes('kilitli')) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'İşlem Başarısız',
+                    text: 'Kilitli kayıtlar nedeniyle işlem tamamlanamadı!'
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Hata',
+                    text: data.message
+                });
+            }
+        } catch (error) {
+            console.error('Hata:', error);
+        }
+    }
 });
 
 // Helper functions

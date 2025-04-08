@@ -566,7 +566,7 @@ def bildirimler(request):
 
     # Yetkili olunan birimleri al
     user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
-    birimler = Birim.objects.filter(BirimID__in(user_birimler))
+    birimler = Birim.objects.filter(BirimID__in=user_birimler)
 
     # Seçili birimi al
     selected_birim_id = request.GET.get('birim_id')
@@ -913,19 +913,32 @@ def bildirim_toplu_onay(request, birim_id):
             data = json.loads(request.body)
             year = int(data.get('year'))
             month = int(data.get('month'))
-            tip = data.get('tip')
             onay_durumu = int(data.get('onay_durumu'))
             
             donem = datetime(year, month, 1).date()
+            
+            # Önce kilitli kayıt kontrolü yap
+            kilitli_kayit_var = Bildirim.objects.filter(
+                PersonelBirim__birim_id=birim_id,
+                DonemBaslangic=donem,
+                SilindiMi=False,
+                MutemetKilit=True
+            ).exists()
+            
+            if kilitli_kayit_var:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Bazı kayıtlar kilitli olduğu için işlem yapılamaz.'
+                })
             
             # Filtre kriterlerini güncelle
             filtre = {
                 'PersonelBirim__birim_id': birim_id,
                 'DonemBaslangic': donem,
-                'SilindiMi': False
+                'SilindiMi': False,
+                'MutemetKilit': False  # Sadece kilitli olmayan kayıtlar
             }
             
-            # Onay durumuna göre filtreleme (onay için 0, onay kaldırma için 1)
             if onay_durumu == 1:
                 filtre['OnayDurumu'] = 0
             else:
@@ -1214,7 +1227,7 @@ def birim_dashboard(request):
     if request.method == 'GET':
         # Kullanıcının yetkili olduğu birimleri al
         user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
-        birimler = Birim.objects.filter(BirimID__in(user_birimler))
+        birimler = Birim.objects.filter(BirimID__in=user_birimler)
         
         # Seçili birimi al
         selected_birim_id = request.GET.get('birim_id')

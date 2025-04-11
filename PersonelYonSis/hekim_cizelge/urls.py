@@ -32,6 +32,7 @@ urlpatterns = [
     path('bildirim/sil/<int:bildirim_id>/', views.bildirim_sil, name='bildirim_sil'),
     path('bildirim/toplu-olustur/<int:birim_id>/', views.bildirim_toplu_olustur, name='bildirim_toplu_olustur'),
     path('bildirim/toplu-onay/<int:birim_id>/', views.bildirim_toplu_onay, name='bildirim_toplu_onay'),
+    path('bildirim/tekil-onay/<int:bildirim_id>/', views.bildirim_tekil_onay, name='bildirim_tekil_onay'),
     path('bildirim/toplu-onay-kaldir/<int:birim_id>/', views.bildirim_toplu_onay, name='bildirim_toplu_onay_kaldir'),
     path('bildirim/form/<int:birim_id>/', views.bildirim_form, name='bildirim_form'),
     path('bildirim-kilit/<int:bildirim_id>/', views.bildirim_kilit, name='bildirim_kilit'),

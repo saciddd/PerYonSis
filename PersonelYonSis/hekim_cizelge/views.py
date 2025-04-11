@@ -663,7 +663,9 @@ def bildirim_olustur(request):
                     'toplam_icap': float(bildirim.ToplamIcap),
                     'MesaiDetay': bildirim.MesaiDetay,
                     'IcapDetay': bildirim.IcapDetay,
-                    'onay_durumu': bildirim.OnayDurumu
+                    'onay_durumu': bildirim.OnayDurumu,
+                    'bildirim_id': bildirim.BildirimID,  # Eksik ID eklendi
+                    'mutemet_kilit': bildirim.MutemetKilit # Eksik kilit durumu eklendi
                 }
             }
 
@@ -914,59 +916,112 @@ def bildirim_toplu_onay(request, birim_id):
             year = int(data.get('year'))
             month = int(data.get('month'))
             onay_durumu = int(data.get('onay_durumu'))
+            bildirim_id = data.get('bildirim_id')  # Tek bildirim için ID
             
             donem = datetime(year, month, 1).date()
             
-            # Önce kilitli kayıt kontrolü yap
-            kilitli_kayit_var = Bildirim.objects.filter(
-                PersonelBirim__birim_id=birim_id,
-                DonemBaslangic=donem,
-                SilindiMi=False,
-                MutemetKilit=True
-            ).exists()
-            
-            if kilitli_kayit_var:
+            if bildirim_id:
+                # Tekil onay işlemi
+                bildirim = get_object_or_404(Bildirim, BildirimID=bildirim_id)
+                if bildirim.MutemetKilit:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Bu kayıt kilitli olduğu için işlem yapılamaz.'
+                    })
+                bildirim.OnayDurumu = onay_durumu
+                bildirim.OnaylayanKullanici = request.user if onay_durumu == 1 else None
+                bildirim.OnayTarihi = datetime.now() if onay_durumu == 1 else None
+                bildirim.save()
                 return JsonResponse({
-                    'status': 'error',
-                    'message': 'Bazı kayıtlar kilitli olduğu için işlem yapılamaz.'
+                    'status': 'success',
+                    'message': 'Bildirim durumu güncellendi.'
                 })
-            
-            # Filtre kriterlerini güncelle
-            filtre = {
-                'PersonelBirim__birim_id': birim_id,
-                'DonemBaslangic': donem,
-                'SilindiMi': False,
-                'MutemetKilit': False  # Sadece kilitli olmayan kayıtlar
-            }
-            
-            if onay_durumu == 1:
-                filtre['OnayDurumu'] = 0
             else:
-                filtre['OnayDurumu'] = 1
-            
-            bildirimler = Bildirim.objects.filter(**filtre)
-            islem_sayisi = bildirimler.count()
-            
-            if islem_sayisi == 0:
-                mesaj = 'Onaylanacak bildirim bulunamadı.' if onay_durumu == 1 else 'Onayı kaldırılacak bildirim bulunamadı.'
+                # Toplu onay işlemi
+                kilitli_kayit_var = Bildirim.objects.filter(
+                    PersonelBirim__birim_id=birim_id,
+                    DonemBaslangic=donem,
+                    SilindiMi=False,
+                    MutemetKilit=True
+                ).exists()
+                
+                if kilitli_kayit_var:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Bazı kayıtlar kilitli olduğu için işlem yapılamaz.'
+                    })
+                
+                # Filtre kriterlerini güncelle
+                filtre = {
+                    'PersonelBirim__birim_id': birim_id,
+                    'DonemBaslangic': donem,
+                    'SilindiMi': False,
+                    'MutemetKilit': False  # Sadece kilitli olmayan kayıtlar
+                }
+                
+                if onay_durumu == 1:
+                    filtre['OnayDurumu'] = 0
+                else:
+                    filtre['OnayDurumu'] = 1
+                
+                bildirimler = Bildirim.objects.filter(**filtre)
+                islem_sayisi = bildirimler.count()
+                
+                if islem_sayisi == 0:
+                    mesaj = 'Onaylanacak bildirim bulunamadı.' if onay_durumu == 1 else 'Onayı kaldırılacak bildirim bulunamadı.'
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': mesaj
+                    })
+                
+                # Bildirimleri güncelle
+                bildirimler.update(
+                    OnayDurumu=onay_durumu,
+                    OnaylayanKullanici=request.user if onay_durumu == 1 else None,
+                    OnayTarihi=datetime.now() if onay_durumu == 1 else None
+                )
+                
+                mesaj = f'{islem_sayisi} adet bildirim onaylandı.' if onay_durumu == 1 else f'{islem_sayisi} adet bildirimin onayı kaldırıldı.'
+                
                 return JsonResponse({
-                    'status': 'error',
+                    'status': 'success',
+                    'count': islem_sayisi,
                     'message': mesaj
                 })
+
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@csrf_exempt
+def bildirim_tekil_onay(request, bildirim_id):
+    """Tekil bildirimi onaylar/onayını kaldırır"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            onay_durumu = int(data.get('onay_durumu'))
             
-            # Bildirimleri güncelle
-            bildirimler.update(
-                OnayDurumu=onay_durumu,
-                OnaylayanKullanici=request.user if onay_durumu == 1 else None,
-                OnayTarihi=datetime.now() if onay_durumu == 1 else None
-            )
+            bildirim = get_object_or_404(Bildirim, BildirimID=bildirim_id)
             
-            mesaj = f'{islem_sayisi} adet bildirim onaylandı.' if onay_durumu == 1 else f'{islem_sayisi} adet bildirimin onayı kaldırıldı.'
-            
+            # Kilit kontrolü
+            if bildirim.MutemetKilit:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Bu kayıt kilitli olduğu için işlem yapılamaz.'
+                })
+
+            bildirim.OnayDurumu = onay_durumu
+            bildirim.OnaylayanKullanici = request.user if onay_durumu == 1 else None
+            bildirim.OnayTarihi = datetime.now() if onay_durumu == 1 else None
+            bildirim.save()
+
             return JsonResponse({
                 'status': 'success',
-                'count': islem_sayisi,
-                'message': mesaj
+                'message': 'Bildirim durumu güncellendi.'
             })
 
         except Exception as e:
@@ -1033,6 +1088,7 @@ def bildirim_listele(request, yil, ay, birim_id):
         for bildirim in bildirimler:
             item = {
                 'personel_id': bildirim.PersonelBirim.personel.PersonelID,
+                'bildirim_id': bildirim.BildirimID,  # BildirimID eklendi
                 'normal_mesai': float(bildirim.NormalFazlaMesai),
                 'bayram_mesai': float(bildirim.BayramFazlaMesai),
                 'riskli_normal': float(bildirim.RiskliNormalFazlaMesai),
@@ -1042,6 +1098,7 @@ def bildirim_listele(request, yil, ay, birim_id):
                 'toplam_mesai': float(bildirim.ToplamFazlaMesai),
                 'toplam_icap': float(bildirim.ToplamIcap),
                 'onay_durumu': bildirim.OnayDurumu,
+                'mutemet_kilit': bildirim.MutemetKilit,  # Kilit durumu eklendi
                 'MesaiDetay': bildirim.MesaiDetay,
                 'IcapDetay': bildirim.IcapDetay
             }

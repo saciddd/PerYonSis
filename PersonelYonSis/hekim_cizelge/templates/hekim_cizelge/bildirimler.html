@@ -127,15 +127,17 @@
                         </div>
                     </td>
                     {% endfor %}
-                    <td class="onay-durumu">
+                    <td class="onay-durumu" data-field="onay_durumu">
                         <i class="bi bi-check-circle-fill text-success"></i>
                     </td>
-                    <td>
+                    <td data-field="islemler">
                         <button class="btn btn-sm btn-primary create-btn" data-personel-id="{{ personel.PersonelID }}">
                             <i class="bi bi-plus"></i>
                         </button>
-                        <!-- Bu alana tekil onaylama butonlarını taşıyacağız -->
-                        
+                        <!-- Tekil onaylama butonları alanı -->
+                        <div class="action-buttons" data-bildirim-id=""> 
+                            <!-- Butonlar JS ile buraya eklenecek -->
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
@@ -147,78 +149,7 @@
             </tbody>
         </table>
     </div>
-
-    <!-- Bildirimler tablosu -->
-    <table class="table table-sm">
-        <thead>
-            <tr>
-                <th>Personel</th>
-                <th colspan="5">Mesai Süreleri (Saat)</th>
-                <th colspan="3">İcap Süreleri (Saat)</th>
-                <th>Onay Durumu</th>
-                <th>İşlemler</th>
-            </tr>
-            <tr>
-                <th></th>
-                <th>Normal</th>
-                <th>Bayram</th>
-                <th>Riskli N.</th>
-                <th>Riskli B.</th>
-                <th>Toplam</th>
-                <th>Normal</th>
-                <th>Bayram</th>
-                <th>Toplam</th>
-                <th></th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for bildirim in bildirimler %}
-            <tr>
-                <td>{{ bildirim.PersonelBirim.personel.PersonelName }}</td>
-                <td>{{ bildirim.NormalFazlaMesai|floatformat:0 }}</td>
-                <td>{{ bildirim.BayramFazlaMesai|floatformat:0 }}</td>
-                <td>{{ bildirim.RiskliNormalFazlaMesai|floatformat:0 }}</td>  
-                <td>{{ bildirim.RiskliBayramFazlaMesai|floatformat:0 }}</td>
-                <td class="fw-bold">{{ bildirim.ToplamFazlaMesai|floatformat:0 }}</td>
-                <td>{{ bildirim.NormalIcap|floatformat:0 }}</td>
-                <td>{{ bildirim.BayramIcap|floatformat:0 }}</td>
-                <td class="fw-bold">{{ bildirim.ToplamIcap|floatformat:0 }}</td>
-                <td class="text-center">
-                    {% if bildirim.OnayDurumu %}
-                        <i class="bi bi-check-circle-fill text-success"></i>
-                    {% else %}
-                        <i class="bi bi-clock text-warning"></i>
-                    {% endif %}
-                </td>
-                <td class="text-center">
-                    {% if not bildirim.MutemetKilit %}
-                        {% if bildirim.OnayDurumu == 0 %}
-                            <button class="btn btn-sm btn-success onay-btn" 
-                                data-bildirim-id="{{ bildirim.BildirimID }}"
-                                data-action="onay">
-                                <i class="bi bi-check-circle"></i> Onayla
-                            </button>
-                        {% else %}
-                            <button class="btn btn-sm btn-warning onay-btn" 
-                                data-bildirim-id="{{ bildirim.BildirimID }}"
-                                data-action="kaldir">
-                                <i class="bi bi-x-circle"></i> Onay Kaldır
-                            </button>
-                        {% endif %}
-                    {% else %}
-                        <span class="badge bg-danger">
-                            <i class="bi bi-lock-fill"></i> Kilitli
-                        </span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
@@ -229,392 +160,571 @@ document.addEventListener('DOMContentLoaded', function() {
     const month = urlParams.get('month');
     const birimId = urlParams.get('birim_id');
 
+    // Initial fetch if parameters are present in URL
     if (year && month && birimId) {
         fetchBildirimler(year, month, birimId);
     }
-function fetchBildirimler(year, month, birimId) {
-    fetch(`/hekim_cizelge/bildirim/listele/${year}/${month}/${birimId}/`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success' && data.data) {
-                data.data.forEach(bildirim => {
-                    updateBildirimRow(bildirim.personel_id, bildirim);
-                });
-            }
-        })
-        .catch(error => console.error('Veri getirme hatası:', error));
-}
 
-    // Sorgula butonu - tek event listener
+    // --- Event Listeners ---
+
+    // Sorgula Butonu
     document.getElementById('queryBtn').addEventListener('click', function() {
-        const birimId = document.getElementById('selectBirim').value;
-        const year = document.getElementById('selectYear').value;
-        const month = document.getElementById('selectMonth').value;
-        const newUrl = `{% url 'hekim_cizelge:bildirimler' %}?year=${year}&month=${month}&birim_id=${birimId}`;
-        // newUrl adresine yönlendirme yap
+        const selectedBirimId = document.getElementById('selectBirim').value;
+        const selectedYear = document.getElementById('selectYear').value;
+        const selectedMonth = document.getElementById('selectMonth').value;
+        // Redirect to the same page with new query parameters
+        const newUrl = `{% url 'hekim_cizelge:bildirimler' %}?year=${selectedYear}&month=${selectedMonth}&birim_id=${selectedBirimId}`;
         window.open(newUrl, '_self');
     });
 
-
-    // Tüm personele bildirim oluşturma
+    // Tüm Personele Bildirim Butonu
     document.getElementById('createAllBtn').addEventListener('click', function() {
         const selectedBirim = document.getElementById('selectBirim').value;
-        if (!confirm(`Tüm personel için bildirim oluşturulacak. Onaylıyor musunuz?`)) {
-            return;
-        }
+        const selectedYear = document.getElementById('selectYear').value;
+        const selectedMonth = document.getElementById('selectMonth').value;
 
-        fetch("{% url 'hekim_cizelge:bildirim_toplu_olustur' 0 %}".replace('0', selectedBirim), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                year: document.getElementById('selectYear').value,
-                month: document.getElementById('selectMonth').value
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert('Bildirimler oluşturuldu.\nOluşturulan bildirim sayısı: ' + data.count);
-                window.location.reload();
-            } else {
-                alert('Bir hata oluştu: ' + data.message);
-            }
-        })
-        .catch(error => console.error('Bildirim oluşturma hatası:', error));
-    });
-
-    // Form indirme butonu
-    document.getElementById('downloadFormBtn').addEventListener('click', function() {
-        const selectedBirim = document.getElementById('selectBirim').value;
-        const year = document.getElementById('selectYear').value;
-        const month = document.getElementById('selectMonth').value;
-
-        window.location.href = `{% url 'hekim_cizelge:bildirim_form' 0 %}`.replace('0', selectedBirim) + 
-            `?year=${year}&month=${month}`;
-    });
-
-    // Bildirim oluşturma/güncelleme butonu için event listener
-    document.querySelectorAll('.create-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const personelId = this.dataset.personelId;
-            const birimId = document.getElementById('selectBirim').value;
-            const year = document.getElementById('selectYear').value;
-            const month = document.getElementById('selectMonth').value;
-
-            // Birleşik endpoint'i kullan
-            fetch("{% url 'hekim_cizelge:bildirim_olustur' %}", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
-                    personel_id: personelId,
-                    birim_id: birimId,
-                    donem: `${year}-${month}`
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    updateBildirimRow(personelId, data.bildirim_data);
-                } else {
-                    alert('Hata: ' + data.message);
-                }
-            })
-            .catch(error => console.error('Bildirim oluşturma hatası:', error));
-        });
-    });
-
-    // Toplu onay butonu için event listener
-    document.getElementById('bulkApproveBtn').addEventListener('click', function() {
-        const birimId = document.getElementById('selectBirim').value;
-        const year = document.getElementById('selectYear').value;
-        const month = document.getElementById('selectMonth').value;
-
-        fetch("{% url 'hekim_cizelge:bildirim_toplu_onay' 0 %}".replace('0', birimId), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                year: year,
-                month: month,
-                onay_durumu: 1
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                // Bildirimleri yeniden yükle
-                fetchBildirimler(year, month, birimId);
-                
-                Swal.fire({
-                    title: 'Başarılı',
-                    text: data.message,
-                    icon: 'success'
-                });
-            } else {
-                Swal.fire({
-                    title: 'Hata',
-                    text: data.message,
-                    icon: 'error'
-                });
-            }
-        })
-        .catch(error => console.error('Toplu onay hatası:', error));
-    });
-
-    // Toplu onay kaldırma butonu için event listener
-    document.getElementById('bulkRejectBtn').addEventListener('click', function() {
-        const birimId = document.getElementById('selectBirim').value;
-        const year = document.getElementById('selectYear').value;
-        const month = document.getElementById('selectMonth').value;
-
-        // Önce onaylı bildirim var mı kontrol et
-        const onayliBildirimVar = document.querySelectorAll('.text-success').length > 0;
-        
-        if (!onayliBildirimVar) {
-            Swal.fire({
-                title: 'Hata',
-                text: 'Onayı kaldırılacak bildirim bulunamadı.',
-                icon: 'error'
-            });
-            return;
+        if (!selectedBirim || selectedBirim === "0") {
+             Swal.fire('Hata', 'Lütfen bir birim seçin.', 'error');
+             return;
         }
 
         Swal.fire({
             title: 'Emin misiniz?',
-            text: "Tüm onaylar kaldırılacak!",
+            text: `Seçili birimdeki tüm personel için ${selectedYear}-${selectedMonth} dönemi bildirimleri (yeniden) oluşturulacak. Mevcut onaylanmamış bildirimler güncellenecektir.`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Evet, onayları kaldır!',
+            confirmButtonText: 'Evet, oluştur!',
             cancelButtonText: 'İptal'
         }).then((result) => {
             if (result.isConfirmed) {
-                fetch("{% url 'hekim_cizelge:bildirim_toplu_onay' 0 %}".replace('0', birimId), {
+                fetch("{% url 'hekim_cizelge:bildirim_toplu_olustur' 0 %}".replace('0', selectedBirim), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': '{{ csrf_token }}'
                     },
                     body: JSON.stringify({
-                        year: year,
-                        month: month,
-                        onay_durumu: 0
+                        year: selectedYear,
+                        month: selectedMonth
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        fetchBildirimler(year, month, birimId);
-                        Swal.fire(
-                            'Başarılı!',
-                            data.message,
-                            'success'
-                        );
+                        Swal.fire('Başarılı!', `Bildirimler oluşturuldu/güncellendi. Etkilenen personel sayısı: ${data.count}`, 'success');
+                        // Refresh data after creation
+                        fetchBildirimler(selectedYear, selectedMonth, selectedBirim);
                     } else {
-                        Swal.fire(
-                            'Hata!',
-                            data.message,
-                            'error'
-                        );
+                        Swal.fire('Hata', 'Bir hata oluştu: ' + data.message, 'error');
                     }
                 })
-                .catch(error => console.error('Onay kaldırma hatası:', error));
-            }
-        });
-    });
-
-    // Tekil onay/onay kaldırma işlemi
-    document.querySelectorAll('.onay-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const bildirimId = this.dataset.bildirimId;
-            const action = this.dataset.action;
-            
-            try {
-                const response = await fetch(`/hekim_cizelge/bildirim/toplu-onay/${bildirimId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify({
-                        year: {{ current_year }},
-                        month: {{ current_month }},
-                        onay_durumu: action === 'onay' ? 1 : 0
-                    })
+                .catch(error => {
+                    console.error('Toplu bildirim oluşturma hatası:', error);
+                    Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
                 });
-
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    location.reload();
-                } else if (data.status === 'error' && data.message.includes('kilitli')) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'İşlem Başarısız',
-                        text: 'Bu kayıt kilitli olduğu için işlem yapılamaz!'
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Hata',
-                        text: data.message
-                    });
-                }
-            } catch (error) {
-                console.error('Hata:', error);
             }
         });
     });
 
-    // Toplu onay işlemi
-    document.getElementById('topluOnayBtn').addEventListener('click', async function() {
-        const result = await Swal.fire({
-            title: 'Toplu Onay',
-            text: 'Tüm bildirimleri onaylamak istediğinize emin misiniz?',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Evet',
-            cancelButtonText: 'Hayır'
-        });
+    // Bildirim Formu İndirme Butonu
+    document.getElementById('downloadFormBtn').addEventListener('click', function() {
+        const selectedBirim = document.getElementById('selectBirim').value;
+        const selectedYear = document.getElementById('selectYear').value;
+        const selectedMonth = document.getElementById('selectMonth').value;
 
-        if (result.isConfirmed) {
-            await topluIslem('onay', 1);
+        if (!selectedBirim || selectedBirim === "0") {
+             Swal.fire('Hata', 'Lütfen bir birim seçin.', 'error');
+             return;
+        }
+        window.location.href = `{% url 'hekim_cizelge:bildirim_form' 0 %}`.replace('0', selectedBirim) +
+            `?year=${selectedYear}&month=${selectedMonth}`;
+    });
+
+    // Toplu Onay Butonu
+    document.getElementById('bulkApproveBtn').addEventListener('click', function() {
+        handleBulkAction(1); // 1 for approve
+    });
+
+    // Toplu Onay Kaldırma Butonu
+    document.getElementById('bulkRejectBtn').addEventListener('click', function() {
+        handleBulkAction(0); // 0 for reject
+    });
+
+    // Event Delegation for dynamically added buttons (.create-btn and .action-btn)
+    document.getElementById('bildirimTable').addEventListener('click', function(event) {
+        const createBtn = event.target.closest('.create-btn');
+        const actionBtn = event.target.closest('.action-btn');
+
+        if (createBtn) {
+            handleCreateButtonClick.call(createBtn, event); // Use call to set 'this' correctly
+        } else if (actionBtn) {
+            handleActionButtonClick.call(actionBtn, event); // Use call for action buttons
         }
     });
 
-    // Toplu onay kaldırma işlemi
-    document.getElementById('topluOnayKaldirBtn').addEventListener('click', async function() {
-        const result = await Swal.fire({
-            title: 'Toplu Onay Kaldırma',
-            text: 'Tüm bildirimlerin onayını kaldırmak istediğinize emin misiniz?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Evet',
-            cancelButtonText: 'Hayır'
-        });
+}); // End DOMContentLoaded
 
-        if (result.isConfirmed) {
-            await topluIslem('kaldir', 0);
+// --- Core Functions ---
+
+// Fetches notification data for the specified period and unit
+async function fetchBildirimler(year, month, birimId) {
+    console.log(`Fetching bildirimler for: Year=${year}, Month=${month}, BirimID=${birimId}`); // Debug
+    if (!year || !month || !birimId || birimId === "0") {
+        console.log("Invalid parameters for fetchBildirimler. Aborting.");
+        // Clear table or show message if needed
+        document.getElementById('bildirimTable').querySelector('tbody').innerHTML = '<tr><td colspan="20" class="text-center">Lütfen geçerli Yıl, Ay ve Birim seçip Sorgula butonuna basın.</td></tr>';
+        return;
+    }
+    try {
+        const response = await fetch(`/hekim_cizelge/bildirim/listele/${year}/${month}/${birimId}/`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Received bildirimler:', data); // Debug
+        if (data.status === 'success' && data.data) {
+            updateBildirimTable(data.data); // Update table with fetched data
+        } else {
+             // Handle cases where backend returns success: false or no data
+             console.error('API returned error or no data:', data.message || 'No data found');
+             document.getElementById('bildirimTable').querySelector('tbody').innerHTML = `<tr><td colspan="20" class="text-center">${data.message || 'Bu dönem için bildirim bulunamadı.'}</td></tr>`;
+             // Optionally show a Swal message
+             // Swal.fire('Bilgi', data.message || 'Bu dönem için bildirim bulunamadı.', 'info');
+        }
+    } catch (error) {
+        console.error('Bildirim getirme hatası:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Veri Getirme Hatası',
+            text: 'Bildirimler getirilirken bir hata oluştu. Lütfen tekrar deneyin.'
+        });
+         document.getElementById('bildirimTable').querySelector('tbody').innerHTML = '<tr><td colspan="20" class="text-center">Veri getirilirken hata oluştu.</td></tr>';
+    }
+}
+
+// Updates the entire table based on the fetched bildirimler data
+function updateBildirimTable(bildirimler) {
+    const tbody = document.getElementById('bildirimTable').querySelector('tbody');
+    // Clear existing rows except header (or find a way to update existing ones if preferred)
+    // For simplicity, let's clear and repopulate based on the template structure
+    // This assumes the initial HTML structure with `tr[data-personel-id]` exists for all personnel
+    // If personnel list changes, this needs adjustment.
+
+    // Reset all rows to default state first
+    tbody.querySelectorAll('tr[data-personel-id]').forEach(row => {
+        // Reset data cells
+        row.querySelectorAll('.normal-mesai, .bayram-mesai, .riskli-normal, .riskli-bayram, .toplam-mesai, .normal-icap, .bayram-icap, .toplam-icap').forEach(cell => cell.textContent = '-');
+        row.querySelectorAll('.mesai-sure, .icap-sure').forEach(cell => cell.textContent = '-');
+        // Reset onay icon (hide it initially)
+        const onayIcon = row.querySelector('.onay-durumu i');
+        if (onayIcon) onayIcon.style.display = 'none';
+        // Reset action buttons
+        const actionButtonsDiv = row.querySelector('.action-buttons');
+        if (actionButtonsDiv) actionButtonsDiv.innerHTML = '';
+        // Reset create button state
+        const createBtn = row.querySelector('.create-btn');
+        if (createBtn) {
+            createBtn.innerHTML = '<i class="bi bi-plus"></i>';
+            createBtn.classList.remove('btn-warning');
+            createBtn.classList.add('btn-primary');
+            createBtn.disabled = false;
         }
     });
 
-    // Toplu işlem fonksiyonu
-    async function topluIslem(islemTipi, onayDurumu) {
-        try {
-            const response = await fetch(`/hekim_cizelge/bildirim/toplu-onay/{{ selected_birim.BirimID }}/`, {
+
+    // Populate rows with data
+    bildirimler.forEach(bildirim => {
+        const row = tbody.querySelector(`tr[data-personel-id="${bildirim.personel_id}"]`);
+        if (!row) {
+            console.warn(`Row not found for personel_id: ${bildirim.personel_id}`);
+            return; // Skip if row doesn't exist for this personel
+        }
+
+        // --- Populate Data Cells (Adapted from _old's updateBildirimRow) ---
+        row.querySelector('.normal-mesai').textContent = Math.round(bildirim.normal_mesai);
+        row.querySelector('.bayram-mesai').textContent = Math.round(bildirim.bayram_mesai);
+        row.querySelector('.riskli-normal').textContent = Math.round(bildirim.riskli_normal);
+        row.querySelector('.riskli-bayram').textContent = Math.round(bildirim.riskli_bayram);
+        row.querySelector('.toplam-mesai').textContent = Math.round(bildirim.toplam_mesai);
+        row.querySelector('.normal-icap').textContent = Math.round(bildirim.normal_icap);
+        row.querySelector('.bayram-icap').textContent = Math.round(bildirim.bayram_icap);
+        row.querySelector('.toplam-icap').textContent = Math.round(bildirim.toplam_icap);
+
+        // Clear previous daily details first
+        row.querySelectorAll('.mesai-sure').forEach(cell => cell.textContent = '-');
+        row.querySelectorAll('.icap-sure').forEach(cell => cell.textContent = '-');
+
+        // Populate daily details
+        if (bildirim.MesaiDetay) {
+            Object.entries(bildirim.MesaiDetay).forEach(([tarih, sure]) => {
+                const gun = parseInt(tarih.split('-')[2]);
+                const cell = row.querySelector(`.gun-${gun} .mesai-sure`);
+                if (cell) cell.textContent = parseFloat(sure)?.toFixed(1) || '-';
+            });
+        }
+        if (bildirim.IcapDetay) {
+            Object.entries(bildirim.IcapDetay).forEach(([tarih, sure]) => {
+                const gun = parseInt(tarih.split('-')[2]);
+                const cell = row.querySelector(`.gun-${gun} .icap-sure`);
+                if (cell) cell.textContent = parseFloat(sure)?.toFixed(1) || '-';
+            });
+        }
+
+        // --- Update Onay Status and Action Buttons (Adapted from bildirimler.html's logic) ---
+        const onayIcon = row.querySelector('.onay-durumu i');
+        const actionButtonsDiv = row.querySelector('.action-buttons');
+        const createBtn = row.querySelector('.create-btn');
+
+        // Clear previous buttons and set bildirim ID
+        actionButtonsDiv.innerHTML = '';
+        actionButtonsDiv.dataset.bildirimId = bildirim.bildirim_id || ''; // Store bildirim ID
+
+        // Update Onay Icon
+        if (bildirim.bildirim_id) { // Only show icon if bildirim exists
+            onayIcon.className = `bi ${bildirim.onay_durumu === 1 ? 'bi-check-circle-fill text-success' : 'bi-clock text-warning'}`;
+            onayIcon.style.display = ''; // Make icon visible
+        } else {
+            onayIcon.style.display = 'none'; // Hide icon if no bildirim
+        }
+
+        // Update Action Buttons (Onayla/Onay Kaldır)
+        if (bildirim.bildirim_id) {
+             if (bildirim.mutemet_kilit) {
+                 actionButtonsDiv.innerHTML = `<span class="badge bg-danger"><i class="bi bi-lock-fill"></i> Kilitli</span>`;
+             } else {
+                let actionButtonHtml = '';
+                if (bildirim.onay_durumu === 0) { // If not approved, show 'Approve' button
+                    actionButtonHtml = `
+                        <button class="btn btn-sm btn-success action-btn" data-action="onay" title="Onayla">
+                            <i class="bi bi-check-circle"></i>
+                        </button>`;
+                } else { // If approved, show 'Reject' button
+                    actionButtonHtml = `
+                        <button class="btn btn-sm btn-warning action-btn" data-action="kaldir" title="Onay Kaldır">
+                            <i class="bi bi-x-circle"></i>
+                        </button>`;
+                }
+                 actionButtonsDiv.innerHTML = actionButtonHtml;
+                 // Event listener is added via delegation
+             }
+        }
+
+        // Update Create/Update Button State
+        if (createBtn) {
+            if (bildirim.bildirim_id) {
+                // Change icon to pencil for update, keep enabled unless locked
+                createBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+                createBtn.classList.remove('btn-primary');
+                createBtn.classList.add('btn-warning');
+                createBtn.title = 'Bildirimi Güncelle/Yeniden Hesapla';
+                createBtn.disabled = !!bildirim.mutemet_kilit; // Disable if locked
+                createBtn.style.display = bildirim.onay_durumu === 1 ? 'none' : 'inline-block';
+            } else {
+                // Reset to default 'Create' state
+                createBtn.innerHTML = '<i class="bi bi-plus"></i>';
+                createBtn.classList.remove('btn-warning');
+                createBtn.classList.add('btn-primary');
+                createBtn.title = 'Bildirim Oluştur';
+                createBtn.disabled = false; // Always enabled if no bildirim exists yet
+            }
+        }
+    });
+}
+
+
+// --- Action Handlers ---
+
+// Handles clicks on the Create/Update button (bi-plus or bi-pencil)
+function handleCreateButtonClick() {
+    const personelId = this.dataset.personelId;
+    const birimId = document.getElementById('selectBirim').value;
+    const year = document.getElementById('selectYear').value;
+    const month = document.getElementById('selectMonth').value;
+
+    if (!personelId || !birimId || birimId === "0" || !year || !month) {
+        Swal.fire('Hata', 'Bildirim oluşturmak/güncellemek için geçerli Birim, Yıl ve Ay seçilmelidir.', 'error');
+        return;
+    }
+
+    console.log(`Creating/Updating bildirim for Personel: ${personelId}, Dönem: ${year}-${month}`);
+
+    // Use the combined endpoint for creation/update
+    fetch("{% url 'hekim_cizelge:bildirim_olustur' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            personel_id: personelId,
+            birim_id: birimId,
+            donem: `${year}-${month}` // Backend expects YYYY-MM format
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success' && data.bildirim_data) {
+            console.log('Bildirim oluşturma/güncelleme başarılı:', data.bildirim_data);
+            // Update only the specific row after successful creation/update
+            // Instead of full refresh, find the row and call a function to update it
+            const row = document.querySelector(`tr[data-personel-id="${personelId}"]`);
+            if(row) {
+                 // Re-use parts of updateBildirimTable logic for a single row
+                 updateSingleBildirimRow(row, data.bildirim_data);
+                 Swal.fire('Başarılı', 'Bildirim başarıyla oluşturuldu/güncellendi.', 'success');
+                  // If row somehow doesn't exist, do a full refresh
+                  fetchBildirimler(year, month, birimId);
+            } else {
+                 // If row somehow doesn't exist, do a full refresh
+                 fetchBildirimler(year, month, birimId);
+            }
+        } else {
+            console.error('Bildirim oluşturma/güncelleme hatası:', data.message);
+            Swal.fire('Hata', `Bildirim oluşturulamadı/güncellenemedi: ${data.message}`, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Bildirim oluşturma/güncelleme fetch hatası:', error);
+        Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
+    });
+}
+
+// Handles clicks on individual Approve/Reject buttons (bi-check-circle or bi-x-circle)
+async function handleActionButtonClick() {
+    const actionButtonsDiv = this.closest('.action-buttons');
+    const bildirimId = actionButtonsDiv.dataset.bildirimId;
+    const action = this.dataset.action; // 'onay' or 'kaldir'
+    const row = this.closest('tr');
+    const personelId = row.dataset.personelId;
+
+    // Get current context for potential refresh
+    const birimId = document.getElementById('selectBirim').value;
+    const year = document.getElementById('selectYear').value;
+    const month = document.getElementById('selectMonth').value;
+
+    if (!bildirimId) {
+        console.error('Bildirim ID not found for action button.');
+        Swal.fire('Hata', 'İşlem yapılacak bildirim bulunamadı.', 'error');
+        return;
+    }
+
+    const confirmationText = action === 'onay' ? 'Bu bildirimi onaylamak istediğinize emin misiniz?' : 'Bu bildirimin onayını kaldırmak istediğinize emin misiniz?';
+    const result = await Swal.fire({
+        title: 'Emin misiniz?',
+        text: confirmationText,
+        icon: action === 'onay' ? 'question' : 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet',
+        cancelButtonText: 'Hayır'
+    });
+
+    if (!result.isConfirmed) {
+        return;
+    }
+
+    console.log(`Performing action '${action}' on Bildirim ID: ${bildirimId}`);
+
+    try {
+        const response = await fetch(`/hekim_cizelge/bildirim/tekil-onay/${bildirimId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                onay_durumu: action === 'onay' ? 1 : 0
+            })
+        });
+
+        const data = await response.json();
+        console.log('Tekil Onay/Kaldırma Sonucu:', data);
+
+        if (data.status === 'success' && data.bildirim_data) {
+             // Update the specific row instead of full refresh
+             updateSingleBildirimRow(row, data.bildirim_data);
+             Swal.fire('Başarılı!', data.message || 'İşlem başarıyla tamamlandı.', 'success');
+        } else {
+            // Handle specific errors like 'locked' or general failures
+            Swal.fire('Hata', data.message || 'İşlem sırasında bir hata oluştu.', 'error');
+             // Optional: Refresh the row to show the locked status if applicable
+             if (data.message && data.message.includes('kilitli')) {
+                 // We might need a way to get the latest data for just this row
+                 // For now, a full refresh might be simpler if backend doesn't return updated data on error
+                 fetchBildirimler(year, month, birimId);
+             }
+        }
+    } catch (error) {
+        console.error('Tekil Onay/Kaldırma Hatası:', error);
+        Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı veya bir hata oluştu.', 'error');
+    }
+}
+
+// Handles Bulk Approve/Reject Actions
+function handleBulkAction(onayDurumu) {
+    const birimId = document.getElementById('selectBirim').value;
+    const year = document.getElementById('selectYear').value;
+    const month = document.getElementById('selectMonth').value;
+
+    if (!birimId || birimId === "0" || !year || !month) {
+        Swal.fire('Hata', 'Toplu işlem için geçerli Birim, Yıl ve Ay seçilmelidir.', 'error');
+        return;
+    }
+
+    const actionText = onayDurumu === 1 ? 'onaylamak' : 'onayını kaldırmak';
+    const confirmButtonText = onayDurumu === 1 ? 'Evet, tümünü onayla!' : 'Evet, onayları kaldır!';
+    const titleText = onayDurumu === 1 ? 'Toplu Onay' : 'Toplu Onay Kaldırma';
+
+    // Check if there are any relevant items to action
+    const targetIconClass = onayDurumu === 1 ? '.text-warning' : '.text-success'; // Approve needs warning icons, Reject needs success icons
+    const relevantItemsExist = document.querySelector(`#bildirimTable .onay-durumu i${targetIconClass}`);
+
+    if (!relevantItemsExist) {
+         Swal.fire('Bilgi', `Bu durumda ${actionText} için uygun bildirim bulunmamaktadır.`, 'info');
+         return;
+    }
+
+
+    Swal.fire({
+        title: `${titleText} - Emin misiniz?`,
+        text: `Seçili dönemdeki tüm *uygun* bildirimleri ${actionText} istediğinize emin misiniz? (Kilitli olanlar etkilenmeyecektir)`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: onayDurumu === 1 ? '#28a745' : '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: confirmButtonText,
+        cancelButtonText: 'İptal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            console.log(`Performing bulk action: ${actionText} for Birim: ${birimId}, Dönem: ${year}-${month}`);
+            fetch("{% url 'hekim_cizelge:bildirim_toplu_onay' 0 %}".replace('0', birimId), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
                 body: JSON.stringify({
-                    year: {{ current_year }},
-                    month: {{ current_month }},
+                    year: year,
+                    month: month,
                     onay_durumu: onayDurumu
                 })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire(
+                        'Başarılı!',
+                        data.message || `Toplu ${actionText} işlemi tamamlandı. Etkilenen: ${data.count || 0}`,
+                        'success'
+                    );
+                    // Refresh the table data
+                    fetchBildirimler(year, month, birimId);
+                } else {
+                    Swal.fire(
+                        'Hata!',
+                        data.message || `Toplu ${actionText} işlemi sırasında bir hata oluştu.`,
+                        'error'
+                    );
+                }
+            })
+            .catch(error => {
+                console.error(`Toplu ${actionText} hatası:`, error);
+                 Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
             });
-
-            const data = await response.json();
-            
-            if (data.status === 'success') {
-                Swal.fire({
-                    icon: 'success',
-                    title: 'İşlem Başarılı',
-                    text: data.message
-                }).then(() => {
-                    location.reload();
-                });
-            } else if (data.message.includes('kilitli')) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'İşlem Başarısız',
-                    text: 'Kilitli kayıtlar nedeniyle işlem tamamlanamadı!'
-                });
-            } else {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Hata',
-                    text: data.message
-                });
-            }
-        } catch (error) {
-            console.error('Hata:', error);
         }
-    }
-});
-
-// Helper functions
-function updateQueryParam(key, value) {
-    const searchParams = new URLSearchParams(window.location.search);
-    searchParams.set(key, value);
-    return window.location.pathname + '?' + searchParams.toString();
+    });
 }
 
-// Bildirim row güncelleme fonksiyonu - tek bir tanımlama
-function updateBildirimRow(personelId, data) {
-    const row = document.querySelector(`tr[data-personel-id="${personelId}"]`);
-    if (!row) return;
+// --- Helper Function ---
 
-    // Ana verileri doldur
-    row.querySelector('.normal-mesai').textContent = Math.round(data.normal_mesai);
-    row.querySelector('.bayram-mesai').textContent = Math.round(data.bayram_mesai);
-    row.querySelector('.riskli-normal').textContent = Math.round(data.riskli_normal);
-    row.querySelector('.riskli-bayram').textContent = Math.round(data.riskli_bayram);
-    row.querySelector('.toplam-mesai').textContent = Math.round(data.toplam_mesai);
-    row.querySelector('.normal-icap').textContent = Math.round(data.normal_icap);
-    row.querySelector('.bayram-icap').textContent = Math.round(data.bayram_icap);
-    row.querySelector('.toplam-icap').textContent = Math.round(data.toplam_icap);
+// Updates a single row - extracted logic from updateBildirimTable
+function updateSingleBildirimRow(row, bildirim) {
+     if (!row || !bildirim) return;
 
-    // Günlük detayları doldur
-    if (data.MesaiDetay) {
-        Object.entries(data.MesaiDetay).forEach(([tarih, sure]) => {
-            const gun = parseInt(tarih.split('-')[2]);
-            const cell = row.querySelector(`.gun-${gun}`);
-            if (cell) {
-                cell.querySelector('.mesai-sure').textContent = Math.round(sure) || '-';
-            }
-        });
-    }
+     console.log("Updating single row for personel:", bildirim.personel_id, "with data:", bildirim);
 
-    if (data.IcapDetay) {
-        Object.entries(data.IcapDetay).forEach(([tarih, sure]) => {
-            const gun = parseInt(tarih.split('-')[2]);
-            const cell = row.querySelector(`.gun-${gun}`);
-            if (cell) {
-                cell.querySelector('.icap-sure').textContent = Math.round(sure) || '-';
-            }
-        });
-    }
+     // Populate Data Cells
+     row.querySelector('.normal-mesai').textContent = Math.round(bildirim.normal_mesai);
+     row.querySelector('.bayram-mesai').textContent = Math.round(bildirim.bayram_mesai);
+     row.querySelector('.riskli-normal').textContent = Math.round(bildirim.riskli_normal);
+     row.querySelector('.riskli-bayram').textContent = Math.round(bildirim.riskli_bayram);
+     row.querySelector('.toplam-mesai').textContent = Math.round(bildirim.toplam_mesai);
+     row.querySelector('.normal-icap').textContent = Math.round(bildirim.normal_icap);
+     row.querySelector('.bayram-icap').textContent = Math.round(bildirim.bayram_icap);
+     row.querySelector('.toplam-icap').textContent = Math.round(bildirim.toplam_icap);
 
-    // Onay durumunu güncelle
-    const onayIcon = row.querySelector('.onay-durumu i');
-    onayIcon.className = `bi bi-circle-fill ${data.onay_durumu === 1 ? 'text-success' : 'text-warning'}`;
+     // Clear previous daily details
+     row.querySelectorAll('.mesai-sure').forEach(cell => cell.textContent = '-');
+     row.querySelectorAll('.icap-sure').forEach(cell => cell.textContent = '-');
 
-    // İşlem butonunu güncelle
-    const createBtn = row.querySelector('.create-btn');
-    if (data.onay_durumu === 1) {
-        createBtn.disabled = true;
-        createBtn.classList.remove('btn-primary', 'btn-warning');
-        createBtn.classList.add('btn-success');
-        createBtn.innerHTML = '<i class="bi bi-check"></i>';
-    } else {
-        createBtn.disabled = false;
-        createBtn.classList.remove('btn-primary', 'btn-success');
-        createBtn.classList.add('btn-warning');
-        createBtn.innerHTML = '<i class="bi bi-pencil"></i>';
-    }
+     // Günlük detay verilerini yuvarlanmış biçimde güncelle
+     if (bildirim.MesaiDetay) {
+         Object.entries(bildirim.MesaiDetay).forEach(([tarih, sure]) => {
+             const gun = parseInt(tarih.split('-')[2]);
+             const cell = row.querySelector(`.gun-${gun} .mesai-sure`);
+             if (cell) {
+                cell.textContent = Math.round(sure) || '-';
+                }
+         });
+     }
+     if (bildirim.IcapDetay) {
+         Object.entries(bildirim.IcapDetay).forEach(([tarih, sure]) => {
+             const gun = parseInt(tarih.split('-')[2]);
+             const cell = row.querySelector(`.gun-${gun} .icap-sure`);
+             if (cell) {
+                cell.textContent = Math.round(sure) || '-';
+                }
+         });
+     }
+
+     // Update Onay Status and Action Buttons
+     const onayIcon = row.querySelector('.onay-durumu i');
+     const actionButtonsDiv = row.querySelector('.action-buttons');
+     const createBtn = row.querySelector('.create-btn');
+
+     actionButtonsDiv.innerHTML = '';
+     actionButtonsDiv.dataset.bildirimId = bildirim.bildirim_id || '';
+
+     if (bildirim.bildirim_id) {
+         onayIcon.className = `bi ${bildirim.onay_durumu === 1 ? 'bi-check-circle-fill text-success' : 'bi-clock text-warning'}`;
+         onayIcon.style.display = '';
+
+         if (bildirim.mutemet_kilit) {
+             actionButtonsDiv.innerHTML = `<span class="badge bg-danger"><i class="bi bi-lock-fill"></i> Kilitli</span>`;
+         } else {
+             let actionButtonHtml = '';
+             if (bildirim.onay_durumu === 0) {
+                 actionButtonHtml = `<button class="btn btn-sm btn-success action-btn" data-action="onay" title="Onayla"><i class="bi bi-check-circle"></i></button>`;
+             } else {
+                 actionButtonHtml = `<button class="btn btn-sm btn-warning action-btn" data-action="kaldir" title="Onay Kaldır"><i class="bi bi-x-circle"></i></button>`;
+             }
+             actionButtonsDiv.innerHTML = actionButtonHtml;
+         }
+     } else {
+         onayIcon.style.display = 'none';
+     }
+
+     if (createBtn) {
+         if (bildirim.bildirim_id) {
+             createBtn.innerHTML = '<i class="bi bi-pencil"></i>';
+             createBtn.classList.remove('btn-primary');
+             createBtn.classList.add('btn-warning');
+             createBtn.title = 'Bildirimi Güncelle/Yeniden Hesapla';
+             createBtn.disabled = !!bildirim.mutemet_kilit;
+             createBtn.style.display = bildirim.onay_durumu === 1 ? 'none' : 'inline-block';
+         } else {
+             createBtn.innerHTML = '<i class="bi bi-plus"></i>';
+             createBtn.classList.remove('btn-warning');
+             createBtn.classList.add('btn-primary');
+             createBtn.title = 'Bildirim Oluştur';
+             createBtn.disabled = false;
+         }
+     }
 }
+
 </script>
+{% endblock %}
 
+{% block extra_css %}
 <style>
 td[class*="gun-"] {
     text-align: center;

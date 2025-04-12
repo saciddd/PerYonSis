@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sendika Takibi{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@x.x.x/dist/select2-bootstrap4.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+<style>
+    .select2-container .select2-selection--single {
+        height: calc(1.5em + .75rem + 2px); /* Bootstrap input yüksekliği ile eşleştir */
+        padding: .375rem .75rem;
+        border: 1px solid #ced4da;
+    }
+    .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+        line-height: 1.5; 
+    }
+    .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
+        height: calc(1.5em + .75rem); /* Ok hizalaması */
+    }
+    .form-label-icon {
+        display: flex;
+        align-items: center;
+    }
+    .form-label-icon .btn-icon {
+        margin-left: 5px;
+        padding: 0.1rem 0.3rem; /* Buton boyutunu küçült */
+        font-size: 0.8rem; /* İkon boyutunu küçült */
+        line-height: 1; /* Dikey hizalamayı iyileştir */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card card-primary card-outline">
+        <div class="card-header">
+            <h3 class="card-title">Yeni Sendika Hareketi Ekle</h3>
+        </div>
+        <div class="card-body">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            <form method="post" action="{% url 'mutemet_app:sendika_hareket_ekle' %}" class="row g-3 align-items-end">
+                {% csrf_token %}
+                <div class="col-md-3">
+                    <label for="personel_select" class="form-label">T.C. Kimlik No</label>
+                    <select id="personel_select" name="personel_id" class="form-control" required></select>
+                </div>
+                <div class="col-md-3">
+                    <label for="ad_soyad" class="form-label">Ad Soyad</label>
+                    <input type="text" id="ad_soyad" class="form-control" readonly>
+                </div>
+                <div class="col-md-2">
+                    <label for="hareket_tarihi" class="form-label">Tarih</label>
+                    <input type="date" id="hareket_tarihi" name="hareket_tarihi" class="form-control" required>
+                </div>
+                 <div class="col-md-2">
+                    <label for="sendika" class="form-label form-label-icon">
+                        Sendika
+                        <button type="button" class="btn btn-secondary btn-sm btn-icon" id="btnSendikaYonetimi" data-bs-toggle="modal" data-bs-target="#sendikaModal">
+                            <i class="bi bi-gear-fill"></i>
+                        </button>
+                    </label>
+                    <select id="sendika" name="sendika" class="form-select" required>
+                        <option value="" selected disabled>Seçiniz...</option>
+                        {% for s in sendikalar %}
+                        <option value="{{ s.sendika_id }}">{{ s.sendika_adi }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label for="hareket_tipi" class="form-label">Hareket</label>
+                    <select id="hareket_tipi" name="hareket_tipi" class="form-select" required>
+                        <option value="" selected disabled>Seç...</option>
+                        <option value="GIRIS">Giriş</option>
+                        <option value="CIKIS">Çıkış</option>
+                    </select>
+                </div>
+                 <div class="col-md-1">
+                     <button type="submit" class="btn btn-primary w-100">Kaydet</button>
+                 </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3 class="card-title">Sendika Üyelik Kayıtları</h3>
+            <div class="card-tools">
+                 <form method="get" class="d-inline-block ms-2">
+                    <select name="maas_donemi" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
+                        <option value="" {% if not selected_donem %}selected{% endif %}>Tüm Dönemler</option>
+                         {% for donem in maas_donemleri %}
+                            <option value="{{ donem }}" {% if selected_donem == donem %}selected{% endif %}>{{ donem }}</option>
+                        {% endfor %}
+                    </select>
+                 </form>
+            </div>
+        </div>
+        <div class="card-body">
+            <table id="sendikaTable" class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>T.C. Kimlik No</th>
+                        <th>Ad Soyad</th>
+                        <th>Sendika</th>
+                        <th>Hareket Tipi</th>
+                        <th>Hareket Tarihi</th>
+                        <th>Maaş Dönemi</th>
+                        <th>Oluşturan</th>
+                        <th>Oluşturma T.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for uyelik in uyelikler %}
+                    <tr>
+                        <td>{{ uyelik.personel.personel_id }}</td>
+                        <td>{{ uyelik.personel.ad }} {{ uyelik.personel.soyad }}</td>
+                        <td>{{ uyelik.sendika.sendika_adi }}</td>
+                        <td>{{ uyelik.get_hareket_tipi_display }}</td>
+                        <td>{{ uyelik.hareket_tarihi|date:"d.m.Y" }}</td>
+                        <td>{{ uyelik.maas_donemi }}</td>
+                        <td>{{ uyelik.olusturan.FullName|default:"-" }}</td>
+                        <td>{{ uyelik.olusturma_tarihi|date:"d.m.Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center">Seçili maaş dönemine ait kayıt bulunamadı.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Sendika Yönetimi Modal -->
+<div class="modal fade" id="sendikaModal" tabindex="-1" aria-labelledby="sendikaModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <!-- Modal içeriği AJAX ile buraya yüklenecek -->
+      <div class="modal-body text-center">
+          <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Yükleniyor...</span>
+          </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+<script>
+// Sendika modal içeriğini AJAX ile yükler
+function loadSendikaModalContent() {
+    $.ajax({
+        url: "{% url 'mutemet_app:get_sendika_modal_content' %}",
+        type: 'GET',
+        success: function(response) {
+            $('#sendikaModal .modal-content').html(response.html);
+        },
+        error: function() {
+            $('#sendikaModal .modal-content').html('<div class="modal-body">İçerik yüklenirken bir hata oluştu.</div>');
+        }
+    });
+}
+
+// Sendika modalını ilk açıldığında ve gerektiğinde yeniler
+function refreshSendikaModalContent() {
+    loadSendikaModalContent();
+}
+
+// Ana formdaki sendika dropdown listesini AJAX ile günceller
+function refreshSendikaDropdown() {
+    var selectElement = $('#sendika');
+    var selectedValue = selectElement.val(); // Mevcut seçili değeri sakla
+    $.ajax({
+        url: "{% url 'mutemet_app:get_sendikalar_json' %}",
+        type: 'GET',
+        success: function(response) {
+            selectElement.empty().append('<option value="" selected disabled>Seçiniz...</option>');
+            $.each(response.results, function(index, item) {
+                selectElement.append($('<option>', {
+                    value: item.id,
+                    text: item.text
+                }));
+            });
+            // Saklanan değeri geri yükle (eğer hala varsa)
+            if (selectElement.find('option[value="' + selectedValue + '"]').length) {
+                 selectElement.val(selectedValue);
+            } else {
+                 selectElement.val(""); // Değer yoksa boş seç
+            }
+        },
+        error: function() {
+            console.error('Sendika listesi yenilenirken hata oluştu.');
+        }
+    });
+}
+
+$(document).ready(function() {
+    // Personel Arama Select2
+    $('#personel_select').select2({
+        theme: 'bootstrap4',
+        placeholder: 'TC Kimlik No veya Ad/Soyad ile arayın...',
+        minimumInputLength: 2, // En az 2 karakter girilince ara
+        ajax: {
+            url: "{% url 'mutemet_app:personel_ara' %}",
+            dataType: 'json',
+            delay: 250, // Kullanıcı yazmayı bitirdikten sonra bekleme süresi
+            data: function (params) {
+                return {
+                    q: params.term // Arama terimi
+                };
+            },
+            processResults: function (data) {
+                return {
+                    results: data.results
+                };
+            },
+            cache: true
+        }
+    }).on('select2:select', function (e) {
+        // Personel seçildiğinde Ad Soyad alanını doldur
+        var data = e.params.data;
+        $('#ad_soyad').val(data.ad_soyad);
+    });
+
+    // DataTable ayarları
+    $('#sendikaTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
+        },
+        "dom": 'Bfrtip',
+        "buttons": [
+            'copy', 'excel', 'csv', 'print'
+        ],
+        "order": [[ 4, "desc" ]] // Hareket tarihine göre tersten sırala
+    });
+
+    // Sendika Yönetimi Modalını Tetikleme
+    $('#btnSendikaYonetimi').click(function() {
+        loadSendikaModalContent(); // Modalı açmadan önce içeriği yükle
+    });
+
+    // Modal tamamen kapandıktan sonra içeriği temizle (isteğe bağlı)
+    $('#sendikaModal').on('hidden.bs.modal', function () {
+        $(this).find('.modal-content').html('<div class="modal-body text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>');
+    });
+});
+</script>
+{% endblock %} 

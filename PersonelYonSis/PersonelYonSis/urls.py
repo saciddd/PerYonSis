@@ -24,6 +24,7 @@ urlpatterns = [
     path('add_permission/', views.yetki_tanimlari, name='add_permission'),
     path('mercis657/', include('mercis657.urls')),
     path('hekim_cizelge/', include('hekim_cizelge.urls')),
+    path('mutemet/', include('mutemet_app.urls')),
     path('admin/', admin.site.urls),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 if settings.DEBUG:

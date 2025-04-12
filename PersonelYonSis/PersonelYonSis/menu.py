@@ -42,7 +42,10 @@ class Menu:
             MenuItem('Resmi Tatil Tanımları', 'hekim_cizelge:resmi_tatiller', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             # Mutemetlik Moddülü ve Alt Menüleri
             MenuItem('Mutemetlik Modülü', '#', 'bi bi-newspaper', is_parent=True),
-            MenuItem('Hekim Bildirimleri Raporu', 'hekim_cizelge:mutemetlik_islemleri', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
+            MenuItem('Personel Takibi', 'mutemet_app:personel_listesi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
+            MenuItem('Sendika Takibi', 'mutemet_app:sendika_takibi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
+            MenuItem('İcra Takibi', 'mutemet_app:icra_takibi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
+            MenuItem('Hekim Bildirimleri', 'hekim_cizelge:mutemetlik_islemleri', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             
         ]
         

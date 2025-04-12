@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'mercis657',
     'PersonelYonSis',
     'hekim_cizelge',
+    'mutemet_app',
 ]
 
 MIDDLEWARE = [

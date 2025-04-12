@@ -1,0 +1,143 @@
+<div class="modal-header">
+    <h5 class="modal-title">Sendika Yönetimi</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <!-- Yeni Sendika Ekleme Formu -->
+    <form id="sendikaEkleForm" method="post" action="{% url 'mutemet_app:sendika_ekle' %}" class="mb-3 row g-2 align-items-end">
+        {% csrf_token %}
+        <div class="col">
+            <label for="sendika_adi_modal" class="form-label visually-hidden">Sendika Adı</label>
+            <input type="text" id="sendika_adi_modal" name="sendika_adi" class="form-control form-control-sm" placeholder="Yeni Sendika Adı" required>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-success btn-sm">Ekle</button>
+        </div>
+    </form>
+
+    <!-- Mevcut Sendikalar Listesi -->
+    <h6>Mevcut Sendikalar</h6>
+    <ul id="sendikaListesi" class="list-group list-group-flush">
+        {% for sendika in sendikalar %}
+            <li class="list-group-item d-flex justify-content-between align-items-center" data-sendika-id="{{ sendika.sendika_id }}">
+                <span class="sendika-adi">{{ sendika.sendika_adi }}</span>
+                <input type="text" class="form-control form-control-sm d-none sendika-edit-input" value="{{ sendika.sendika_adi }}">
+                <div>
+                    <button class="btn btn-warning btn-sm btn-edit-sendika">
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                    <button class="btn btn-success btn-sm btn-save-sendika d-none">
+                        <i class="bi bi-check-lg"></i>
+                    </button>
+                     <button class="btn btn-danger btn-sm btn-delete-sendika">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </li>
+        {% empty %}
+            <li class="list-group-item text-center">Kayıtlı sendika bulunamadı.</li>
+        {% endfor %}
+    </ul>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+</div>
+
+<script>
+// Bu script, modal içeriği yüklendikten sonra çalışacak event listener'ları ayarlar.
+$(document).ready(function() {
+    // Yeni Sendika Ekleme
+    $('#sendikaEkleForm').submit(function(e) {
+        e.preventDefault();
+        var form = $(this);
+        $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: form.serialize(),
+            success: function(response) {
+                if (response.success) {
+                    refreshSendikaModalContent(); // Modalı yenile
+                    refreshSendikaDropdown(); // Ana formdaki dropdown'ı yenile
+                } else {
+                    alert('Hata: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('Sendika eklenirken bir hata oluştu.');
+            }
+        });
+    });
+
+    // Düzenle Butonu
+    $('.btn-edit-sendika').click(function() {
+        var listItem = $(this).closest('li');
+        listItem.find('.sendika-adi').addClass('d-none');
+        listItem.find('.sendika-edit-input').removeClass('d-none').focus();
+        $(this).addClass('d-none');
+        listItem.find('.btn-save-sendika').removeClass('d-none');
+    });
+
+    // Kaydet Butonu (Düzenleme sonrası)
+    $('.btn-save-sendika').click(function() {
+        var listItem = $(this).closest('li');
+        var sendikaId = listItem.data('sendika-id');
+        var yeniAd = listItem.find('.sendika-edit-input').val();
+        var url = "{% url 'mutemet_app:sendika_guncelle' 0 %}".replace('0', sendikaId);
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: {
+                'sendika_adi': yeniAd,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    listItem.find('.sendika-adi').text(yeniAd).removeClass('d-none');
+                    listItem.find('.sendika-edit-input').addClass('d-none');
+                    listItem.find('.btn-edit-sendika').removeClass('d-none');
+                    listItem.find('.btn-save-sendika').addClass('d-none');
+                    refreshSendikaDropdown(); // Ana formdaki dropdown'ı yenile
+                } else {
+                    alert('Hata: ' + response.message);
+                     // Hata durumunda eski haline getirilebilir veya modal yenilenebilir
+                     refreshSendikaModalContent();
+                }
+            },
+            error: function() {
+                alert('Sendika güncellenirken bir hata oluştu.');
+                refreshSendikaModalContent(); // Hata durumunda modalı yenile
+            }
+        });
+    });
+
+    // Sil Butonu
+    $('.btn-delete-sendika').click(function() {
+        if (!confirm('Bu sendikayı silmek istediğinizden emin misiniz?')) {
+            return;
+        }
+        var listItem = $(this).closest('li');
+        var sendikaId = listItem.data('sendika-id');
+        var url = "{% url 'mutemet_app:sendika_sil' 0 %}".replace('0', sendikaId);
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: {
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    listItem.remove();
+                    refreshSendikaDropdown(); // Ana formdaki dropdown'ı yenile
+                } else {
+                    alert('Hata: ' + response.message);
+                }
+            },
+            error: function() {
+                alert('Sendika silinirken bir hata oluştu.');
+            }
+        });
+    });
+});
+</script> 

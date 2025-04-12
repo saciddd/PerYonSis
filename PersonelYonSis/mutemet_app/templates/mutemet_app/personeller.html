@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Personel Listesi{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Personel Listesi</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-primary" id="btnYeniPersonel">
+                            <i class="fas fa-plus"></i> Yeni Personel
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table id="personelTable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>T.C. Kimlik No</th>
+                                <th>Ad</th>
+                                <th>Soyad</th>
+                                <th>Unvan</th>
+                                <th>Branş</th>
+                                <th>Durum</th>
+                                <th>Hareketler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for personel in personeller %}
+                            <tr>
+                                <td>{{ personel.personel_id }}</td>
+                                <td>{{ personel.ad }}</td>
+                                <td>{{ personel.soyad }}</td>
+                                <td>{{ personel.unvan }}</td>
+                                <td>{{ personel.brans }}</td>
+                                <td>
+                                    {% if personel.durum == 'AKTIF' %}
+                                        <span class="badge bg-success text-white">{{ personel.get_durum_display }}</span>
+                                    {% elif personel.durum == 'PASIF' %}
+                                        <span class="badge bg-warning text-dark">{{ personel.get_durum_display }}</span>
+                                    {% elif personel.durum == 'AYRILDI' %}
+                                        <span class="badge bg-danger text-white">{{ personel.get_durum_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-info btn-sm" onclick="hareketGoster('{{ personel.personel_id }}')">
+                                        <i class="bi bi-clock-history"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Personel Ekleme Formu -->
+<div class="modal fade" id="personelModal" tabindex="-1" role="dialog" aria-labelledby="personelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="personelModalLabel">Yeni Personel Ekle</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="personelForm">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="personel_id">T.C. Kimlik No</label>
+                        <input type="text" class="form-control" id="personel_id" name="personel_id" maxlength="11" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="sicil_no">Sicil No</label>
+                        <input type="text" class="form-control" id="sicil_no" name="sicil_no" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ad">Ad</label>
+                        <input type="text" class="form-control" id="ad" name="ad" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="soyad">Soyad</label>
+                        <input type="text" class="form-control" id="soyad" name="soyad" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="unvan">Unvan</label>
+                        <input type="text" class="form-control" id="unvan" name="unvan" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="brans">Branş</label>
+                        <input type="text" class="form-control" id="brans" name="brans" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" id="btnKaydet">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hareket Modal -->
+<div class="modal fade" id="hareketModal" tabindex="-1" role="dialog" aria-labelledby="hareketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="hareketModalLabel">Personel Hareketleri</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Hareket Geçmişi</h6>
+                        <div id="hareketListesi" class="table-responsive">
+                            <!-- Hareket listesi buraya gelecek -->
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Yeni Hareket Ekle</h6>
+                        <form id="hareketForm">
+                            {% csrf_token %}
+                            <input type="hidden" id="hareket_personel_id" name="personel_id">
+                            <div class="form-group">
+                                <label for="hareket_tipi">Hareket Tipi</label>
+                                <select class="form-control" id="hareket_tipi" name="hareket_tipi" required>
+                                    <option value="BASLAMA">Başlama</option>
+                                    <option value="IZIN">Ücretsiz İzin</option>
+                                    <option value="DONUS">İzin Dönüşü</option>
+                                    <option value="AYRILMA">Ayrılma</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="hareket_tarihi">Hareket Tarihi</label>
+                                <input type="date" class="form-control" id="hareket_tarihi" name="hareket_tarihi" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="aciklama">Açıklama</label>
+                                <textarea class="form-control" id="aciklama" name="aciklama" rows="3"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-primary" id="btnHareketKaydet">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // DataTable ayarları
+    $('#personelTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
+        },
+        "dom": 'Bfrtip',
+        "buttons": [
+            'copy', 'excel', 'csv', 'print'
+        ]
+    });
+
+    // Yeni personel ekleme modalını aç
+    $('#btnYeniPersonel').click(function() {
+        $('#personelModal').modal('show');
+    });
+
+    // Personel kaydetme
+    $('#btnKaydet').click(function() {
+        var formData = $('#personelForm').serialize();
+        $.ajax({
+            url: '{% url "mutemet_app:personel_ekle" %}',
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function(xhr) {
+                alert('Bir hata oluştu: ' + xhr.responseText);
+            }
+        });
+    });
+
+    // Hareket kaydetme
+    $('#btnHareketKaydet').click(function() {
+        var formData = $('#hareketForm').serialize();
+        $.ajax({
+            url: '{% url "mutemet_app:hareket_ekle" %}',
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function(xhr) {
+                alert('Bir hata oluştu: ' + xhr.responseText);
+            }
+        });
+    });
+});
+
+function hareketGoster(personelId) {
+    $('#hareket_personel_id').val(personelId);
+    $.ajax({
+        url: '{% url "mutemet_app:hareket_listesi" %}',
+        type: 'GET',
+        data: { personel_id: personelId },
+        success: function(response) {
+            $('#hareketListesi').html(response);
+            $('#hareketModal').modal('show');
+        },
+        error: function(xhr) {
+            alert('Bir hata oluştu: ' + xhr.responseText);
+        }
+    });
+}
+</script>
+{% endblock %} 

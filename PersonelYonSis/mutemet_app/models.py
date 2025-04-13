@@ -108,7 +108,7 @@ class SendikaUyelik(models.Model):
     personel = models.ForeignKey(Personel, on_delete=models.CASCADE, related_name='sendika_hareketleri')
     hareket_tipi = models.CharField(max_length=10, choices=HAREKET_TIPI_CHOICES)
     hareket_tarihi = models.DateField()
-    sendika_id = models.ForeignKey(Sendika, on_delete=models.CASCADE, related_name='sendika_uyelik_hareketleri')
+    sendika = models.ForeignKey(Sendika, on_delete=models.CASCADE, related_name='sendika_uyelik_hareketleri')
     maas_donemi = models.DateField()  # Her zaman ayın 1'i olacak şekilde tutulacak
     aciklama = models.TextField(blank=True, null=True)
     olusturan = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='olusturulan_sendika_hareketleri')

@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils import timezone
 from django.db import models
 from django.template.loader import render_to_string
+from datetime import datetime
 
 @login_required
 def index(request):
@@ -28,20 +29,35 @@ def sendika_takibi(request):
     """Sendika giriş-çıkış takibi"""
     sendikalar = Sendika.objects.all()
     maas_donemleri = SendikaUyelik.objects.order_by('-maas_donemi').values_list('maas_donemi', flat=True).distinct()
-    
-    selected_donem = request.GET.get('maas_donemi', maas_donemleri.first() if maas_donemleri else None)
+
+    # Format maaş dönemlerini "Nisan 2025" gibi göstermek için
+    formatted_maas_donemleri = [
+        {
+            'value': donem.strftime('%Y-%m-%d'),
+            'label': donem.strftime('%B %Y').capitalize()
+        }
+        for donem in maas_donemleri
+    ]
+
+    selected_donem = request.GET.get('maas_donemi')
+    if selected_donem:
+        try:
+            # Parse the selected period to ensure it's in the correct format
+            selected_donem = datetime.strptime(selected_donem, '%Y-%m-%d').date()
+        except ValueError:
+            selected_donem = None
 
     # select_related ve prefetch_related'ı birleştirerek kullan
     uyelikler_query = SendikaUyelik.objects.select_related('personel', 'olusturan').prefetch_related('sendika')
-    
+
     if selected_donem:
         uyelikler_query = uyelikler_query.filter(maas_donemi=selected_donem)
-        
+
     context = {
         'sendikalar': sendikalar,
-        'uyelikler': uyelikler_query.order_by('-hareket_tarihi'), # Sorguyu burada çalıştır
-        'maas_donemleri': maas_donemleri,
-        'selected_donem': selected_donem
+        'uyelikler': uyelikler_query.order_by('-hareket_tarihi'),  # Sorguyu burada çalıştır
+        'maas_donemleri': formatted_maas_donemleri,
+        'selected_donem': selected_donem.strftime('%Y-%m-%d') if selected_donem else None
     }
     return render(request, 'mutemet_app/sendika_takibi.html', context)
 
@@ -155,34 +171,40 @@ def hareket_ekle(request):
         return JsonResponse({'success': False, 'message': str(e)})
 
 @login_required
-@require_http_methods(["POST"])
+@require_POST
 def sendika_hareket_ekle(request):
     """Yeni sendika hareketi ekleme"""
     try:
         personel_id = request.POST.get('personel_id')
         hareket_tarihi = request.POST.get('hareket_tarihi')
-        sendika_id = request.POST.get('sendika')
+        sendika = request.POST.get('sendika') # Formdan gelen sendika ID'si
         hareket_tipi = request.POST.get('hareket_tipi')
         aciklama = request.POST.get('aciklama', '') # Açıklama opsiyonel olabilir
 
-        if not all([personel_id, hareket_tarihi, sendika_id, hareket_tipi]):
+        if not all([personel_id, hareket_tarihi, sendika, hareket_tipi]):
             messages.error(request, "Lütfen tüm zorunlu alanları doldurun.")
             return HttpResponseRedirect(reverse('mutemet_app:sendika_takibi'))
 
-        personel = get_object_or_404(Personel, personel_id=personel_id)
-        sendika = get_object_or_404(Sendika, sendika_id=sendika_id)
+        # Convert hareket_tarihi to a datetime.date object
+        hareket_tarihi = datetime.strptime(hareket_tarihi, '%Y-%m-%d').date()
 
-        # SendikaUyelik nesnesi oluştur (maas_donemi modelin save() metodunda hesaplanacak)
+        # Nesneleri getirelim
+        personel = get_object_or_404(Personel, personel_id=personel_id)
+        sendika = get_object_or_404(Sendika, sendika=sendika)
+
+        # Nesneleri kullanarak SendikaUyelik nesnesi oluştur
         SendikaUyelik.objects.create(
-            personel=personel,
+            personel=personel, 
             hareket_tarihi=hareket_tarihi,
-            sendika=sendika,
+            sendika=sendika, # ForeignKey ile doğrudan sendika nesnesini atıyoruz 
             hareket_tipi=hareket_tipi,
             aciklama=aciklama,
             olusturan=request.user
         )
         messages.success(request, "Sendika hareketi başarıyla eklendi.")
 
+    except ObjectDoesNotExist: 
+        messages.error(request, "Seçilen personel veya sendika bulunamadı.")
     except ValidationError as e:
         messages.error(request, f"Bir hata oluştu: {e}")
     except Exception as e:
@@ -196,9 +218,7 @@ def personel_ara(request):
     """TC Kimlik No veya Ad/Soyad ile personel arama (AJAX)"""
     query = request.GET.get('q', '')
     personeller = Personel.objects.filter(
-        models.Q(personel_id__icontains=query) |
-        models.Q(ad__icontains=query) |
-        models.Q(soyad__icontains=query)
+        models.Q(personel_id__icontains=query)
     ).filter(durum='AKTIF')[:10] # İlk 10 sonucu al
 
     results = [

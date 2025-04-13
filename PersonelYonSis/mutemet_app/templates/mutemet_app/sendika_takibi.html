@@ -40,14 +40,6 @@
             <h3 class="card-title">Yeni Sendika Hareketi Ekle</h3>
         </div>
         <div class="card-body">
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
             <form method="post" action="{% url 'mutemet_app:sendika_hareket_ekle' %}" class="row g-3 align-items-end">
                 {% csrf_token %}
                 <div class="col-md-3">
@@ -72,7 +64,7 @@
                     <select id="sendika" name="sendika" class="form-select" required>
                         <option value="" selected disabled>Seçiniz...</option>
                         {% for s in sendikalar %}
-                        <option value="{{ s.sendika_id }}">{{ s.sendika_adi }}</option>
+                        <option value="{{ s.sendika }}">{{ s.sendika_adi }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -99,7 +91,9 @@
                     <select name="maas_donemi" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
                         <option value="" {% if not selected_donem %}selected{% endif %}>Tüm Dönemler</option>
                          {% for donem in maas_donemleri %}
-                            <option value="{{ donem }}" {% if selected_donem == donem %}selected{% endif %}>{{ donem }}</option>
+                            <option value="{{ donem.value }}" {% if selected_donem == donem.value %}selected{% endif %}>
+                                {{ donem.label }}
+                            </option>
                         {% endfor %}
                     </select>
                  </form>
@@ -124,8 +118,16 @@
                     <tr>
                         <td>{{ uyelik.personel.personel_id }}</td>
                         <td>{{ uyelik.personel.ad }} {{ uyelik.personel.soyad }}</td>
-                        <td>{{ uyelik.sendika.sendika_adi }}</td>
-                        <td>{{ uyelik.get_hareket_tipi_display }}</td>
+                        <td>{{ uyelik.sendika.sendika_adi }}</td> <!-- Ensure sendika_adi is displayed -->
+                        <td>
+                            {% if uyelik.hareket_tipi == 'GIRIS' %}
+                            <span class="badge bg-success">Giriş</span>
+                            {% elif uyelik.hareket_tipi == 'CIKIS' %}
+                            <span class="badge bg-danger">Çıkış</span>
+                            {% else %}
+                            {{ uyelik.get_hareket_tipi_display }}
+                            {% endif %}
+                        </td>
                         <td>{{ uyelik.hareket_tarihi|date:"d.m.Y" }}</td>
                         <td>{{ uyelik.maas_donemi }}</td>
                         <td>{{ uyelik.olusturan.FullName|default:"-" }}</td>
@@ -245,17 +247,47 @@ $(document).ready(function() {
         $('#ad_soyad').val(data.ad_soyad);
     });
 
-    // DataTable ayarları
-    $('#sendikaTable').DataTable({
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
-        },
-        "dom": 'Bfrtip',
-        "buttons": [
-            'copy', 'excel', 'csv', 'print'
-        ],
-        "order": [[ 4, "desc" ]] // Hareket tarihine göre tersten sırala
-    });
+    // DataTable'ı yalnızca veri varsa başlat
+    if ($('#sendikaTable tbody tr').length > 1 || ($('#sendikaTable tbody tr').length === 1 && $('#sendikaTable tbody td[colspan]').length === 0)) {
+        $('#sendikaTable').DataTable({
+            "language": {
+                "sDecimal":        ",",
+                "sEmptyTable":     "Tabloda herhangi bir veri mevcut değil",
+                "sInfo":           "_TOTAL_ kayıttan _START_ - _END_ arasındaki kayıtlar gösteriliyor",
+                "sInfoEmpty":      "Kayıt yok",
+                "sInfoFiltered":   "(_MAX_ kayıt içerisinden bulunan)",
+                "sInfoPostFix":    "",
+                "sInfoThousands":  ".",
+                "sLengthMenu":     "Sayfada _MENU_ kayıt göster",
+                "sLoadingRecords": "Yükleniyor...",
+                "sProcessing":     "İşleniyor...",
+                "sSearch":         "Ara:",
+                "sZeroRecords":    "Eşleşen kayıt bulunamadı",
+                "oPaginate": {
+                    "sFirst":    "İlk",
+                    "sLast":     "Son",
+                    "sNext":     "Sonraki",
+                    "sPrevious": "Önceki"
+                },
+                "oAria": {
+                    "sSortAscending":  ": artan sütun sıralamasını aktifleştir",
+                    "sSortDescending": ": azalan sütun sıralamasını aktifleştir"
+                },
+                "select": {
+                    "rows": {
+                        "_": "%d kayıt seçildi",
+                        "0": "",
+                        "1": "1 kayıt seçildi"
+                    }
+                }
+            },
+            "dom": 'Bfrtip',
+            "buttons": [
+                'copy', 'excel', 'csv', 'print'
+            ],
+            "order": [[ 4, "desc" ]] // Hareket tarihine göre tersten sırala
+        });
+    }
 
     // Sendika Yönetimi Modalını Tetikleme
     $('#btnSendikaYonetimi').click(function() {
@@ -268,4 +300,4 @@ $(document).ready(function() {
     });
 });
 </script>
-{% endblock %} 
+{% endblock %}

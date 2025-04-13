@@ -24,11 +24,26 @@ class Menu:
             MenuItem('Kullanıcı Tanımları', 'kullanici_tanimlari', 'bi bi-octagon', 'Yeni Kullanıcı Tanımlama', parent_menu='Yönetim Paneli'),
             MenuItem('Rol Tanımları', 'rol_tanimlari', 'bi bi-octagon', 'Yeni Rol Tanımlama', parent_menu='Yönetim Paneli'),
             MenuItem('Yetki Tanımları', 'yetki_tanimlari', 'bi bi-octagon', 'Yeni Yetki Tanımlama', parent_menu='Yönetim Paneli'),
+            # İnsan Kaynakları Modülü ve Alt Menüleri
+            MenuItem('İK Modülü', '#', 'bi bi-person-lines-fill', is_parent=True),
+            MenuItem('Personel Tanımları', 'kullanici_tanimlari', 'bi bi-octagon', 'Yeni Kullanıcı Tanımlama', parent_menu='İnsan Kaynakları Modülü'),
+            # İzin Modülü ve Alt Menüleri
+            MenuItem('İzin Modülü', '#', 'bi bi-calendar-check', is_parent=True),
+            MenuItem('İzin Tanımları', 'kullanici_tanimlari', 'bi bi-octagon', 'Yeni Kullanıcı Tanımlama', parent_menu='İzin Modülü'),
+            # Mutemetlik Moddülü ve Alt Menüleri
+            MenuItem('Mutemetlik Modülü', '#', 'bi bi-newspaper', is_parent=True),
+            MenuItem('Personel Takibi', 'mutemet_app:personel_listesi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
+            MenuItem('Sendika Takibi', 'mutemet_app:sendika_takibi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
+            MenuItem('İcra Takibi', 'mutemet_app:icra_takibi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
+            MenuItem('Hekim Bildirimleri', 'hekim_cizelge:mutemetlik_islemleri', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             # Çizelge 657 ve Alt Menüleri
-            MenuItem('Çizelge Sistemi 657', '#', 'bi bi-table', is_parent=True),
+            MenuItem('Çizelge Sistemi 657', '#', 'bi bi-calendar3', is_parent=True),
             MenuItem('657 Personeller', 'mercis657:personeller', 'bi bi-octagon', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Çizelge', 'mercis657:cizelge', 'bi bi-octagon', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Mesai Tanımları', 'mercis657:mesai_tanimlari', 'bi bi-octagon', parent_menu='Çizelge Sistemi 657'),
+            # Çizelge 696 ve Alt Menüleri
+            MenuItem('Çizelge Sistemi 696', '#', 'bi bi-calendar-week', is_parent=True),
+            MenuItem('696 Personeller', 'mercis657:personeller', 'bi bi-octagon', parent_menu='Çizelge Sistemi 696'), #696 sistemi oluşturulunca değiştirilecek
             # Hekim Çizelge Sistemi ve Alt Menüleri
             MenuItem('Hekim Çizelge Sistemi', '#', 'bi bi-h-square', is_parent=True),
             MenuItem('Çizelge', 'hekim_cizelge:cizelge', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
@@ -40,12 +55,6 @@ class Menu:
             MenuItem('Hizmet Tanımları', 'hekim_cizelge:hizmet_tanimlari', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Birim Tanımları', 'hekim_cizelge:birim_tanimlari', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Resmi Tatil Tanımları', 'hekim_cizelge:resmi_tatiller', 'bi bi-octagon', parent_menu='Hekim Çizelge Sistemi'),
-            # Mutemetlik Moddülü ve Alt Menüleri
-            MenuItem('Mutemetlik Modülü', '#', 'bi bi-newspaper', is_parent=True),
-            MenuItem('Personel Takibi', 'mutemet_app:personel_listesi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
-            MenuItem('Sendika Takibi', 'mutemet_app:sendika_takibi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
-            MenuItem('İcra Takibi', 'mutemet_app:icra_takibi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
-            MenuItem('Hekim Bildirimleri', 'hekim_cizelge:mutemetlik_islemleri', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             
         ]
         

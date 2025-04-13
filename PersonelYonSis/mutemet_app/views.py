@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
@@ -6,13 +6,15 @@ from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
-from .models import Personel, PersonelHareket, Sendika, SendikaUyelik
+from .models import Personel, PersonelHareket, Sendika, SendikaUyelik, IcraTakibi, IcraHareketleri
 from django.db import transaction
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils import timezone
 from django.db import models
 from django.template.loader import render_to_string
 from datetime import datetime
+from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Sum
 
 @login_required
 def index(request):
@@ -225,7 +227,8 @@ def personel_ara(request):
         {
             'id': p.personel_id,
             'text': f"{p.personel_id} - {p.ad} {p.soyad}",
-            'ad_soyad': f"{p.ad} {p.soyad}" 
+            'ad_soyad': f"{p.ad} {p.soyad}",
+            'unvan': p.unvan
         }
         for p in personeller
     ]
@@ -310,3 +313,78 @@ def get_sendikalar_json(request):
     sendikalar = Sendika.objects.all().order_by('sendika_adi')
     data = [{'id': s.sendika_id, 'text': s.sendika_adi} for s in sendikalar]
     return JsonResponse({'results': data})
+
+@login_required
+def icra_takibi_list(request):
+    """List all IcraTakibi records."""
+    icra_takipleri = IcraTakibi.objects.select_related('personel').all()
+    return render(request, 'mutemet_app/icra_takibi.html', {'icra_takipleri': icra_takipleri})
+
+@csrf_exempt
+def icra_takibi_ekle(request):
+    """Add a new IcraTakibi record."""
+    if request.method == 'POST':
+        try:
+            personel_id = request.POST.get('personel_id')
+            icra_vergi_dairesi_no = request.POST.get('icra_vergi_dairesi_no')
+            icra_dairesi = request.POST.get('icra_dairesi')
+            dosya_no = request.POST.get('dosya_no')
+            icra_dairesi_banka = request.POST.get('icra_dairesi_banka')
+            icra_dairesi_hesap_no = request.POST.get('icra_dairesi_hesap_no')
+            alacakli = request.POST.get('alacakli')
+            alacakli_vekili = request.POST.get('alacakli_vekili')
+            tarihi = request.POST.get('tarihi')
+            tutar = request.POST.get('tutar')
+
+            personel = get_object_or_404(Personel, personel_id=personel_id)
+
+            IcraTakibi.objects.create(
+                personel=personel,
+                icra_vergi_dairesi_no=icra_vergi_dairesi_no,
+                icra_dairesi=icra_dairesi,
+                dosya_no=dosya_no,
+                icra_dairesi_banka=icra_dairesi_banka,
+                icra_dairesi_hesap_no=icra_dairesi_hesap_no,
+                alacakli=alacakli,
+                alacakli_vekili=alacakli_vekili,
+                tarihi=tarihi,
+                tutar=tutar
+            )
+            messages.success(request, "İcra takibi başarıyla eklendi.")
+        except Exception as e:
+            messages.error(request, f"Hata: {str(e)}")
+        return redirect('mutemet_app:icra_takibi_list')
+    return redirect('mutemet_app:icra_takibi_list')  # Ensure a redirect for non-POST requests
+
+@login_required
+def icra_hareketleri_list(request, icra_id):
+    """List all IcraHareketleri for a specific IcraTakibi."""
+    icra = get_object_or_404(IcraTakibi, pk=icra_id)
+    hareketler = IcraHareketleri.objects.filter(icra=icra).order_by('-kesildigi_donem')
+    toplam_kesinti = hareketler.aggregate(Sum('kesilen_tutar'))['kesilen_tutar__sum'] or 0
+    return render(request, 'mutemet_app/icra_hareketleri.html', {
+        'icra': icra,
+        'hareketler': hareketler,
+        'toplam_kesinti': toplam_kesinti
+    })
+
+@csrf_exempt
+def icra_hareket_ekle(request, icra_id):
+    """Add a new IcraHareketleri record."""
+    if request.method == 'POST':
+        try:
+            icra = get_object_or_404(IcraTakibi, pk=icra_id)
+            kesilen_tutar = request.POST.get('kesilen_tutar')
+            kesildigi_donem = request.POST.get('kesildigi_donem')
+            odeme_turu = request.POST.get('odeme_turu')
+
+            IcraHareketleri.objects.create(
+                icra=icra,
+                kesilen_tutar=kesilen_tutar,
+                kesildigi_donem=kesildigi_donem,
+                odeme_turu=odeme_turu
+            )
+            messages.success(request, "İcra hareketi başarıyla eklendi.")
+        except Exception as e:
+            messages.error(request, f"Hata: {str(e)}")
+        return redirect('mutemet_app:icra_hareketleri_list', icra_id=icra_id)

@@ -175,7 +175,6 @@ class SendikaUyelik(models.Model):
         super().save(*args, **kwargs)
 
 class IcraTakibi(models.Model):
-    """İcra takibi"""
     DURUM_TIPLERI = [
         ('AKTIF', 'Aktif'),
         ('PASIF', 'Pasif'),
@@ -183,24 +182,64 @@ class IcraTakibi(models.Model):
     ]
 
     icra_id = models.AutoField(primary_key=True)
-    personel = models.ForeignKey(Personel, on_delete=models.CASCADE)
-    icra_no = models.CharField(max_length=50)
-    icra_tarihi = models.DateField()
-    icra_tutari = models.DecimalField(max_digits=10, decimal_places=2)
-    durum = models.CharField(max_length=10, choices=DURUM_TIPLERI, default='AKTIF')
-    aciklama = models.TextField(blank=True, null=True)
-    olusturan = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='olusturan_icralar')
-    olusturma_tarihi = models.DateTimeField(auto_now_add=True)
-    guncelleyen = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='guncelleyen_icralar')
-    guncelleme_tarihi = models.DateTimeField(auto_now=True)
+    personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
+    icra_vergi_dairesi_no = models.CharField(max_length=50, verbose_name='Vergi Dairesi No')
+    icra_dairesi = models.CharField(max_length=100, verbose_name='İcra Dairesi')
+    dosya_no = models.CharField(max_length=50, verbose_name='Dosya No')
+    icra_dairesi_banka = models.CharField(max_length=100, verbose_name='Banka')
+    icra_dairesi_hesap_no = models.CharField(max_length=50, verbose_name='Hesap No')
+    alacakli = models.CharField(max_length=100, verbose_name='Alacaklı')
+    alacakli_vekili = models.CharField(max_length=100, verbose_name='Alacaklı Vekili', blank=True, null=True)
+    tarihi = models.DateField(verbose_name='İcra Tarihi')
+    tutar = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Tutar')
+    durum = models.CharField(max_length=10, choices=DURUM_TIPLERI, default='AKTIF', verbose_name='Durum')
 
     class Meta:
-        ordering = ['-icra_tarihi']
+        ordering = ['-tarihi']
         verbose_name = 'İcra Takibi'
         verbose_name_plural = 'İcra Takipleri'
 
     def __str__(self):
-        return f"{self.personel} - {self.icra_no} ({self.icra_tarihi})"
+        return f"{self.personel} - {self.icra_dairesi} ({self.dosya_no})"
+
+    @property
+    def toplam_kesinti(self):
+        return self.icrahareketleri_set.aggregate(total=models.Sum('kesilen_tutar'))['total'] or 0
+
+    def save(self, *args, **kwargs):
+        if self.toplam_kesinti >= self.tutar:
+            self.durum = 'KAPANDI'
+        super().save(*args, **kwargs)
+
+
+class IcraHareketleri(models.Model):
+    ODEME_TURU_CHOICES = [
+        ('DENGE', 'Denge'),
+        ('DENGE FARK', 'Denge Fark'),
+        ('EK ÖDEME', 'Ek Ödeme'),
+        ('ELDEN', 'Elden'),
+        ('İKRAMİYE', 'İkramiye'),
+        ('MAAŞ', 'Maaş'),
+        ('NAFAKA', 'Nafaka'),
+        ('SABİT', 'Sabit'),
+        ('SABİT FARK', 'Sabit Fark'),
+        ('TEMEL', 'Temel'),
+        ('TEŞVİK', 'Teşvik'),
+        ('TOPLU GİRİŞ', 'Toplu Giriş'),
+    ]
+
+    icra = models.ForeignKey(IcraTakibi, on_delete=models.CASCADE, related_name='icrahareketleri_set')
+    kesilen_tutar = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Kesilen Tutar')
+    kesildigi_donem = models.DateField(verbose_name='Kesildiği Dönem')
+    odeme_turu = models.CharField(max_length=20, choices=ODEME_TURU_CHOICES, verbose_name='Ödeme Türü')
+
+    class Meta:
+        ordering = ['-kesildigi_donem']
+        verbose_name = 'İcra Hareketi'
+        verbose_name_plural = 'İcra Hareketleri'
+
+    def __str__(self):
+        return f"{self.icra} - {self.odeme_turu} ({self.kesildigi_donem})"
 
 class OdemeTakibi(models.Model):
     """Ödeme takibi"""

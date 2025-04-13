@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}İcra Hareketleri{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>İcra Hareketleri</h1>
+    <h3>{{ icra.personel.ad }} {{ icra.personel.soyad }} - {{ icra.icra_dairesi }}</h3>
+    <p><strong>Toplam Kesinti:</strong> {{ toplam_kesinti }}</p>
+    <a href="{% url 'mutemet_app:icra_hareket_ekle' icra.icra_id %}" class="btn btn-primary mb-3">Yeni Hareket Ekle</a>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Kesilen Tutar</th>
+                <th>Kesildiği Dönem</th>
+                <th>Ödeme Türü</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for hareket in hareketler %}
+            <tr>
+                <td>{{ hareket.kesilen_tutar }}</td>
+                <td>{{ hareket.kesildigi_donem }}</td>
+                <td>{{ hareket.get_odeme_turu_display }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="3" class="text-center">Kayıt bulunamadı.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

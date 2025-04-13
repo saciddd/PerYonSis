@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}İcra Takibi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card card-primary card-outline">
+        <div class="card-header">
+            <h3 class="card-title">Yeni İcra Takibi Ekle</h3>
+        </div>
+        <div class="card-body">
+            <form class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="personel_select" class="form-label">T.C. Kimlik No</label>
+                    <select id="personel_select" class="form-control" required></select>
+                </div>
+                <div class="col-md-3">
+                    <label for="ad_soyad" class="form-label">Ad Soyad</label>
+                    <input type="text" id="ad_soyad" class="form-control" readonly>
+                </div>
+                <div class="col-md-3">
+                    <label for="unvan" class="form-label">Unvan</label>
+                    <input type="text" id="unvan" class="form-control" readonly>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#icraModal" id="btnIcraEkle" disabled>
+                        İcra Takibi Ekle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3 class="card-title">İcra Takipleri</h3>
+        </div>
+        <div class="card-body">
+            <table id="icraTable" class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Personel</th>
+                        <th>İcra Dairesi</th>
+                        <th>Dosya No</th>
+                        <th>Tutar</th>
+                        <th>Toplam Kesinti</th>
+                        <th>Durum</th>
+                        <th>Son Ödeme</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for icra in icra_takipleri %}
+                    <tr>
+                        <td>{{ icra.personel.ad }} {{ icra.personel.soyad }}</td>
+                        <td>{{ icra.icra_dairesi }}</td>
+                        <td>{{ icra.dosya_no }}</td>
+                        <td>{{ icra.tutar }}</td>
+                        <td>{{ icra.toplam_kesinti }}</td>
+                        <td>{{ icra.get_durum_display }}</td>
+                        <td>
+                            {% with icra.icrahareketleri_set.first as son_hareket %}
+                                {% if son_hareket %}
+                                    {{ son_hareket.kesildigi_donem|date:"M Y" }} - {{ son_hareket.odeme_turu }}
+                                {% else %}
+                                    Yok
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            <a href="{% url 'mutemet_app:icra_hareketleri_list' icra.icra_id %}" class="btn btn-sm btn-info">Detay</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center">Kayıt bulunamadı.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Adding Icra Takibi -->
+<div class="modal fade" id="icraModal" tabindex="-1" aria-labelledby="icraModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="{% url 'mutemet_app:icra_takibi_ekle' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="icraModalLabel">Yeni İcra Takibi Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="modal_personel_id" name="personel_id">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="icra_vergi_dairesi_no" class="form-label">Vergi Dairesi No</label>
+                            <input type="text" id="icra_vergi_dairesi_no" name="icra_vergi_dairesi_no" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="icra_dairesi" class="form-label">İcra Dairesi</label>
+                            <input type="text" id="icra_dairesi" name="icra_dairesi" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="dosya_no" class="form-label">Dosya No</label>
+                            <input type="text" id="dosya_no" name="dosya_no" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tutar" class="form-label">Tutar</label>
+                            <input type="number" id="tutar" name="tutar" class="form-control" step="0.01" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="alacakli" class="form-label">Alacaklı</label>
+                            <input type="text" id="alacakli" name="alacakli" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="alacakli_vekili" class="form-label">Alacaklı Vekili</label>
+                            <input type="text" id="alacakli_vekili" name="alacakli_vekili" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="tarihi" class="form-label">Tarih</label>
+                            <input type="date" id="tarihi" name="tarihi" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="icra_dairesi_banka" class="form-label">Banka</label>
+                            <input type="text" id="icra_dairesi_banka" name="icra_dairesi_banka" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="icra_dairesi_hesap_no" class="form-label">Hesap No</label>
+                            <input type="text" id="icra_dairesi_hesap_no" name="icra_dairesi_hesap_no" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Select2 ile personel arama
+    $('#personel_select').select2({
+        theme: 'bootstrap4',
+        placeholder: 'TC Kimlik No veya Ad/Soyad ile arayın...',
+        minimumInputLength: 2,
+        ajax: {
+            url: "{% url 'mutemet_app:personel_ara' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return { q: params.term };
+            },
+            processResults: function (data) {
+                return { results: data.results };
+            },
+            cache: true
+        }
+    }).on('select2:select', function (e) {
+        var data = e.params.data;
+        $('#ad_soyad').val(data.ad_soyad);
+        $('#unvan').val(data.unvan);
+        $('#modal_personel_id').val(data.id);
+        $('#btnIcraEkle').prop('disabled', false);
+    });
+    
+    // Check if the table has data before initializing DataTable
+    if ($('#icraTable tbody tr').length > 1 || ($('#icraTable tbody tr').length === 1 && $('#icraTable tbody td[colspan]').length === 0)) {
+        $('#icraTable').DataTable({
+            "language": {
+                "sDecimal": ",",
+                "sEmptyTable": "Tabloda herhangi bir veri mevcut değil",
+                "sInfo": "_TOTAL_ kayıttan _START_ - _END_ arasındaki kayıtlar gösteriliyor",
+                "sInfoEmpty": "Kayıt yok",
+                "sInfoFiltered": "(_MAX_ kayıt içerisinden bulunan)",
+                "sInfoPostFix": "",
+                "sInfoThousands": ".",
+                "sLengthMenu": "Sayfada _MENU_ kayıt göster",
+                "sLoadingRecords": "Yükleniyor...",
+                "sProcessing": "İşleniyor...",
+                "sSearch": "Ara:",
+                "sZeroRecords": "Eşleşen kayıt bulunamadı",
+                "oPaginate": {
+                    "sFirst": "İlk",
+                    "sLast": "Son",
+                    "sNext": "Sonraki",
+                    "sPrevious": "Önceki"
+                },
+                "oAria": {
+                    "sSortAscending": ": artan sütun sıralamasını aktifleştir",
+                    "sSortDescending": ": azalan sütun sıralamasını aktifleştir"
+                }
+            },
+            "dom": 'Bfrtip',
+            "buttons": [
+                'copy', 'excel', 'csv', 'print'
+            ],
+            "order": [[ 3, "desc" ]] // Tutar sütununa göre sırala
+        });
+    }
+    
+});
+</script>
+{% endblock %}

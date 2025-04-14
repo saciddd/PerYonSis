@@ -50,7 +50,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for role in roles %}
+                            {% for role in roles|dictsort:"RoleName" %}
                             <tr>
                                 <td>{{ role.RoleID }}</td>
                                 <td>
@@ -84,7 +84,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for permission in selected_role_permissions %}
+                            {% for permission in selected_role_permissions|dictsort:"Permission.PermissionName" %}
                             <tr>
                                 <td>{{ permission.Permission.PermissionName }}</td>
                                 <td>
@@ -107,7 +107,6 @@
                 </div>
             </div>
         </div>
-
 
         <!-- Tüm Yetkiler Tablosu (Paginated ve Aramalı) -->
         <div class="col-md-4">
@@ -137,8 +136,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            
-                            {% for permission in all_permissions %}
+                            {% for permission in all_permissions|dictsort:"PermissionName" %}
                             <tr>
                                 <td>{{ permission.PermissionName }}</td>
                                 <td>
@@ -146,7 +144,6 @@
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-success btn-sm">Ekle</button>
                                     </form>
-                                    
                                 </td>
                             </tr>
                             {% empty %}
@@ -154,7 +151,6 @@
                                 <td colspan="2">Yetki bulunamadı.</td>
                             </tr>
                             {% endfor %}
-                            
                         </tbody>
                         {% else %}
                         <p>Lütfen bir rol seçin.</p>

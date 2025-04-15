@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.core.validators import RegexValidator
+from django.utils.timezone import now
 
 class Role(models.Model):
     RoleID = models.AutoField(primary_key=True)
@@ -45,6 +47,16 @@ class User(AbstractBaseUser, PermissionsMixin):
     UserID = models.AutoField(primary_key=True)
     Username = models.CharField(max_length=100, unique=True)
     FullName = models.CharField(max_length=150)
+    Email = models.EmailField(max_length=255, null=True, blank=True)
+    Phone = models.CharField(
+        max_length=10,
+        validators=[RegexValidator(regex=r'^5\d{9}$', message="Telefon numarası 5xxxxxxxxx formatında olmalıdır.")],
+        null=True,
+        blank=True
+    )
+    TCKimlikNo = models.CharField(max_length=11, unique=True, null=True, blank=True)
+    Organisation = models.CharField(max_length=255, null=True, blank=True)
+    CreationTime = models.DateTimeField(default=now)
     roles = models.ManyToManyField('Role', blank=True)  # Bir kullanıcıya birden fazla rol atanabilir
 
     # Zorunlu alanlar ve kullanıcı adı alanı

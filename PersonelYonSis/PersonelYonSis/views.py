@@ -223,3 +223,71 @@ def yetki_tanimlari(request):
         return redirect('yetki_tanimlari')
 
     return render(request, 'yetki_tanimlari.html', {'permissions': permissions})
+
+def register(request):
+    """User registration view."""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        email = request.POST.get('email')
+        phone = request.POST.get('phone')
+        tckimlikno = request.POST.get('tckimlikno')
+        organisation = request.POST.get('organisation')
+
+        if not username or not password or not email or not phone or not tckimlikno:
+            messages.error(request, "Tüm alanları doldurmanız gerekmektedir.")
+            return redirect('register')
+
+        if not phone.startswith('5') or len(phone) != 10:
+            messages.error(request, "Telefon numarası 5xxxxxxxxx formatında olmalıdır.")
+            return redirect('register')
+
+        try:
+            user = User.objects.create(
+                Username=username,
+                FullName=username,  # Default FullName as username
+                Email=email,
+                Phone=phone,
+                TCKimlikNo=tckimlikno,
+                Organisation=organisation,
+                is_active=False  # Set user as inactive
+            )
+            user.password = password  # Store raw password without hashing
+            user.save()
+            messages.success(request, "Kayıt başarılı! Hesabınız onaylandıktan sonra giriş yapabilirsiniz.")
+            return redirect('login')
+        except IntegrityError as e:
+            if "Users.TCKimlikNo" in str(e):
+                messages.error(request, "Kayıt sırasında bir hata oluştu: Bu T.C. Kimlik Numaralı kullanıcı zaten mevcut.")
+            elif "Users.Username" in str(e):
+                messages.error(request, "Kayıt sırasında bir hata oluştu: Bu kullanıcı adı zaten alınmış.")
+            elif "Users.Email" in str(e):
+                messages.error(request, "Kayıt sırasında bir hata oluştu: Bu e-posta adresi zaten kullanılıyor.")
+            else:
+                messages.error(request, f"Kayıt sırasında bir hata oluştu: {str(e)}")
+            return redirect('register')
+        except Exception as e:
+            messages.error(request, f"Kayıt sırasında bir hata oluştu: {str(e)}")
+            return redirect('register')
+
+    return render(request, 'register.html')
+
+def custom_login(request):
+    """Custom login view to handle inactive users and non-existent accounts."""
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            if user.is_active:
+                login(request, user)
+                return redirect('index')  # Redirect to the main page
+            else:
+                messages.error(request, "Kullanıcınız henüz aktif edilmedi, sisteme giriş yapamazsınız.")
+                return redirect('login')
+        else:
+            messages.error(request, "Kullanıcı adı veya şifre hatalı.")
+            return redirect('login')
+
+    return render(request, 'login.html')

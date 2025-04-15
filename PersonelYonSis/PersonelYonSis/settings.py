@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'PersonelYonSis',
     'hekim_cizelge',
     'mutemet_app',
+    'hizmet_sunum_app',
 ]
 
 MIDDLEWARE = [

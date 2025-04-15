@@ -6,7 +6,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('', views.index, name='index'),
-    path('login/', views.user_login, name='login'),
+    path('register/', views.register, name='register'),
+    path('login/', views.custom_login, name='login'),
     path('logout/', views.logout, name='logout'),
     path('yetki-tanimlari/', views.yetki_tanimlari, name='yetki_tanimlari'),
     path('rol-tanimlari/', views.rol_tanimlari, name='rol_tanimlari'),
@@ -25,6 +26,7 @@ urlpatterns = [
     path('mercis657/', include('mercis657.urls')),
     path('hekim_cizelge/', include('hekim_cizelge.urls')),
     path('mutemet/', include('mutemet_app.urls')),
+    path('hizmet_sunum/', include('hizmet_sunum_app.urls')),
     path('admin/', admin.site.urls),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 if settings.DEBUG:

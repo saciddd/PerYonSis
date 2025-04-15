@@ -20,7 +20,7 @@ class Menu:
 
         items = [
             # Yönetim paneli ve Alt Menüleri
-            MenuItem('Yönetim Paneli', '#', 'bi bi-incognito', is_parent=True),
+            MenuItem('Yönetim Paneli', '#', 'bi bi-incognito', 'Yeni Kullanıcı Tanımlama', is_parent=True),
             MenuItem('Kullanıcı Tanımları', 'kullanici_tanimlari', 'bi bi-octagon', 'Yeni Kullanıcı Tanımlama', parent_menu='Yönetim Paneli'),
             MenuItem('Rol Tanımları', 'rol_tanimlari', 'bi bi-octagon', 'Yeni Rol Tanımlama', parent_menu='Yönetim Paneli'),
             MenuItem('Yetki Tanımları', 'yetki_tanimlari', 'bi bi-octagon', 'Yeni Yetki Tanımlama', parent_menu='Yönetim Paneli'),
@@ -44,6 +44,9 @@ class Menu:
             # Çizelge 696 ve Alt Menüleri
             MenuItem('Çizelge Sistemi 696', '#', 'bi bi-calendar-week', 'ÇS 696 Çizelge Sayfası', is_parent=True),
             MenuItem('696 Personeller', 'mercis657:personeller', 'bi bi-octagon', '	ÇS 696 Personel Yönetimi', parent_menu='Çizelge Sistemi 696'), #696 sistemi oluşturulunca değiştirilecek
+            # Hizmet Sunum Alanı ve Alt Menüleri
+            MenuItem('Hizmet Sunum Alanı', '#', 'bi bi-house', 'Hizmet Sunum Alanı Bildirim', is_parent=True),
+            MenuItem('Bildirim İşlemleri', 'hizmet_sunum_app:bildirim', 'bi bi-octagon', 'Hizmet Sunum Alanı Bildirim', parent_menu='Hizmet Sunum Alanı'),
             # Hekim Çizelge Sistemi ve Alt Menüleri
             MenuItem('Hekim Çizelge Sistemi', '#', 'bi bi-h-square', 'HÇ Hizmet Raporu', is_parent=True),
             MenuItem('Çizelge', 'hekim_cizelge:cizelge', 'bi bi-octagon', 'HÇ Çizelge Sayfası', parent_menu='Hekim Çizelge Sistemi'),

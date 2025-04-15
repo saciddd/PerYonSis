@@ -1,0 +1,52 @@
+{% extends 'auth_base.html' %}
+
+{% block title %}Kayıt Ol{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center">Kayıt Ol</h2>
+    <form method="post" action="{% url 'register' %}" class="mt-4">
+        {% csrf_token %}
+        <div class="row mb-3">
+            <label for="username" class="col-sm-4 col-form-label">Kullanıcı Adı</label>
+            <div class="col-sm-8">
+                <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="password" class="col-sm-4 col-form-label">Şifre</label>
+            <div class="col-sm-8">
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="email" class="col-sm-4 col-form-label">E-posta</label>
+            <div class="col-sm-8">
+                <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="phone" class="col-sm-4 col-form-label">Telefon</label>
+            <div class="col-sm-8">
+                <input type="text" class="form-control" id="phone" name="phone" placeholder="5xxxxxxxxx" required>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="tckimlikno" class="col-sm-4 col-form-label">T.C. Kimlik No</label>
+            <div class="col-sm-8">
+                <input type="text" class="form-control" id="tckimlikno" name="tckimlikno" maxlength="11" required>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <label for="organisation" class="col-sm-4 col-form-label">Kurum</label>
+            <div class="col-sm-8">
+                <input type="text" class="form-control" id="organisation" name="organisation">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Kayıt Ol</button>
+    </form>
+    <div class="text-center mt-3">
+        <a href="{% url 'login' %}">Giriş Yap</a>
+    </div>
+</div>
+{% endblock %}

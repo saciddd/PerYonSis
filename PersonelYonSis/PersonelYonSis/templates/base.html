@@ -24,6 +24,23 @@
 
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary sidebar-collapse">
     <div class="app-wrapper">
+        <!-- Notifications -->
+        <div id="notifications" class="position-fixed top-0 end-0 p-3" style="z-index: 1050; max-width: 300px;">
+            {% if messages %}
+            {% for message in messages %}
+            <div class="toast align-items-center text-bg-{{ message.tags }} border-0 mb-2" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="3000">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        {{ message }}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+        <!-- End Notifications -->
+
         <!-- Başlık -->
         <nav class="app-header navbar navbar-expand bg-body">
             <div class="container-fluid">
@@ -84,16 +101,6 @@
         <main class="app-main">
             <div class="app-content">
                 <div class="container-fluid">
-                    {% if messages %}
-                        <div class="container mt-3">
-                            {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }}">
-                                {{ message }}
-                            </div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-
                     {% block content %}
                     <!-- İçerik Buraya Gelecek -->
                     {% endblock %}
@@ -132,6 +139,15 @@
     <!-- Sağdan gelen form için boş alan (JavaScript ile doldurulacak) -->
     <div id="sidePanel" class="side-panel"></div>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+            var toastList = toastElList.map(function (toastEl) {
+                return new bootstrap.Toast(toastEl);
+            });
+            toastList.forEach(toast => toast.show());
+        });
+    </script>
    {% block extra_js %}{% endblock %}
   
 </body>

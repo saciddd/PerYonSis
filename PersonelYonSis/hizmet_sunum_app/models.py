@@ -3,6 +3,7 @@ from PersonelYonSis.models import User
 
 class Personel(models.Model):
     PersonelId = models.AutoField(primary_key=True)
+    TCKimlikNo = models.CharField(max_length=11, unique=True, verbose_name="T.C. Kimlik No")
     PersonelAdi = models.CharField(max_length=50, verbose_name="Personel Adı")
     PersonelSoyadi = models.CharField(max_length=50, verbose_name="Personel Soyadı")
 
@@ -29,13 +30,26 @@ class Birim(models.Model):
     BirimAdi = models.CharField(max_length=100, verbose_name="Birim Adı")
     KurumAdi = models.CharField(max_length=100, verbose_name="Kurum Adı")
     HSAKodu = models.ForeignKey(HizmetSunumAlani, on_delete=models.CASCADE, verbose_name="Hizmet Sunum Alan Kodu")
-
+    
     class Meta:
         verbose_name = "Birim"
         verbose_name_plural = "Birimler"
 
     def __str__(self):
         return f"{self.BirimAdi} - {self.KurumAdi}"
+
+class UserBirim(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='yetkili_oldugu_birimler')
+    birim = models.ForeignKey(Birim, on_delete=models.CASCADE, related_name='yetkili_kullanicilar')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'birim')
+        verbose_name = "Kullanıcı Birim Yetkisi"
+        verbose_name_plural = "Kullanıcı Birim Yetkileri"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.birim.BirimAdi}"
 
 class HizmetSunumCalismasi(models.Model):
     CalismaId = models.AutoField(primary_key=True)
@@ -50,6 +64,7 @@ class HizmetSunumCalismasi(models.Model):
     Sertifika = models.BooleanField(default=False, verbose_name="Sertifika")
     Aciklama = models.TextField(blank=True, null=True, verbose_name="Açıklama")
     Kesinlestirme = models.BooleanField(default=False, verbose_name="Kesinleştirme")
+    OzelAlanKodu = models.CharField(max_length=50, blank=True, null=True, verbose_name="Özel Alan Kodu")
 
     class Meta:
         verbose_name = "Hizmet Sunum Çalışması"

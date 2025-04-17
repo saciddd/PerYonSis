@@ -1,10 +1,604 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}Bildirim{% endblock %}
+{% block title %}Hizmet Sunum Alanı Bildirimi{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h1 class="text-center">Bildirim Sayfası</h1>
-    <p class="text-center">Bu sayfa şu anda boş.</p>
+<div class="container-fluid mt-3">
+    <!-- Üst Panel -->
+    <div class="row align-items-end mb-3">
+        <!-- Dönem Seçimi -->
+        <div class="col-md-2">
+            <label for="donemSecimi">Dönem</label>
+            <select class="form-select" id="donemSecimi">
+                <option value="">Dönem Seçiniz</option>
+                {% for donem in donemler %}
+                    <option value="{{ donem.value }}" {% if donem.value == selected_donem %}selected{% endif %}>
+                        {{ donem.label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Birim Seçimi ve Düzenleme -->
+        <div class="col-md-3">
+            <div class="input-group">
+                <label for="birimSecimi" class="w-100">Birim</label>
+                <select class="form-select" id="birimSecimi">
+                    <option value="">Birim Seçiniz</option>
+                    {% for birim in birimler %}
+                        <option value="{{ birim.BirimId }}" data-hsakodu="{{ birim.AlanKodu }}" {% if birim.BirimId == selected_birim %}selected{% endif %}>
+                            {{ birim.BirimAdi }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#birimDuzenleModal">
+                    <i class="bi bi-gear"></i>
+                </button>
+                <button class="btn btn-success" type="button" id="btnPersonelEkle">
+                    <i class="bi bi-person-plus"></i> Personel Ekle
+                </button>
+            </div>
+        </div>
+
+        <!-- İşlem Butonları -->
+        <div class="col-md-3">
+            <button class="btn btn-info me-2" id="btnYazdir">
+                <i class="bi bi-printer"></i> Yazdır
+            </button>
+            <button class="btn btn-success" id="btnKaydet">
+                <i class="bi bi-save"></i> Kaydet
+            </button>
+        </div>
+    </div>
+
+    <!-- Bildirimler Tablosu -->
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered table-hover" id="bildirimlerTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Sıra No</th>
+                    <th>T.C. Kimlik No</th>
+                    <th>Adı</th>
+                    <th>Soyadı</th>
+                    <th>Başlangıç</th>
+                    <th>Bitiş</th>
+                    <th>Özel Alan Kodu</th>
+                    <th>Sorumlu</th>
+                    <th>Sertifika</th>
+                    <th>İşlem</th>
+                    <th>Durum</th>
+                </tr>
+            </thead>
+            <tbody id="bildirimlerTableBody">
+                {% for bildirim in bildirimler %}
+                <tr>
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td>{{ bildirim.tc_kimlik_no }}</td>
+                    <td>{{ bildirim.ad }}</td>
+                    <td>{{ bildirim.soyad }}</td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm" 
+                               value="{{ bildirim.baslangic|date:'Y-m-d' }}">
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm" 
+                               value="{{ bildirim.bitis|date:'Y-m-d' }}">
+                    </td>
+                    <td>{{ bildirim.ozel_alan_kodu }}</td>
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input" 
+                               {% if bildirim.sorumlu %}checked{% endif %}>
+                    </td>
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input" 
+                               {% if bildirim.sertifika %}checked{% endif %}>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-danger btn-sm" onclick="kayitSil({{ bildirim.id }})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                    <td class="text-center">
+                        <i class="bi bi-check-circle-fill {% if bildirim.kesinlesmis %}text-success{% else %}text-warning{% endif %}"></i>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
+
+<!-- Birim Düzenleme Modal -->
+<div class="modal fade" id="birimDuzenleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Birim Ekle/Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="birimForm">
+                    <input type="hidden" id="birimId" name="birimId">
+                    <div class="mb-3">
+                        <label for="birimAdi" class="form-label">Birim Adı</label>
+                        <input type="text" class="form-control" id="birimAdi" name="birimAdi" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="kurumAdi" class="form-label">Kurum Adı</label>
+                        <input type="text" class="form-control" id="kurumAdi" name="kurumAdi" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="hsaKodu" class="form-label">Hizmet Sunum Alanı</label>
+                        <select class="form-control" id="hsaKodu" name="hsaKodu" required>
+                            <option value="">Seçiniz...</option>
+                            {% for hsa in hsa_listesi %}
+                                <option value="{{ hsa.AlanKodu }}">{{ hsa.AlanAdi }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-primary" onclick="birimKaydet()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Personel Ekleme Modal -->
+<div class="modal fade" id="personelEkleModal" tabindex="-1">
+    {% csrf_token %}
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Personel Ekleme</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- Sol Taraf: Önceki Dönem Personelleri -->
+                    <div class="col-md-6">
+                        <h6>Önceki Dönem Personelleri</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm" id="oncekiDonemTable">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" id="selectAllOnceki"></th>
+                                        <th>T.C.</th>
+                                        <th>Adı</th>
+                                        <th>Soyadı</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <button class="btn btn-primary" id="btnPersonelAktar">
+                            <i class="bi bi-arrow-right"></i> Seçilenleri Aktar
+                        </button>
+                    </div>
+
+                    <!-- Sağ Taraf: Manuel/Excel Giriş -->
+                    <div class="col-md-6">
+                        <h6>Yeni Personel Girişi</h6>
+                        <div class="alert alert-info">
+                            Excel'den kopyaladığınız verileri direkt tabloya yapıştırabilir veya manuel giriş yapabilirsiniz.
+                            <br>Enter veya aşağı ok tuşu ile yeni satır ekleyebilirsiniz.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm" id="yeniPersonelTable">
+                                <thead>
+                                    <tr>
+                                        <th>Sıra No</th>
+                                        <th>T.C.</th>
+                                        <th>Adı</th>
+                                        <th>Soyadı</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>1</td>
+                                        <td contenteditable="true"></td>
+                                        <td contenteditable="true"></td>
+                                        <td contenteditable="true"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button class="btn btn-success" id="btnPersonelKaydet">
+                            <i class="bi bi-save"></i> Personelleri Ekle
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-control:read-only {
+        background-color: #e9ecef;
+    }
+    
+    .table td {
+        vertical-align: middle;
+    }
+    
+    /* Tarih inputları için özel stil */
+    input[type="date"].form-control-sm {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    /* Checkbox'lar için özel stil */
+    .form-check-input {
+        cursor: pointer;
+    }
+    
+    /* Durum ikonları için özel stil */
+    .bi-check-circle-fill {
+        font-size: 1.2rem;
+    }
+
+    #yeniPersonelTable td[contenteditable="true"] {
+        padding: 5px;
+        border: 1px solid #dee2e6;
+    }
+    
+    #yeniPersonelTable td[contenteditable="true"]:focus {
+        outline: none;
+        background-color: #e8f0fe;
+        border-color: #80bdff;
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Birim kaydetme fonksiyonu
+    function birimKaydet() {
+        const formData = new FormData(document.getElementById('birimForm'));
+        const birimId = document.getElementById('birimId').value;
+        const url = birimId ? 
+            `/hizmet_sunum/birim/${birimId}/guncelle/` : 
+            `/hizmet_sunum/birim/ekle/`;
+
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+
+    // Kayıt silme fonksiyonu
+    function kayitSil(id) {
+        if (confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
+            // API çağrısı yapılacak
+            console.log('Kayıt siliniyor:', id);
+        }
+    }
+
+    // Sayfayı yazdırma fonksiyonu
+    document.getElementById('btnYazdir').addEventListener('click', function() {
+        window.print();
+    });
+
+    // Değişiklikleri kaydetme fonksiyonu
+    document.getElementById('btnKaydet').addEventListener('click', function() {
+        // Değişiklikleri topla ve API'ye gönder
+        console.log('Değişiklikler kaydediliyor');
+    });
+
+    // Dönemleri oluşturan fonksiyon
+    function getDosyaDonemler() {
+        const today = new Date();
+        const months = [];
+        
+        // Şu anki ayın başlangıcına git
+        today.setDate(1);
+        
+        // Bir önceki aya git (tamamlanan aydan başla)
+        today.setMonth(today.getMonth() - 1);
+        
+        // 6 ay geriye git
+        for (let i = 0; i < 6; i++) {
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const monthLabel = `${month.toString().padStart(2, '0')}/${year}`;
+            const monthValue = `${year}-${month.toString().padStart(2, '0')}`;
+            
+            months.push({
+                label: monthLabel,
+                value: monthValue
+            });
+            
+            today.setMonth(today.getMonth() - 1);
+        }
+        
+        return months;
+    }
+
+    // Tablo işlemleri için fonksiyonlar
+    function initYeniPersonelTable() {
+        const table = document.getElementById('yeniPersonelTable');
+        const tbody = table.querySelector('tbody');
+
+        // Satırlara event listener ekle
+        function addRowListeners(row) {
+            row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+                cell.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        addNewRow();
+                    }
+                });
+            });
+        }
+
+        // Yeni satır ekleme
+        function addNewRow() {
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>${tbody.children.length + 1}</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+            `;
+            tbody.appendChild(newRow);
+            addRowListeners(newRow);
+            newRow.querySelector('td[contenteditable="true"]').focus();
+        }
+
+        // Clipboard paste olayını yakala
+        table.addEventListener('paste', function(e) {
+            e.preventDefault();
+            
+            let data = e.clipboardData.getData('text');
+            let rows = data.split('\n').filter(row => row.trim());
+            
+            // Tabloyu temizle
+            tbody.innerHTML = '';
+            
+            // Her satır için yeni row oluştur
+            rows.forEach((row, index) => {
+                const cols = row.split('\t');
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td contenteditable="true">${cols[0] || ''}</td>
+                    <td contenteditable="true">${cols[1] || ''}</td>
+                    <td contenteditable="true">${cols[2] || ''}</td>
+                `;
+                tbody.appendChild(tr);
+                addRowListeners(tr);
+            });
+        });
+
+        // İlk satıra listener ekle
+        addRowListeners(tbody.querySelector('tr'));
+    }
+
+    // Personel aktarma işlemleri
+    document.getElementById('btnPersonelAktar').addEventListener('click', function() {
+        const checkedRows = document.querySelectorAll('#oncekiDonemTable tbody input[type="checkbox"]:checked');
+        const personelTable = document.getElementById('yeniPersonelTable').querySelector('tbody');
+        
+        checkedRows.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>${personelTable.children.length + 1}</td>
+                <td contenteditable="true">${row.cells[1].textContent}</td>
+                <td contenteditable="true">${row.cells[2].textContent}</td>
+                <td contenteditable="true">${row.cells[3].textContent}</td>
+            `;
+            personelTable.appendChild(newRow);
+        });
+    });
+
+    // Sayfa yüklendiğinde
+    document.addEventListener('DOMContentLoaded', function() {
+        // Dönemleri yükle
+        const donemler = getDosyaDonemler();
+        const donemSelect = document.getElementById('donemSecimi');
+        donemSelect.innerHTML = donemler.map(donem => 
+            `<option value="${donem.value}">${donem.label}</option>`
+        ).join('');
+
+        // Tablo initialize
+        initYeniPersonelTable();
+        fetchBildirimlerForSelected();
+    });
+
+    // Birim düzenleme: seçili birimi modalda doldur
+    function birimDuzenle(birimId) {
+        fetch(`/hizmet_sunum/birim/${birimId}/`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('birimId').value = data.BirimId;
+                document.getElementById('birimAdi').value = data.BirimAdi;
+                document.getElementById('kurumAdi').value = data.KurumAdi;
+                document.getElementById('hsaKodu').value = data.HSAKodu;
+                // Modalı aç
+                new bootstrap.Modal(document.getElementById('birimDuzenleModal')).show();
+            });
+    }
+
+    // Birim ekle: formu temizle ve modalı aç
+    document.querySelector('[data-bs-target="#birimDuzenleModal"]').addEventListener('click', function() {
+        document.getElementById('birimId').value = '';
+        document.getElementById('birimAdi').value = '';
+        document.getElementById('kurumAdi').value = '';
+        document.getElementById('hsaKodu').value = '';
+    });
+
+    // Personel Ekle butonu: modalı aç
+    document.getElementById('btnPersonelEkle').addEventListener('click', function() {
+        const donem = document.getElementById('donemSecimi').value;
+        const birimId = document.getElementById('birimSecimi').value;
+        if (!donem || !birimId) {
+            alert('Lütfen dönem ve birim seçiniz.');
+            return;
+        }
+        // Önceki dönem personellerini getir
+        fetch(`/hizmet_sunum/onceki-donem-personel/${donem}/${birimId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'error') {
+                    alert(data.message || 'Veriler alınırken bir hata oluştu');
+                    return;
+                }
+                const personeller = Array.isArray(data) ? data : (data.data || []);
+                const tbody = document.querySelector('#oncekiDonemTable tbody');
+                tbody.innerHTML = personeller.map(p => `
+                    <tr>
+                        <td><input type="checkbox" value="${p.personel_id}"></td>
+                        <td>${p.tc_kimlik || ''}</td>
+                        <td>${p.adi || ''}</td>
+                        <td>${p.soyadi || ''}</td>
+                    </tr>
+                `).join('');
+            })
+            .catch(error => {
+                console.error('Veri getirme hatası:', error);
+                alert('Veriler alınırken bir hata oluştu');
+            });
+        // Modalı aç
+        new bootstrap.Modal(document.getElementById('personelEkleModal')).show();
+    });
+
+    // Personelleri ekle butonu
+    document.getElementById('btnPersonelKaydet').addEventListener('click', function() {
+        const donem = document.getElementById('donemSecimi').value;
+        const birimId = document.getElementById('birimSecimi').value;
+        const hsaKodu = document.getElementById('hsaKodu').value || document.getElementById('birimSecimi').selectedOptions[0]?.getAttribute('data-hsakodu');
+        if (!donem || !birimId) {
+            alert('Lütfen dönem ve birim seçiniz');
+            return;
+        }
+
+        const personeller = [];
+        document.querySelectorAll('#yeniPersonelTable tbody tr').forEach(row => {
+            const cells = row.querySelectorAll('td[contenteditable="true"]');
+            if (cells.length === 3) {
+                const personel = {
+                    tc_kimlik: cells[0].textContent.trim(),
+                    adi: cells[1].textContent.trim(),
+                    soyadi: cells[2].textContent.trim()
+                };
+                if (personel.tc_kimlik && personel.adi && personel.soyadi) {
+                    personeller.push(personel);
+                }
+            }
+        });
+
+        if (personeller.length === 0) {
+            alert('Eklenecek personel bulunamadı!');
+            return;
+        }
+
+        fetch('/hizmet_sunum/personel/kaydet/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                donem: donem,
+                birim_id: birimId,
+                personeller: personeller
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                fetchBildirimlerForSelected(); // Tabloyu güncelle
+            } else {
+                throw new Error(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Kayıt hatası:', error);
+            alert('Kayıt sırasında bir hata oluştu: ' + error.message);
+        });
+    });
+
+    // Bildirimler tablosunu dolduran fonksiyon
+    function fillBildirimlerTable(bildirimler) {
+        const tbody = document.getElementById('bildirimlerTableBody');
+        tbody.innerHTML = '';
+        if (!bildirimler || bildirimler.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center">Kayıt bulunamadı.</td></tr>`;
+            return;
+        }
+        bildirimler.forEach((b, idx) => {
+            tbody.innerHTML += `
+                <tr>
+                    <td class="text-center">${idx + 1}</td>
+                    <td>${b.tc_kimlik_no || ''}</td>
+                    <td>${b.ad || ''}</td>
+                    <td>${b.soyad || ''}</td>
+                    <td><input type="date" class="form-control form-control-sm" value="${b.baslangic || ''}"></td>
+                    <td><input type="date" class="form-control form-control-sm" value="${b.bitis || ''}"></td>
+                    <td>${b.ozel_alan_kodu || ''}</td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input" ${b.sorumlu ? 'checked' : ''}></td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input" ${b.sertifika ? 'checked' : ''}></td>
+                    <td class="text-center">
+                        <button class="btn btn-danger btn-sm" onclick="kayitSil('${b.id || ''}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                    <td class="text-center">
+                        <i class="bi bi-check-circle-fill ${b.kesinlesmis ? 'text-success' : 'text-warning'}"></i>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // Dönem veya birim değiştiğinde bildirimleri getir
+    function fetchBildirimlerForSelected() {
+        const donem = document.getElementById('donemSecimi').value;
+        const birimId = document.getElementById('birimSecimi').value;
+        if (!donem || !birimId) {
+            fillBildirimlerTable([]);
+            return;
+        }
+        // Dönem formatı: YYYY-MM, ayı ve yılı ayır
+        const [year, month] = donem.split('-');
+        // Doğru endpoint: /hizmet_sunum/bildirimler/listele/<yil>/<ay>/<birim_id>/
+        fetch(`/hizmet_sunum/bildirimler/listele/${year}/${parseInt(month)}/${birimId}/`)
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    fillBildirimlerTable(data.data);
+                } else {
+                    fillBildirimlerTable([]);
+                }
+            })
+            .catch(() => fillBildirimlerTable([]));
+    }
+
+    // Dönem ve birim seçimlerinde tabloyu güncelle
+    document.getElementById('donemSecimi').addEventListener('change', fetchBildirimlerForSelected);
+    document.getElementById('birimSecimi').addEventListener('change', fetchBildirimlerForSelected);
+</script>
 {% endblock %}

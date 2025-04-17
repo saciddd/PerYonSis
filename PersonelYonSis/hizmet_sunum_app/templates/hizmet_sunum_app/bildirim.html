@@ -52,6 +52,14 @@
         </div>
     </div>
 
+    <!-- Aktif Birim Bilgisi -->
+    {% if selected_birim_obj %}
+    <div class="alert alert-info" role="alert">
+        <strong>Aktif Birim:</strong> {{ selected_birim_obj.BirimAdi }} 
+        <span class="badge bg-secondary ms-2">Özel Alan Kodu: {{ selected_birim_obj.AlanKodu }} ({{ hsa_adi }})</span>
+    </div>
+    {% endif %}
+
     <!-- Bildirimler Tablosu -->
     <div class="table-responsive">
         <table class="table table-sm table-bordered table-hover" id="bildirimlerTable">
@@ -95,7 +103,7 @@
                                {% if bildirim.sertifika %}checked{% endif %}>
                     </td>
                     <td class="text-center">
-                        <button class="btn btn-danger btn-sm" onclick="kayitSil({{ bildirim.id }})">
+                        <button class="btn btn-danger btn-sm" onclick="kayitSil('{{ bildirim.id }}')">
                             <i class="bi bi-trash"></i>
                         </button>
                     </td>
@@ -111,37 +119,71 @@
 
 <!-- Birim Düzenleme Modal -->
 <div class="modal fade" id="birimDuzenleModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Birim Ekle/Düzenle</h5>
+                <h5 class="modal-title">Birim Yönetimi</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="birimForm">
-                    <input type="hidden" id="birimId" name="birimId">
-                    <div class="mb-3">
-                        <label for="birimAdi" class="form-label">Birim Adı</label>
-                        <input type="text" class="form-control" id="birimAdi" name="birimAdi" required>
+                <div class="row">
+                    <!-- Birim Ekleme Formu -->
+                    <div class="col-md-6 border-end">
+                        <h6>Yeni Birim Ekle</h6>
+                        <form id="birimEkleForm">
+                             {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="birimAdiEkle" class="form-label">Birim Adı</label>
+                                <input type="text" class="form-control" id="birimAdiEkle" name="birimAdi" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="kurumAdiEkle" class="form-label">Kurum Adı</label>
+                                <input type="text" class="form-control" id="kurumAdiEkle" name="kurumAdi" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="hsaKoduEkle" class="form-label">Hizmet Sunum Alanı</label>
+                                <select class="form-select" id="hsaKoduEkle" name="hsaKodu" required>
+                                    <option value="" selected disabled>Seçiniz...</option>
+                                    {% for hsa in hsa_listesi %}
+                                        <option value="{{ hsa.AlanKodu }}">{{ hsa.AlanAdi }} ({{ hsa.AlanKodu }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                             <button type="button" class="btn btn-success" onclick="birimEkle()">Yeni Birimi Kaydet</button>
+                        </form>
                     </div>
-                    <div class="mb-3">
-                        <label for="kurumAdi" class="form-label">Kurum Adı</label>
-                        <input type="text" class="form-control" id="kurumAdi" name="kurumAdi" required>
+
+                    <!-- Birim Düzenleme Formu -->
+                    <div class="col-md-6">
+                        <h6>Seçili Birimi Düzenle</h6>
+                        <form id="birimDuzenleForm">
+                             {% csrf_token %}
+                            <input type="hidden" id="birimIdDuzenle" name="birimId">
+                             <div class="mb-3">
+                                <label for="birimAdiDuzenle" class="form-label">Birim Adı</label>
+                                <input type="text" class="form-control" id="birimAdiDuzenle" name="birimAdi" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="kurumAdiDuzenle" class="form-label">Kurum Adı</label>
+                                <input type="text" class="form-control" id="kurumAdiDuzenle" name="kurumAdi" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="hsaKoduDuzenle" class="form-label">Hizmet Sunum Alanı</label>
+                                <select class="form-select" id="hsaKoduDuzenle" name="hsaKodu" required>
+                                    <option value="" selected disabled>Seçiniz...</option>
+                                    {% for hsa in hsa_listesi %}
+                                        <option value="{{ hsa.AlanKodu }}">{{ hsa.AlanAdi }} ({{ hsa.AlanKodu }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                             <button type="button" class="btn btn-primary" onclick="birimGuncelle()">Değişiklikleri Kaydet</button>
+                             <button type="button" class="btn btn-danger ms-2" onclick="birimSil()">Birimi Sil</button>
+                        </form>
                     </div>
-                    <div class="mb-3">
-                        <label for="hsaKodu" class="form-label">Hizmet Sunum Alanı</label>
-                        <select class="form-control" id="hsaKodu" name="hsaKodu" required>
-                            <option value="">Seçiniz...</option>
-                            {% for hsa in hsa_listesi %}
-                                <option value="{{ hsa.AlanKodu }}">{{ hsa.AlanAdi }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </form>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-                <button type="button" class="btn btn-primary" onclick="birimKaydet()">Kaydet</button>
             </div>
         </div>
     </div>
@@ -257,24 +299,26 @@
     .table th {
         background-color: #f8f9fa;
     }
+
+    #birimDuzenleForm input, #birimDuzenleForm select {
+        background-color: #f8f9fa;
+    }
 </style>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    // Birim kaydetme fonksiyonu
-    function birimKaydet() {
-        const formData = new FormData(document.getElementById('birimForm'));
-        const birimId = document.getElementById('birimId').value;
-        const url = birimId ? 
-            `/hizmet_sunum/birim/${birimId}/guncelle/` : 
-            `/hizmet_sunum/birim/ekle/`;
+    // Birim Ekleme Fonksiyonu
+    function birimEkle() {
+        const form = document.getElementById('birimEkleForm');
+        const formData = new FormData(form);
+        const url = `/hizmet_sunum/birim/ekle/`;
 
         fetch(url, {
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
+                'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
             }
         })
         .then(response => response.json())
@@ -282,16 +326,102 @@
             if (data.status === 'success') {
                 location.reload();
             } else {
-                alert(data.message);
+                alert('Hata: ' + (data.message || 'Birim eklenemedi.'));
             }
+        })
+        .catch(error => {
+            console.error('Birim Ekleme Hatası:', error);
+            alert('Birim eklenirken bir hata oluştu.');
+        });
+    }
+
+    // Birim Güncelleme Fonksiyonu
+    function birimGuncelle() {
+        const form = document.getElementById('birimDuzenleForm');
+        const formData = new FormData(form);
+        const birimId = document.getElementById('birimIdDuzenle').value;
+        if (!birimId) {
+            alert('Düzenlenecek birim seçili değil.');
+            return;
+        }
+        const url = `/hizmet_sunum/birim/${birimId}/guncelle/`;
+
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Hata: ' + (data.message || 'Birim güncellenemedi.'));
+            }
+        })
+        .catch(error => {
+            console.error('Birim Güncelleme Hatası:', error);
+            alert('Birim güncellenirken bir hata oluştu.');
+        });
+    }
+    
+    // Birim Silme Fonksiyonu
+    function birimSil() {
+        const birimId = document.getElementById('birimIdDuzenle').value;
+        if (!birimId) {
+            alert('Silinecek birim seçili değil.');
+            return;
+        }
+        if (!confirm('Bu birimi silmek istediğinizden emin misiniz? Bu birime ait tüm bildirimler de silinecektir!')) {
+            return;
+        }
+        const url = `/hizmet_sunum/birim/${birimId}/sil/`;
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                 'X-CSRFToken': document.getElementById('birimDuzenleForm').querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Hata: ' + (data.message || 'Birim silinemedi.'));
+            }
+        })
+        .catch(error => {
+            console.error('Birim Silme Hatası:', error);
+            alert('Birim silinirken bir hata oluştu.');
         });
     }
 
     // Kayıt silme fonksiyonu
-    function kayitSil(id) {
-        if (confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
-            // API çağrısı yapılacak
-            console.log('Kayıt siliniyor:', id);
+    function kayitSil(bildirimId) {
+        if (!bildirimId) return;
+        if (confirm('Bu bildirim kaydını silmek istediğinize emin misiniz?')) {
+             const url = `/hizmet_sunum/bildirim/${bildirimId}/sil/`;
+             fetch(url, {
+                method: 'POST',
+                headers: {
+                     'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                     fetchBildirimlerForSelected(); 
+                     alert('Kayıt başarıyla silindi.');
+                } else {
+                    alert('Hata: ' + (data.message || 'Kayıt silinemedi.'));
+                }
+            })
+            .catch(error => {
+                 console.error('Bildirim Silme Hatası:', error);
+                alert('Kayıt silinirken bir hata oluştu.');
+            });
         }
     }
 
@@ -302,8 +432,136 @@
 
     // Değişiklikleri kaydetme fonksiyonu
     document.getElementById('btnKaydet').addEventListener('click', function() {
-        // Değişiklikleri topla ve API'ye gönder
-        console.log('Değişiklikler kaydediliyor');
+        const tableBody = document.getElementById('bildirimlerTableBody');
+        const rows = tableBody.querySelectorAll('tr');
+        const dataToSave = [];
+        const donem = document.getElementById('donemSecimi').value;
+        let isValid = true;
+
+        const [year, month] = donem.split('-').map(Number);
+        const donemBaslangic = new Date(year, month - 1, 1);
+        const donemBitis = new Date(year, month, 0);
+
+        rows.forEach((row, index) => {
+            if (row.querySelector('td[colspan]')) return;
+
+            const idInput = row.querySelector('button[onclick^="kayitSil"]');
+            const bildirimIdMatch = idInput ? idInput.getAttribute('onclick').match(/kayitSil\('?(\d+)'?\)/) : null;
+            const bildirimId = bildirimIdMatch ? bildirimIdMatch[1] : null;
+
+            const tcKimlikNo = row.cells[1].textContent;
+            const baslangicInput = row.querySelector('td:nth-child(5) input[type="date"]');
+            const bitisInput = row.querySelector('td:nth-child(6) input[type="date"]');
+            const sorumluInput = row.querySelector('td:nth-child(8) input[type="checkbox"]');
+            const sertifikaInput = row.querySelector('td:nth-child(9) input[type="checkbox"]');
+            const durumIcon = row.querySelector('td:nth-child(11) i');
+
+            const baslangicValue = baslangicInput.value;
+            const bitisValue = bitisInput.value;
+            const sorumluValue = sorumluInput.checked;
+            const sertifikaValue = sertifikaInput.checked;
+
+            let rowErrors = [];
+            baslangicInput.classList.remove('is-invalid');
+            bitisInput.classList.remove('is-invalid');
+            durumIcon.className = 'bi bi-check-circle-fill text-warning';
+            durumIcon.removeAttribute('title');
+            durumIcon.removeAttribute('data-bs-toggle');
+
+            if (baslangicValue && bitisValue) {
+                const baslangicDate = new Date(baslangicValue + 'T00:00:00');
+                const bitisDate = new Date(bitisValue + 'T00:00:00');
+
+                if (baslangicDate > bitisDate) {
+                    rowErrors.push('Başlangıç tarihi, bitiş tarihinden sonra olamaz.');
+                    baslangicInput.classList.add('is-invalid');
+                    bitisInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+
+                if (baslangicDate < donemBaslangic || baslangicDate > donemBitis) {
+                    rowErrors.push('Başlangıç tarihi seçili dönemin dışında.');
+                    baslangicInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+                 if (bitisDate < donemBaslangic || bitisDate > donemBitis) {
+                    rowErrors.push('Bitiş tarihi seçili dönemin dışında.');
+                    bitisInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+            } else if (!baslangicValue || !bitisValue) {
+                // Eksik tarih kontrolü (backend'de daha detaylı yapılabilir)
+                // rowErrors.push('Başlangıç ve Bitiş tarihleri girilmelidir.');
+                // isValid = false;
+            }
+
+            if (rowErrors.length > 0) {
+                 durumIcon.className = 'bi bi-x-circle-fill text-danger';
+                 durumIcon.setAttribute('title', rowErrors.join('\n'));
+                 durumIcon.setAttribute('data-bs-toggle', 'tooltip');
+                 new bootstrap.Tooltip(durumIcon);
+            }
+
+            dataToSave.push({
+                id: bildirimId,
+                tc_kimlik_no: tcKimlikNo,
+                baslangic: baslangicValue,
+                bitis: bitisValue,
+                sorumlu: sorumluValue,
+                sertifika: sertifikaValue,
+            });
+        });
+
+        if (!isValid) {
+            alert('Lütfen tablodaki hataları düzeltin.');
+            return;
+        }
+
+        const birimId = document.getElementById('birimSecimi').value;
+        const url = `/hizmet_sunum/bildirimler/kaydet/`;
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ 
+                donem: donem,
+                birim_id: birimId,
+                bildirimler: dataToSave 
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Değişiklikler başarıyla kaydedildi.');
+                 fetchBildirimlerForSelected();
+            } else {
+                 alert('Kayıt sırasında hatalar oluştu: ' + (data.message || 'Bilinmeyen Hata'));
+                 if (data.errors && Array.isArray(data.errors)) {
+                     data.errors.forEach(error => {
+                         const targetRow = Array.from(rows).find(row => {
+                              const idInput = row.querySelector('button[onclick^="kayitSil"]');
+                              const bildirimIdMatch = idInput ? idInput.getAttribute('onclick').match(/kayitSil\('?(\d+)'?\)/) : null;
+                              const rowId = bildirimIdMatch ? bildirimIdMatch[1] : null;
+                              return (rowId && error.id && rowId === error.id.toString()) || 
+                                     (!rowId && !error.id && row.cells[1].textContent === error.tc_kimlik_no); 
+                         });
+                         if (targetRow) {
+                             const durumIcon = targetRow.querySelector('td:nth-child(11) i');
+                             durumIcon.className = 'bi bi-x-circle-fill text-danger';
+                             durumIcon.setAttribute('title', error.message);
+                             durumIcon.setAttribute('data-bs-toggle', 'tooltip');
+                             new bootstrap.Tooltip(durumIcon);
+                         }
+                     });
+                 }
+            }
+        })
+        .catch(error => {
+            console.error('Kaydetme Hatası:', error);
+            alert('Değişiklikler kaydedilirken bir sunucu hatası oluştu.');
+        });
     });
 
     // Dönemleri oluşturan fonksiyon
@@ -311,13 +569,10 @@
         const today = new Date();
         const months = [];
         
-        // Şu anki ayın başlangıcına git
         today.setDate(1);
         
-        // Bir önceki aya git (tamamlanan aydan başla)
         today.setMonth(today.getMonth() - 1);
         
-        // 6 ay geriye git
         for (let i = 0; i < 6; i++) {
             const year = today.getFullYear();
             const month = today.getMonth() + 1;
@@ -340,7 +595,6 @@
         const table = document.getElementById('yeniPersonelTable');
         const tbody = table.querySelector('tbody');
 
-        // Satırlara event listener ekle
         function addRowListeners(row) {
             row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
                 cell.addEventListener('keydown', function(e) {
@@ -352,7 +606,6 @@
             });
         }
 
-        // Yeni satır ekleme
         function addNewRow() {
             const newRow = document.createElement('tr');
             newRow.innerHTML = `
@@ -366,17 +619,14 @@
             newRow.querySelector('td[contenteditable="true"]').focus();
         }
 
-        // Clipboard paste olayını yakala
         table.addEventListener('paste', function(e) {
             e.preventDefault();
             
             let data = e.clipboardData.getData('text');
             let rows = data.split('\n').filter(row => row.trim());
             
-            // Tabloyu temizle
             tbody.innerHTML = '';
             
-            // Her satır için yeni row oluştur
             rows.forEach((row, index) => {
                 const cols = row.split('\t');
                 const tr = document.createElement('tr');
@@ -391,7 +641,6 @@
             });
         });
 
-        // İlk satıra listener ekle
         addRowListeners(tbody.querySelector('tr'));
     }
 
@@ -415,38 +664,53 @@
 
     // Sayfa yüklendiğinde
     document.addEventListener('DOMContentLoaded', function() {
-        // Dönemleri yükle
         const donemler = getDosyaDonemler();
         const donemSelect = document.getElementById('donemSecimi');
         donemSelect.innerHTML = donemler.map(donem => 
             `<option value="${donem.value}">${donem.label}</option>`
         ).join('');
 
-        // Tablo initialize
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+
         initYeniPersonelTable();
         fetchBildirimlerForSelected();
     });
 
-    // Birim düzenleme: seçili birimi modalda doldur
-    function birimDuzenle(birimId) {
-        fetch(`/hizmet_sunum/birim/${birimId}/`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('birimId').value = data.BirimId;
-                document.getElementById('birimAdi').value = data.BirimAdi;
-                document.getElementById('kurumAdi').value = data.KurumAdi;
-                document.getElementById('hsaKodu').value = data.HSAKodu;
-                // Modalı aç
-                new bootstrap.Modal(document.getElementById('birimDuzenleModal')).show();
-            });
-    }
+    // Birim düzenleme modalını açarken formu doldur
+    document.getElementById('birimDuzenleModal').addEventListener('show.bs.modal', function (event) {
+        const selectedBirimId = document.getElementById('birimSecimi').value;
+        const editForm = document.getElementById('birimDuzenleForm');
+        const addForm = document.getElementById('birimEkleForm');
+        
+        addForm.reset();
 
-    // Birim ekle: formu temizle ve modalı aç
-    document.querySelector('[data-bs-target="#birimDuzenleModal"]').addEventListener('click', function() {
-        document.getElementById('birimId').value = '';
-        document.getElementById('birimAdi').value = '';
-        document.getElementById('kurumAdi').value = '';
-        document.getElementById('hsaKodu').value = '';
+        if (selectedBirimId) {
+            fetch(`/hizmet_sunum/birim/${selectedBirimId}/detay/`)
+                .then(response => response.json())
+                .then(data => {
+                    if(data.status === 'success'){
+                        document.getElementById('birimIdDuzenle').value = data.data.BirimId;
+                        document.getElementById('birimAdiDuzenle').value = data.data.BirimAdi;
+                        document.getElementById('kurumAdiDuzenle').value = data.data.KurumAdi;
+                        document.getElementById('hsaKoduDuzenle').value = data.data.HSAKodu;
+                        editForm.style.display = 'block'; 
+                    } else {
+                         editForm.style.display = 'none';
+                         alert('Seçili birim bilgileri alınamadı.');
+                    }
+                }).catch(error => {
+                     console.error("Birim detay getirme hatası:", error);
+                     editForm.style.display = 'none'; 
+                     alert('Seçili birim bilgileri alınırken hata.');
+                });
+        } else {
+            editForm.reset();
+            document.getElementById('birimIdDuzenle').value = '';
+            editForm.style.display = 'none'; 
+        }
     });
 
     // Personel Ekle butonu: modalı aç
@@ -457,7 +721,6 @@
             alert('Lütfen dönem ve birim seçiniz.');
             return;
         }
-        // Önceki dönem personellerini getir
         fetch(`/hizmet_sunum/onceki-donem-personel/${donem}/${birimId}/`)
             .then(response => response.json())
             .then(data => {
@@ -480,7 +743,6 @@
                 console.error('Veri getirme hatası:', error);
                 alert('Veriler alınırken bir hata oluştu');
             });
-        // Modalı aç
         new bootstrap.Modal(document.getElementById('personelEkleModal')).show();
     });
 
@@ -488,7 +750,6 @@
     document.getElementById('btnPersonelKaydet').addEventListener('click', function() {
         const donem = document.getElementById('donemSecimi').value;
         const birimId = document.getElementById('birimSecimi').value;
-        const hsaKodu = document.getElementById('hsaKodu').value || document.getElementById('birimSecimi').selectedOptions[0]?.getAttribute('data-hsakodu');
         if (!donem || !birimId) {
             alert('Lütfen dönem ve birim seçiniz');
             return;
@@ -513,12 +774,22 @@
             alert('Eklenecek personel bulunamadı!');
             return;
         }
+        
+        // CSRF token'ını modal içinden al
+        const modalElement = document.getElementById('personelEkleModal');
+        const csrfTokenInput = modalElement.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfTokenInput) {
+            alert('CSRF token bulunamadı. Sayfayı yenileyip tekrar deneyin.');
+            console.error('CSRF token input not found inside #personelEkleModal');
+            return;
+        }
+        const csrfToken = csrfTokenInput.value;
 
         fetch('/hizmet_sunum/personel/kaydet/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                'X-CSRFToken': csrfToken 
             },
             body: JSON.stringify({
                 donem: donem,
@@ -531,8 +802,11 @@
             if (data.status === 'success') {
                 alert(data.message);
                 fetchBildirimlerForSelected(); // Tabloyu güncelle
+                // Modalı kapat (opsiyonel)
+                var personelModal = bootstrap.Modal.getInstance(modalElement);
+                if(personelModal) personelModal.hide();
             } else {
-                throw new Error(data.message);
+                throw new Error(data.message || 'Bilinmeyen bir hata oluştu.');
             }
         })
         .catch(error => {
@@ -582,9 +856,7 @@
             fillBildirimlerTable([]);
             return;
         }
-        // Dönem formatı: YYYY-MM, ayı ve yılı ayır
         const [year, month] = donem.split('-');
-        // Doğru endpoint: /hizmet_sunum/bildirimler/listele/<yil>/<ay>/<birim_id>/
         fetch(`/hizmet_sunum/bildirimler/listele/${year}/${parseInt(month)}/${birimId}/`)
             .then(resp => resp.json())
             .then(data => {

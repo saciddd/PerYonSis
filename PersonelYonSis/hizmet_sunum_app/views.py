@@ -9,6 +9,7 @@ import calendar
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 @login_required
 def bildirim(request):
@@ -309,8 +310,8 @@ def bildirimler_listele(request, year, month, birim_id):
         # Hata loglama eklenebilir
         return JsonResponse({'status': 'error', 'message': f'Bildirimler listelenirken hata: {str(e)}'}, status=500)
 
+@csrf_exempt
 @login_required
-@require_POST
 def bildirimler_kaydet(request):
     """Bildirim tablosundaki değişiklikleri kaydeder"""
     try:
@@ -442,7 +443,7 @@ def bildirimler_kaydet(request):
                  transaction.set_rollback(True) 
                  return JsonResponse({
                     'status': 'error', 
-                    'message': 'Çakışan veya hatalı kayıtlar bulundu.', 
+                    'message': 'Çakışan veya hatalı kayıtlar bulundu. Kayıt işlemi geri alındı.', 
                     'errors': final_errors
                 }, status=400)
 
@@ -496,6 +497,64 @@ def bildirimler_kaydet(request):
         return JsonResponse({'status': 'error', 'message': 'Geçersiz JSON formatı.'}, status=400)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': f'Genel bir hata oluştu: {str(e)}'}, status=500)
+
+@csrf_exempt
+@login_required
+def bildirimler_kesinlestir(request):
+    """Bildirimleri kesinleştirir"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            donem = data.get('donem')
+            birim_id = data.get('birim_id')
+            bildirimler_data = data.get('bildirimler')
+
+            if not all([donem, birim_id, bildirimler_data]):
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Eksik parametreler.'
+                })
+
+            # Önce bildirimleri kaydet
+            kaydet_sonucu = bildirimler_kaydet(request)
+            if kaydet_sonucu.status_code != 200 or json.loads(kaydet_sonucu.content)['status'] == 'error':
+                # Kaydetme başarısız olursa işlemi durdur
+                return kaydet_sonucu
+
+            donem_date = datetime.strptime(donem, '%Y-%m').date()
+            birim = get_object_or_404(Birim, BirimId=birim_id)
+
+            with transaction.atomic():
+                for bildirim_data in bildirimler_data:
+                    bildirim_id = bildirim_data.get('id')
+                    if not bildirim_id:
+                        continue
+
+                    bildirim = get_object_or_404(HizmetSunumCalismasi, CalismaId=bildirim_id)
+                    
+                    # Verileri güncelle
+                    bildirim.HizmetBaslangicTarihi = datetime.strptime(bildirim_data['baslangic'], '%Y-%m-%d').date()
+                    bildirim.HizmetBitisTarihi = datetime.strptime(bildirim_data['bitis'], '%Y-%m-%d').date()
+                    bildirim.Sorumlu = bildirim_data['sorumlu']
+                    bildirim.Sertifika = bildirim_data['sertifika']
+                    bildirim.Kesinlestirme = True
+                    bildirim.save()
+
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Bildirimler başarıyla kesinleştirildi.'
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Geçersiz istek metodu.'
+    })
 
 @login_required
 @require_POST

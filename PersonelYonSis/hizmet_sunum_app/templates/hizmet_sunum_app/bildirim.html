@@ -44,11 +44,36 @@
         <!-- İşlem Butonları -->
         <div class="col-md-3">
             <button class="btn btn-info me-2" id="btnYazdir">
-                <i class="bi bi-printer"></i> Yazdır
+                Kesinleştir ve Formu Yazdır
             </button>
             <button class="btn btn-success" id="btnKaydet">
                 <i class="bi bi-save"></i> Kaydet
             </button>
+            <button class="btn btn-secondary ms-2" id="btnAciklama">
+                <i class="bi bi-info-circle"></i> Açıklama
+            </button>
+        </div>
+    </div>
+
+    <!-- Açıklama Modalı -->
+    <div class="modal fade" id="aciklamaModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Açıklamalar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Hizmet Sunum Alanı Bildirimleri Hakkında</h6>
+                    <p>Hizmet sunum alanı bildirimleri yaparken lütfen aşağıdaki hususlara dikkat edin:</p>
+                    <ul>
+                        <li>Her ay başında, tamamlanan önceki aya ilişkin veriler girilecektir.</li>
+                        <li>Kaydetme aşamasında sistem çakışma kontrolleri yapacak, aynı personelin birden fazla yerde aynı günlerde çalışması halinde uyarı verecektir.</li>
+                        <li>Uyarı olması halinde bildirim kesinleştirme işlemi tamamlanmayacak ve form yazdırma işlemi yapılamayacaktır.</li>
+                        <li>Kesinleştirilen verilerde değişiklik yapmak için sistem yöneticisine başvurmanız gerekmektedir.</li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -87,23 +112,23 @@
                     <td>{{ bildirim.soyad }}</td>
                     <td>
                         <input type="date" class="form-control form-control-sm" 
-                               value="{{ bildirim.baslangic|date:'Y-m-d' }}">
+                               value="{{ bildirim.baslangic|date:'Y-m-d' }}" {% if bildirim.kesinlesmis %}readonly disabled{% endif %}>
                     </td>
                     <td>
                         <input type="date" class="form-control form-control-sm" 
-                               value="{{ bildirim.bitis|date:'Y-m-d' }}">
+                               value="{{ bildirim.bitis|date:'Y-m-d' }}" {% if bildirim.kesinlesmis %}readonly disabled{% endif %}>
                     </td>
                     <td>{{ bildirim.ozel_alan_kodu }}</td>
                     <td class="text-center">
                         <input type="checkbox" class="form-check-input" 
-                               {% if bildirim.sorumlu %}checked{% endif %}>
+                               {% if bildirim.sorumlu %}checked{% endif %} {% if bildirim.kesinlesmis %}disabled{% endif %}>
                     </td>
                     <td class="text-center">
                         <input type="checkbox" class="form-check-input" 
-                               {% if bildirim.sertifika %}checked{% endif %}>
+                               {% if bildirim.sertifika %}checked{% endif %} {% if bildirim.kesinlesmis %}disabled{% endif %}>
                     </td>
                     <td class="text-center">
-                        <button class="btn btn-danger btn-sm" onclick="kayitSil('{{ bildirim.id }}')">
+                        <button class="btn btn-danger btn-sm" onclick="kayitSil('{{ bildirim.id }}')" {% if bildirim.kesinlesmis %}disabled{% endif %}>
                             <i class="bi bi-trash"></i>
                         </button>
                     </td>
@@ -425,13 +450,156 @@
         }
     }
 
-    // Sayfayı yazdırma fonksiyonu
+    // Kesinleştir ve Formu Yazdır butonu
     document.getElementById('btnYazdir').addEventListener('click', function() {
-        window.print();
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Veriler kesinleştirildikten sonra değişiklik yapamayacaksınız. Onaylıyor musunuz?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Evet, kesinleştir!',
+            cancelButtonText: 'İptal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                kesinlestirVeYazdir();
+            }
+        });
     });
 
+    // Kesinleştirme ve yazdırma fonksiyonu
+    function kesinlestirVeYazdir() {
+        const tableBody = document.getElementById('bildirimlerTableBody');
+        const rows = tableBody.querySelectorAll('tr');
+        const dataToSave = [];
+        const donem = document.getElementById('donemSecimi').value;
+        let isValid = true;
+
+        const [year, month] = donem.split('-').map(Number);
+        const donemBaslangic = new Date(year, month - 1, 1);
+        const donemBitis = new Date(year, month, 0);
+
+        rows.forEach((row, index) => {
+            if (row.querySelector('td[colspan]')) return;
+
+            const idInput = row.querySelector('button[onclick^="kayitSil"]');
+            const bildirimIdMatch = idInput ? idInput.getAttribute('onclick').match(/kayitSil\('?(\d+)'?\)/) : null;
+            const bildirimId = bildirimIdMatch ? bildirimIdMatch[1] : null;
+
+            const tcKimlikNo = row.cells[1].textContent;
+            const baslangicInput = row.querySelector('td:nth-child(5) input[type="date"]');
+            const bitisInput = row.querySelector('td:nth-child(6) input[type="date"]');
+            const sorumluInput = row.querySelector('td:nth-child(8) input[type="checkbox"]');
+            const sertifikaInput = row.querySelector('td:nth-child(9) input[type="checkbox"]');
+            const durumIcon = row.querySelector('td:nth-child(11) i');
+
+            const baslangicValue = baslangicInput.value;
+            const bitisValue = bitisInput.value;
+            const sorumluValue = sorumluInput.checked;
+            const sertifikaValue = sertifikaInput.checked;
+
+            let rowErrors = [];
+            baslangicInput.classList.remove('is-invalid');
+            bitisInput.classList.remove('is-invalid');
+            durumIcon.className = 'bi bi-check-circle-fill text-warning';
+            durumIcon.removeAttribute('title');
+            durumIcon.removeAttribute('data-bs-toggle');
+
+            if (baslangicValue && bitisValue) {
+                const baslangicDate = new Date(baslangicValue + 'T00:00:00');
+                const bitisDate = new Date(bitisValue + 'T00:00:00');
+
+                if (baslangicDate > bitisDate) {
+                    rowErrors.push('Başlangıç tarihi, bitiş tarihinden sonra olamaz.');
+                    baslangicInput.classList.add('is-invalid');
+                    bitisInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+
+                if (baslangicDate < donemBaslangic || baslangicDate > donemBitis) {
+                    rowErrors.push('Başlangıç tarihi seçili dönemin dışında.');
+                    baslangicInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+                 if (bitisDate < donemBaslangic || bitisDate > donemBitis) {
+                    rowErrors.push('Bitiş tarihi seçili dönemin dışında.');
+                    bitisInput.classList.add('is-invalid');
+                    isValid = false;
+                }
+            }
+
+            if (rowErrors.length > 0) {
+                 durumIcon.className = 'bi bi-x-circle-fill text-danger';
+                 durumIcon.setAttribute('title', rowErrors.join('\n'));
+                 durumIcon.setAttribute('data-bs-toggle', 'tooltip');
+                 new bootstrap.Tooltip(durumIcon);
+            }
+
+            dataToSave.push({
+                id: bildirimId,
+                tc_kimlik_no: tcKimlikNo,
+                baslangic: baslangicValue,
+                bitis: bitisValue,
+                sorumlu: sorumluValue,
+                sertifika: sertifikaValue,
+            });
+        });
+
+        if (!isValid) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Hata!',
+                text: 'Kesinleştirme tamamlanamadı, Açıklamaları görmek için kaydet butonuna tıklayın.'
+            });
+                return;
+            }
+
+        const birimId = document.getElementById('birimSecimi').value;
+        const url = `/hizmet_sunum/bildirimler/kesinlestir/`;
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ 
+                donem: donem,
+                birim_id: birimId,
+                bildirimler: dataToSave 
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Başarılı!',
+                    text: 'Tüm kayıtlar kesinleştirildi.'
+                }).then(() => {
+                    fetchBildirimlerForSelected();
+                    window.print();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Hata!',
+                    text: 'Kesinleştirme tamamlanamadı, Açıklamaları görmek için kaydet butonuna tıklayınız.'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Kesinleştirme Hatası:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Hata!',
+                text: 'Kesinleştirme sırasında bir sunucu hatası oluştu.'
+            });
+        });
+    }
+
     // Değişiklikleri kaydetme fonksiyonu
-    document.getElementById('btnKaydet').addEventListener('click', function() {
+    function saveBildirimler() {
         const tableBody = document.getElementById('bildirimlerTableBody');
         const rows = tableBody.querySelectorAll('tr');
         const dataToSave = [];
@@ -562,6 +730,11 @@
             console.error('Kaydetme Hatası:', error);
             alert('Değişiklikler kaydedilirken bir sunucu hatası oluştu.');
         });
+    }
+
+    // Değişiklikleri kaydetme fonksiyonu
+    document.getElementById('btnKaydet').addEventListener('click', function() {
+        saveBildirimler();
     });
 
     // Dönemleri oluşturan fonksiyon
@@ -830,13 +1003,13 @@
                     <td>${b.tc_kimlik_no || ''}</td>
                     <td>${b.ad || ''}</td>
                     <td>${b.soyad || ''}</td>
-                    <td><input type="date" class="form-control form-control-sm" value="${b.baslangic || ''}"></td>
-                    <td><input type="date" class="form-control form-control-sm" value="${b.bitis || ''}"></td>
+                    <td><input type="date" class="form-control form-control-sm" value="${b.baslangic || ''}" ${b.kesinlesmis ? 'readonly disabled' : ''}></td>
+                    <td><input type="date" class="form-control form-control-sm" value="${b.bitis || ''}" ${b.kesinlesmis ? 'readonly disabled' : ''}></td>
                     <td>${b.ozel_alan_kodu || ''}</td>
-                    <td class="text-center"><input type="checkbox" class="form-check-input" ${b.sorumlu ? 'checked' : ''}></td>
-                    <td class="text-center"><input type="checkbox" class="form-check-input" ${b.sertifika ? 'checked' : ''}></td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input" ${b.sorumlu ? 'checked' : ''} ${b.kesinlesmis ? 'disabled' : ''}></td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input" ${b.sertifika ? 'checked' : ''} ${b.kesinlesmis ? 'disabled' : ''}></td>
                     <td class="text-center">
-                        <button class="btn btn-danger btn-sm" onclick="kayitSil('${b.id || ''}')">
+                        <button class="btn btn-danger btn-sm" onclick="kayitSil('${b.id || ''}')" ${b.kesinlesmis ? 'disabled' : ''}>
                             <i class="bi bi-trash"></i>
                         </button>
                     </td>
@@ -874,3 +1047,4 @@
     document.getElementById('birimSecimi').addEventListener('change', fetchBildirimlerForSelected);
 </script>
 {% endblock %}
+``` 

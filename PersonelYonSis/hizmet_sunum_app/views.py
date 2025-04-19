@@ -43,7 +43,8 @@ def birim_detay(request, birim_id):
         'BirimId': birim.BirimId,
         'BirimAdi': birim.BirimAdi,
         'KurumAdi': birim.KurumAdi,
-        'HSAKodu': birim.HSAKodu.AlanKodu if birim.HSAKodu else None
+        'HSAKodu': birim.HSAKodu.AlanKodu if birim.HSAKodu else None,
+        'HSAAdi': birim.HSAKodu.AlanAdi if birim.HSAKodu else None
     }
     return JsonResponse({'status': 'success', 'data': data})
 

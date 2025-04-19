@@ -77,13 +77,8 @@
         </div>
     </div>
 
-    <!-- Aktif Birim Bilgisi -->
-    {% if selected_birim_obj %}
-    <div class="alert alert-info" role="alert">
-        <strong>Aktif Birim:</strong> {{ selected_birim_obj.BirimAdi }} 
-        <span class="badge bg-secondary ms-2">Özel Alan Kodu: {{ selected_birim_obj.AlanKodu }} ({{ hsa_adi }})</span>
-    </div>
-    {% endif %}
+    <!-- Aktif Birim Bilgisi (Dinamik) -->
+    <div id="aktifBirimBilgisi"></div>
 
     <!-- Bildirimler Tablosu -->
     <div class="table-responsive">
@@ -1021,10 +1016,39 @@
         });
     }
 
-    // Dönem veya birim değiştiğinde bildirimleri getir
+    // Aktif birim bilgisini güncelle
+    function updateAktifBirimBilgisi(birimId) {
+        if (!birimId) {
+            document.getElementById('aktifBirimBilgisi').innerHTML = '';
+            return;
+        }
+        fetch(`/hizmet_sunum/birim/${birimId}/detay/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const birim = data.data;
+                    document.getElementById('aktifBirimBilgisi').innerHTML = `
+                        <div class="alert alert-info" role="alert">
+                            <strong>Aktif Birim:</strong> ${birim.BirimAdi}
+                            <span>
+                                - Özel Alan Kodu: ${birim.HSAKodu} (${birim.HSAAdi || ''})
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('aktifBirimBilgisi').innerHTML = '';
+                }
+            })
+            .catch(() => {
+                document.getElementById('aktifBirimBilgisi').innerHTML = '';
+            });
+    }
+
+    // Dönem veya birim değiştiğinde bildirimleri ve aktif birim bilgisini getir
     function fetchBildirimlerForSelected() {
         const donem = document.getElementById('donemSecimi').value;
         const birimId = document.getElementById('birimSecimi').value;
+        updateAktifBirimBilgisi(birimId);
         if (!donem || !birimId) {
             fillBildirimlerTable([]);
             return;
@@ -1047,4 +1071,3 @@
     document.getElementById('birimSecimi').addEventListener('change', fetchBildirimlerForSelected);
 </script>
 {% endblock %}
-``` 

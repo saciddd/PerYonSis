@@ -42,13 +42,16 @@
         </div>
 
         <!-- İşlem Butonları -->
-        <div class="col-md-3">
+        <div class="col-md-4">
             <button class="btn btn-info me-2" id="btnYazdir">
                 Kesinleştir ve Formu Yazdır
             </button>
             <button class="btn btn-success" id="btnKaydet">
                 <i class="bi bi-save"></i> Kaydet
             </button>
+        </div>
+        <!-- Açıklama Butonu -->
+        <div class="col-md-3 text-end">
             <button class="btn btn-secondary ms-2" id="btnAciklama">
                 <i class="bi bi-info-circle"></i> Açıklama
             </button>
@@ -59,19 +62,48 @@
     <div class="modal fade" id="aciklamaModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Açıklamalar</h5>
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        Hizmet Sunum Alanı Bildirimleri Hakkında
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <h6>Hizmet Sunum Alanı Bildirimleri Hakkında</h6>
-                    <p>Hizmet sunum alanı bildirimleri yaparken lütfen aşağıdaki hususlara dikkat edin:</p>
-                    <ul>
-                        <li>Her ay başında, tamamlanan önceki aya ilişkin veriler girilecektir.</li>
-                        <li>Kaydetme aşamasında sistem çakışma kontrolleri yapacak, aynı personelin birden fazla yerde aynı günlerde çalışması halinde uyarı verecektir.</li>
-                        <li>Uyarı olması halinde bildirim kesinleştirme işlemi tamamlanmayacak ve form yazdırma işlemi yapılamayacaktır.</li>
-                        <li>Kesinleştirilen verilerde değişiklik yapmak için sistem yöneticisine başvurmanız gerekmektedir.</li>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bi bi-calendar-check text-success me-2"></i>
+                            <strong>Her ay başında</strong> tamamlanan <u>önceki aya</u> ilişkin veriler girilecektir.
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                            <strong>Çakışma kontrolü:</strong> Aynı personelin birden fazla yerde aynı günlerde çalışması halinde sistem <span class="text-danger">uyarı</span> verir ve <b>kesinleştirme işlemi yapılamaz</b>.
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-lock-fill text-danger me-2"></i>
+                            <strong>Kesinleştirilen veriler</strong> <span class="text-danger">kilitlenir</span> ve <u>değiştirilemez</u>. Değişiklik için sistem yöneticisine başvurunuz.
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-printer text-primary me-2"></i>
+                            <strong>Form Yazdır:</strong> Kesinleştirilen kayıtlar PDF olarak indirilebilir ve yazdırabilirsiniz. İmzalayarak Mutemetlik Birimimize iletirsiniz.
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-pencil-square text-secondary me-2"></i>
+                            <strong>Tablo düzenleme:</strong> Başlangıç tarihi bitişten küçük olmalı, tarihler seçili dönemin dışında olamaz.
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-person-plus text-success me-2"></i>
+                            <strong>Personel ekleme:</strong> Önceki dönemden aktarabilir veya yeni personel ekleyebilirsiniz.
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-arrow-repeat text-info me-2"></i>
+                            <strong>Veri güncelleme:</strong> Kaydet butonu ile değişiklikleri kaydedebilirsiniz.
+                        </li>
                     </ul>
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-lightbulb-fill me-2"></i>
+                        <b>İpucu:</b> Hatalı satırların <span class="text-danger">durum sütununda kırmızı <i class="bi bi-x-circle-fill"></i></span> simgesi görünür ve üzerine gelince hata açıklaması gösterilir.
+                    </div>
                 </div>
             </div>
         </div>
@@ -552,16 +584,17 @@
 
         const birimId = document.getElementById('birimSecimi').value;
         const url = `/hizmet_sunum/bildirimler/kesinlestir/`;
+
         fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': '{{ csrf_token }}'
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 donem: donem,
                 birim_id: birimId,
-                bildirimler: dataToSave 
+                bildirimler: dataToSave
             })
         })
         .then(response => response.json())
@@ -570,10 +603,11 @@
                 Swal.fire({
                     icon: 'success',
                     title: 'Başarılı!',
-                    text: 'Tüm kayıtlar kesinleştirildi.'
+                    text: 'Tüm kayıtlar kesinleştirildi. PDF indiriliyor...'
                 }).then(() => {
                     fetchBildirimlerForSelected();
-                    window.print();
+                    // PDF indir
+                    window.open(`/hizmet_sunum/bildirimler/yazdir/${year}/${parseInt(month)}/${birimId}/`, '_blank');
                 });
             } else {
                 Swal.fire({
@@ -1069,5 +1103,11 @@
     // Dönem ve birim seçimlerinde tabloyu güncelle
     document.getElementById('donemSecimi').addEventListener('change', fetchBildirimlerForSelected);
     document.getElementById('birimSecimi').addEventListener('change', fetchBildirimlerForSelected);
+
+    // Açıklama butonu fonksiyonu
+    document.getElementById('btnAciklama').addEventListener('click', function() {
+        var aciklamaModal = new bootstrap.Modal(document.getElementById('aciklamaModal'));
+        aciklamaModal.show();
+    });
 </script>
 {% endblock %}

@@ -1,13 +1,14 @@
 from django.db import IntegrityError
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth import authenticate, login, logout as auth_logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from .forms import LoginForm
-from .models import Role, Permission, RolePermission, User
+from .models import Role, Permission, RolePermission, User, Notification
 from django.contrib.auth.decorators import login_required
-from .models import Permission
+from django.views.decorators.csrf import csrf_exempt
+from notifications.services import notify_role_users, notify_user
 
 def get_user_permissions(user):
     if user.is_authenticated:
@@ -36,6 +37,34 @@ def user_login(request):
 def logout(request):
     auth_logout(request)
     return redirect('login')
+
+@login_required
+def unread_notifications(request):
+    notifs = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')
+    data = [{
+        'id': n.id,
+        'title': n.title,
+        'message': n.message,
+        'created_at': n.created_at.strftime('%d.%m.%Y %H:%M')
+    } for n in notifs]
+    return JsonResponse({'notifications': data})
+
+@login_required
+def read_notifications(request):
+    notifs = Notification.objects.filter(recipient=request.user, is_read=True).order_by('-created_at')[:10]
+    data = [{
+        'id': n.id,
+        'title': n.title,
+        'message': n.message,
+        'created_at': n.created_at.strftime('%d.%m.%Y %H:%M')
+    } for n in notifs]
+    return JsonResponse({'notifications': data})
+
+@csrf_exempt
+@login_required
+def read_notification(request, notif_id):
+    Notification.objects.filter(id=notif_id, recipient=request.user).update(is_read=True)
+    return JsonResponse({'status': 'ok'})
 
 def kullanici_tanimlari(request):
     users = User.objects.all()
@@ -121,6 +150,11 @@ def add_user(request):
             password='123'  # Varsayılan şifre "123"
         )
         user.roles.set(roles)  # Kullanıcının rollerini ekle
+        notify_role_users(
+            role_name="Admin",
+            title="Yeni Kullanıcı Kaydı",
+            message=f"{fullname} kullanıcı olarak sisteme eklendi."
+        )
 
         messages.success(request, f"{user.Username} kullanıcısı başarıyla eklendi.")
         return redirect('kullanici_tanimlari')
@@ -254,6 +288,11 @@ def register(request):
             )
             user.password = password  # Store raw password without hashing
             user.save()
+            notify_role_users(
+                role_name="Admin",
+                title="Yeni Kullanıcı Kaydı",
+                message=f"{username} kullanıcı olarak sisteme kaydoldu."
+            )
             messages.success(request, "Kayıt başarılı! Hesabınız onaylandıktan sonra giriş yapabilirsiniz.")
             return redirect('login')
         except IntegrityError as e:

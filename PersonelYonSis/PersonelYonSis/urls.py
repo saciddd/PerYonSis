@@ -28,6 +28,11 @@ urlpatterns = [
     path('mutemet/', include('mutemet_app.urls')),
     path('hizmet_sunum/', include('hizmet_sunum_app.urls')),
     path('admin/', admin.site.urls),
+    # Bildirim işlemleri
+    path('notifications/unread/', views.unread_notifications, name='unread_notifications'),
+    path('notifications/read/', views.read_notifications, name='read_notifications'),
+    path('notifications/read/<int:notif_id>/', views.read_notification, name='read_notification'),
+
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

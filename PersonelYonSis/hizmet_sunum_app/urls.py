@@ -10,6 +10,7 @@ urlpatterns = [
     path('bildirimler/kaydet/', views.bildirimler_kaydet, name='bildirimler_kaydet'),
     path('bildirimler/kesinlestir/', views.bildirimler_kesinlestir, name='bildirimler_kesinlestir'),
     path('bildirim/<int:bildirim_id>/sil/', views.bildirim_sil, name='bildirim_sil'),
+    path('bildirimler/yazdir/<int:year>/<int:month>/<int:birim_id>/', views.bildirim_yazdir, name='bildirim_yazdir'),
     
     # Birim işlemleri
     path('birim/<int:birim_id>/detay/', views.birim_detay, name='birim_detay'),
@@ -21,4 +22,5 @@ urlpatterns = [
     path('onceki-donem-personel/<str:donem>/<int:birim_id>/', 
          views.onceki_donem_personel, name='onceki_donem_personel'),
     path('personel/kaydet/', views.personel_kaydet, name='personel_kaydet'),
+
 ]

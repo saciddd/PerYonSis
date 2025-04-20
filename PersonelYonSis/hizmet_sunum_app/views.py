@@ -1,15 +1,18 @@
 from django.shortcuts import render, get_object_or_404
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET
 from datetime import datetime, date
 from .models import Birim, HizmetSunumAlani, UserBirim, HizmetSunumCalismasi, Personel
 import json
 import calendar
+from django.utils.timezone import now as django_now
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.template.loader import get_template
+import pdfkit
 
 @login_required
 def bildirim(request):
@@ -585,3 +588,52 @@ def bildirim_sil(request, bildirim_id):
          return JsonResponse({'status': 'error', 'message': 'Bildirim bulunamadı.'}, status=404)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': f'Bildirim silinirken hata oluştu: {str(e)}'}, status=500)
+
+@login_required
+def bildirim_yazdir(request, year, month, birim_id):
+    """
+    Seçili yıl, ay ve birim için bildirimleri PDF olarak döndürür.
+    """
+    # bildirimler_listele fonksiyonunu kullanarak veri çek
+    # from .views import bildirimler_listele
+
+    # Yıl ve ayı int'e çevir
+    year = int(year)
+    month = int(month)
+    donem = f"{year}-{month:02d}"
+
+    # JSON veri çek
+    response = bildirimler_listele(request, year, month, birim_id)
+    if hasattr(response, 'content'):
+        data = json.loads(response.content)
+    else:
+        data = response  # dict ise
+
+    bildirimler = data.get('data', [])
+
+    # PDF için template render
+    template = get_template('hizmet_sunum_app/bildirim_formu.html')
+    html = template.render({
+        'bildirimler': bildirimler,
+        'now': django_now()
+    })
+
+    options = {
+        'page-size': 'A4',
+        'orientation': 'Portrait',
+        'margin-top': '1.5cm',
+        'margin-right': '1.5cm',
+        'margin-bottom': '1.1cm',
+        'margin-left': '1.5cm',
+        'encoding': 'UTF-8',
+        'no-outline': None,
+        'enable-local-file-access': True,
+        'enable-external-links': True,
+        'quiet': ''
+    }
+    config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+    pdf = pdfkit.from_string(html, False, options=options, configuration=config)
+
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="hizmet_sunum_bildirim_{birim_id}_{year}_{month}.pdf"'
+    return response

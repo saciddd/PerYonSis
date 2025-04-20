@@ -1,16 +1,21 @@
 {% extends 'auth_base.html' %}
+{% load static %}
+
 
 {% block title %}Kayıt Ol{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
-    <h2 class="text-center">Kayıt Ol</h2>
+    <img src="{% static 'assets/LogoMain.png' %}" alt="Logo" class="img-fluid mb-4" style="max-width: 200px; display: block; margin: 0 auto;">
+    <h4 class="text-center">- Kayıt Formu -</h4>
+    <hr>
     <form method="post" action="{% url 'register' %}" class="mt-4">
         {% csrf_token %}
         <div class="row mb-3">
-            <label for="username" class="col-sm-4 col-form-label">Kullanıcı Adı</label>
+            <label for="tckimlikno" class="col-sm-4 col-form-label">T.C. Kimlik No</label>
             <div class="col-sm-8">
-                <input type="text" class="form-control" id="username" name="username" required>
+                <input type="text" class="form-control" id="tckimlikno" name="tckimlikno" maxlength="11" required>
+                <input type="hidden" id="username" name="username">
             </div>
         </div>
         <div class="row mb-3">
@@ -32,12 +37,6 @@
             </div>
         </div>
         <div class="row mb-3">
-            <label for="tckimlikno" class="col-sm-4 col-form-label">T.C. Kimlik No</label>
-            <div class="col-sm-8">
-                <input type="text" class="form-control" id="tckimlikno" name="tckimlikno" maxlength="11" required>
-            </div>
-        </div>
-        <div class="row mb-3">
             <label for="organisation" class="col-sm-4 col-form-label">Kurum</label>
             <div class="col-sm-8">
                 <input type="text" class="form-control" id="organisation" name="organisation">
@@ -49,4 +48,9 @@
         <a href="{% url 'login' %}">Giriş Yap</a>
     </div>
 </div>
+<script>
+document.getElementById('tckimlikno').addEventListener('input', function() {
+    document.getElementById('username').value = this.value;
+});
+</script>
 {% endblock %}

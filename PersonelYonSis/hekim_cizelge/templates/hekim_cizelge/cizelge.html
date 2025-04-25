@@ -326,32 +326,46 @@
                 const hizmetID = this.getAttribute('data-hizmet-id');
                 const selectedHekimID = document.getElementById('hekimSelection')?.value;
                 const clearSelection = document.getElementById('clearSelection')?.checked;
-                
+
                 if (!selectedHekimID) {
                     alert('Lütfen önce bir hekim seçiniz.');
                     return;
                 }
 
-                // Hizmet çakışma kontrolü
+                if (clearSelection) {
+                    // Hücredeki tüm personelleri bul ve her biri için changes objesine clear kaydı ekle
+                    {% for personel in personeller %}
+                    if (cell.innerHTML.includes('{{ personel.PersonelName }}')) {
+                        changes['{{ personel.PersonelID }}_' + date] = {
+                            type: 'clear',
+                            hizmetler: [],
+                            izin: null
+                        };
+                        // Ayrıca deletion objesine de ekleyebilirsiniz, gerekirse:
+                        // deletion['{{ personel.PersonelID }}_' + date] = true;
+                    }
+                    {% endfor %}
+                    // Görsel olarak hücreyi temizle
+                    this.innerHTML = '';
+                    return;
+                }
+
+                // ...existing code for normal hizmet ekleme...
                 if (!checkHizmetCakisma(date, hizmetID)) {
                     const mevcut_personel = findPersonelWithHizmet(date, hizmetID);
                     alert(`Bu hizmet zaten ${mevcut_personel} isimli personele tanımlanmış!`);
                     return;
                 }
 
-                if (clearSelection) {
-                    this.innerHTML = '';
-                    deletion[`${selectedHekimID}_${date}`] = true;
-                    delete changes[`${selectedHekimID}_${date}`];
-                } else {
-                    const selectedHekim = document.querySelector(`#hekimSelection option[value="${selectedHekimID}"]`);
-                    if (selectedHekim) {
-                        this.innerHTML = `<span class="badge bg-primary">${selectedHekim.textContent}</span>`;
-                        
-                        // Sadece seçilen hizmeti ekle, varsayılan hizmeti ekleme
-                        changes[`${selectedHekimID}_${date}`] = [hizmetID];
-                        delete deletion[`${selectedHekimID}_${date}`];
-                    }
+                const selectedHekim = document.querySelector(`#hekimSelection option[value="${selectedHekimID}"]`);
+                if (selectedHekim) {
+                    this.innerHTML = `<span class="badge bg-primary">${selectedHekim.textContent}</span>`;
+                    changes[`${selectedHekimID}_${date}`] = {
+                        type: 'hizmet',
+                        hizmetler: [hizmetID],
+                        izin: null
+                    };
+                    delete deletion[`${selectedHekimID}_${date}`];
                 }
             });
         });
@@ -477,35 +491,33 @@
         });
     }
 
-    // Kaydet butonu için event listener
-    // const saveButton = document.getElementById('saveButton');
-    // if (saveButton) {
-    //     saveButton.addEventListener('click', function () {
-    //         if (Object.keys(changes).length === 0 && Object.keys(deletion).length === 0) {
-    //             alert("Herhangi bir değişiklik yapmadınız.");
-    //             return;
-    //         }
+    // Kaydetme işlemi fonksiyonu
+    function saveChanges() {
+        // DÜZELTME: Hem changes hem deletion objesini backend'e gönder!
+        if (Object.keys(changes).length === 0 && Object.keys(deletion).length === 0) {
+            alert("Herhangi bir değişiklik yapmadınız.");
+            return;
+        }
 
-    //         fetch("{% url 'hekim_cizelge:cizelge_kaydet' %}", {
-    //             method: 'POST',
-    //             headers: {
-    //                 'Content-Type': 'application/json',
-    //                 'X-CSRFToken': '{{ csrf_token }}'
-    //             },
-    //             body: JSON.stringify({ changes: changes, deletion: deletion })
-    //         })
-    //         .then(response => response.json())
-    //         .then(data => {
-    //             if (data.status === 'success') {
-    //                 alert('Değişiklikler kaydedildi.');
-    //                 changes = {};
-    //                 deletion = {};
-    //             } else {
-    //                 alert('Bir hata oluştu, lütfen tekrar deneyin.');
-    //             }
-    //         });
-    //     });
-    // }
+        fetch("{% url 'hekim_cizelge:cizelge_kaydet' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ changes: changes, deletion: deletion })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Değişiklikler kaydedildi.');
+                changes = {};
+                deletion = {};
+            } else {
+                alert('Bir hata oluştu, lütfen tekrar deneyin.');
+            }
+        });
+    }
 
     // Hizmet çakışma kontrolü için helper fonksiyon
     function checkHizmetCakisma(date, hizmetID) {

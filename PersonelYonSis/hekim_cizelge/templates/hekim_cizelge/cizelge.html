@@ -52,7 +52,7 @@
                         <select id="hizmetSelection" class="form-control">
                             <option value="">Hizmet Seçin</option>
                             {% for hizmet in hizmetler %}
-                                <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
+                                <option value="{{ hizmet.HizmetID }}" data-varsayilan-sunulur="{{ hizmet.VarsayilanHizmetleSunulur|yesno:'true,false' }}">{{ hizmet.HizmetName }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -118,13 +118,22 @@
         </div>
     </div>
 
-    <!-- Seçilen Birim -->
-    <div id="selectedBirim" class="mb-2">
-        {% if selected_birim %}
-            Seçilen Birim: {{ selected_birim.BirimAdi }} (<span id="viewModeText">Hekim Bazlı Görünüm</span>)
-        {% endif %}
+    <div class="row mb-2 align-items-center">
+        <!-- Seçilen Birim ve Checkbox yan yana -->
+        <div class="col-auto d-flex align-items-center gap-3">
+            <div id="selectedBirim" class="mb-0 me-3">
+                {% if selected_birim %}
+                    Seçilen Birim: {{ selected_birim.BirimAdi }} (<span id="viewModeText">Hekim Bazlı Görünüm</span>)
+                {% endif %}
+            </div>
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="showApprovalIcons">
+                <label class="form-check-label" for="showApprovalIcons">
+                    Liste Değişiklik Onaylarını Göster
+                </label>
+            </div>
+        </div>
     </div>
-    <br>
 
     <!-- Hekim Bazlı Tablo -->
     <div id="hekimView">
@@ -140,7 +149,10 @@
             </thead>
             <tbody>
                 {% for day in days %}
-                <tr class="{% if day.is_weekend %}weekend{% endif %}">
+                <tr class="
+                    {% if day.is_weekend %}weekend{% endif %}
+                    {% if day.is_holiday %} holiday-row{% endif %}
+                ">
                     <td>{{ day.day_num }}</td>
                     <td>{{ day.full_date }}</td>
                     {% for personel in personeller %}
@@ -152,7 +164,7 @@
     class="mesai-cell position-relative">
     {% for mesai in personel.mesai_data %}
         {% if mesai.MesaiDate == day.full_date %}
-            <span class="position-absolute top-0 end-0 p-1">
+            <span class="position-absolute top-0 end-0 p-1 approval-icon" style="display:none;">
                 <i class="bi bi-check-circle-fill {% if mesai.OnayDurumu == 1 %}text-success{% else %}text-warning{% endif %}"></i>
             </span>
             {% if mesai.Izin %}
@@ -196,7 +208,10 @@
             </thead>
             <tbody>
                 {% for day in days %}
-                <tr class="{% if day.is_weekend %}weekend{% endif %}">
+                <tr class="
+                    {% if day.is_weekend %}weekend{% endif %}
+                    {% if day.is_holiday %} holiday-row{% endif %}
+                ">
                     <td>{{ day.day_num }}</td>
                     <td>{{ day.full_date }}</td>
                     {% for hizmet in hizmetler %}
@@ -231,7 +246,27 @@
     var deletion = {};
     const varsayilanHizmetID = "{{ selected_birim.VarsayilanHizmet.HizmetID }}";
     const isApprovalMode = {% if is_approval_mode %}true{% else %}false{% endif %};
-    console.log(isApprovalMode);
+    
+    
+    // Onay ikonlarını aç/kapat fonksiyonu
+    function toggleApprovalIcons(show) {
+        document.querySelectorAll('.approval-icon').forEach(function(el) {
+            el.style.display = show ? 'inline-block' : 'none';
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleApprovalIcons(false);
+
+        // Checkbox event listener (DOMContentLoaded içinde olmalı!)
+        var approvalCheckbox = document.getElementById('showApprovalIcons');
+        if (approvalCheckbox) {
+            approvalCheckbox.addEventListener('change', function() {
+                toggleApprovalIcons(this.checked);
+            });
+        }
+    });
+
     // Normal mod işlemleri
     if (!isApprovalMode) {
         // Hücreye tıklama işlemi için event listener
@@ -270,6 +305,13 @@
                     });
 
                     if (hizmetID) {
+                        // VarsayilanHizmetleSunulur kontrolü
+                        let selectedOption = document.querySelector(`#hizmetSelection option[value="${hizmetID}"]`);
+                        let varsayilanHizmetleSunulur = true;
+                        if (selectedOption) {
+                            varsayilanHizmetleSunulur = selectedOption.getAttribute('data-varsayilan-sunulur') !== "false";
+                        }
+
                         // Hizmet kombinasyonunu kontrol et
                         const validationResult = validateHizmetCombination(currentServices, hizmetID);
                         if (!validationResult.isValid) {
@@ -277,13 +319,13 @@
                             return;
                         }
 
-                        // Hizmet seçimi işlemi
-                        if (hizmetID === varsayilanHizmetID) {
-                            if (!currentServices.includes(hizmetID)) {
-                                currentServices.push(hizmetID);
-                            }
+                        // --- DÜZELTME: Standart hizmetlerde mevcut hizmetleri silme, sadece yeni hizmeti ekle ---
+                        // VarsayilanHizmetleSunulur kontrolü sadece yeni hizmet varsayılan ile birlikte sunulamaz ise çalışır
+                        if (!varsayilanHizmetleSunulur) {
+                            // Varsayılan ile birlikte sunulamaz, sadece seçili hizmet girilecek
+                            currentServices = [hizmetID];
                         } else {
-                            currentServices = currentServices.filter(id => id === varsayilanHizmetID);
+                            // Varsayılan ile birlikte sunulabilir, mevcut hizmetleri koru ve yeni hizmeti ekle
                             if (!currentServices.includes(hizmetID)) {
                                 currentServices.push(hizmetID);
                             }
@@ -350,23 +392,33 @@
                     return;
                 }
 
-                // ...existing code for normal hizmet ekleme...
-                if (!checkHizmetCakisma(date, hizmetID)) {
-                    const mevcut_personel = findPersonelWithHizmet(date, hizmetID);
-                    alert(`Bu hizmet zaten ${mevcut_personel} isimli personele tanımlanmış!`);
+                // --- DÜZELTME: Aynı hekime birden fazla hizmet atanabilsin ---
+                // Önce mevcut changes objesindeki hizmetleri bul
+                let key = `${selectedHekimID}_${date}`;
+                let prev = changes[key] && changes[key].type === 'hizmet' ? [...changes[key].hizmetler] : [];
+
+                // Eğer zaten bu hizmet atanmışsa tekrar ekleme
+                if (!prev.includes(hizmetID)) {
+                    prev.push(hizmetID);
+                }
+
+                // Hizmet kombinasyonunu kontrol et
+                const validationResult = validateHizmetCombination(prev, null);
+                if (!validationResult.isValid) {
+                    alert(validationResult.errors.join('\n'));
                     return;
                 }
 
-                const selectedHekim = document.querySelector(`#hekimSelection option[value="${selectedHekimID}"]`);
-                if (selectedHekim) {
-                    this.innerHTML = `<span class="badge bg-primary">${selectedHekim.textContent}</span>`;
-                    changes[`${selectedHekimID}_${date}`] = {
-                        type: 'hizmet',
-                        hizmetler: [hizmetID],
-                        izin: null
-                    };
-                    delete deletion[`${selectedHekimID}_${date}`];
-                }
+                // Görsel olarak hücreye ekle (her zaman sadece bir hekim gösterilecek)
+                this.innerHTML = `<span class="badge bg-primary">${document.querySelector(`#hekimSelection option[value="${selectedHekimID}"]`).textContent}</span>`;
+
+                // changes objesine güncel hizmet listesini yaz
+                changes[key] = {
+                    type: 'hizmet',
+                    hizmetler: prev,
+                    izin: null
+                };
+                delete deletion[key];
             });
         });
     }
@@ -928,11 +980,6 @@
 
         const errors = [];
 
-        // Standart hizmet sayısı kontrolü
-        if (standardHizmetler.length > 2) {
-            errors.push("En fazla 2 standart hizmet tanımlanabilir (varsayılan + 1)");
-        }
-
         // Nöbet ve İcap birlikte olamaz
         if (nobetHizmetler.length > 0 && icapHizmetler.length > 0) {
             errors.push("Nöbet ve İcap hizmetleri aynı güne tanımlanamaz");
@@ -1085,6 +1132,23 @@
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         z-index: 1000;
         max-width: 300px;
+    }
+
+    .holiday-row {
+        background: #f0cdcd;
+        color: #b30000 !important;
+        font-weight: bold;
+    }
+
+    .approval-icon {
+        right: 0;
+        top: 0;
+        z-index: 2;
+        display: none;
+    }
+
+    .row.mb-2 .d-flex.gap-3 > * {
+        margin-right: 1.5rem;
     }
 </style>
 {% endblock %}

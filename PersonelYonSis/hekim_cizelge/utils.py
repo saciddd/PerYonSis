@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from calendar import monthrange
-from .models import Mesai, Hizmet, ResmiTatil
+from .models import Mesai, Hizmet, ResmiTatil, Izin
 
 def get_month_days(year, month):
     """Verilen ay için gün listesini döndürür"""
@@ -51,39 +51,79 @@ def hesapla_fazla_mesai(personel_id, donem_baslangic):
     month = donem_baslangic.month
     
     # Çalışılması gereken süreyi hesapla
-    gereken_sure = hesapla_gereken_calisma_suresi(year, month)
-    
-    # Günlük çalışma sürelerini hesapla ve resmi tatilleri kontrol et
     days = get_month_days(year, month)
+    gereken_sure = hesapla_gereken_calisma_suresi(year, month)
+
+    # Mesaiden düşülecek izinleri önceden çek
+    izinler = Izin.objects.filter(MesaidenDus=True)
+    izin_tipleri = {i.IzinID: i.IzinTipi for i in izinler}
+    izin_ids = list(izin_tipleri.keys())
+
+    # Personelin ilgili ayda aldığı izinleri çek
+    izinli_gunler = {}
+    izin_qs = Mesai.objects.filter(
+        Personel_id=personel_id,
+        MesaiDate__year=year,
+        MesaiDate__month=month,
+        Izin_id__in=izin_ids,
+        SilindiMi=False
+    ).select_related('Izin')
+    for mesai in izin_qs:
+        izinli_gunler[mesai.MesaiDate] = mesai.Izin
+
     gunluk_detay = {}
     toplam_sure = 0
     bayram_sure = 0
-    
+
     for day in days:
         date = day['date']
+        is_weekend = day['is_weekend']
+        is_holiday = day['is_holiday']
+        holiday_hours = day['holiday_hours']
+
+        # Mesaiden düş izin kontrolü
+        izin = izinli_gunler.get(date)
+        if izin:
+            # Hafta içi ve resmi tatil değilse 8 saat, hafta içi ve arefe ise 5 saat
+            if not is_weekend and not is_holiday:
+                ek_sure = 8
+            elif not is_weekend and is_holiday and holiday_hours == 3:
+                ek_sure = 5
+            else:
+                ek_sure = 0
+            if ek_sure > 0:
+                gunluk_detay[date.strftime('%Y-%m-%d')] = {
+                    'sure': ek_sure,
+                    'izin': izin.IzinTipi
+                }
+                toplam_sure += ek_sure
+            continue  # O gün başka mesai eklenmez
+
+        # Normal mesai hesapla
         mesailer = Mesai.objects.filter(
             Personel_id=personel_id,
             MesaiDate=date,
             SilindiMi=False
         ).prefetch_related('Hizmetler')
-        
-        # Günlük toplam süre
+
         gun_toplam = sum(
             hizmet.get_hizmet_suresi(date.strftime('%Y-%m-%d')) / 60
             for mesai in mesailer
             for hizmet in mesai.Hizmetler.all()
         )
-        
+
         if gun_toplam > 0:
-            gunluk_detay[date.strftime('%Y-%m-%d')] = gun_toplam
-            if day['is_holiday']:  # Resmi tatil günü kontrolü
+            gunluk_detay[date.strftime('%Y-%m-%d')] = {
+                'sure': gun_toplam
+            }
+            if is_holiday:
                 bayram_sure += gun_toplam
             else:
                 toplam_sure += gun_toplam
-    
+
     # Fazla mesai hesabı
     normal_fazla_mesai = max(0, toplam_sure - gereken_sure)
-    
+
     return {
         'normal': normal_fazla_mesai,
         'bayram': bayram_sure,

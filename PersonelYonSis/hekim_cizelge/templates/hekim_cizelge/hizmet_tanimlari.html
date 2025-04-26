@@ -48,6 +48,10 @@
                             <input type="checkbox" class="form-check-input" id="nobet_ertesi_izinli" name="nobet_ertesi_izinli">
                             <label class="form-check-label" for="nobet_ertesi_izinli">Nöbet Ertesi İzinli</label>
                         </div>
+                        <div class="form-check mt-3">
+                            <input type="checkbox" class="form-check-input" id="varsayilan_hizmetle_sunulur" name="varsayilan_hizmetle_sunulur" checked>
+                            <label class="form-check-label" for="varsayilan_hizmetle_sunulur">Varsayılan Hizmetle Birlikte Sunulabilir</label>
+                        </div>
                         <button type="submit" class="btn btn-primary mt-3">Hizmet Ekle</button>
                     </form>
                 </div>
@@ -71,6 +75,7 @@
                                 <th scope="col">Hafta Sonu Süre</th>
                                 <th scope="col">Max Hekim</th>
                                 <th scope="col">Nöbet Ertesi</th>
+                                <th scope="col">Varsayılanla Sunulur</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -83,10 +88,11 @@
                                 <td>{{ hizmet.HizmetSuresiHaftaSonu|default:"-" }}</td>
                                 <td>{{ hizmet.MaxHekimSayisi }}</td>
                                 <td>{% if hizmet.NobetErtesiIzinli %}Evet{% else %}Hayır{% endif %}</td>
+                                <td>{% if hizmet.VarsayilanHizmetleSunulur %}Evet{% else %}Hayır{% endif %}</td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="7">Kayıtlı hizmet bulunmamaktadır.</td>
+                                <td colspan="8">Kayıtlı hizmet bulunmamaktadır.</td>
                             </tr>
                             {% endfor %}
                         </tbody>

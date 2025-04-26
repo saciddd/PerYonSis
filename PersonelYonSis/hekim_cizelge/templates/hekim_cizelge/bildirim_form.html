@@ -83,6 +83,10 @@
         .bg-warning {
             background-color: #ffdd6b !important;
         }
+        .bg-weekend {
+            background-color: #c2c2c2 !important;
+            color: #22272e !important;
+        }
         .text-center {
             text-align: center;
         }
@@ -163,7 +167,10 @@
                         <th colspan="4" class="text-center bg-light">Mesai Süreleri (Saat)</th>
                         <th colspan="2" class="text-center">İcap Süreleri (Saat)</th>
                         {% for day in bildirim.days %}
-                        <th class="{% if day.is_weekend %}bg-light{% endif %} {% if day.is_holiday %}bg-warning{% endif %}">
+                        <th class="
+                            {% if day.is_weekend %}bg-weekend{% endif %}
+                            {% if day.is_holiday %}bg-warning{% endif %}
+                        ">
                             {{ day.day_num }}
                         </th>
                         {% endfor %}
@@ -177,7 +184,10 @@
                         <th>Normal</th>
                         <th>Bayram</th>
                         {% for day in bildirim.days %}
-                        <th></th>
+                        <th class="
+                            {% if day.is_weekend %}bg-weekend{% endif %}
+                            {% if day.is_holiday %}bg-warning{% endif %}
+                        "></th>
                         {% endfor %}
                     </tr>
                 </thead>
@@ -194,10 +204,41 @@
                         <td>{{ personel.normal_icap|floatformat:0 }}</td>
                         <td>{{ personel.bayram_icap|floatformat:0 }}</td>
                         {% for day in bildirim.days %}
-                        <td class="{% if day.is_weekend %}bg-light{% endif %} {% if day.is_holiday %}bg-warning{% endif %}">
+                        <td class="
+                            {% if day.is_weekend %}bg-weekend{% endif %}
+                            {% if day.is_holiday %}bg-warning{% endif %}
+                        ">
                             <div class="sure-container">
-                                <div class="mesai-sure">{{ personel.mesai_detay|get_item:day.full_date|floatformat:0|default:"-" }}</div>
-                                <div class="icap-sure">{{ personel.icap_detay|get_item:day.full_date|floatformat:0|default:"-" }}</div>
+                                <div class="mesai-sure">
+                                    {% with val=personel.mesai_detay|get_item:day.full_date %}
+                                        {% if val.izin %}
+                                            {{ val.izin }}
+                                        {% elif val.sure is not None %}
+                                            {% if val.sure|floatformat:1|slice:"-1" == ".0" %}
+                                                {{ val.sure|floatformat:0 }}
+                                            {% else %}
+                                                {{ val.sure|floatformat:1 }}
+                                            {% endif %}
+                                        {% elif val %}
+                                            {{ val|floatformat:1 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
+                                <div class="icap-sure">
+                                    {% with sure=personel.icap_detay|get_item:day.full_date %}
+                                        {% if sure is not None %}
+                                            {% if sure|floatformat:1|slice:"-1" == ".0" %}
+                                                {{ sure|floatformat:0 }}
+                                            {% else %}
+                                                {{ sure|floatformat:1 }}
+                                            {% endif %}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    {% endwith %}
+                                </div>
                             </div>
                         </td>
                         {% endfor %}

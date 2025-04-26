@@ -331,7 +331,6 @@ function updateBildirimTable(bildirimler) {
         }
     });
 
-
     // Populate rows with data
     bildirimler.forEach(bildirim => {
         const row = tbody.querySelector(`tr[data-personel-id="${bildirim.personel_id}"]`);
@@ -354,19 +353,31 @@ function updateBildirimTable(bildirimler) {
         row.querySelectorAll('.mesai-sure').forEach(cell => cell.textContent = '-');
         row.querySelectorAll('.icap-sure').forEach(cell => cell.textContent = '-');
 
-        // Populate daily details
+        // MESAI SURE/IZIN GÖSTERİMİ
         if (bildirim.MesaiDetay) {
-            Object.entries(bildirim.MesaiDetay).forEach(([tarih, sure]) => {
+            Object.entries(bildirim.MesaiDetay).forEach(([tarih, val]) => {
                 const gun = parseInt(tarih.split('-')[2]);
                 const cell = row.querySelector(`.gun-${gun} .mesai-sure`);
-                if (cell) cell.textContent = parseFloat(sure)?.toFixed(1) || '-';
+                if (cell) {
+                    if (val && typeof val === "object" && "izin" in val) {
+                        cell.textContent = val.izin;
+                    } else if (val && typeof val === "object" && "sure" in val) {
+                        cell.textContent = Number.isFinite(val.sure) ? (parseFloat(val.sure) % 1 === 0 ? parseInt(val.sure) : parseFloat(val.sure).toFixed(1)) : '-';
+                    } else if (typeof val === "number") {
+                        cell.textContent = (val % 1 === 0 ? parseInt(val) : val.toFixed(1));
+                    } else {
+                        cell.textContent = '-';
+                    }
+                }
             });
         }
         if (bildirim.IcapDetay) {
             Object.entries(bildirim.IcapDetay).forEach(([tarih, sure]) => {
                 const gun = parseInt(tarih.split('-')[2]);
                 const cell = row.querySelector(`.gun-${gun} .icap-sure`);
-                if (cell) cell.textContent = parseFloat(sure)?.toFixed(1) || '-';
+                if (cell) {
+                    cell.textContent = Number.isFinite(sure) ? (parseFloat(sure) % 1 === 0 ? parseInt(sure) : parseFloat(sure).toFixed(1)) : '-';
+                }
             });
         }
 
@@ -430,7 +441,6 @@ function updateBildirimTable(bildirimler) {
         }
     });
 }
-
 
 // --- Action Handlers ---
 
@@ -656,14 +666,22 @@ function updateSingleBildirimRow(row, bildirim) {
      row.querySelectorAll('.mesai-sure').forEach(cell => cell.textContent = '-');
      row.querySelectorAll('.icap-sure').forEach(cell => cell.textContent = '-');
 
-     // Günlük detay verilerini yuvarlanmış biçimde güncelle
+     // MESAI SURE/IZIN GÖSTERİMİ
      if (bildirim.MesaiDetay) {
-         Object.entries(bildirim.MesaiDetay).forEach(([tarih, sure]) => {
+         Object.entries(bildirim.MesaiDetay).forEach(([tarih, val]) => {
              const gun = parseInt(tarih.split('-')[2]);
              const cell = row.querySelector(`.gun-${gun} .mesai-sure`);
              if (cell) {
-                cell.textContent = Math.round(sure) || '-';
-                }
+                 if (val && typeof val === "object" && "izin" in val) {
+                     cell.textContent = val.izin;
+                 } else if (val && typeof val === "object" && "sure" in val) {
+                     cell.textContent = Number.isFinite(val.sure) ? (parseFloat(val.sure) % 1 === 0 ? parseInt(val.sure) : parseFloat(val.sure).toFixed(1)) : '-';
+                 } else if (typeof val === "number") {
+                     cell.textContent = (val % 1 === 0 ? parseInt(val) : val.toFixed(1));
+                 } else {
+                     cell.textContent = '-';
+                 }
+             }
          });
      }
      if (bildirim.IcapDetay) {
@@ -671,8 +689,8 @@ function updateSingleBildirimRow(row, bildirim) {
              const gun = parseInt(tarih.split('-')[2]);
              const cell = row.querySelector(`.gun-${gun} .icap-sure`);
              if (cell) {
-                cell.textContent = Math.round(sure) || '-';
-                }
+                 cell.textContent = Number.isFinite(sure) ? (parseFloat(sure) % 1 === 0 ? parseInt(sure) : parseFloat(sure).toFixed(1)) : '-';
+             }
          });
      }
 

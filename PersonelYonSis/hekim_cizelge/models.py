@@ -58,6 +58,10 @@ class Hizmet(models.Model):
         default=False, 
         help_text="Nöbet ertesi izinli mi?"
     )
+    VarsayilanHizmetleSunulur = models.BooleanField(
+        default=True,
+        help_text="Bu hizmet varsayılan hizmetle birlikte sunulabilir mi?"
+    )
 
     def get_hizmet_suresi(self, tarih):
         """Verilen tarihe göre dakika cinsinden hizmet süresini döndürür"""
@@ -121,6 +125,7 @@ class Izin(models.Model):
     IzinID = models.AutoField(primary_key=True)
     IzinTipi = models.CharField(max_length=50, choices=IZIN_TIPLERI)
     IzinRenk = models.CharField(max_length=20, default='bg-warning')  # Bootstrap renk sınıfı
+    MesaidenDus = models.BooleanField(default=True, help_text="Bu izin tipi çalışma süresinden düşülür mü?")
 
     def __str__(self):
         return self.IzinTipi
@@ -215,10 +220,6 @@ class MesaiKontrol:
         icap_hizmetler = [h for h in hizmetler if h.HizmetTipi == Hizmet.ICAP]
 
         errors = []
-        
-        # Standart hizmet sayısı kontrolü (varsayılan + max 1 ek)
-        if len(standart_hizmetler) > 2:
-            errors.append("En fazla 2 standart hizmet (varsayılan + 1) tanımlanabilir")
 
         # Nöbet ve İcap birlikte olamaz kontrolü
         if nobet_hizmetler and icap_hizmetler:

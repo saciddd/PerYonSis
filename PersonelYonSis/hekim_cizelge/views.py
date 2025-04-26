@@ -35,6 +35,7 @@ def add_hizmet(request):
             hafta_sonu_suresi = request.POST.get('hizmet_suresi_hafta_sonu')
             max_hekim = request.POST.get('max_hekim', 1)
             nobet_ertesi_izinli = bool(request.POST.get('nobet_ertesi_izinli'))
+            varsayilan_hizmetle_sunulur = bool(request.POST.get('varsayilan_hizmetle_sunulur'))
 
             # Süreleri dakikaya çevir (saat:dakika formatından)
             def sure_to_dakika(sure_str):
@@ -55,7 +56,8 @@ def add_hizmet(request):
                 HizmetSuresiHaftaIci=hafta_ici_dakika,
                 HizmetSuresiHaftaSonu=hafta_sonu_dakika,
                 MaxHekimSayisi=max_hekim,
-                NobetErtesiIzinli=nobet_ertesi_izinli
+                NobetErtesiIzinli=nobet_ertesi_izinli,
+                VarsayilanHizmetleSunulur=varsayilan_hizmetle_sunulur
             )
 
             messages.success(request, "Hizmet başarıyla eklendi.")
@@ -263,7 +265,10 @@ def cizelge(request):
         {
             'full_date': f"{current_year}-{current_month:02}-{day:02}",
             'day_num': day,
-            'is_weekend': calendar.weekday(current_year, current_month, day) >= 5
+            'is_weekend': calendar.weekday(current_year, current_month, day) >= 5,
+            'is_holiday': ResmiTatil.objects.filter(
+                TatilTarihi=datetime(current_year, current_month, day).date()
+            ).exists()
         }
         for day in range(1, days_in_month + 1)
     ]

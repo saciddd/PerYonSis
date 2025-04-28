@@ -12,12 +12,12 @@ from django.conf import settings
 from django.db.models import Count
 from django.db.models.functions import TruncMonth
 from django.utils.timezone import now
-
 from hekim_cizelge.forms import BildirimForm
 from hekim_cizelge.utils import hesapla_bildirim_verileri, hesapla_fazla_mesai, hesapla_icap_suresi
 from .models import Bildirim, Izin, MesaiKontrol, Personel, Hizmet, Birim, PersonelBirim, Mesai, ResmiTatil, UserBirim  # Removed MesaiOnay
 from PersonelYonSis.models import User
 from django.db import models
+from django.utils import timezone
 
 # PDFKit yapılandırması
 config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
@@ -605,6 +605,9 @@ def bildirimler(request):
             for day in range(1, days_in_month + 1)
         ]
 
+    # Check user permission for approving notifications
+    can_approve_notifications = request.user.has_permission("HÇ Bildirim Onaylama")
+
     context = {
         'current_year': current_year,
         'current_month': current_month,
@@ -615,6 +618,7 @@ def bildirimler(request):
         'months': [{'value': i, 'label': calendar.month_name[i]} for i in range(1, 13)],
         'years': range(current_year - 1, current_year + 2),
         'days': days,
+        'can_approve_notifications': can_approve_notifications, # Add permission flag
     }
 
     return render(request, 'hekim_cizelge/bildirimler.html', context)
@@ -1586,3 +1590,84 @@ def bildirim_excel(request):
     except Exception as e:
         messages.error(request, f"Excel oluşturulurken hata: {str(e)}")
         return redirect('hekim_cizelge:mutemetlik_islemleri')
+
+@csrf_exempt
+def cizelge_form(request, birim_id):
+    """
+    Hekim bazlı çizelgeyi PDF olarak çıktıya hazırlar.
+    """
+    try:
+        year = int(request.GET.get('year', datetime.now().year))
+        month = int(request.GET.get('month', datetime.now().month))
+        donem = datetime(year, month, 1).date()
+        birim = get_object_or_404(Birim, BirimID=birim_id)
+        personeller = Personel.objects.filter(personelbirim__birim=birim)
+        days_in_month = calendar.monthrange(year, month)[1]
+        days = [
+            {
+                'full_date': f"{year}-{month:02}-{day:02}",
+                'is_weekend': calendar.weekday(year, month, day) >= 5,
+                'is_holiday': ResmiTatil.objects.filter(
+                    TatilTarihi=datetime(year, month, day).date()
+                ).exists()
+            }
+            for day in range(1, days_in_month + 1)
+        ]
+        mesailer = Mesai.objects.filter(
+            Personel__in=personeller,
+            MesaiDate__year=year,
+            MesaiDate__month=month
+        ).select_related('Personel', 'Izin').prefetch_related('Hizmetler')
+
+        for personel in personeller:
+            personel.mesai_data = []
+            for mesai in mesailer.filter(Personel=personel):
+                hizmet_list = []
+                for hizmet in mesai.Hizmetler.all():
+                    hizmet_list.append({
+                        'name': hizmet.HizmetName,
+                        'type': hizmet.HizmetTipi,
+                        'is_varsayilan': hizmet.HizmetID == birim.VarsayilanHizmet.HizmetID
+                    })
+                mesai_data = {
+                    'MesaiDate': mesai.MesaiDate.strftime("%Y-%m-%d"),
+                    'Hizmetler': hizmet_list,
+                }
+                if mesai.Izin:
+                    mesai_data['Izin'] = {
+                        'id': mesai.Izin.IzinID,
+                        'tip': mesai.Izin.IzinTipi,
+                        'renk': mesai.Izin.IzinRenk
+                    }
+                personel.mesai_data.append(mesai_data)
+
+        # PDF oluştur
+        template = get_template('hekim_cizelge/cizelge_form.html')
+        html = template.render({
+            'birim': birim,
+            'personeller': personeller,
+            'days': days,
+            'donem': donem,
+            'now': timezone.now(),
+        })
+
+        options = {
+            'page-size': 'A4',
+            'orientation': 'Landscape',
+            'margin-top': '1cm',
+            'margin-right': '1cm',
+            'margin-bottom': '1cm',
+            'margin-left': '1cm',
+            'encoding': 'UTF-8',
+            'no-outline': None,
+            'enable-local-file-access': True,
+            'enable-external-links': True,
+            'quiet': ''
+        }
+
+        pdf = pdfkit.from_string(html, False, options=options, configuration=config)
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="cizelge_{birim.BirimAdi}_{year}_{month}.pdf"'
+        return response
+    except Exception as e:
+        return HttpResponse(f"PDF oluşturulamadı: {str(e)}", status=500)

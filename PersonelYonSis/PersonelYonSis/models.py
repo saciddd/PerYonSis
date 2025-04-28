@@ -74,6 +74,24 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.Username
 
+    def has_permission(self, permission_name):
+        """
+        Checks if the user has a specific permission, either directly
+        or through their assigned roles.
+        """
+        # Check direct permissions (if you implement direct user permissions later)
+        # if self.permissions.filter(PermissionName=permission_name).exists():
+        #     return True
+
+        # Check permissions through roles
+        if self.roles.filter(rolepermission__Permission__PermissionName=permission_name).exists():
+            return True
+
+        # Check if the user is a superuser (implicitly has all permissions)
+        if self.is_superuser:
+            return True
+
+        return False
 class Notification(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)

@@ -100,6 +100,10 @@
             <button class="btn btn-primary btn-sm" id="toggleView">
                 <i class="bi bi-arrow-repeat"></i> Görünümü Değiştir
             </button>
+            <!-- Yazdır butonu eklendi -->
+            <button class="btn btn-secondary btn-sm" id="printCizelgeBtn">
+                <i class="bi bi-printer"></i> Yazdır
+            </button>
             {% else %}
             <button class="btn btn-primary" id="topluOnayButton">
                 <i class="bi bi-check-all"></i> Tüm Değişiklikleri Onayla
@@ -997,24 +1001,20 @@
             isValid: errors.length === 0,
             errors: errors
         };
-    }
+    };
 
-    // Hücre tıklama event listener'ında validasyon kontrolünü ekle
-    cell.addEventListener('click', function() {
-        // ...existing code...
-
-        if (hizmetID) {
-            // Hizmet kombinasyonunu kontrol et
-            const validationResult = validateHizmetCombination(currentServices, hizmetID);
-            if (!validationResult.isValid) {
-                alert(validationResult.errors.join('\n'));
-                return;
-            }
-            
-            // Devam eden hizmet ekleme işlemleri...
+    // Yazdır butonu
+    document.getElementById('printCizelgeBtn')?.addEventListener('click', function() {
+        const selectedBirim = document.getElementById('selectBirim').value;
+        const selectedYear = document.getElementById('selectYear').value;
+        const selectedMonth = document.getElementById('selectMonth').value;
+        if (!selectedBirim || !selectedYear || !selectedMonth) {
+            alert("Yazdırmak için birim, yıl ve ay seçmelisiniz.");
+            return;
         }
-
-        // ...existing code...
+        const url = `{% url 'hekim_cizelge:cizelge_form' 0 %}`.replace('0', selectedBirim)
+            + `?year=${selectedYear}&month=${selectedMonth}`;
+        window.open(url, '_blank');
     });
 
 </script>

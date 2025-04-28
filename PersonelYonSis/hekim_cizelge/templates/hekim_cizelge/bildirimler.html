@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid" data-can-approve="{{ can_approve_notifications|yesno:'true,false' }}">
     <!-- Üst Kontrol Paneli -->
     <div class="row mb-3">
         <div class="col-md-1">
@@ -44,12 +44,14 @@
             <button class="btn btn-info me-2" id="downloadFormBtn" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-download"></i> Bildirim Formu
             </button>
+            {% if can_approve_notifications %}
             <button class="btn btn-success me-2" id="bulkApproveBtn" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-check2-all"></i> Toplu Onay
             </button>
             <button class="btn btn-danger me-2" id="bulkRejectBtn" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-x-circle"></i> Onayları Kaldır
             </button>
+            {% endif %}
         </div>
     </div>
 
@@ -240,15 +242,21 @@ document.addEventListener('DOMContentLoaded', function() {
             `?year=${selectedYear}&month=${selectedMonth}`;
     });
 
-    // Toplu Onay Butonu
-    document.getElementById('bulkApproveBtn').addEventListener('click', function() {
-        handleBulkAction(1); // 1 for approve
-    });
+    // Toplu Onay Butonu (Check if exists first)
+    const bulkApproveButton = document.getElementById('bulkApproveBtn');
+    if (bulkApproveButton) {
+        bulkApproveButton.addEventListener('click', function() {
+            handleBulkAction(1); // 1 for approve
+        });
+    }
 
-    // Toplu Onay Kaldırma Butonu
-    document.getElementById('bulkRejectBtn').addEventListener('click', function() {
-        handleBulkAction(0); // 0 for reject
-    });
+    // Toplu Onay Kaldırma Butonu (Check if exists first)
+    const bulkRejectButton = document.getElementById('bulkRejectBtn');
+    if (bulkRejectButton) {
+        bulkRejectButton.addEventListener('click', function() {
+            handleBulkAction(0); // 0 for reject
+        });
+    }
 
     // Event Delegation for dynamically added buttons (.create-btn and .action-btn)
     document.getElementById('bildirimTable').addEventListener('click', function(event) {
@@ -305,6 +313,9 @@ async function fetchBildirimler(year, month, birimId) {
 // Updates the entire table based on the fetched bildirimler data
 function updateBildirimTable(bildirimler) {
     const tbody = document.getElementById('bildirimTable').querySelector('tbody');
+    const container = document.querySelector('.container-fluid[data-can-approve]'); // Get the container
+    const canApprove = container ? container.dataset.canApprove === 'true' : false; // Read the permission flag safely
+
     // Clear existing rows except header (or find a way to update existing ones if preferred)
     // For simplicity, let's clear and repopulate based on the template structure
     // This assumes the initial HTML structure with `tr[data-personel-id]` exists for all personnel
@@ -404,18 +415,20 @@ function updateBildirimTable(bildirimler) {
                  actionButtonsDiv.innerHTML = `<span class="badge bg-danger"><i class="bi bi-lock-fill"></i> Kilitli</span>`;
              } else {
                 let actionButtonHtml = '';
-                if (bildirim.onay_durumu === 0) { // If not approved, show 'Approve' button
-                    actionButtonHtml = `
-                        <button class="btn btn-sm btn-success action-btn" data-action="onay" title="Onayla">
-                            <i class="bi bi-check-circle"></i>
-                        </button>`;
-                } else { // If approved, show 'Reject' button
-                    actionButtonHtml = `
-                        <button class="btn btn-sm btn-warning action-btn" data-action="kaldir" title="Onay Kaldır">
-                            <i class="bi bi-x-circle"></i>
-                        </button>`;
+                if (canApprove) { // Check permission before generating buttons
+                    if (bildirim.onay_durumu === 0) { // If not approved, show 'Approve' button
+                        actionButtonHtml = `
+                            <button class="btn btn-sm btn-success action-btn" data-action="onay" title="Onayla">
+                                <i class="bi bi-check-circle"></i>
+                            </button>`;
+                    } else { // If approved, show 'Reject' button
+                        actionButtonHtml = `
+                            <button class="btn btn-sm btn-warning action-btn" data-action="kaldir" title="Onay Kaldır">
+                                <i class="bi bi-x-circle"></i>
+                            </button>`;
+                    }
                 }
-                 actionButtonsDiv.innerHTML = actionButtonHtml;
+                 actionButtonsDiv.innerHTML = actionButtonHtml; // Will be empty if no permission
                  // Event listener is added via delegation
              }
         }
@@ -649,6 +662,8 @@ function handleBulkAction(onayDurumu) {
 // Updates a single row - extracted logic from updateBildirimTable
 function updateSingleBildirimRow(row, bildirim) {
      if (!row || !bildirim) return;
+     const container = document.querySelector('.container-fluid[data-can-approve]'); // Get the container
+     const canApprove = container ? container.dataset.canApprove === 'true' : false; // Read the permission flag safely
 
      console.log("Updating single row for personel:", bildirim.personel_id, "with data:", bildirim);
 
@@ -710,12 +725,14 @@ function updateSingleBildirimRow(row, bildirim) {
              actionButtonsDiv.innerHTML = `<span class="badge bg-danger"><i class="bi bi-lock-fill"></i> Kilitli</span>`;
          } else {
              let actionButtonHtml = '';
-             if (bildirim.onay_durumu === 0) {
-                 actionButtonHtml = `<button class="btn btn-sm btn-success action-btn" data-action="onay" title="Onayla"><i class="bi bi-check-circle"></i></button>`;
-             } else {
-                 actionButtonHtml = `<button class="btn btn-sm btn-warning action-btn" data-action="kaldir" title="Onay Kaldır"><i class="bi bi-x-circle"></i></button>`;
+             if (canApprove) { // Check permission before generating buttons
+                 if (bildirim.onay_durumu === 0) {
+                     actionButtonHtml = `<button class="btn btn-sm btn-success action-btn" data-action="onay" title="Onayla"><i class="bi bi-check-circle"></i></button>`;
+                 } else {
+                     actionButtonHtml = `<button class="btn btn-sm btn-warning action-btn" data-action="kaldir" title="Onay Kaldır"><i class="bi bi-x-circle"></i></button>`;
+                 }
              }
-             actionButtonsDiv.innerHTML = actionButtonHtml;
+             actionButtonsDiv.innerHTML = actionButtonHtml; // Will be empty if no permission
          }
      } else {
          onayIcon.style.display = 'none';

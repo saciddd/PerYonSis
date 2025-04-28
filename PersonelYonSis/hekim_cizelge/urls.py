@@ -44,4 +44,5 @@ urlpatterns = [
     path('tatil-ekle/', views.tatil_ekle, name='tatil_ekle'),
     path('tatil-duzenle/', views.tatil_duzenle, name='tatil_duzenle'),
     path('tatil-sil/<int:tatil_id>/', views.tatil_sil, name='tatil_sil'),
+    path('cizelge-form/<int:birim_id>/', views.cizelge_form, name='cizelge_form'),
 ]

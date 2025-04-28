@@ -1,5 +1,6 @@
 from django.db import models
 from PersonelYonSis.models import User
+from django.db.models import Q
 
 class Birim(models.Model):
     BirimID = models.AutoField(primary_key=True)
@@ -66,9 +67,24 @@ class Hizmet(models.Model):
     def get_hizmet_suresi(self, tarih):
         """Verilen tarihe göre dakika cinsinden hizmet süresini döndürür"""
         from datetime import datetime
-        tarih_obj = datetime.strptime(tarih, '%Y-%m-%d')
-        is_weekend = tarih_obj.weekday() >= 5
-        return self.HizmetSuresiHaftaSonu if (is_weekend and self.HizmetSuresiHaftaSonu) else self.HizmetSuresiHaftaIci
+        from .models import ResmiTatil # ResmiTatil modelini import et
+
+        tarih_obj = datetime.strptime(tarih, '%Y-%m-%d').date() # .date() ekleyerek sadece tarih kısmını al
+
+        # Günün resmi tatil olup olmadığını kontrol et (Arefe veya Bayram)
+        is_holiday = ResmiTatil.objects.filter(
+            (Q(BayramMi=True) | Q(ArefeMi=True)), # Q nesnesini başa al
+            TatilTarihi=tarih_obj
+        ).exists()
+
+        # Nöbet veya İcap hizmeti ve gün tatil ise Hafta Sonu Süresi kullan
+        if (self.HizmetTipi == self.NOBET or self.HizmetTipi == self.ICAP) and is_holiday:
+            # Hafta sonu süresi tanımlıysa onu, değilse hafta içi süresini kullan
+            return self.HizmetSuresiHaftaSonu if self.HizmetSuresiHaftaSonu is not None else self.HizmetSuresiHaftaIci
+        else:
+            # Normal durum: Hafta sonu mu kontrol et
+            is_weekend = tarih_obj.weekday() >= 5
+            return self.HizmetSuresiHaftaSonu if (is_weekend and self.HizmetSuresiHaftaSonu is not None) else self.HizmetSuresiHaftaIci
 
     def format_sure(self, dakika):
         """Dakikayı saat:dakika formatına çevirir"""
@@ -288,6 +304,9 @@ class ResmiTatil(models.Model):
         choices=[('TAM', 'Tam Gün'), ('YARIM', 'Yarım Gün')],
         default='TAM'
     )
+    BayramAdi = models.CharField(max_length=50, null=True, blank=True)  # Aynı bayramı gruplamak için
+    BayramMi = models.BooleanField(default=False)
+    ArefeMi = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['TatilTarihi']

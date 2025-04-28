@@ -10,8 +10,9 @@
                     <h5>Yeni Resmi Tatil Ekle</h5>
                 </div>
                 <div class="card-body">
-                    <form action="{% url 'hekim_cizelge:tatil_ekle' %}" method="post">
+                    <form action="{% url 'hekim_cizelge:tatil_ekle' %}" method="post" id="tatilForm">
                         {% csrf_token %}
+                        <input type="hidden" id="tatil_id" name="tatil_id" value="">
                         <div class="mb-3">
                             <label for="tarih" class="form-label">Tatil Tarihi</label>
                             <input type="date" class="form-control" id="tarih" name="tarih" required>
@@ -27,7 +28,20 @@
                                 <option value="YARIM">Yarım Gün (3 Saat)</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                        <div class="mb-3">
+                            <label for="bayram_adi" class="form-label">Bayram Adı (varsa)</label>
+                            <input type="text" class="form-control" id="bayram_adi" name="bayram_adi" placeholder="örn: Ramazan Bayramı">
+                        </div>
+                        <div class="form-check mb-2">
+                            <input type="checkbox" class="form-check-input" id="bayram_mi" name="bayram_mi">
+                            <label class="form-check-label" for="bayram_mi">Bayram Günü</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input type="checkbox" class="form-check-input" id="arefe_mi" name="arefe_mi">
+                            <label class="form-check-label" for="arefe_mi">Arefe Günü</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="kaydetBtn">Kaydet</button>
+                        <button type="button" class="btn btn-secondary" id="iptalBtn" style="display:none;">İptal</button>
                     </form>
                 </div>
             </div>
@@ -40,27 +54,48 @@
                     <h5>Resmi Tatiller</h5>
                 </div>
                 <div class="card-body">
-                    <table class="table">
+                    <table class="table table-sm table-bordered align-middle" id="tatilTable">
                         <thead>
                             <tr>
                                 <th>Tarih</th>
                                 <th>Açıklama</th>
                                 <th>Tip</th>
                                 <th>Süre</th>
+                                <th>Bayram Adı</th>
+                                <th>Bayram</th>
+                                <th>Arefe</th>
                                 <th>İşlem</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for tatil in tatiller %}
-                            <tr>
-                                <td>{{ tatil.TatilTarihi|date:"d.m.Y" }}</td>
-                                <td>{{ tatil.Aciklama }}</td>
-                                <td>{{ tatil.get_TatilTipi_display }}</td>
+                            <tr data-tatil-id="{{ tatil.TatilID }}">
+                                <td class="td-tarih">{{ tatil.TatilTarihi|date:"Y-m-d" }}</td>
+                                <td class="td-aciklama">{{ tatil.Aciklama }}</td>
+                                <td class="td-tip">{{ tatil.TatilTipi }}</td>
                                 <td>{{ tatil.Suresi }} Saat</td>
+                                <td class="td-bayram-adi">{{ tatil.BayramAdi|default:"" }}</td>
+                                <td class="td-bayram-mi">
+                                    {% if tatil.BayramMi %}
+                                        <span class="badge bg-success">Evet</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Hayır</span>
+                                    {% endif %}
+                                </td>
+                                <td class="td-arefe-mi">
+                                    {% if tatil.ArefeMi %}
+                                        <span class="badge bg-warning text-dark">Evet</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Hayır</span>
+                                    {% endif %}
+                                </td>
                                 <td>
+                                    <button type="button" class="btn btn-sm btn-info edit-tatil-btn">
+                                        <i class="bi bi-pencil"></i> Düzenle
+                                    </button>
                                     <form action="{% url 'hekim_cizelge:tatil_sil' tatil.TatilID %}" method="post" style="display:inline;">
                                         {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-danger" 
+                                        <button type="submit" class="btn btn-sm btn-danger"
                                                 onclick="return confirm('Bu tatil kaydını silmek istediğinize emin misiniz?')">
                                             <i class="bi bi-trash"></i> Sil
                                         </button>
@@ -75,4 +110,86 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tatil düzenle butonuna tıklanınca formu doldur
+    document.querySelectorAll('.edit-tatil-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var tr = btn.closest('tr');
+            if (tr.classList.contains('editing')) return;
+            tr.classList.add('editing');
+            // Get current values
+            var tatilId = tr.dataset.tatilId;
+            var tarih = tr.querySelector('.td-tarih').textContent.trim();
+            var aciklama = tr.querySelector('.td-aciklama').textContent.trim();
+            var tip = tr.querySelector('.td-tip').textContent.trim();
+            var bayramAdi = tr.querySelector('.td-bayram-adi').textContent.trim();
+            var bayramMi = tr.querySelector('.td-bayram-mi .badge').classList.contains('bg-success');
+            var arefeMi = tr.querySelector('.td-arefe-mi .badge').classList.contains('bg-warning');
+
+            // Replace cells with inputs
+            tr.querySelector('.td-tarih').innerHTML = `<input type="date" class="form-control form-control-sm" value="${tarih}" name="tarih">`;
+            tr.querySelector('.td-aciklama').innerHTML = `<input type="text" class="form-control form-control-sm" value="${aciklama}" name="aciklama">`;
+            tr.querySelector('.td-tip').innerHTML = `
+                <select class="form-control form-control-sm" name="tip">
+                    <option value="TAM" ${tip === "TAM" ? "selected" : ""}>Tam Gün</option>
+                    <option value="YARIM" ${tip === "YARIM" ? "selected" : ""}>Yarım Gün</option>
+                </select>`;
+            tr.querySelector('.td-bayram-adi').innerHTML = `<input type="text" class="form-control form-control-sm" value="${bayramAdi}" name="bayram_adi">`;
+            tr.querySelector('.td-bayram-mi').innerHTML = `<input type="checkbox" name="bayram_mi" ${bayramMi ? "checked" : ""}>`;
+            tr.querySelector('.td-arefe-mi').innerHTML = `<input type="checkbox" name="arefe_mi" ${arefeMi ? "checked" : ""}>`;
+
+            // Replace buttons
+            var tdIslem = tr.querySelector('td:last-child');
+            tdIslem.innerHTML = `
+                <button type="button" class="btn btn-sm btn-success save-tatil-btn"><i class="bi bi-check"></i> Kaydet</button>
+                <button type="button" class="btn btn-sm btn-secondary cancel-tatil-btn"><i class="bi bi-x"></i> İptal</button>
+            `;
+
+            // Save
+            tdIslem.querySelector('.save-tatil-btn').addEventListener('click', function() {
+                var data = {
+                    tatil_id: tatilId,
+                    tarih: tr.querySelector('input[name="tarih"]').value,
+                    aciklama: tr.querySelector('input[name="aciklama"]').value,
+                    tip: tr.querySelector('select[name="tip"]').value,
+                    bayram_adi: tr.querySelector('input[name="bayram_adi"]').value,
+                    bayram_mi: tr.querySelector('input[name="bayram_mi"]').checked,
+                    arefe_mi: tr.querySelector('input[name="arefe_mi"]').checked,
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                };
+                fetch("{% url 'hekim_cizelge:tatil_duzenle' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(data)
+                })
+                .then(resp => resp.json())
+                .then(resp => {
+                    if (resp.status === 'success') {
+                        location.reload();
+                    } else {
+                        alert(resp.message || 'Hata oluştu');
+                    }
+                });
+            });
+
+            // Cancel
+            tdIslem.querySelector('.cancel-tatil-btn').addEventListener('click', function() {
+                location.reload();
+            });
+        });
+    });
+
+    // İptal butonu formu sıfırlar
+    document.getElementById('iptalBtn').addEventListener('click', function() {
+        document.getElementById('tatilForm').reset();
+        document.getElementById('tatil_id').value = "";
+        document.getElementById('kaydetBtn').textContent = "Kaydet";
+        this.style.display = "none";
+    });
+});
+</script>
 {% endblock %}

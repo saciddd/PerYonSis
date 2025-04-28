@@ -42,5 +42,6 @@ urlpatterns = [
     path('bildirim-excel/', views.bildirim_excel, name='bildirim_excel'),
     path('resmi-tatiller/', views.resmi_tatiller, name='resmi_tatiller'),
     path('tatil-ekle/', views.tatil_ekle, name='tatil_ekle'),
+    path('tatil-duzenle/', views.tatil_duzenle, name='tatil_duzenle'),
     path('tatil-sil/<int:tatil_id>/', views.tatil_sil, name='tatil_sil'),
 ]

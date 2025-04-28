@@ -1050,17 +1050,47 @@ def tatil_ekle(request):
             tarih = request.POST.get('tarih')
             aciklama = request.POST.get('aciklama')
             tip = request.POST.get('tip')
+            bayram_adi = request.POST.get('bayram_adi', '').strip() or None
+            bayram_mi = bool(request.POST.get('bayram_mi'))
+            arefe_mi = bool(request.POST.get('arefe_mi'))
 
             ResmiTatil.objects.create(
                 TatilTarihi=tarih,
                 Aciklama=aciklama,
-                TatilTipi=tip
+                TatilTipi=tip,
+                BayramAdi=bayram_adi,
+                BayramMi=bayram_mi,
+                ArefeMi=arefe_mi
             )
             messages.success(request, "Resmi tatil başarıyla eklendi.")
         except Exception as e:
             messages.error(request, f"Hata oluştu: {str(e)}")
-            
     return redirect('hekim_cizelge:resmi_tatiller')
+
+@csrf_exempt
+def tatil_duzenle(request):
+    if request.method == 'POST':
+        try:
+            tatil_id = request.POST.get('tatil_id')
+            tarih = request.POST.get('tarih')
+            aciklama = request.POST.get('aciklama')
+            tip = request.POST.get('tip')
+            bayram_adi = request.POST.get('bayram_adi', '').strip() or None
+            bayram_mi = request.POST.get('bayram_mi') in ['true', 'True', 'on', '1']
+            arefe_mi = request.POST.get('arefe_mi') in ['true', 'True', 'on', '1']
+
+            tatil = ResmiTatil.objects.get(TatilID=tatil_id)
+            tatil.TatilTarihi = tarih
+            tatil.Aciklama = aciklama
+            tatil.TatilTipi = tip
+            tatil.BayramAdi = bayram_adi
+            tatil.BayramMi = bayram_mi
+            tatil.ArefeMi = arefe_mi
+            tatil.save()
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
 
 @csrf_exempt
 def tatil_sil(request, tatil_id):

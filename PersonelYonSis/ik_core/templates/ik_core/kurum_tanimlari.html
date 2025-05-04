@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h3>Kurum Tanımları</h3>
+    <form method="post" class="mb-3">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-success">Kurum Ekle</button>
+    </form>
+    <table class="table table-bordered table-sm">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Kurum Adı</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for kurum in kurumlar %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ kurum.ad }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="2" class="text-center">Kurum kaydı yok.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

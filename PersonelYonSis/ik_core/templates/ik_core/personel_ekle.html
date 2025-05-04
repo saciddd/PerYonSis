@@ -1,0 +1,395 @@
+{% extends "base.html" %}
+{% block title %}Yeni Personel Ekle{% endblock %}
+{% block content %}
+<div class="container">
+    <h3>Yeni Personel Ekle</h3>
+    <div id="tcCheckResult" class="alert alert-info d-none" role="alert"></div>
+    <div id="kisibilgiSticky" class="alert alert-secondary mt-4 d-none"></div>
+    <form id="personelStepperForm" method="post" autocomplete="off">
+        {% csrf_token %}
+        <div id="personelStepper" class="bs-stepper">
+            <div class="bs-stepper-header" role="tablist">
+                <div class="step" data-target="#step1">
+                    <button type="button" class="step-trigger" role="tab" aria-controls="step1" id="step1-trigger">1. Kişi Bilgileri</button>
+                </div>
+                <div class="line"></div>
+                <div class="step" data-target="#step2">
+                    <button type="button" class="step-trigger" role="tab" aria-controls="step2" id="step2-trigger">2. Kurumsal Bilgiler</button>
+                </div>
+                <div class="line"></div>
+                <div class="step" data-target="#step3">
+                    <button type="button" class="step-trigger" role="tab" aria-controls="step3" id="step3-trigger">3. Görev Bilgileri</button>
+                </div>
+                <div class="line"></div>
+                <div class="step" data-target="#step4">
+                    <button type="button" class="step-trigger" role="tab" aria-controls="step4" id="step4-trigger">4. Mazeret Bilgileri</button>
+                </div>
+                <div class="line"></div>
+                <div class="step" data-target="#step5">
+                    <button type="button" class="step-trigger" role="tab" aria-controls="step5" id="step5-trigger">5. Diğer Bilgiler</button>
+                </div>
+            </div>
+            <div class="bs-stepper-content mt-4">
+                <!-- Step 1: Kişi Bilgileri -->
+                <div id="step1" class="content">
+                    <div class="row mb-3">
+                        <label for="id_tc_kimlik_no" class="col-sm-3 col-form-label">T.C. Kimlik No</label>
+                        <div class="col-sm-9">
+                            {{ form.tc_kimlik_no }}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_ad" class="col-sm-3 col-form-label">Ad</label>
+                        <div class="col-sm-9">{{ form.ad }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_soyad" class="col-sm-3 col-form-label">Soyad</label>
+                        <div class="col-sm-9">{{ form.soyad }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_dogum_tarihi" class="col-sm-3 col-form-label">Doğum Tarihi</label>
+                        <div class="col-sm-9">{{ form.dogum_tarihi }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_cinsiyet" class="col-sm-3 col-form-label">Cinsiyet</label>
+                        <div class="col-sm-9">{{ form.cinsiyet }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_sicil_no" class="col-sm-3 col-form-label">Sicil No</label>
+                        <div class="col-sm-9">{{ form.sicil_no }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_unvan" class="col-sm-3 col-form-label">Unvan</label>
+                        <div class="col-sm-9">
+                            {{ form.unvan }}
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_brans" class="col-sm-3 col-form-label">Branş</label>
+                        <div class="col-sm-9">
+                            {{ form.brans }}
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="button" class="btn btn-primary" id="toStep2">Devam Et</button>
+                    </div>
+                </div>
+                <!-- Step 2: Kurumsal Bilgiler -->
+                <div id="step2" class="content">
+                    <div class="row mb-3">
+                        <label for="id_kurum" class="col-sm-3 col-form-label">Kurum</label>
+                        <div class="col-sm-9">{{ form.kurum }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_kadro_yeri" class="col-sm-3 col-form-label">Kadro Yeri</label>
+                        <div class="col-sm-9">{{ form.kadro_yeri }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_fiili_gorev_yeri" class="col-sm-3 col-form-label">Fiili Görev Yeri</label>
+                        <div class="col-sm-9">{{ form.fiili_gorev_yeri }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_kadrolu_personel" class="col-sm-3 col-form-label">Kadrolu Personel mi?</label>
+                        <div class="col-sm-9 d-flex align-items-center">{{ form.kadrolu_personel }}</div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" id="backToStep1">Geri</button>
+                        <button type="button" class="btn btn-primary" id="toStep3">Devam Et</button>
+                    </div>
+                </div>
+                <!-- Step 3: Görev Bilgileri -->
+                <div id="step3" class="content">
+                    <div id="kadroluFields">
+                        <div class="row mb-3">
+                            <label for="id_teskilat" class="col-sm-3 col-form-label">Teşkilat</label>
+                            <div class="col-sm-9">{{ form.teskilat }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <label for="id_atama_karar_tarihi" class="col-sm-3 col-form-label">Atama Karar Tarihi</label>
+                            <div class="col-sm-9">{{ form.atama_karar_tarihi }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <label for="id_atama_karar_no" class="col-sm-3 col-form-label">Atama Karar No</label>
+                            <div class="col-sm-9">{{ form.atama_karar_no }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <label for="id_goreve_baslama_tarihi" class="col-sm-3 col-form-label">Göreve Başlama Tarihi</label>
+                            <div class="col-sm-9">{{ form.goreve_baslama_tarihi }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <label for="id_memuriyete_baslama_tarihi" class="col-sm-3 col-form-label">Memuriyete Başlama Tarihi</label>
+                            <div class="col-sm-9">{{ form.memuriyete_baslama_tarihi }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <label for="id_emekli_sicil_no" class="col-sm-3 col-form-label">Emekli Sicil No</label>
+                            <div class="col-sm-9">{{ form.emekli_sicil_no }}</div>
+                        </div>
+                        <div class="row mb-3">
+                            <label for="id_tahsil_durumu" class="col-sm-3 col-form-label">Tahsil Durumu</label>
+                            <div class="col-sm-9">{{ form.tahsil_durumu }}</div>
+                        </div>
+                    </div>
+                    <div id="geciciGorevFields" class="d-none">
+                        <div class="row mb-3">
+                            <label for="id_gecici_gorev_tipi" class="col-sm-3 col-form-label">Geçici Görev Tipi</label>
+                            <div class="col-sm-9">
+                                <input type="text" class="form-control" id="gecici_gorev_tipi" name="gecici_gorev_tipi" value="Gelis" readonly>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <label for="id_gecici_gorev_baslangic" class="col-sm-3 col-form-label">Geçici Görev Başlangıç</label>
+                            <div class="col-sm-9">
+                                <input type="date" class="form-control" id="gecici_gorev_baslangic" name="gecici_gorev_baslangic">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <label for="id_gorevlendirildigi_birim" class="col-sm-3 col-form-label">Görevlendirildiği Birim</label>
+                            <div class="col-sm-9">
+                                <input type="text" class="form-control" id="gorevlendirildigi_birim" name="gorevlendirildigi_birim">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" id="backToStep2">Geri</button>
+                        <button type="button" class="btn btn-primary" id="toStep4">Devam Et</button>
+                    </div>
+                </div>
+                <!-- Step 4: Mazeret Bilgileri (sadece kadrolu ise) -->
+                <div id="step4" class="content">
+                    <div class="alert alert-info">
+                        Personelin mazeret ataması varsa bu alanı doldurun yoksa atlayın.
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_mazeret_durumu" class="col-sm-3 col-form-label">Mazeret Durumu</label>
+                        <div class="col-sm-9">{{ form.mazeret_durumu }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_mazeret_baslangic" class="col-sm-3 col-form-label">Mazeret Başlangıç</label>
+                        <div class="col-sm-9">{{ form.mazeret_baslangic }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_mazeret_bitis" class="col-sm-3 col-form-label">Mazeret Bitiş</label>
+                        <div class="col-sm-9">{{ form.mazeret_bitis }}</div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" id="backToStep3">Geri</button>
+                        <button type="button" class="btn btn-primary" id="toStep5">Devam Et</button>
+                    </div>
+                </div>
+                <!-- Step 5: Diğer Bilgiler -->
+                <div id="step5" class="content">
+                    <div class="alert alert-info">
+                        İzin bilgileri için "Maaş nakil formundan girebilirsiniz".
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_memur_devreden_izin" class="col-sm-3 col-form-label">Memur Devreden İzin</label>
+                        <div class="col-sm-9">{{ form.memur_devreden_izin }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_memur_hak_ettigi_izin" class="col-sm-3 col-form-label">Memur Hak Ettiği İzin</label>
+                        <div class="col-sm-9">{{ form.memur_hak_ettigi_izin }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_adres" class="col-sm-3 col-form-label">Adres</label>
+                        <div class="col-sm-9">{{ form.adres }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_telefon" class="col-sm-3 col-form-label">Telefon</label>
+                        <div class="col-sm-9">{{ form.telefon }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_eposta" class="col-sm-3 col-form-label">E-posta</label>
+                        <div class="col-sm-9">{{ form.eposta }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_dhy" class="col-sm-3 col-form-label">DHY</label>
+                        <div class="col-sm-9 d-flex align-items-center">{{ form.dhy }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_sgk" class="col-sm-3 col-form-label">SGK</label>
+                        <div class="col-sm-9 d-flex align-items-center">{{ form.sgk }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_dss" class="col-sm-3 col-form-label">DSS</label>
+                        <div class="col-sm-9 d-flex align-items-center">{{ form.dss }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label for="id_shcek" class="col-sm-3 col-form-label">SHÇEK</label>
+                        <div class="col-sm-9 d-flex align-items-center">{{ form.shcek }}</div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" id="backToStep4">Geri</button>
+                        <button type="submit" class="btn btn-success">Kaydet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+/* ...existing code... */
+</style>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var stepperElement = document.getElementById('personelStepper');
+    var stepper = new Stepper(stepperElement, {
+        linear: false,
+        animation: true
+    });
+
+    // Select2 ile Unvan ve Branş alanlarını arama yapılabilir yap
+    $('#id_unvan').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Unvan seçiniz'
+    });
+    $('#id_brans').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Branş seçiniz'
+    });
+
+    // Sticky header update function
+    function updateStickyHeader() {
+        const ad = document.getElementById('id_ad').value || '[Ad Girilmemiş]';
+        const soyad = document.getElementById('id_soyad').value || '[Soyad Girilmemiş]';
+        const tc = document.getElementById('id_tc_kimlik_no').value || '[TC Girilmemiş]';
+        const sicil = document.getElementById('id_sicil_no').value || '[Sicil Girilmemiş]';
+        const unvanSelect = document.getElementById('id_unvan');
+        const unvan = unvanSelect && unvanSelect.selectedOptions[0] ? unvanSelect.selectedOptions[0].text : '[Unvan Seçilmemiş]';
+        const bransSelect = document.getElementById('id_brans');
+        const brans = bransSelect && bransSelect.selectedOptions[0] ? bransSelect.selectedOptions[0].text : '[Branş Seçilmemiş]';
+
+        const stickyDiv = document.getElementById('kisibilgiSticky');
+        stickyDiv.innerHTML = `<strong>${ad} ${soyad}</strong> (TC: ${tc}, Sicil: ${sicil}) - ${unvan} / ${brans}`;
+        if (stepper._currentIndex > 0) {
+            stickyDiv.classList.remove('d-none');
+        } else {
+            stickyDiv.classList.add('d-none');
+        }
+    }
+
+    document.querySelectorAll('#step1 input, #step1 select').forEach(input => {
+        input.addEventListener('change', updateStickyHeader);
+        if (input.type === 'text' || input.type === 'number') {
+            input.addEventListener('input', updateStickyHeader);
+        }
+    });
+
+    // --- Navigation ---
+    document.getElementById('toStep2').addEventListener('click', function() {
+        const tc = document.getElementById('id_tc_kimlik_no').value.trim();
+        const tcCheckResultDiv = document.getElementById('tcCheckResult');
+        tcCheckResultDiv.classList.add('d-none');
+        if (!tc || tc.length !== 11 || !/^\d+$/.test(tc)) {
+            alert('Lütfen geçerli bir T.C. Kimlik No giriniz.');
+            return;
+        }
+        fetch("{% url 'ik_core:personel_kontrol' %}?tc_kimlik_no=" + tc)
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.exists) {
+                    tcCheckResultDiv.className = 'alert alert-danger';
+                    tcCheckResultDiv.textContent = 'Bu T.C. Kimlik No ile kayıtlı bir personel zaten var!';
+                    tcCheckResultDiv.classList.remove('d-none');
+                } else {
+                    tcCheckResultDiv.classList.add('d-none');
+                    updateStickyHeader();
+                    stepper.next();
+                }
+            })
+            .catch(() => {
+                tcCheckResultDiv.className = 'alert alert-warning';
+                tcCheckResultDiv.textContent = 'T.C. kontrolü sırasında bir hata oluştu.';
+                tcCheckResultDiv.classList.remove('d-none');
+            });
+    });
+
+    document.getElementById('backToStep1').addEventListener('click', function() { stepper.previous(); });
+    document.getElementById('toStep3').addEventListener('click', function() { stepper.next(); });
+    document.getElementById('backToStep2').addEventListener('click', function() { stepper.previous(); });
+
+    document.getElementById('toStep4').addEventListener('click', function() {
+        const kadroluCheckbox = document.getElementById('id_kadrolu_personel');
+        if (kadroluCheckbox && kadroluCheckbox.checked) {
+            stepper.next();
+        } else {
+            stepper.to(5);
+        }
+    });
+
+    document.getElementById('backToStep3').addEventListener('click', function() { stepper.previous(); });
+    document.getElementById('toStep5').addEventListener('click', function() { stepper.next(); });
+
+    document.getElementById('backToStep4').addEventListener('click', function() {
+        const kadroluCheckbox = document.getElementById('id_kadrolu_personel');
+        if (kadroluCheckbox && kadroluCheckbox.checked) {
+            stepper.previous();
+        } else {
+            stepper.to(3);
+        }
+    });
+
+    const kadroluCheckbox = document.getElementById('id_kadrolu_personel');
+    const kadroluFieldsDiv = document.getElementById('kadroluFields');
+    const geciciGorevFieldsDiv = document.getElementById('geciciGorevFields');
+    const step4Trigger = document.querySelector('.step[data-target="#step4"]');
+    const step4Content = document.getElementById('step4');
+
+    function toggleFieldsVisibility() {
+        if (!kadroluCheckbox) return;
+
+        if (kadroluCheckbox.checked) {
+            if (kadroluFieldsDiv) kadroluFieldsDiv.classList.remove('d-none');
+            if (geciciGorevFieldsDiv) geciciGorevFieldsDiv.classList.add('d-none');
+            if (step4Trigger) step4Trigger.style.display = '';
+        } else {
+            if (kadroluFieldsDiv) kadroluFieldsDiv.classList.add('d-none');
+            if (geciciGorevFieldsDiv) geciciGorevFieldsDiv.classList.remove('d-none');
+            if (step4Trigger) step4Trigger.style.display = 'none';
+            if (step4Content) step4Content.classList.add('d-none');
+        }
+    }
+
+    if (kadroluCheckbox) {
+        kadroluCheckbox.addEventListener('change', toggleFieldsVisibility);
+    }
+
+    stepperElement.addEventListener('show.bs-stepper', function (event) {
+        if (event.detail.indexStep > 0) {
+            updateStickyHeader();
+            document.getElementById('kisibilgiSticky').classList.remove('d-none');
+        } else {
+            document.getElementById('kisibilgiSticky').classList.add('d-none');
+        }
+
+        if (event.detail.indexStep === 2) {
+            toggleFieldsVisibility();
+        }
+
+        const kadroluCheckbox = document.getElementById('id_kadrolu_personel');
+        const step4Content = document.getElementById('step4');
+
+        if (event.detail.indexStep === 3) {
+            if (kadroluCheckbox && !kadroluCheckbox.checked) {
+                if (step4Content) step4Content.classList.add('d-none');
+                stepper.to(5);
+            } else if (step4Content) {
+                step4Content.classList.remove('d-none');
+            }
+        }
+    });
+
+    toggleFieldsVisibility();
+    updateStickyHeader();
+});
+</script>
+{% endblock %}

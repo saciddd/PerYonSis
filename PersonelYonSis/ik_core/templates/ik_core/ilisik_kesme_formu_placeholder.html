@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h3>İlişik Kesme Formu - {{ personel.ad_soyad }}</h3>
+    <hr>
+    <div class="alert alert-info" role="alert">
+        Bu sayfa ilişik kesme formu için bir yer tutucudur. Formun içeriği ve işlevselliği daha sonra eklenecektir.
+    </div>
+    <p><strong>Personel:</strong> {{ personel.ad_soyad }}</p>
+    <p><strong>T.C. Kimlik No:</strong> {{ personel.tc_kimlik_no }}</p>
+    <p><strong>Ayrılma Tarihi:</strong> {{ personel.ayrilma_tarihi|date:"d.m.Y" }}</p>
+    <p><strong>Ayrılma Nedeni:</strong> {{ personel.get_ayrilma_nedeni_display }}</p>
+
+    {# Add form elements or content here later #}
+    <p>...</p>
+    <p>...</p>
+
+    <a href="{% url 'ik_core:personel_detay' personel.pk %}" class="btn btn-secondary">Geri Dön</a>
+</div>
+{% endblock %}

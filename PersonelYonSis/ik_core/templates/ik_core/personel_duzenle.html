@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h3>Personel Kaydı Düzenle</h3>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-success">Kaydet</button>
+        <a href="{% url 'ik_core:personel_detay' personel.id %}" class="btn btn-secondary">İptal</a>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <h3>Personel Yönetimi</h3>
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-2">
+            <input type="text" name="tc_kimlik_no" class="form-control" placeholder="T.C. Kimlik No" value="{{ arama.tc_kimlik_no }}">
+        </div>
+        <div class="col-md-2">
+            <input type="text" name="ad_soyad" class="form-control" placeholder="Ad Soyad" value="{{ arama.ad_soyad }}">
+        </div>
+        <div class="col-md-2">
+            <select name="unvan" class="form-control">
+                <option value="">Unvan Seçiniz</option>
+                {% for u in unvanlar %}
+                <option value="{{ u.id }}" {% if arama.unvan == u.id|stringformat:"s" %}selected{% endif %}>{{ u.ad }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="text" name="telefon" class="form-control" placeholder="Telefon" value="{{ arama.telefon }}">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary">Ara</button>
+            <a href="{% url 'ik_core:personel_list' %}" class="btn btn-secondary">Temizle</a>
+        </div>
+        <div class="col-md-2 text-end">
+            <a href="{% url 'ik_core:personel_ekle' %}" class="btn btn-success">Yeni Personel</a>
+            <a href="#" class="btn btn-info" onclick="exportExcel()">Excele Aktar</a>
+        </div>
+    </form>
+    <table class="table table-bordered table-sm">
+        <thead>
+            <tr>
+                <th>T.C. Kimlik No</th>
+                <th>Ad Soyad</th>
+                <th>Unvan</th>
+                <th>Branş</th>
+                <th>Kurum</th>
+                <th>Telefon</th>
+                <th>Detay</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in personeller %}
+            <tr>
+                <td>{{ p.tc_kimlik_no }}</td>
+                <td>{{ p.ad_soyad }}</td>
+                <td>{{ p.unvan.ad }}</td>
+                <td>{{ p.brans.ad }}</td>
+                <td>{{ p.kurum.ad }}</td>
+                <td>{{ p.telefon }}</td>
+                <td>
+                    <a href="{% url 'ik_core:personel_detay' p.id %}" class="btn btn-sm btn-info">Detay</a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">Kayıt bulunamadı.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>
+function exportExcel() {
+    // Basit export için tabloyu kopyala ve yeni pencereye aç
+    var table = document.querySelector('table').outerHTML;
+    var win = window.open('', '', 'width=800,height=600');
+    win.document.write('<html><head><title>Excel</title></head><body>' + table + '</body></html>');
+    win.document.close();
+    win.print();
+}
+</script>
+{% endblock %}

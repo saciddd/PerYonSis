@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'hekim_cizelge',
     'mutemet_app',
     'hizmet_sunum_app',
+    'ik_core',
 ]
 
 MIDDLEWARE = [

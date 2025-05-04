@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h3>Unvan ve Branş Tanımları</h3>
+    <div class="row">
+        <div class="col-md-5">
+            <h5>Yeni Unvan Tanımlama</h5>
+            <form method="post" class="mb-3">
+                {% csrf_token %}
+                <div class="mb-2">
+                    <label for="id_unvan-ad" class="form-label">Unvan Adı</label>
+                    {{ unvan_form.ad }}
+                </div>
+                <div class="mb-2">
+                    <label for="id_unvan-sinif" class="form-label">Sınıf</label>
+                    <select name="unvan-sinif" id="id_unvan-sinif" class="form-select">
+                        <option value="S.H.S.">S.H.S.</option>
+                        <option value="G.İ.H.">G.İ.H.</option>
+                        <option value="T.H.S.">T.H.S.</option>
+                        <option value="BİLİNMİYOR">BİLİNMİYOR</option>
+                    </select>
+                </div>
+                <button type="submit" name="unvan_ekle" class="btn btn-success">Unvan Ekle</button>
+            </form>
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Unvan Adı</th>
+                        <th>Sınıf</th>
+                        <th>Branşlar</th>
+                        <th>Seç</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for unvan in unvanlar %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ unvan.ad }}</td>
+                        <td>{{ unvan.sinif }}</td>
+                        <td>{{ unvan.brans_set.count }}</td>
+                        <td>
+                            <a href="?unvan_id={{ unvan.id }}" class="btn btn-sm btn-info">Branşları Gör</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">Unvan kaydı yok.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-7">
+            <h5>
+                {% if selected_unvan %}
+                    "{{ selected_unvan.ad }}" Unvanına Bağlı Branşlar
+                {% else %}
+                    Branşlar
+                {% endif %}
+            </h5>
+            {% if selected_unvan %}
+            <form method="post" class="mb-3">
+                {% csrf_token %}
+                {{ brans_form.as_p }}
+                <input type="hidden" name="brans-unvan" value="{{ selected_unvan.id }}">
+                <button type="submit" name="brans_ekle" class="btn btn-success">Branş Ekle</button>
+            </form>
+            {% endif %}
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Branş Adı</th>
+                        <th>Unvan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for brans in branslar %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ brans.ad }}</td>
+                        <td>{{ brans.unvan.ad }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center">Branş kaydı yok.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

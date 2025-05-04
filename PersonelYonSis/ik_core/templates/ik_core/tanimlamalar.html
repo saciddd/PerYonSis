@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h3>Tanımlamalar</h3>
+    <div class="list-group mt-4">
+        <a href="{% url 'ik_core:kurum_tanimlari' %}" class="list-group-item list-group-item-action">
+            Kurum Tanımları
+        </a>
+        <a href="{% url 'ik_core:unvan_branstanimlari' %}" class="list-group-item list-group-item-action">
+            Unvan & Branş Tanımları
+        </a>
+        <!-- Gerekirse diğer tanımlama sayfaları buraya eklenebilir -->
+    </div>
+</div>
+{% endblock %}

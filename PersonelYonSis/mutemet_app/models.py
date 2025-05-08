@@ -3,51 +3,11 @@ from PersonelYonSis.models import User
 from django.core.validators import MinLengthValidator, MaxLengthValidator
 from django.core.exceptions import ValidationError
 from datetime import date, timedelta
+from ik_core.models import Personel  # Yeni Personel modelini buradan alıyoruz
 
 def validate_tc_kimlik_no(value):
     if not value.isdigit() or len(value) != 11:
         raise ValidationError('TC Kimlik No 11 haneli olmalıdır.')
-
-class Personel(models.Model):
-    """Personel bilgileri"""
-    DURUM_TIPLERI = [
-        ('AKTIF', 'Aktif'),
-        ('PASIF', 'Pasif'),
-        ('AYRILDI', 'Kurumdan Ayrıldı'),
-    ]
-
-    personel_id = models.CharField(
-        primary_key=True,
-        max_length=11,
-        validators=[validate_tc_kimlik_no],
-        verbose_name='T.C. Kimlik No'
-    )
-    sicil_no = models.CharField(max_length=20, verbose_name='Sicil No')
-    ad = models.CharField(max_length=50, verbose_name='Ad')
-    soyad = models.CharField(max_length=50, verbose_name='Soyad')
-    unvan = models.CharField(max_length=100, verbose_name='Unvan')
-    brans = models.CharField(max_length=100, verbose_name='Branş')
-    durum = models.CharField(max_length=10, choices=DURUM_TIPLERI, default='AKTIF', verbose_name='Durum')
-    olusturan = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='olusturan_personeller')
-    olusturma_tarihi = models.DateTimeField(auto_now_add=True)
-    guncelleyen = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='guncelleyen_personeller')
-    guncelleme_tarihi = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ['ad', 'soyad']
-        verbose_name = 'Personel'
-        verbose_name_plural = 'Personeller'
-
-    def __str__(self):
-        return f"{self.ad} {self.soyad}"
-
-    def save(self, *args, **kwargs):
-        # Trim işlemleri
-        self.ad = self.ad.strip()
-        self.soyad = self.soyad.strip()
-        self.unvan = self.unvan.strip()
-        self.brans = self.brans.strip()
-        super().save(*args, **kwargs)
 
 class Sendika(models.Model):
     """Sendika tanımları"""
@@ -182,7 +142,7 @@ class IcraTakibi(models.Model):
     ]
 
     icra_id = models.AutoField(primary_key=True)
-    personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
+    personel = models.ForeignKey(Personel, on_delete=models.CASCADE)
     icra_vergi_dairesi_no = models.CharField(max_length=50, verbose_name='Vergi Dairesi No')
     icra_dairesi = models.CharField(max_length=100, verbose_name='İcra Dairesi')
     dosya_no = models.CharField(max_length=50, verbose_name='Dosya No')

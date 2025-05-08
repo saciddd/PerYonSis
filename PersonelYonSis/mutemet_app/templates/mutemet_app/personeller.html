@@ -6,20 +6,58 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Arama Formu -->
+    <form method="get" class="mb-3" id="personelAramaForm">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label for="tc_kimlik_no" class="form-label">T.C. Kimlik No</label>
+                <input type="text" class="form-control" id="tc_kimlik_no" name="tc_kimlik_no" value="{{ filter_tc_kimlik_no }}">
+            </div>
+            <div class="col-md-2">
+                <label for="ad_soyad" class="form-label">Ad Soyad</label>
+                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad" value="{{ filter_ad_soyad }}">
+            </div>
+            <div class="col-md-2">
+                <label for="unvan" class="form-label">Unvan</label>
+                <select id="unvan" name="unvan" class="form-select select2" multiple>
+                    {% for unvan in unvan_list %}
+                        <option value="{{ unvan.id }}" {% if unvan.id in filter_unvanlar %}selected{% endif %}>{{ unvan.ad }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="kurum" class="form-label">Kurum</label>
+                <select id="kurum" name="kurum" class="form-select select2" multiple>
+                    {% for kurum in kurum_list %}
+                        <option value="{{ kurum.id }}" {% if kurum.id in filter_kurumlar %}selected{% endif %}>{{ kurum.ad }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="teskilat" class="form-label">Teşkilat</label>
+                <select id="teskilat" name="teskilat" class="form-select select2" multiple>
+                    {% for teskilat_val, teskilat_label in teskilat_choices %}
+                        <option value="{{ teskilat_val }}" {% if teskilat_val in filter_teskilatlar %}selected{% endif %}>{{ teskilat_label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Ara</button>
+            </div>
+        </div>
+    </form>
+    <!-- /Arama Formu -->
+
     <div class="row">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">Personel Listesi</h3>
-                    <div class="card-tools">
-                        <button type="button" class="btn btn-primary" id="btnYeniPersonel">
-                            <i class="fas fa-plus"></i> Yeni Personel
-                        </button>
-                    </div>
                 </div>
                 <div class="card-body">
                     <table id="personelTable" class="table table-bordered table-striped">
@@ -30,6 +68,8 @@
                                 <th>Soyad</th>
                                 <th>Unvan</th>
                                 <th>Branş</th>
+                                <th>Teşkilat</th>
+                                <th>Kurum</th>
                                 <th>Durum</th>
                                 <th>Hareketler</th>
                             </tr>
@@ -37,11 +77,13 @@
                         <tbody>
                             {% for personel in personeller %}
                             <tr>
-                                <td>{{ personel.personel_id }}</td>
+                                <td>{{ personel.tc_kimlik_no }}</td>
                                 <td>{{ personel.ad }}</td>
                                 <td>{{ personel.soyad }}</td>
-                                <td>{{ personel.unvan }}</td>
+                                <td>{{ personel.unvan.ad }}</td>
                                 <td>{{ personel.brans }}</td>
+                                <td>{{ personel.teskilat }}</td>
+                                <td>{{ personel.kurum.ad }}</td>
                                 <td>
                                     {% if personel.durum == 'AKTIF' %}
                                         <span class="badge bg-success text-white">{{ personel.get_durum_display }}</span>
@@ -61,53 +103,6 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Personel Ekleme Formu -->
-<div class="modal fade" id="personelModal" tabindex="-1" role="dialog" aria-labelledby="personelModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="personelModalLabel">Yeni Personel Ekle</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="personelForm">
-                    {% csrf_token %}
-                    <div class="form-group">
-                        <label for="personel_id">T.C. Kimlik No</label>
-                        <input type="text" class="form-control" id="personel_id" name="personel_id" maxlength="11" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="sicil_no">Sicil No</label>
-                        <input type="text" class="form-control" id="sicil_no" name="sicil_no" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="ad">Ad</label>
-                        <input type="text" class="form-control" id="ad" name="ad" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="soyad">Soyad</label>
-                        <input type="text" class="form-control" id="soyad" name="soyad" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="unvan">Unvan</label>
-                        <input type="text" class="form-control" id="unvan" name="unvan" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="brans">Branş</label>
-                        <input type="text" class="form-control" id="brans" name="brans" required>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">İptal</button>
-                <button type="button" class="btn btn-primary" id="btnKaydet">Kaydet</button>
             </div>
         </div>
     </div>
@@ -176,10 +171,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
-    // DataTable ayarları
+    $('.select2').select2({ width: '100%' });
+
     $('#personelTable').DataTable({
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
@@ -190,32 +186,6 @@ $(document).ready(function() {
         ]
     });
 
-    // Yeni personel ekleme modalını aç
-    $('#btnYeniPersonel').click(function() {
-        $('#personelModal').modal('show');
-    });
-
-    // Personel kaydetme
-    $('#btnKaydet').click(function() {
-        var formData = $('#personelForm').serialize();
-        $.ajax({
-            url: '{% url "mutemet_app:personel_ekle" %}',
-            type: 'POST',
-            data: formData,
-            success: function(response) {
-                if (response.success) {
-                    location.reload();
-                } else {
-                    alert(response.message);
-                }
-            },
-            error: function(xhr) {
-                alert('Bir hata oluştu: ' + xhr.responseText);
-            }
-        });
-    });
-
-    // Hareket kaydetme
     $('#btnHareketKaydet').click(function() {
         var formData = $('#hareketForm').serialize();
         $.ajax({
@@ -252,4 +222,4 @@ function hareketGoster(personelId) {
     });
 }
 </script>
-{% endblock %} 
+{% endblock %}

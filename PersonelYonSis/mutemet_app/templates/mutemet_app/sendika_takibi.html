@@ -64,7 +64,7 @@
                     <select id="sendika" name="sendika" class="form-select" required>
                         <option value="" selected disabled>Seçiniz...</option>
                         {% for s in sendikalar %}
-                        <option value="{{ s.sendika }}">{{ s.sendika_adi }}</option>
+                        <option value="{{ s.sendika_id }}">{{ s.sendika_adi }}</option>
                         {% endfor %}
                     </select>
                 </div>

@@ -6,7 +6,9 @@ from django.urls import reverse_lazy, reverse
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseRedirect
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
-from .models import Personel, PersonelHareket, Sendika, SendikaUyelik, IcraTakibi, IcraHareketleri
+from ik_core.models import Personel, Unvan, Kurum  # Unvan ve Kurum eklendi
+from ik_core.models.valuelists import TESKILAT_DEGERLERI  # TESKILAT_DEGERLERI eklendi
+from .models import PersonelHareket, Sendika, SendikaUyelik, IcraTakibi, IcraHareketleri
 from django.db import transaction
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils import timezone
@@ -75,55 +77,42 @@ def odeme_takibi(request):
 
 @login_required
 def personel_listesi(request):
-    """Personel listesi görüntüleme"""
+    """Personel listesi görüntüleme ve arama"""
     personeller = Personel.objects.all()
-    return render(request, 'mutemet_app/personeller.html', {'personeller': personeller})
+    tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
+    ad_soyad = request.GET.get('ad_soyad', '').strip()
+    unvanlar = request.GET.getlist('unvan')
+    kurumlar = request.GET.getlist('kurum')
+    teskilatlar = request.GET.getlist('teskilat')
 
-@login_required
-@require_http_methods(["POST"])
-def personel_ekle(request):
-    """Yeni personel ekleme"""
-    try:
-        with transaction.atomic():
-            # Form verilerini al
-            personel_id = request.POST.get('personel_id')
-            sicil_no = request.POST.get('sicil_no')
-            ad = request.POST.get('ad')
-            soyad = request.POST.get('soyad')
-            unvan = request.POST.get('unvan')
-            brans = request.POST.get('brans')
+    if tc_kimlik_no:
+        personeller = personeller.filter(tc_kimlik_no__icontains=tc_kimlik_no)
+    if ad_soyad:
+        personeller = personeller.filter(
+            models.Q(ad__icontains=ad_soyad) | models.Q(soyad__icontains=ad_soyad)
+        )
+    if unvanlar:
+        personeller = personeller.filter(unvan_id__in=unvanlar)
+    if kurumlar:
+        personeller = personeller.filter(kurum_id__in=kurumlar)
+    if teskilatlar:
+        personeller = personeller.filter(teskilat__in=teskilatlar)
 
-            # TC Kimlik No kontrolü
-            if Personel.objects.filter(personel_id=personel_id).exists():
-                return JsonResponse({
-                    'success': False,
-                    'message': 'Bu TC Kimlik No ile kayıtlı personel zaten mevcut.'
-                })
+    unvan_list = Unvan.objects.all()
+    kurum_list = Kurum.objects.all()
 
-            # Personel oluştur
-            personel = Personel.objects.create(
-                personel_id=personel_id,
-                sicil_no=sicil_no,
-                ad=ad,
-                soyad=soyad,
-                unvan=unvan,
-                brans=brans,
-                olusturan=request.user
-            )
-
-            # Otomatik başlama hareketi oluştur
-            PersonelHareket.objects.create(
-                personel=personel,
-                hareket_tipi='BASLAMA',
-                hareket_tarihi=timezone.now().date(),
-                olusturan=request.user
-            )
-
-            return JsonResponse({'success': True})
-    except ValidationError as e:
-        return JsonResponse({'success': False, 'message': str(e)})
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)})
+    context = {
+        'personeller': personeller,
+        'unvan_list': unvan_list,
+        'kurum_list': kurum_list,
+        'teskilat_choices': TESKILAT_DEGERLERI,
+        'filter_tc_kimlik_no': tc_kimlik_no,
+        'filter_ad_soyad': ad_soyad,
+        'filter_unvanlar': [int(u) for u in unvanlar],
+        'filter_kurumlar': [int(k) for k in kurumlar],
+        'filter_teskilatlar': teskilatlar,
+    }
+    return render(request, 'mutemet_app/personeller.html', context)
 
 @login_required
 def hareket_listesi(request):
@@ -220,15 +209,17 @@ def personel_ara(request):
     """TC Kimlik No veya Ad/Soyad ile personel arama (AJAX)"""
     query = request.GET.get('q', '')
     personeller = Personel.objects.filter(
-        models.Q(personel_id__icontains=query)
-    ).filter(durum='AKTIF')[:10] # İlk 10 sonucu al
+        models.Q(tc_kimlik_no__icontains=query) |
+        models.Q(ad__icontains=query) |
+        models.Q(soyad__icontains=query)
+    ).all()[:10]  # İlk 10 sonucu al
 
     results = [
         {
-            'id': p.personel_id,
-            'text': f"{p.personel_id} - {p.ad} {p.soyad}",
+            'id': p.tc_kimlik_no,
+            'text': f"{p.tc_kimlik_no} - {p.ad} {p.soyad}",
             'ad_soyad': f"{p.ad} {p.soyad}",
-            'unvan': p.unvan
+            'unvan': p.unvan.ad if p.unvan else ""
         }
         for p in personeller
     ]

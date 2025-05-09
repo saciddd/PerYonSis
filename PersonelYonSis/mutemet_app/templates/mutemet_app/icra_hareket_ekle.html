@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Yeni İcra Hareketi Ekle{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Yeni İcra Hareketi Ekle</h1>
+    <h4>{{ icra.personel.ad }} {{ icra.personel.soyad }} - {{ icra.icra_dairesi }}</h4>
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="kesilen_tutar" class="form-label">Kesilen Tutar</label>
+            <input type="number" step="0.01" class="form-control" id="kesilen_tutar" name="kesilen_tutar" required>
+        </div>
+        <div class="mb-3">
+            <label for="kesildigi_donem" class="form-label">Kesildiği Dönem</label>
+            <input type="date" class="form-control" id="kesildigi_donem" name="kesildigi_donem" required>
+        </div>
+        <div class="mb-3">
+            <label for="odeme_turu" class="form-label">Ödeme Türü</label>
+            <select class="form-select" id="odeme_turu" name="odeme_turu" required>
+                <option value="" selected disabled>Seçiniz...</option>
+                <option value="DENGE">Denge</option>
+                <option value="DENGE FARK">Denge Fark</option>
+                <option value="EK ÖDEME">Ek Ödeme</option>
+                <option value="ELDEN">Elden</option>
+                <option value="İKRAMİYE">İkramiye</option>
+                <option value="MAAŞ">Maaş</option>
+                <option value="NAFAKA">Nafaka</option>
+                <option value="SABİT">Sabit</option>
+                <option value="SABİT FARK">Sabit Fark</option>
+                <option value="TEMEL">Temel</option>
+                <option value="TEŞVİK">Teşvik</option>
+                <option value="TOPLU GİRİŞ">Toplu Giriş</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+        <a href="{% url 'mutemet_app:icra_hareketleri_list' icra.icra_id %}" class="btn btn-secondary">Vazgeç</a>
+    </form>
+</div>
+{% endblock %}

@@ -164,13 +164,16 @@ class IcraTakibi(models.Model):
 
     @property
     def toplam_kesinti(self):
+        # Eğer nesne henüz kaydedilmediyse ilişkili kayıtlar olamaz, 0 döndür
+        if not self.pk:
+            return 0
         return self.icrahareketleri_set.aggregate(total=models.Sum('kesilen_tutar'))['total'] or 0
 
     def save(self, *args, **kwargs):
-        if self.toplam_kesinti >= self.tutar:
+        # Nesne kaydedilmeden toplam_kesinti hesaplanamaz, sadece güncellemede kontrol et
+        if self.pk and self.toplam_kesinti >= self.tutar:
             self.durum = 'KAPANDI'
         super().save(*args, **kwargs)
-
 
 class IcraHareketleri(models.Model):
     ODEME_TURU_CHOICES = [

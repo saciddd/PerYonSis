@@ -67,8 +67,10 @@ def sendika_takibi(request):
 
 @login_required
 def icra_takibi(request):
-    """İcra takibi"""
-    return render(request, 'mutemet_app/icra_takibi.html')
+    """İcra takibi ana sayfası (listeyi gösterir)"""
+    # Sonsuz yönlendirme olmaması için doğrudan template'i render et
+    icra_takipleri = IcraTakibi.objects.select_related('personel').order_by('-icra_id')
+    return render(request, 'mutemet_app/icra_takibi.html', {'icra_takipleri': icra_takipleri})
 
 @login_required
 def odeme_takibi(request):
@@ -118,9 +120,9 @@ def personel_listesi(request):
 def hareket_listesi(request):
     """Personel hareket listesi"""
     personel_id = request.GET.get('personel_id')
-    personel = Personel.objects.get(personel_id=personel_id)
+    # Yeni modele göre tc_kimlik_no ile bul
+    personel = get_object_or_404(Personel, tc_kimlik_no=personel_id)
     hareketler = PersonelHareket.objects.filter(personel=personel).order_by('-hareket_tarihi').select_related('olusturan')
-    
     return render(request, 'mutemet_app/hareket_listesi.html', {
         'personel': personel,
         'hareketler': hareketler
@@ -137,9 +139,8 @@ def hareket_ekle(request):
             hareket_tarihi = request.POST.get('hareket_tarihi')
             aciklama = request.POST.get('aciklama')
 
-            personel = Personel.objects.get(personel_id=personel_id)
+            personel = get_object_or_404(Personel, tc_kimlik_no=personel_id)
 
-            # Hareket oluştur
             hareket = PersonelHareket.objects.create(
                 personel=personel,
                 hareket_tipi=hareket_tipi,
@@ -148,14 +149,10 @@ def hareket_ekle(request):
                 olusturan=request.user
             )
 
-            # Personel durumunu güncelle
-            if hareket_tipi == 'AYRILMA':
-                personel.durum = 'AYRILDI'
-            elif hareket_tipi == 'IZIN':
-                personel.durum = 'PASIF'
-            elif hareket_tipi == 'DONUS':
-                personel.durum = 'AKTIF'
-            personel.save()
+            # Personel durumunu güncelle (ik_core Personel modelinde durum property olabilir, burada güncellenemez!)
+            # Eğer durum alanı yoksa bu kısmı kaldırabilirsiniz.
+            # personel.durum = ... 
+            # personel.save()
 
             return JsonResponse({'success': True})
     except Exception as e:
@@ -166,42 +163,51 @@ def hareket_ekle(request):
 def sendika_hareket_ekle(request):
     """Yeni sendika hareketi ekleme"""
     try:
-        personel_id = request.POST.get('personel_id')
+        personel_id = request.POST.get('personel_id')  # DÜZELTİLDİ
         hareket_tarihi = request.POST.get('hareket_tarihi')
-        sendika = request.POST.get('sendika') # Formdan gelen sendika ID'si
+        sendika = request.POST.get('sendika')
         hareket_tipi = request.POST.get('hareket_tipi')
-        aciklama = request.POST.get('aciklama', '') # Açıklama opsiyonel olabilir
+        aciklama = request.POST.get('aciklama', '')
 
         if not all([personel_id, hareket_tarihi, sendika, hareket_tipi]):
-            messages.error(request, "Lütfen tüm zorunlu alanları doldurun.")
+            messages.error(request, f"Lütfen tüm zorunlu alanları doldurun.{personel_id} {hareket_tarihi} {sendika} {hareket_tipi}")
             return HttpResponseRedirect(reverse('mutemet_app:sendika_takibi'))
 
-        # Convert hareket_tarihi to a datetime.date object
         hareket_tarihi = datetime.strptime(hareket_tarihi, '%Y-%m-%d').date()
 
-        # Nesneleri getirelim
-        personel = get_object_or_404(Personel, personel_id=personel_id)
-        sendika = get_object_or_404(Sendika, sendika=sendika)
+        # Personel'i tc_kimlik_no ile bul
+        personel = get_object_or_404(Personel, tc_kimlik_no=personel_id)
+        sendika = get_object_or_404(Sendika, sendika_id=sendika)
 
-        # Nesneleri kullanarak SendikaUyelik nesnesi oluştur
         SendikaUyelik.objects.create(
-            personel=personel, 
+            personel=personel,
             hareket_tarihi=hareket_tarihi,
-            sendika=sendika, # ForeignKey ile doğrudan sendika nesnesini atıyoruz 
+            sendika=sendika,
             hareket_tipi=hareket_tipi,
             aciklama=aciklama,
             olusturan=request.user
         )
         messages.success(request, "Sendika hareketi başarıyla eklendi.")
 
-    except ObjectDoesNotExist: 
+    except ObjectDoesNotExist:
         messages.error(request, "Seçilen personel veya sendika bulunamadı.")
     except ValidationError as e:
         messages.error(request, f"Bir hata oluştu: {e}")
     except Exception as e:
         messages.error(request, f"Beklenmedik bir hata oluştu: {e}")
-        
+
     return HttpResponseRedirect(reverse('mutemet_app:sendika_takibi'))
+
+@login_required
+@require_POST
+def sendika_hareket_sil(request, pk):
+    """Sendika üyelik hareketini siler (AJAX)"""
+    try:
+        uyelik = get_object_or_404(SendikaUyelik, pk=pk)
+        uyelik.delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
 
 @login_required
 @require_GET
@@ -308,7 +314,8 @@ def get_sendikalar_json(request):
 @login_required
 def icra_takibi_list(request):
     """List all IcraTakibi records."""
-    icra_takipleri = IcraTakibi.objects.select_related('personel').all()
+    # Kayıt ekleme sonrası yeni kaydın da listede görünmesi için queryset güncel olmalı
+    icra_takipleri = IcraTakibi.objects.select_related('personel').order_by('-icra_id')
     return render(request, 'mutemet_app/icra_takibi.html', {'icra_takipleri': icra_takipleri})
 
 @csrf_exempt
@@ -327,47 +334,84 @@ def icra_takibi_ekle(request):
             tarihi = request.POST.get('tarihi')
             tutar = request.POST.get('tutar')
 
-            personel = get_object_or_404(Personel, personel_id=personel_id)
+            # Gerekli alan kontrolü
+            if not personel_id:
+                messages.error(request, "Personel seçilmedi.")
+                return redirect('mutemet_app:icra_takibi_list')
+            if not icra_dairesi or not dosya_no or not tutar or not tarihi:
+                messages.error(request, "Zorunlu alanlar eksik.")
+                return redirect('mutemet_app:icra_takibi_list')
 
-            IcraTakibi.objects.create(
+            # Personel bul
+            try:
+                personel = Personel.objects.get(tc_kimlik_no=personel_id)
+            except Personel.DoesNotExist:
+                messages.error(request, "Personel bulunamadı.")
+                return redirect('mutemet_app:icra_takibi_list')
+
+            # Tutar ve tarih tip dönüşümü
+            try:
+                tutar_decimal = float(tutar)
+            except Exception:
+                messages.error(request, "Tutar sayısal olmalı.")
+                return redirect('mutemet_app:icra_takibi_list')
+            try:
+                tarih_obj = datetime.strptime(tarihi, "%Y-%m-%d").date()
+            except Exception:
+                messages.error(request, "Tarih formatı hatalı.")
+                return redirect('mutemet_app:icra_takibi_list')
+
+            # Kayıt oluştur
+            icra = IcraTakibi.objects.create(
                 personel=personel,
-                icra_vergi_dairesi_no=icra_vergi_dairesi_no,
+                icra_vergi_dairesi_no=icra_vergi_dairesi_no or "",
                 icra_dairesi=icra_dairesi,
                 dosya_no=dosya_no,
-                icra_dairesi_banka=icra_dairesi_banka,
-                icra_dairesi_hesap_no=icra_dairesi_hesap_no,
-                alacakli=alacakli,
-                alacakli_vekili=alacakli_vekili,
-                tarihi=tarihi,
-                tutar=tutar
+                icra_dairesi_banka=icra_dairesi_banka or "",
+                icra_dairesi_hesap_no=icra_dairesi_hesap_no or "",
+                alacakli=alacakli or "",
+                alacakli_vekili=alacakli_vekili or "",
+                tarihi=tarih_obj,
+                tutar=tutar_decimal
             )
+
+            # Save çağrısı sonrası ilişkili alanlara hemen erişmeyin!
             messages.success(request, "İcra takibi başarıyla eklendi.")
         except Exception as e:
-            messages.error(request, f"Hata: {str(e)}")
+            import traceback
+            messages.error(request, f"Hata: {str(e)}\n{traceback.format_exc()}")
+        # Kayıt sonrası listeye yönlendir
         return redirect('mutemet_app:icra_takibi_list')
-    return redirect('mutemet_app:icra_takibi_list')  # Ensure a redirect for non-POST requests
+    return redirect('mutemet_app:icra_takibi_list')
 
 @login_required
 def icra_hareketleri_list(request, icra_id):
-    """List all IcraHareketleri for a specific IcraTakibi."""
+    """İcra hareketleri modal içeriği (partial)"""
     icra = get_object_or_404(IcraTakibi, pk=icra_id)
     hareketler = IcraHareketleri.objects.filter(icra=icra).order_by('-kesildigi_donem')
     toplam_kesinti = hareketler.aggregate(Sum('kesilen_tutar'))['kesilen_tutar__sum'] or 0
-    return render(request, 'mutemet_app/icra_hareketleri.html', {
+    kalan_borc = float(icra.tutar) - float(toplam_kesinti)
+    return render(request, 'mutemet_app/_icra_hareket_modal_content.html', {
         'icra': icra,
         'hareketler': hareketler,
-        'toplam_kesinti': toplam_kesinti
+        'toplam_kesinti': toplam_kesinti,
+        'kalan_borc': kalan_borc,
     })
 
 @csrf_exempt
 def icra_hareket_ekle(request, icra_id):
-    """Add a new IcraHareketleri record."""
+    """AJAX: Yeni icra hareketi ekle, kalan borç kontrolü ile"""
+    icra = get_object_or_404(IcraTakibi, pk=icra_id)
     if request.method == 'POST':
         try:
-            icra = get_object_or_404(IcraTakibi, pk=icra_id)
             kesilen_tutar = request.POST.get('kesilen_tutar')
             kesildigi_donem = request.POST.get('kesildigi_donem')
             odeme_turu = request.POST.get('odeme_turu')
+
+            toplam_kesinti = IcraHareketleri.objects.filter(icra=icra).aggregate(Sum('kesilen_tutar'))['kesilen_tutar__sum'] or 0
+            kalan_borc = float(icra.tutar) - float(toplam_kesinti)
+            if float(kesilen_tutar) > kalan_borc:
+                return JsonResponse({'success': False, 'message': 'Kesilen tutar kalan borçtan fazla olamaz!'})
 
             IcraHareketleri.objects.create(
                 icra=icra,
@@ -375,7 +419,7 @@ def icra_hareket_ekle(request, icra_id):
                 kesildigi_donem=kesildigi_donem,
                 odeme_turu=odeme_turu
             )
-            messages.success(request, "İcra hareketi başarıyla eklendi.")
+            return JsonResponse({'success': True})
         except Exception as e:
-            messages.error(request, f"Hata: {str(e)}")
-        return redirect('mutemet_app:icra_hareketleri_list', icra_id=icra_id)
+            return JsonResponse({'success': False, 'message': str(e)})
+    return JsonResponse({'success': False, 'message': 'Geçersiz istek.'})

@@ -69,7 +69,7 @@
                             {% endwith %}
                         </td>
                         <td>
-                            <a href="{% url 'mutemet_app:icra_hareketleri_list' icra.icra_id %}" class="btn btn-sm btn-info">Detay</a>
+                            <button class="btn btn-sm btn-info btn-icra-detay" data-icra-id="{{ icra.icra_id }}">Detay</button>
                         </td>
                     </tr>
                     {% empty %}
@@ -142,6 +142,20 @@
         </div>
     </div>
 </div>
+
+<!-- İcra Hareketleri Modal -->
+<div class="modal fade" id="icraHareketModal" tabindex="-1" aria-labelledby="icraHareketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content" id="icraHareketModalContent">
+            <!-- İçerik AJAX ile yüklenecek -->
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Yükleniyor...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -208,7 +222,43 @@ $(document).ready(function() {
             "order": [[ 3, "desc" ]] // Tutar sütununa göre sırala
         });
     }
-    
+
+    // Detay butonuna tıklanınca modalı aç ve AJAX ile içeriği yükle
+    $('#icraTable').on('click', '.btn-icra-detay', function() {
+        var icraId = $(this).data('icra-id');
+        $('#icraHareketModal').modal('show');
+        $('#icraHareketModalContent').html('<div class="modal-body text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>');
+        $.get("{% url 'mutemet_app:icra_hareketleri_list' 0 %}".replace('0', icraId), function(data) {
+            $('#icraHareketModalContent').html(data);
+        });
+    });
+
+    // Modal submit işlemi için (delegated event)
+    $(document).on('submit', '#icraHareketForm', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var kalan_borc = parseFloat(form.find('[name="kalan_borc"]').val());
+        var kesilen_tutar = parseFloat(form.find('[name="kesilen_tutar"]').val());
+        if (kesilen_tutar > kalan_borc) {
+            alert('Kesilen tutar kalan borçtan fazla olamaz!');
+            return false;
+        }
+        $.ajax({
+            url: form.attr('action'),
+            method: 'POST',
+            data: form.serialize(),
+            success: function() {
+                // Modalı tekrar yükle
+                var icraId = form.find('[name="icra_id"]').val();
+                $.get("{% url 'mutemet_app:icra_hareketleri_list' 0 %}".replace('0', icraId), function(data) {
+                    $('#icraHareketModalContent').html(data);
+                });
+            },
+            error: function() {
+                alert('Bir hata oluştu.');
+            }
+        });
+    });
 });
 </script>
 {% endblock %}

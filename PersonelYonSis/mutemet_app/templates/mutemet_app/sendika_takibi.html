@@ -111,12 +111,13 @@
                         <th>Maaş Dönemi</th>
                         <th>Oluşturan</th>
                         <th>Oluşturma T.</th>
+                        <th>İşlem</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for uyelik in uyelikler %}
                     <tr>
-                        <td>{{ uyelik.personel.personel_id }}</td>
+                        <td>{{ uyelik.personel.tc_kimlik_no }}</td>
                         <td>{{ uyelik.personel.ad }} {{ uyelik.personel.soyad }}</td>
                         <td>{{ uyelik.sendika.sendika_adi }}</td> <!-- Ensure sendika_adi is displayed -->
                         <td>
@@ -132,10 +133,15 @@
                         <td>{{ uyelik.maas_donemi }}</td>
                         <td>{{ uyelik.olusturan.FullName|default:"-" }}</td>
                         <td>{{ uyelik.olusturma_tarihi|date:"d.m.Y H:i" }}</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm btn-uyelik-sil" data-id="{{ uyelik.pk }}">
+                                <i class="bi bi-trash"></i> Sil
+                            </button>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center">Seçili maaş dönemine ait kayıt bulunamadı.</td>
+                        <td colspan="9" class="text-center">Seçili maaş dönemine ait kayıt bulunamadı.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -170,6 +176,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 // Sendika modal içeriğini AJAX ile yükler
@@ -298,6 +305,42 @@ $(document).ready(function() {
     $('#sendikaModal').on('hidden.bs.modal', function () {
         $(this).find('.modal-content').html('<div class="modal-body text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>');
     });
+
+    // Sendika hareketi silme
+    $('#sendikaTable').on('click', '.btn-uyelik-sil', function() {
+        var uyelikId = $(this).data('id');
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Bu sendika hareketi silinecek!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Evet, sil!',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: "{% url 'mutemet_app:sendika_hareket_sil' 0 %}".replace('0', uyelikId),
+                    type: 'POST',
+                    headers: {'X-CSRFToken': '{{ csrf_token }}'},
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire('Silindi!', 'Kayıt silindi.', 'success').then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Hata!', response.message || 'Silme işlemi başarısız.', 'error');
+                        }
+                    },
+                    error: function() {
+                        Swal.fire('Hata!', 'Silme işlemi sırasında bir hata oluştu.', 'error');
+                    }
+                });
+            }
+        });
+    });
 });
 </script>
 {% endblock %}
+``` 

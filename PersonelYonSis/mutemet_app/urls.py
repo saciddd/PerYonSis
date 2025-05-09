@@ -20,6 +20,7 @@ urlpatterns = [
     path('sendika/guncelle/<int:pk>/', views.sendika_guncelle, name='sendika_guncelle'),
     path('sendika/sil/<int:pk>/', views.sendika_sil, name='sendika_sil'),
     path('sendika/liste/json/', views.get_sendikalar_json, name='get_sendikalar_json'),
+    path('sendika-hareket-sil/<int:pk>/', views.sendika_hareket_sil, name='sendika_hareket_sil'),
 
     # Icra Takibi and Icra Hareketleri URL'leri
     path('icra-takibi/', views.icra_takibi_list, name='icra_takibi_list'),

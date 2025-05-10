@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Aylık İcra Kesinti Listesi</title>
+    <style>
+        body {
+            font-family: "Times New Roman", serif;
+            font-size: 10pt;
+        }
+        .header {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .info-table td {
+            padding: 5px;
+            border: none;
+        }
+        .info-label {
+            font-weight: bold;
+            width: 150px;
+        }
+        .info-value {
+            width: 200px;
+        }
+        .main-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .main-table th, .main-table td {
+            border: 1px solid black;
+            padding: 5px;
+            text-align: center;
+        }
+        .main-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .total-row {
+            font-weight: bold;
+        }
+        .number-cell {
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">KAYSERİ DEVLET HASTANESİ</div>
+    <div class="header">İCRA ve NAFAKA KESİNTİ LİSTESİ</div>
+
+    <table class="info-table">
+        <tr>
+            <td class="info-label">KURUMU:</td>
+            <td class="info-value">SAĞLIK BAKANLIĞI</td>
+            <td class="info-label">KURUM KODU:</td>
+            <td class="info-value">15.75.00.62</td>
+            <td class="info-label">KESİNTİ AYI:</td>
+            <td class="info-value">{{donem_ay}}</td>
+        </tr>
+        <tr>
+            <td class="info-label">DAİRESİ:</td>
+            <td class="info-value">KAYSERİ DEVLET HASTANESİ</td>
+            <td class="info-label">BİRİM KODU:</td>
+            <td class="info-value">113</td>
+            <td class="info-label">KESİNTİ YILI:</td>
+            <td class="info-value">{{donem_yil}}</td>
+        </tr>
+    </table>
+
+    <table class="main-table">
+        <thead>
+            <tr>
+                <th>S.NO</th>
+                <th>İCRA DAİRESİ VERGİ NO</th>
+                <th>T.C. KİMLİK NO</th>
+                <th>ADI SOYADI</th>
+                <th>İCRA DİRESİ ADI</th>
+                <th>DOSYA NO</th>
+                <th>KESİLEN İCRA</th>
+                <th>İCRA TÜRÜ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for hareket in hareketler %}
+            <tr>
+                <td>{{forloop.counter}}</td>
+                <td>{{hareket.icra.icra_vergi_dairesi_no}}</td>
+                <td>{{hareket.icra.personel.tc_kimlik_no}}</td>
+                <td>{{hareket.icra.personel.ad}} {{hareket.icra.personel.soyad}}</td>
+                <td>{{hareket.icra.icra_dairesi}}</td>
+                <td>{{hareket.icra.dosya_no}}</td>
+                <td class="number-cell">{{hareket.formatted_kesilen_tutar}}</td>
+                <td>{{hareket.odeme_turu}}</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="6">TOPLAM</td>
+                <td class="number-cell">{{toplam_kesinti}}</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html> 

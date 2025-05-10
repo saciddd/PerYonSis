@@ -68,13 +68,13 @@
                     <div class="text-end">
                         {% with ek_bilgiler=data_dict.ek_bilgiler %}
                             {% if ek_bilgiler.kalan_borc_aktif is not None %}
-                            <span class="badge bg-danger me-1 rounded-pill">Aktif Kalan: {{ ek_bilgiler.kalan_borc_aktif|floatformat:2 }} TL</span>
+                            <span class="badge bg-danger me-1">Aktif Kalan: {{ ek_bilgiler.kalan_borc_aktif|floatformat:2 }} TL</span>
                             {% endif %}
                             {% if ek_bilgiler.en_son_kesinti_donemi %}
-                            <span class="badge bg-info me-1 rounded-pill">Son Kesinti: {{ ek_bilgiler.en_son_kesinti_donemi|date:"N Y" }}</span>
+                            <span class="badge bg-secondary">Son Kesinti: {{ ek_bilgiler.en_son_kesinti_donemi|date:"N Y" }}</span>
                             {% endif %}
                             {% if ek_bilgiler.siradaki_icra_sayisi > 0 %}
-                            <span class="badge bg-warning text-dark rounded-pill">Sırada: {{ ek_bilgiler.siradaki_icra_sayisi }}</span>
+                            <span class="badge bg-warning text-dark">Sırada: {{ ek_bilgiler.siradaki_icra_sayisi }}</span>
                             {% endif %}
                         {% endwith %}
                     </div>

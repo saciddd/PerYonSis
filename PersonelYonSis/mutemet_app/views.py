@@ -4,7 +4,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy, reverse
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
 from ik_core.models import Personel, Unvan, Kurum  # Unvan ve Kurum eklendi
 from ik_core.models.valuelists import TESKILAT_DEGERLERI  # TESKILAT_DEGERLERI eklendi
@@ -19,6 +19,18 @@ from dateutil.relativedelta import relativedelta
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Sum, Max, Count, Q
 from collections import defaultdict
+import pdfkit
+import locale
+
+# Türkçe para birimi formatı için locale ayarı
+locale.setlocale(locale.LC_ALL, 'tr_TR.UTF-8')
+
+def format_currency(value):
+    """Sayıyı Türk Lirası formatında formatlar (10.000,00)"""
+    try:
+        return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        return str(value)
 
 @login_required
 def index(request):
@@ -518,5 +530,67 @@ def icra_modal_view(request, icra_id):
         'secili_donem': secili_donem,
     })
 
+@login_required
 def aylik_icra_kesinti(request):
-    pass
+    """Seçilen döneme ait icra kesintilerini PDF olarak raporlar"""
+    try:
+        # Dönem parametresini al
+        donem = request.GET.get('donem')
+        if not donem:
+            messages.error(request, "Dönem seçilmedi.")
+            return redirect('mutemet_app:icra_takibi')
+
+        # Dönem tarihini parse et
+        donem_tarihi = datetime.strptime(donem, '%Y-%m-%d').date()
+        
+        # Seçilen döneme ait icra hareketlerini al
+        hareketler = IcraHareketleri.objects.filter(
+            kesildigi_donem=donem_tarihi
+        ).select_related('icra', 'icra__personel').order_by('icra__personel__ad', 'icra__personel__soyad')
+
+        if not hareketler.exists():
+            messages.error(request, "Seçilen döneme ait icra kesintisi bulunamadı.")
+            return redirect('mutemet_app:icra_takibi')
+
+        # Toplam kesinti tutarını hesapla
+        toplam_kesinti = hareketler.aggregate(Sum('kesilen_tutar'))['kesilen_tutar__sum'] or 0
+
+        # Türkçe ay ve yıl bilgilerini hazırla
+        ay_adi = donem_tarihi.strftime('%B').upper()
+        yil = donem_tarihi.year
+
+        # Her bir hareket için kesilen tutarı formatla
+        for hareket in hareketler:
+            hareket.formatted_kesilen_tutar = format_currency(hareket.kesilen_tutar)
+
+        # Template context
+        context = {
+            'hareketler': hareketler,
+            'toplam_kesinti': format_currency(toplam_kesinti),
+            'donem_ay': ay_adi,
+            'donem_yil': yil
+        }
+
+        # HTML template'i render et
+        html_string = render_to_string('mutemet_app/aylik_icra_kesinti.html', context)
+
+        config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+
+        # PDF oluştur
+        pdf = pdfkit.from_string(html_string, False, options={
+            'encoding': 'UTF-8',
+            'page-size': 'A4',
+            'margin-top': '1cm',
+            'margin-right': '1cm',
+            'margin-bottom': '1cm',
+            'margin-left': '1cm',
+        }, configuration=config)
+
+        # PDF'i response olarak döndür
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="icra_kesinti_{donem_tarihi.strftime("%Y_%m")}.pdf"'
+        return response
+
+    except Exception as e:
+        messages.error(request, f"PDF oluşturulurken bir hata oluştu: {str(e)}")
+        return redirect('mutemet_app:icra_takibi')

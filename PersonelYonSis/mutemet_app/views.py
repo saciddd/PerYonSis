@@ -21,9 +21,27 @@ from django.db.models import Sum, Max, Count, Q
 from collections import defaultdict
 import pdfkit
 import locale
+import platform
 
-# Türkçe para birimi formatı için locale ayarı
-locale.setlocale(locale.LC_ALL, 'tr_TR.UTF-8')
+def set_locale():
+    system = platform.system()
+    
+    # Windows
+    if system == "Windows":
+        try:
+            locale.setlocale(locale.LC_ALL, 'Turkish_Turkey.1254')
+        except locale.Error:
+            print("Locale 'Turkish_Turkey.1254' not available on this Windows machine.")
+    
+    # Unix tabanlı sistemler (Linux/MacOS)
+    else:
+        try:
+            locale.setlocale(locale.LC_ALL, 'tr_TR.UTF-8')
+        except locale.Error:
+            print("Locale 'tr_TR.UTF-8' not available on this Unix system.")
+
+# Locale ayarını uygula
+set_locale()
 
 def format_currency(value):
     """Sayıyı Türk Lirası formatında formatlar (10.000,00)"""

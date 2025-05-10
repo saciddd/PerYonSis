@@ -137,7 +137,7 @@ class SendikaUyelik(models.Model):
 class IcraTakibi(models.Model):
     DURUM_TIPLERI = [
         ('AKTIF', 'Aktif'),
-        ('PASIF', 'Pasif'),
+        ('SIRADA', 'Sırada'),
         ('KAPANDI', 'Kapandı'),
     ]
 
@@ -169,10 +169,17 @@ class IcraTakibi(models.Model):
             return 0
         return self.icrahareketleri_set.aggregate(total=models.Sum('kesilen_tutar'))['total'] or 0
 
+    @property
+    def kalan_borc(self):
+        return float(self.tutar) - float(self.toplam_kesinti or 0)
+
     def save(self, *args, **kwargs):
         # Nesne kaydedilmeden toplam_kesinti hesaplanamaz, sadece güncellemede kontrol et
-        if self.pk and self.toplam_kesinti >= self.tutar:
-            self.durum = 'KAPANDI'
+        if self.pk:
+            if self.kalan_borc <= 0:
+                self.durum = 'KAPANDI'
+            elif self.durum == 'KAPANDI' and self.kalan_borc > 0:
+                self.durum = 'AKTIF'
         super().save(*args, **kwargs)
 
 class IcraHareketleri(models.Model):

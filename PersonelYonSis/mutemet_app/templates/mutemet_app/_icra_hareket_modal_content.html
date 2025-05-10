@@ -18,7 +18,11 @@
                     {% for hareket in hareketler %}
                     <tr>
                         <td>{{ hareket.kesilen_tutar }}</td>
-                        <td>{{ hareket.kesildigi_donem }}</td>
+                        <td>
+                            {% with y=hareket.kesildigi_donem|date:"Y" m=hareket.kesildigi_donem|date:"m" %}
+                                {{ y }}/{{ m }}
+                            {% endwith %}
+                        </td>
                         <td>{{ hareket.get_odeme_turu_display }}</td>
                     </tr>
                     {% empty %}
@@ -42,7 +46,14 @@
                 </div>
                 <div class="mb-3">
                     <label for="kesildigi_donem" class="form-label">Kesildiği Dönem</label>
-                    <input type="date" class="form-control" name="kesildigi_donem" required>
+                    <select class="form-select" name="kesildigi_donem" required>
+                        <option value="" selected disabled>Seçiniz...</option>
+                        {% for d in donem_secenekleri %}
+                            <option value="{{ d|date:'Y-m-01' }}">
+                                {{ d|date:'Y' }}/{{ d|date:'m' }}
+                            </option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <div class="mb-3">
                     <label for="odeme_turu" class="form-label">Ödeme Türü</label>

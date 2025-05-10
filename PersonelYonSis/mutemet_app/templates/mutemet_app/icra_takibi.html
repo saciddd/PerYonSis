@@ -37,48 +37,76 @@
             <h3 class="card-title">İcra Takipleri</h3>
         </div>
         <div class="card-body">
-            <table id="icraTable" class="table table-bordered table-striped">
-                <thead>
-                    <tr>
-                        <th>Personel</th>
-                        <th>İcra Dairesi</th>
-                        <th>Dosya No</th>
-                        <th>Tutar</th>
-                        <th>Toplam Kesinti</th>
-                        <th>Durum</th>
-                        <th>Son Ödeme</th>
-                        <th>İşlemler</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for icra in icra_takipleri %}
-                    <tr>
-                        <td>{{ icra.personel.ad }} {{ icra.personel.soyad }}</td>
-                        <td>{{ icra.icra_dairesi }}</td>
-                        <td>{{ icra.dosya_no }}</td>
-                        <td>{{ icra.tutar }}</td>
-                        <td>{{ icra.toplam_kesinti }}</td>
-                        <td>{{ icra.get_durum_display }}</td>
-                        <td>
-                            {% with icra.icrahareketleri_set.first as son_hareket %}
-                                {% if son_hareket %}
-                                    {{ son_hareket.kesildigi_donem|date:"M Y" }} - {{ son_hareket.odeme_turu }}
-                                {% else %}
-                                    Yok
-                                {% endif %}
-                            {% endwith %}
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-info btn-icra-detay" data-icra-id="{{ icra.icra_id }}">Detay</button>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" class="text-center">Kayıt bulunamadı.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            {% if personel_icra_data %}
+            {% for personel, data_dict in personel_icra_data.items %}
+            <div class="card mb-2">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                    <a data-bs-toggle="collapse" href="#icra-{{ personel.id }}" role="button" aria-expanded="false" aria-controls="icra-{{ personel.id }}" class="text-decoration-none text-dark fw-bold">
+                        {{ personel.ad_soyad }} ({{ personel.tc_kimlik_no }})
+                    </a>
+                    <div class="text-end">
+                        {% with ek_bilgiler=data_dict.ek_bilgiler %}
+                            {% if ek_bilgiler.kalan_borc_aktif is not None %}
+                            <span class="badge bg-danger me-1 rounded-pill">Aktif Kalan: {{ ek_bilgiler.kalan_borc_aktif|floatformat:2 }} TL</span>
+                            {% endif %}
+                            {% if ek_bilgiler.en_son_kesinti_donemi %}
+                            <span class="badge bg-info me-1 rounded-pill">Son Kesinti: {{ ek_bilgiler.en_son_kesinti_donemi|date:"N Y" }}</span>
+                            {% endif %}
+                            {% if ek_bilgiler.siradaki_icra_sayisi > 0 %}
+                            <span class="badge bg-warning text-dark rounded-pill">Sırada: {{ ek_bilgiler.siradaki_icra_sayisi }}</span>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                </div>
+                <div class="collapse" id="icra-{{ personel.id }}">
+                    <div class="card-body p-2">
+                        <table class="table table-bordered table-sm table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>İcra Dairesi</th>
+                                    <th>Dosya No</th>
+                                    <th>Tutar</th>
+                                    <th>Toplam Kesinti</th>
+                                    <th>Kalan Borç</th>
+                                    <th>Durum</th>
+                                    <th>İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for icra in data_dict.icralar %}
+                                <tr>
+                                    <td>{{ icra.icra_dairesi }}</td>
+                                    <td>{{ icra.dosya_no }}</td>
+                                    <td>{{ icra.tutar|floatformat:2 }} TL</td>
+                                    <td>{{ icra.hesaplanan_toplam_kesinti|floatformat:2 }} TL</td>
+                                    <td>{{ icra.hesaplanan_kalan_borc|floatformat:2 }} TL</td>
+                                    <td>
+                                        {% if icra.durum == 'AKTIF' %}
+                                            <span class="badge bg-success">Aktif</span>
+                                        {% elif icra.durum == 'SIRADA' %}
+                                            <span class="badge bg-warning text-dark">Sırada</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Kapandı</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if icra.durum == 'AKTIF' %} {# Sadece AKTIF olanlar için detay görülebilir #}
+                                            <button class="btn btn-primary btn-sm btn-icra-detay" data-icra-id="{{ icra.pk }}">Detay</button>
+                                        {% else %}
+                                            <button class="btn btn-secondary btn-sm" disabled>Detay</button> {# SIRADA ve KAPANDI için pasif #}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="alert alert-info">Kayıtlı icra takibi bulunamadı.</div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -98,7 +126,7 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="icra_vergi_dairesi_no" class="form-label">Vergi Dairesi No</label>
-                            <input type="text" id="icra_vergi_dairesi_no" name="icra_vergi_dairesi_no" class="form-control" required>
+                            <input type="text" id="icra_vergi_dairesi_no" name="icra_vergi_dairesi_no" class="form-control">
                         </div>
                         <div class="col-md-6">
                             <label for="icra_dairesi" class="form-label">İcra Dairesi</label>
@@ -114,7 +142,7 @@
                         </div>
                         <div class="col-md-6">
                             <label for="alacakli" class="form-label">Alacaklı</label>
-                            <input type="text" id="alacakli" name="alacakli" class="form-control" required>
+                            <input type="text" id="alacakli" name="alacakli" class="form-control">
                         </div>
                         <div class="col-md-6">
                             <label for="alacakli_vekili" class="form-label">Alacaklı Vekili</label>
@@ -188,48 +216,24 @@ $(document).ready(function() {
         $('#btnIcraEkle').prop('disabled', false);
     });
     
-    // Check if the table has data before initializing DataTable
-    if ($('#icraTable tbody tr').length > 1 || ($('#icraTable tbody tr').length === 1 && $('#icraTable tbody td[colspan]').length === 0)) {
-        $('#icraTable').DataTable({
-            "language": {
-                "sDecimal": ",",
-                "sEmptyTable": "Tabloda herhangi bir veri mevcut değil",
-                "sInfo": "_TOTAL_ kayıttan _START_ - _END_ arasındaki kayıtlar gösteriliyor",
-                "sInfoEmpty": "Kayıt yok",
-                "sInfoFiltered": "(_MAX_ kayıt içerisinden bulunan)",
-                "sInfoPostFix": "",
-                "sInfoThousands": ".",
-                "sLengthMenu": "Sayfada _MENU_ kayıt göster",
-                "sLoadingRecords": "Yükleniyor...",
-                "sProcessing": "İşleniyor...",
-                "sSearch": "Ara:",
-                "sZeroRecords": "Eşleşen kayıt bulunamadı",
-                "oPaginate": {
-                    "sFirst": "İlk",
-                    "sLast": "Son",
-                    "sNext": "Sonraki",
-                    "sPrevious": "Önceki"
-                },
-                "oAria": {
-                    "sSortAscending": ": artan sütun sıralamasını aktifleştir",
-                    "sSortDescending": ": azalan sütun sıralamasını aktifleştir"
-                }
-            },
-            "dom": 'Bfrtip',
-            "buttons": [
-                'copy', 'excel', 'csv', 'print'
-            ],
-            "order": [[ 3, "desc" ]] // Tutar sütununa göre sırala
-        });
-    }
+    // DataTables başlatma kodunu kaldırdık çünkü genel bir tablo yok.
+    // Gerekirse, her bir personel kartındaki tabloya ayrı ayrı uygulanabilir.
 
     // Detay butonuna tıklanınca modalı aç ve AJAX ile içeriği yükle
-    $('#icraTable').on('click', '.btn-icra-detay', function() {
+    // Event delegation kullanarak dinamik olarak eklenen butonlar için de çalışmasını sağlıyoruz.
+    $(document).on('click', '.btn-icra-detay', function() {
         var icraId = $(this).data('icra-id');
-        $('#icraHareketModal').modal('show');
-        $('#icraHareketModalContent').html('<div class="modal-body text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>');
-        $.get("{% url 'mutemet_app:icra_hareketleri_list' 0 %}".replace('0', icraId), function(data) {
-            $('#icraHareketModalContent').html(data);
+        var modal = $('#icraHareketModal');
+        var modalContent = $('#icraHareketModalContent');
+
+        modalContent.html('<div class="modal-body text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>');
+        modal.modal('show');
+        
+        var url = "{% url 'mutemet_app:icra_hareketleri_list' 0 %}".replace('0', icraId);
+        $.get(url, function(data) {
+            modalContent.html(data);
+        }).fail(function() {
+            modalContent.html('<div class="modal-body text-center text-danger">İçerik yüklenirken bir hata oluştu.</div>');
         });
     });
 
@@ -237,8 +241,23 @@ $(document).ready(function() {
     $(document).on('submit', '#icraHareketForm', function(e) {
         e.preventDefault();
         var form = $(this);
-        var kalan_borc = parseFloat(form.find('[name="kalan_borc"]').val());
-        var kesilen_tutar = parseFloat(form.find('[name="kesilen_tutar"]').val());
+        var kalan_borc_str = form.find('input[name="kalan_borc"]').val(); // Bu alan _icra_hareket_modal_content.html'de olmalı
+        var kesilen_tutar_str = form.find('input[name="kesilen_tutar"]').val();
+
+        // Kalan borç ve kesilen tutar değerlerinin varlığını ve formatını kontrol et
+        if (kalan_borc_str === undefined || kesilen_tutar_str === undefined) {
+            alert('Formda eksik alanlar var (kalan_borc veya kesilen_tutar). Lütfen _icra_hareket_modal_content.html dosyasını kontrol edin.');
+            return false;
+        }
+        
+        var kalan_borc = parseFloat(kalan_borc_str.replace(',', '.')); // Virgülü noktaya çevir
+        var kesilen_tutar = parseFloat(kesilen_tutar_str.replace(',', '.')); // Virgülü noktaya çevir
+
+        if (isNaN(kalan_borc) || isNaN(kesilen_tutar)) {
+            alert('Kalan borç veya kesilen tutar geçerli bir sayı değil.');
+            return false;
+        }
+
         if (kesilen_tutar > kalan_borc) {
             alert('Kesilen tutar kalan borçtan fazla olamaz!');
             return false;
@@ -247,15 +266,22 @@ $(document).ready(function() {
             url: form.attr('action'),
             method: 'POST',
             data: form.serialize(),
-            success: function() {
-                // Modalı tekrar yükle
-                var icraId = form.find('[name="icra_id"]').val();
-                $.get("{% url 'mutemet_app:icra_hareketleri_list' 0 %}".replace('0', icraId), function(data) {
-                    $('#icraHareketModalContent').html(data);
-                });
+            success: function(response) {
+                if(response.success) {
+                    var icraId = form.find('input[name="icra_id"]').val();
+                    // Modalı tekrar yükle
+                    var url = "{% url 'mutemet_app:icra_hareketleri_list' 0 %}".replace('0', icraId);
+                    $.get(url, function(data) {
+                        $('#icraHareketModalContent').html(data);
+                        // Ana sayfadaki ilgili personelin bilgilerini de güncellemek gerekebilir (opsiyonel)
+                        // Bu daha karmaşık bir işlem olacağı için şimdilik sadece modal güncelleniyor.
+                    });
+                } else {
+                    alert('Hata: ' + response.message);
+                }
             },
             error: function() {
-                alert('Bir hata oluştu.');
+                alert('Bir hata oluştu. Lütfen tekrar deneyin.');
             }
         });
     });

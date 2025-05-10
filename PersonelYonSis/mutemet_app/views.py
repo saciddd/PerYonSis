@@ -111,8 +111,13 @@ def icra_takibi(request):
         if not personel_icra_data[icra_obj.personel]['ek_bilgiler']:
              personel_icra_data[icra_obj.personel]['ek_bilgiler'] = personel_ek_bilgiler_map.get(icra_obj.personel.id, {})
              
+    # Dönem seçenekleri (6 ay önce - 6 ay sonrası)
+    today = date.today().replace(day=1)
+    donem_secenekleri = [(today + relativedelta(months=delta)) for delta in range(-6, 7)]
+
     return render(request, 'mutemet_app/icra_takibi.html', {
         'personel_icra_data': dict(personel_icra_data), # defaultdict'u şablona göndermeden önce dict'e çevir
+        'donem_secenekleri': donem_secenekleri,
     })
 
 @login_required
@@ -512,3 +517,6 @@ def icra_modal_view(request, icra_id):
         'donem_secenekleri': donem_secenekleri,
         'secili_donem': secili_donem,
     })
+
+def aylik_icra_kesinti(request):
+    pass

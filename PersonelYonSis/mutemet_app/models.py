@@ -140,6 +140,11 @@ class IcraTakibi(models.Model):
         ('SIRADA', 'Sırada'),
         ('KAPANDI', 'Kapandı'),
     ]
+    ICRA_TURLERI = [
+        ('NAFAKA', 'Nafaka'),
+        ('TAAHHUT', 'Taahhüt'),
+        ('ICRA', 'İcra'),
+    ]
 
     icra_id = models.AutoField(primary_key=True)
     personel = models.ForeignKey(Personel, on_delete=models.CASCADE)
@@ -153,6 +158,7 @@ class IcraTakibi(models.Model):
     tarihi = models.DateField(verbose_name='İcra Tarihi')
     tutar = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Tutar')
     durum = models.CharField(max_length=10, choices=DURUM_TIPLERI, default='AKTIF', verbose_name='Durum')
+    icra_turu = models.CharField(max_length=10, choices=ICRA_TURLERI, default='ICRA', verbose_name='İcra Türü')
 
     class Meta:
         ordering = ['-tarihi']

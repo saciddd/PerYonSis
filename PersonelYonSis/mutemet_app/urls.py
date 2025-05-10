@@ -27,4 +27,5 @@ urlpatterns = [
     path('icra-takibi/ekle/', views.icra_takibi_ekle, name='icra_takibi_ekle'),
     path('icra-hareketleri/<int:icra_id>/', views.icra_hareketleri_list, name='icra_hareketleri_list'),
     path('icra-hareketleri/ekle/<int:icra_id>/', views.icra_hareket_ekle, name='icra_hareket_ekle'),
+    path('aylik-icra-kesinti/', views.aylik_icra_kesinti, name='aylik_icra_kesinti'),
 ]

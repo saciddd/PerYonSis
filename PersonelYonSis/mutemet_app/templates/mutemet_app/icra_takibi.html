@@ -10,25 +10,46 @@
             <h3 class="card-title">Yeni İcra Takibi Ekle</h3>
         </div>
         <div class="card-body">
-            <form class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label for="personel_select" class="form-label">T.C. Kimlik No</label>
-                    <select id="personel_select" class="form-control" required></select>
+            <div class="row">
+                <div class="col-md-9">
+                    <form class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label for="personel_select" class="form-label">T.C. Kimlik No</label>
+                            <select id="personel_select" class="form-control" required></select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="ad_soyad" class="form-label">Ad Soyad</label>
+                            <input type="text" id="ad_soyad" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="unvan" class="form-label">Unvan</label>
+                            <input type="text" id="unvan" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#icraModal" id="btnIcraEkle" disabled>
+                                İcra Takibi Ekle
+                            </button>
+                        </div>
+                    </form>
                 </div>
                 <div class="col-md-3">
-                    <label for="ad_soyad" class="form-label">Ad Soyad</label>
-                    <input type="text" id="ad_soyad" class="form-control" readonly>
+                    <form class="row g-2 align-items-end" method="get" action="{% url 'mutemet_app:aylik_icra_kesinti' %}">
+                        <div class="col-6">
+                            <label for="donem_secimi" class="form-label">Dönem Seçimi</label>
+                            <select id="donem_secimi" name="donem" class="form-select" required>
+                                {% with today=now|date:"Y-m-01" %}
+                                {% for d in donem_secenekleri %}
+                                    <option value="{{ d|date:'Y-m-01' }}">{{ d|date:'Y' }}/{{ d|date:'m' }}</option>
+                                {% endfor %}
+                                {% endwith %}
+                            </select>
+                        </div>
+                        <div class="col-6 mt-2">
+                            <button type="submit" class="btn btn-success w-100">Aylık Kesinti Formu</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="col-md-3">
-                    <label for="unvan" class="form-label">Unvan</label>
-                    <input type="text" id="unvan" class="form-control" readonly>
-                </div>
-                <div class="col-md-3">
-                    <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#icraModal" id="btnIcraEkle" disabled>
-                        İcra Takibi Ekle
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -159,6 +180,14 @@
                         <div class="col-md-6">
                             <label for="icra_dairesi_hesap_no" class="form-label">Hesap No</label>
                             <input type="text" id="icra_dairesi_hesap_no" name="icra_dairesi_hesap_no" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="icra_turu" class="form-label">İcra Türü</label>
+                            <select id="icra_turu" name="icra_turu" class="form-select">
+                                <option value="ICRA">İcra</option>
+                                <option value="TAAHHUT">Taahhüt</option>
+                                <option value="NAFAKA">Nafaka</option>
+                            </select>
                         </div>
                     </div>
                 </div>

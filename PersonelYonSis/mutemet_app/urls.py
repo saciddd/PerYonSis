@@ -6,6 +6,7 @@ app_name = 'mutemet_app'
 urlpatterns = [
     path('', views.index, name='index'),
     path('personel-listesi/', views.personel_listesi, name='personel_listesi'),
+    path('personel-listesi-ajax/', views.personel_listesi_ajax, name='personel_listesi_ajax'),
     path('hareket-listesi/', views.hareket_listesi, name='hareket_listesi'),
     path('hareket-ekle/', views.hareket_ekle, name='hareket_ekle'),
     path('sendika-takibi/', views.sendika_takibi, name='sendika_takibi'),

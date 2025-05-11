@@ -22,6 +22,7 @@ from collections import defaultdict
 import pdfkit
 import locale
 import platform
+from django.core.paginator import Paginator
 
 def set_locale():
     system = platform.system()
@@ -193,6 +194,58 @@ def personel_listesi(request):
         'filter_teskilatlar': teskilatlar,
     }
     return render(request, 'mutemet_app/personeller.html', context)
+
+@login_required
+def personel_listesi_ajax(request):
+    """Personel listesini DataTables için asenkron (server-side) döndürür."""
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 10))
+
+    # Filtreler
+    tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
+    ad_soyad = request.GET.get('ad_soyad', '').strip()
+    unvanlar = request.GET.getlist('unvan[]')
+    kurumlar = request.GET.getlist('kurum[]')
+    teskilatlar = request.GET.getlist('teskilat[]')
+
+    queryset = Personel.objects.all()
+    if tc_kimlik_no:
+        queryset = queryset.filter(tc_kimlik_no__icontains=tc_kimlik_no)
+    if ad_soyad:
+        queryset = queryset.filter(
+            models.Q(ad__icontains=ad_soyad) | models.Q(soyad__icontains=ad_soyad)
+        )
+    if unvanlar:
+        queryset = queryset.filter(unvan_id__in=unvanlar)
+    if kurumlar:
+        queryset = queryset.filter(kurum_id__in=kurumlar)
+    if teskilatlar:
+        queryset = queryset.filter(teskilat__in=teskilatlar)
+
+    total_count = queryset.count()
+    queryset = queryset.select_related('unvan', 'brans', 'kurum')[start:start+length]
+
+    data = []
+    for p in queryset:
+        data.append({
+            "tc_kimlik_no": p.tc_kimlik_no,
+            "ad": p.ad,
+            "soyad": p.soyad,
+            "unvan": p.unvan.ad if p.unvan else "",
+            "brans": p.brans.ad if p.brans else "",
+            "teskilat": p.teskilat,
+            "kurum": p.kurum.ad if p.kurum else "",
+            "durum": p.durum,
+            "hareketler": f'<button type="button" class="btn btn-info btn-sm" onclick="hareketGoster(\'{p.tc_kimlik_no}\')"><i class="bi bi-clock-history"></i></button>'
+        })
+
+    return JsonResponse({
+        "draw": draw,
+        "recordsTotal": total_count,
+        "recordsFiltered": total_count,
+        "data": data
+    })
 
 @login_required
 def hareket_listesi(request):

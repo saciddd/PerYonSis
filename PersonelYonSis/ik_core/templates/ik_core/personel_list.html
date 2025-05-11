@@ -1,75 +1,141 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Personel Listesi{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-    <h3>Personel Yönetimi</h3>
-    <form method="get" class="row g-2 mb-3">
-        <div class="col-md-2">
-            <input type="text" name="tc_kimlik_no" class="form-control" placeholder="T.C. Kimlik No" value="{{ arama.tc_kimlik_no }}">
-        </div>
-        <div class="col-md-2">
-            <input type="text" name="ad_soyad" class="form-control" placeholder="Ad Soyad" value="{{ arama.ad_soyad }}">
-        </div>
-        <div class="col-md-2">
-            <select name="unvan" class="form-control">
-                <option value="">Unvan Seçiniz</option>
-                {% for u in unvanlar %}
-                <option value="{{ u.id }}" {% if arama.unvan == u.id|stringformat:"s" %}selected{% endif %}>{{ u.ad }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <input type="text" name="telefon" class="form-control" placeholder="Telefon" value="{{ arama.telefon }}">
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary">Ara</button>
-            <a href="{% url 'ik_core:personel_list' %}" class="btn btn-secondary">Temizle</a>
-        </div>
-        <div class="col-md-2 text-end">
-            <a href="{% url 'ik_core:personel_ekle' %}" class="btn btn-success">Yeni Personel</a>
-            <a href="#" class="btn btn-info" onclick="exportExcel()">Excele Aktar</a>
+    <!-- Arama Formu -->
+    <form method="get" class="mb-3" id="personelAramaForm">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label for="tc_kimlik_no" class="form-label">T.C. Kimlik No</label>
+                <input type="text" class="form-control" id="tc_kimlik_no" name="tc_kimlik_no">
+            </div>
+            <div class="col-md-2">
+                <label for="ad_soyad" class="form-label">Ad Soyad</label>
+                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad">
+            </div>
+            <div class="col-md-2">
+                <label for="unvan" class="form-label">Unvan</label>
+                <select id="unvan" name="unvan" class="form-select select2" multiple>
+                    {% for unvan in unvan_list %}
+                        <option value="{{ unvan.id }}">{{ unvan.ad }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="kurum" class="form-label">Kurum</label>
+                <select id="kurum" name="kurum" class="form-select select2" multiple>
+                    {% for kurum in kurum_list %}
+                        <option value="{{ kurum.id }}">{{ kurum.ad }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="teskilat" class="form-label">Teşkilat</label>
+                <select id="teskilat" name="teskilat" class="form-select select2" multiple>
+                    {% for teskilat_val, teskilat_label in teskilat_choices %}
+                        <option value="{{ teskilat_val }}">{{ teskilat_label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">Ara</button>
+            </div>
         </div>
     </form>
-    <table class="table table-bordered table-sm">
-        <thead>
-            <tr>
-                <th>T.C. Kimlik No</th>
-                <th>Ad Soyad</th>
-                <th>Unvan</th>
-                <th>Branş</th>
-                <th>Kurum</th>
-                <th>Telefon</th>
-                <th>Detay</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in personeller %}
-            <tr>
-                <td>{{ p.tc_kimlik_no }}</td>
-                <td>{{ p.ad_soyad }}</td>
-                <td>{{ p.unvan.ad }}</td>
-                <td>{{ p.brans.ad }}</td>
-                <td>{{ p.kurum.ad }}</td>
-                <td>{{ p.telefon }}</td>
-                <td>
-                    <a href="{% url 'ik_core:personel_detay' p.id %}" class="btn btn-sm btn-info">Detay</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="7" class="text-center">Kayıt bulunamadı.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- /Arama Formu -->
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Personel Listesi</h3>
+                </div>
+                <div class="card-body">
+                    <table id="personelTable" class="table table-bordered table-striped" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>T.C. Kimlik No</th>
+                                <th>Ad</th>
+                                <th>Soyad</th>
+                                <th>Unvan</th>
+                                <th>Branş</th>
+                                <th>Teşkilat</th>
+                                <th>Kurum</th>
+                                <th>Durum</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Asenkron yükleme için tbody boş bırakıldı -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-function exportExcel() {
-    // Basit export için tabloyu kopyala ve yeni pencereye aç
-    var table = document.querySelector('table').outerHTML;
-    var win = window.open('', '', 'width=800,height=600');
-    win.document.write('<html><head><title>Excel</title></head><body>' + table + '</body></html>');
-    win.document.close();
-    win.print();
-}
+$(document).ready(function() {
+    $('.select2').select2({ width: '100%' });
+
+    var table = $('#personelTable').DataTable({
+        "processing": true,
+        "serverSide": true,
+        "ajax": {
+            "url": "{% url 'ik_core:personel_list_ajax' %}",
+            "type": "GET",
+            "data": function(d) {
+                d.tc_kimlik_no = $('#tc_kimlik_no').val();
+                d.ad_soyad = $('#ad_soyad').val();
+                d.unvan = $('#unvan').val();
+                d.kurum = $('#kurum').val();
+                d.teskilat = $('#teskilat').val();
+            }
+        },
+        "columns": [
+            { "data": "tc_kimlik_no" },
+            { "data": "ad" },
+            { "data": "soyad" },
+            { "data": "unvan" },
+            { "data": "brans" },
+            { "data": "teskilat" },
+            { "data": "kurum" },
+            { "data": "durum" },
+            { "data": "islemler", "orderable": false, "searchable": false }
+        ],
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
+        },
+        "dom": 'Bfrtip',
+        "buttons": [
+            'copy', 'excel', 'csv', 'print'
+        ]
+    });
+
+    $('#personelAramaForm').on('submit', function(e) {
+        e.preventDefault();
+        table.ajax.reload();
+    });
+});
 </script>
 {% endblock %}

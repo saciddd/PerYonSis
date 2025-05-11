@@ -60,7 +60,7 @@
                     <h3 class="card-title">Personel Listesi</h3>
                 </div>
                 <div class="card-body">
-                    <table id="personelTable" class="table table-bordered table-striped">
+                    <table id="personelTable" class="table table-bordered table-striped" style="width:100%">
                         <thead>
                             <tr>
                                 <th>T.C. Kimlik No</th>
@@ -75,31 +75,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for personel in personeller %}
-                            <tr>
-                                <td>{{ personel.tc_kimlik_no }}</td>
-                                <td>{{ personel.ad }}</td>
-                                <td>{{ personel.soyad }}</td>
-                                <td>{{ personel.unvan.ad }}</td>
-                                <td>{{ personel.brans }}</td>
-                                <td>{{ personel.teskilat }}</td>
-                                <td>{{ personel.kurum.ad }}</td>
-                                <td>
-                                    {% if personel.durum == 'AKTIF' %}
-                                        <span class="badge bg-success text-white">{{ personel.get_durum_display }}</span>
-                                    {% elif personel.durum == 'PASIF' %}
-                                        <span class="badge bg-warning text-dark">{{ personel.get_durum_display }}</span>
-                                    {% elif personel.durum == 'AYRILDI' %}
-                                        <span class="badge bg-danger text-white">{{ personel.get_durum_display }}</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <button type="button" class="btn btn-info btn-sm" onclick="hareketGoster('{{ personel.personel_id }}')">
-                                        <i class="bi bi-clock-history"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
+                            <!-- Asenkron yükleme için tbody boş bırakıldı -->
                         </tbody>
                     </table>
                 </div>
@@ -176,7 +152,33 @@
 $(document).ready(function() {
     $('.select2').select2({ width: '100%' });
 
-    $('#personelTable').DataTable({
+    // DataTable'ı server-side (asenkron) olarak başlat
+    var table = $('#personelTable').DataTable({
+        "processing": true,
+        "serverSide": true,
+        "ajax": {
+            "url": "{% url 'mutemet_app:personel_listesi_ajax' %}",
+            "type": "GET",
+            "data": function(d) {
+                // Arama formundaki filtreleri de gönder
+                d.tc_kimlik_no = $('#tc_kimlik_no').val();
+                d.ad_soyad = $('#ad_soyad').val();
+                d.unvan = $('#unvan').val();
+                d.kurum = $('#kurum').val();
+                d.teskilat = $('#teskilat').val();
+            }
+        },
+        "columns": [
+            { "data": "tc_kimlik_no" },
+            { "data": "ad" },
+            { "data": "soyad" },
+            { "data": "unvan" },
+            { "data": "brans" },
+            { "data": "teskilat" },
+            { "data": "kurum" },
+            { "data": "durum" },
+            { "data": "hareketler", "orderable": false, "searchable": false }
+        ],
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
         },
@@ -186,40 +188,28 @@ $(document).ready(function() {
         ]
     });
 
-    $('#btnHareketKaydet').click(function() {
-        var formData = $('#hareketForm').serialize();
+    // Arama formu submit edildiğinde tabloyu yeniden yükle
+    $('#personelAramaForm').on('submit', function(e) {
+        e.preventDefault();
+        table.ajax.reload();
+    });
+
+    // Hareket göster fonksiyonu asenkron tabloya uygun şekilde güncellenmeli
+    window.hareketGoster = function(personelId) {
+        $('#hareket_personel_id').val(personelId);
         $.ajax({
-            url: '{% url "mutemet_app:hareket_ekle" %}',
-            type: 'POST',
-            data: formData,
+            url: '{% url "mutemet_app:hareket_listesi" %}',
+            type: 'GET',
+            data: { personel_id: personelId },
             success: function(response) {
-                if (response.success) {
-                    location.reload();
-                } else {
-                    alert(response.message);
-                }
+                $('#hareketListesi').html(response);
+                $('#hareketModal').modal('show');
             },
             error: function(xhr) {
                 alert('Bir hata oluştu: ' + xhr.responseText);
             }
         });
-    });
+    };
 });
-
-function hareketGoster(personelId) {
-    $('#hareket_personel_id').val(personelId);
-    $.ajax({
-        url: '{% url "mutemet_app:hareket_listesi" %}',
-        type: 'GET',
-        data: { personel_id: personelId },
-        success: function(response) {
-            $('#hareketListesi').html(response);
-            $('#hareketModal').modal('show');
-        },
-        error: function(xhr) {
-            alert('Bir hata oluştu: ' + xhr.responseText);
-        }
-    });
-}
 </script>
 {% endblock %}

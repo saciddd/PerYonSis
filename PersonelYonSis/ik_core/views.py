@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_POST
 from django.contrib import messages # Import messages framework
+from django.contrib.auth.decorators import login_required
 from .models.personel import Personel, Unvan, Brans, Kurum, OzelDurum # Import OzelDurum
 from .models.GeciciGorev import GeciciGorev
 # Import value lists needed
@@ -42,6 +43,57 @@ def personel_list(request):
             'unvan': unvan,
             'telefon': telefon,
         }
+    })
+
+@login_required
+def personel_list_ajax(request):
+    """Personel listesini DataTables için asenkron (server-side) döndürür."""
+    draw = int(request.GET.get('draw', 1))
+    start = int(request.GET.get('start', 0))
+    length = int(request.GET.get('length', 10))
+
+    tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
+    ad_soyad = request.GET.get('ad_soyad', '').strip()
+    unvanlar = request.GET.getlist('unvan[]')
+    kurumlar = request.GET.getlist('kurum[]')
+    teskilatlar = request.GET.getlist('teskilat[]')
+
+    queryset = Personel.objects.all()
+    if tc_kimlik_no:
+        queryset = queryset.filter(tc_kimlik_no__icontains=tc_kimlik_no)
+    if ad_soyad:
+        queryset = queryset.filter(
+            Q(ad__icontains=ad_soyad) | Q(soyad__icontains=ad_soyad)
+        )
+    if unvanlar:
+        queryset = queryset.filter(unvan_id__in=unvanlar)
+    if kurumlar:
+        queryset = queryset.filter(kurum_id__in=kurumlar)
+    if teskilatlar:
+        queryset = queryset.filter(teskilat__in=teskilatlar)
+
+    total_count = queryset.count()
+    queryset = queryset.select_related('unvan', 'brans', 'kurum')[start:start+length]
+
+    data = []
+    for p in queryset:
+        data.append({
+            "tc_kimlik_no": p.tc_kimlik_no,
+            "ad": p.ad,
+            "soyad": p.soyad,
+            "unvan": p.unvan.ad if p.unvan else "",
+            "brans": p.brans.ad if p.brans else "",
+            "teskilat": p.teskilat,
+            "kurum": p.kurum.ad if p.kurum else "",
+            "durum": p.durum,
+            "islemler": f'<a href="{reverse("ik_core:personel_detay", args=[p.pk])}" class="btn btn-info btn-sm">Detay</a>'
+        })
+
+    return JsonResponse({
+        "draw": draw,
+        "recordsTotal": total_count,
+        "recordsFiltered": total_count,
+        "data": data
     })
 
 def personel_kontrol(request):

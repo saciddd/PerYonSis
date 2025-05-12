@@ -60,8 +60,8 @@ class PersonelHareket(models.Model):
 class SendikaUyelik(models.Model):
     """Sendika üyelik hareketleri"""
     HAREKET_TIPI_CHOICES = [
-        ('UYELIK', 'Üyelik'),
-        ('AYRILMA', 'Ayrılma'),
+        ('GIRIS', 'Giriş'),
+        ('CIKIS', 'Çıkış'),
     ]
 
     uyelik_id = models.AutoField(primary_key=True)
@@ -121,16 +121,19 @@ class SendikaUyelik(models.Model):
         # Ayrılış kaydı kontrolü
         return SendikaUyelik.objects.filter(
             personel=self.personel,
-            hareket_tipi='AYRILMA',
+            hareket_tipi='CIKIS',
             hareket_tarihi__range=[bir_ay_once, self.hareket_tarihi]
         ).exists()
 
     def save(self, *args, **kwargs):
+        # Aynı anda iki sendika üyeliği engelle
+        son_kayit = SendikaUyelik.objects.filter(personel=self.personel).order_by('-hareket_tarihi', '-uyelik_id').first()
+        if son_kayit and son_kayit.hareket_tipi == 'GIRIS' and self.hareket_tipi == 'GIRIS':
+            raise ValidationError('Bir kişi aynı anda iki sendikaya üye olamaz. Önce mevcut üyelikten çıkış yapılmalı.')
         # Üyelik ise eski sendika kontrolü yap
         eski_sendika_var = False
-        if self.hareket_tipi == 'UYELIK':
+        if self.hareket_tipi == 'GIRIS':
             eski_sendika_var = self.check_eski_sendika()
-        
         self.maas_donemi = self.hesapla_maas_donemi(eski_sendika_var=eski_sendika_var)
         super().save(*args, **kwargs)
 

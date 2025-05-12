@@ -88,6 +88,14 @@
             <h3 class="card-title">Sendika Üyelik Kayıtları</h3>
             <div class="card-tools">
                  <form method="get" class="d-inline-block ms-2">
+                    <select name="teskilat" class="form-select form-select-sm d-inline-block w-auto me-2" onchange="this.form.submit()">
+                        <option value="" {% if not selected_teskilat %}selected{% endif %}>Tüm Teşkilatlar</option>
+                        {% for t_val, t_disp in teskilat_choices %}
+                            <option value="{{ t_val }}" {% if selected_teskilat == t_val %}selected{% endif %}>
+                                {{ t_disp }}
+                            </option>
+                        {% endfor %}
+                    </select>
                     <select name="maas_donemi" class="form-select form-select-sm d-inline-block w-auto" onchange="this.form.submit()">
                         <option value="" {% if not selected_donem %}selected{% endif %}>Tüm Dönemler</option>
                          {% for donem in maas_donemleri %}

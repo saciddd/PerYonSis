@@ -3,6 +3,44 @@
 
 {% block title %}İcra Takibi{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@x.x.x/dist/select2-bootstrap4.min.css">
+<style>
+    .accordion-button:not(.collapsed) {
+        background-color: #e7f1ff;
+    }
+    .accordion-button:focus {
+        box-shadow: none;
+        border-color: rgba(0,0,0,.125);
+    }
+    .btn-icon {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    .modal-xl {
+        max-width: 90%;
+    }
+    .table-responsive {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .select2-container .select2-selection--single {
+        height: calc(1.5em + .75rem + 2px);
+        padding: .375rem .75rem;
+        border: 1px solid #ced4da;
+    }
+    .select2-container--bootstrap4 .select2-selection--single .select2-selection__rendered {
+        line-height: 1.5;
+    }
+    .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
+        height: calc(1.5em + .75rem);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="card card-primary card-outline">
@@ -32,23 +70,6 @@
                         </div>
                     </form>
                 </div>
-                <div class="col-md-3">
-                    <form class="row g-2 align-items-end" method="get" action="{% url 'mutemet_app:aylik_icra_kesinti' %}">
-                        <div class="col-6">
-                            <label for="donem_secimi" class="form-label">Dönem Seçimi</label>
-                            <select id="donem_secimi" name="donem" class="form-select" required>
-                                {% with today=now|date:"Y-m-01" %}
-                                {% for d in donem_secenekleri %}
-                                    <option value="{{ d|date:'Y-m-01' }}">{{ d|date:'Y' }}/{{ d|date:'m' }}</option>
-                                {% endfor %}
-                                {% endwith %}
-                            </select>
-                        </div>
-                        <div class="col-6 mt-2">
-                            <button type="submit" class="btn btn-success w-100">Aylık Kesinti Formu</button>
-                        </div>
-                    </form>
-                </div>
             </div>
         </div>
     </div>
@@ -56,91 +77,102 @@
     <div class="card mt-4">
         <div class="card-header">
             <h3 class="card-title">İcra Takipleri</h3>
+            <div class="card-tools">
+                <form method="get" class="d-inline-block ms-2">
+                    <select name="teskilat" class="form-select form-select-sm d-inline-block w-auto me-2" onchange="this.form.submit()">
+                        <option value="" {% if not selected_teskilat %}selected{% endif %}>Tüm Teşkilatlar</option>
+                        {% for t_val, t_disp in teskilat_choices %}
+                            <option value="{{ t_val }}" {% if selected_teskilat == t_val %}selected{% endif %}>
+                                {{ t_disp }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#raporlamaModal">
+                    <i class="bi bi-file-earmark-text"></i> Raporlama
+                </button>
+            </div>
         </div>
         <div class="card-body">
-            {% if personel_icra_data %}
-            {% for personel, data_dict in personel_icra_data.items %}
-            <div class="card mb-2">
-                <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
-                    <a data-bs-toggle="collapse" href="#icra-{{ personel.id }}" role="button" aria-expanded="false" aria-controls="icra-{{ personel.id }}" class="text-decoration-none text-dark fw-bold">
-                        {{ personel.ad_soyad }} ({{ personel.tc_kimlik_no }})
-                    </a>
-                    <div class="text-end">
-                        {% with ek_bilgiler=data_dict.ek_bilgiler %}
-                            {% if ek_bilgiler.kalan_borc_aktif is not None %}
-                            <span class="badge bg-danger me-1">Aktif Kalan: {{ ek_bilgiler.kalan_borc_aktif|floatformat:2 }} TL</span>
+            <div class="accordion" id="icraAccordion">
+                {% for personel, data in personel_icra_data.items %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ personel.id }}">
+                            {{ personel.ad_soyad }} ({{ personel.tc_kimlik_no }})
+                            {% if data.ek_bilgiler.kalan_borc_aktif is not None %}
+                            <span class="badge bg-danger me-1">Aktif Kalan: {{ data.ek_bilgiler.kalan_borc_aktif|floatformat:2 }} TL</span>
                             {% endif %}
-                            {% if ek_bilgiler.en_son_kesinti_donemi %}
-                            <span class="badge bg-secondary">Son Kesinti: {{ ek_bilgiler.en_son_kesinti_donemi|date:"N Y" }}</span>
+                            {% if data.ek_bilgiler.en_son_kesinti_donemi %}
+                            <span class="badge bg-secondary">Son Kesinti: {{ data.ek_bilgiler.en_son_kesinti_donemi|date:"N Y" }}</span>
                             {% endif %}
-                            {% if ek_bilgiler.siradaki_icra_sayisi > 0 %}
-                            <span class="badge bg-warning text-dark">Sırada: {{ ek_bilgiler.siradaki_icra_sayisi }}</span>
+                            {% if data.ek_bilgiler.siradaki_icra_sayisi > 0 %}
+                            <span class="badge bg-warning ms-2">{{ data.ek_bilgiler.siradaki_icra_sayisi }} Sırada</span>
                             {% endif %}
-                        {% endwith %}
+                        </button>
+                    </h2>
+                    <div id="collapse{{ personel.id }}" class="accordion-collapse collapse" data-bs-parent="#icraAccordion">
+                        <div class="accordion-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>İcra Dairesi</th>
+                                            <th>Dosya No</th>
+                                            <th>Tarih</th>
+                                            <th>Tutar</th>
+                                            <th>Durum</th>
+                                            <th>Toplam Kesinti</th>
+                                            <th>Kalan Borç</th>
+                                            <th>İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for icra in data.icralar %}
+                                        <tr>
+                                            <td>{{ icra.icra_dairesi }}</td>
+                                            <td>{{ icra.dosya_no }}</td>
+                                            <td>{{ icra.tarihi|date:"d.m.Y" }}</td>
+                                            <td>{{ icra.tutar|floatformat:2 }}</td>
+                                            <td>
+                                                {% if icra.durum == 'AKTIF' %}
+                                                <span class="badge bg-success">Aktif</span>
+                                                {% elif icra.durum == 'SIRADA' %}
+                                                <span class="badge bg-warning">Sırada</span>
+                                                {% elif icra.durum == 'KAPANDI' %}
+                                                <span class="badge bg-danger">Kapandı</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ icra.hesaplanan_toplam_kesinti|floatformat:2 }}</td>
+                                            <td>{{ icra.hesaplanan_kalan_borc|floatformat:2 }}</td>
+                                            <td>
+                                                <button type="button" class="btn btn-primary btn-sm btn-icon" data-icra-id="{{ icra.pk }}" onclick="hareketGoster(this)" {% if icra.durum == 'SIRADA' %}disabled{% endif %}>
+                                                    <i class="bi bi-clock-history"></i> İşlemler
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="collapse" id="icra-{{ personel.id }}">
-                    <div class="card-body p-2">
-                        <table class="table table-bordered table-sm table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th>İcra Dairesi</th>
-                                    <th>Dosya No</th>
-                                    <th>Tutar</th>
-                                    <th>Toplam Kesinti</th>
-                                    <th>Kalan Borç</th>
-                                    <th>Durum</th>
-                                    <th>İşlem</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for icra in data_dict.icralar %}
-                                <tr>
-                                    <td>{{ icra.icra_dairesi }}</td>
-                                    <td>{{ icra.dosya_no }}</td>
-                                    <td>{{ icra.tutar|floatformat:2 }} TL</td>
-                                    <td>{{ icra.hesaplanan_toplam_kesinti|floatformat:2 }} TL</td>
-                                    <td>{{ icra.hesaplanan_kalan_borc|floatformat:2 }} TL</td>
-                                    <td>
-                                        {% if icra.durum == 'AKTIF' %}
-                                            <span class="badge bg-success">Aktif</span>
-                                        {% elif icra.durum == 'SIRADA' %}
-                                            <span class="badge bg-warning text-dark">Sırada</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Kapandı</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if icra.durum == 'AKTIF' %} {# Sadece AKTIF olanlar için detay görülebilir #}
-                                            <button class="btn btn-primary btn-sm btn-icra-detay" data-icra-id="{{ icra.pk }}">Detay</button>
-                                        {% else %}
-                                            <button class="btn btn-secondary btn-sm" disabled>Detay</button> {# SIRADA ve KAPANDI için pasif #}
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-            {% else %}
-            <div class="alert alert-info">Kayıtlı icra takibi bulunamadı.</div>
-            {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Modal for Adding Icra Takibi -->
-<div class="modal fade" id="icraModal" tabindex="-1" aria-labelledby="icraModalLabel" aria-hidden="true">
+<!-- İcra Ekleme Modal -->
+<div class="modal fade" id="icraModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="post" action="{% url 'mutemet_app:icra_takibi_ekle' %}">
                 {% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title" id="icraModalLabel">Yeni İcra Takibi Ekle</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title">Yeni İcra Takibi Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="modal_personel_id" name="personel_id">
@@ -200,27 +232,166 @@
     </div>
 </div>
 
-<!-- İcra Hareketleri Modal -->
-<div class="modal fade" id="icraHareketModal" tabindex="-1" aria-labelledby="icraHareketModalLabel" aria-hidden="true">
+<!-- Raporlama Modal -->
+<div class="modal fade" id="raporlamaModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
-        <div class="modal-content" id="icraHareketModalContent">
-            <!-- İçerik AJAX ile yüklenecek -->
-            <div class="modal-body text-center">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Yükleniyor...</span>
-                </div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">İcra Kesinti Raporu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="raporlamaForm" method="get" action="{% url 'mutemet_app:aylik_icra_kesinti' %}">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Kesildiği Dönem</label>
+                            <select name="donem" class="form-select" required>
+                                {% for donem in donem_secenekleri %}
+                                <option value="{{ donem|date:'Y-m-d' }}">{{ donem|date:"F Y" }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Ödeme Türü</label>
+                            <select name="odeme_turu" class="form-select" multiple>
+                                {% for value, label in odeme_turu_choices %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Teşkilat</label>
+                            <select name="teskilat" class="form-select">
+                                <option value="">Tümü</option>
+                                {% for t_val, t_disp in teskilat_choices %}
+                                <option value="{{ t_val }}">{{ t_disp }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <button type="button" class="btn btn-secondary btn-sm" id="tumunuSec">
+                                <i class="bi bi-check-all"></i> Tümünü Seç
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-sm float-end">
+                                <i class="bi bi-file-earmark-pdf"></i> Rapor Oluştur
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped" id="raporlamaTable">
+                            <thead>
+                                <tr>
+                                    <th width="30">
+                                        <input type="checkbox" class="form-check-input" id="tumunuSecCheckbox">
+                                    </th>
+                                    <th>Ad Soyad</th>
+                                    <th>İcra Türü</th>
+                                    <th>Kesilen Tutar</th>
+                                    <th>Ödeme Türü</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- AJAX ile doldurulacak -->
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
 </div>
+
+<!-- İcra Hareketleri Modal -->
+<div class="modal fade" id="icraHareketModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- AJAX ile doldurulacak -->
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
+function hareketGoster(buttonElement) {
+    const icraId = buttonElement.dataset.icraId;
+    if (!icraId) {
+        Swal.fire('Hata!', 'İcra ID bulunamadı.', 'error');
+        return;
+    }
+    $.ajax({
+        url: `/mutemet/icra-takibi/${icraId}/hareketler/`,
+        type: 'GET',
+        success: function(response) {
+            $('#icraHareketModal .modal-content').html(response);
+            $('#icraHareketModal').modal('show');
+        },
+        error: function() {
+            Swal.fire('Hata!', 'Hareketler yüklenirken bir hata oluştu.', 'error');
+        }
+    });
+}
+
+function hareketEkle(icraId) {
+    if (!icraId) {
+        Swal.fire('Hata!', 'İcra ID bulunamadı.', 'error');
+        return;
+    }
+    $.ajax({
+        url: `/mutemet/icra-takibi/${icraId}/modal/`,
+        type: 'GET',
+        success: function(response) {
+            $('#icraHareketEkleModal .modal-content').html(response);
+            $('#icraHareketEkleModal').modal('show');
+        },
+        error: function() {
+            Swal.fire('Hata!', 'Hareket ekleme formu yüklenirken bir hata oluştu.', 'error');
+        }
+    });
+}
+
+// İcra hareket ekleme formu submit edildiğinde
+$(document).on('submit', '#icraHareketForm', function(e) {
+    e.preventDefault();
+    const form = $(this);
+    const icraId = form.find('input[name="icra_id"]').val();
+    
+    $.ajax({
+        url: `/mutemet/icra-takibi/${icraId}/hareket-ekle/`,
+        type: 'POST',
+        data: form.serialize(),
+        success: function(response) {
+            if (response.success) {
+                $('#icraHareketEkleModal').modal('hide');
+                Swal.fire({
+                    title: 'Başarılı!',
+                    text: 'İcra hareketi başarıyla eklendi.',
+                    icon: 'success'
+                }).then(() => {
+                    window.location.href = "{% url 'mutemet_app:icra_takibi' %}";
+                });
+            } else {
+                Swal.fire('Hata!', response.message || 'Hareket eklenirken bir hata oluştu.', 'error');
+            }
+        },
+        error: function() {
+            Swal.fire('Hata!', 'Hareket eklenirken bir hata oluştu.', 'error');
+        }
+    });
+});
+
 $(document).ready(function() {
-    // Select2 ile personel arama
+    // Personel Arama Select2
     $('#personel_select').select2({
         theme: 'bootstrap4',
         placeholder: 'TC Kimlik No veya Ad/Soyad ile arayın...',
@@ -230,10 +401,14 @@ $(document).ready(function() {
             dataType: 'json',
             delay: 250,
             data: function (params) {
-                return { q: params.term };
+                return {
+                    q: params.term
+                };
             },
             processResults: function (data) {
-                return { results: data.results };
+                return {
+                    results: data.results
+                };
             },
             cache: true
         }
@@ -244,75 +419,143 @@ $(document).ready(function() {
         $('#modal_personel_id').val(data.id);
         $('#btnIcraEkle').prop('disabled', false);
     });
-    
-    // DataTables başlatma kodunu kaldırdık çünkü genel bir tablo yok.
-    // Gerekirse, her bir personel kartındaki tabloya ayrı ayrı uygulanabilir.
 
-    // Detay butonuna tıklanınca modalı aç ve AJAX ile içeriği yükle
-    // Event delegation kullanarak dinamik olarak eklenen butonlar için de çalışmasını sağlıyoruz.
-    $(document).on('click', '.btn-icra-detay', function() {
-        var icraId = $(this).data('icra-id');
-        var modal = $('#icraHareketModal');
-        var modalContent = $('#icraHareketModalContent');
-
-        modalContent.html('<div class="modal-body text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>');
-        modal.modal('show');
-        
-        var url = "{% url 'mutemet_app:icra_hareketleri_list' 0 %}".replace('0', icraId);
-        $.get(url, function(data) {
-            modalContent.html(data);
-        }).fail(function() {
-            modalContent.html('<div class="modal-body text-center text-danger">İçerik yüklenirken bir hata oluştu.</div>');
-        });
+    // İcra Ekleme Modalı açıldığında formu sıfırla
+    $('#icraModal').on('show.bs.modal', function () {
+        $('#icra_vergi_dairesi_no').val('');
+        $('#icra_dairesi').val('');
+        $('#dosya_no').val('');
+        $('#tutar').val('');
+        $('#alacakli').val('');
+        $('#alacakli_vekili').val('');
+        $('#tarihi').val('');
+        $('#icra_dairesi_banka').val('');
+        $('#icra_dairesi_hesap_no').val('');
+        $('#icra_turu').val('ICRA');
     });
 
-    // Modal submit işlemi için (delegated event)
-    $(document).on('submit', '#icraHareketForm', function(e) {
-        e.preventDefault();
-        var form = $(this);
-        var kalan_borc_str = form.find('input[name="kalan_borc"]').val(); // Bu alan _icra_hareket_modal_content.html'de olmalı
-        var kesilen_tutar_str = form.find('input[name="kesilen_tutar"]').val();
+    // İcra Ekleme Modalı kapandığında formu sıfırla
+    $('#icraModal').on('hidden.bs.modal', function () {
+        $('#personel_select').val(null).trigger('change');
+        $('#ad_soyad').val('');
+        $('#unvan').val('');
+        $('#modal_personel_id').val('');
+        $('#btnIcraEkle').prop('disabled', true);
+    });
 
-        // Kalan borç ve kesilen tutar değerlerinin varlığını ve formatını kontrol et
-        if (kalan_borc_str === undefined || kesilen_tutar_str === undefined) {
-            alert('Formda eksik alanlar var (kalan_borc veya kesilen_tutar). Lütfen _icra_hareket_modal_content.html dosyasını kontrol edin.');
-            return false;
-        }
-        
-        var kalan_borc = parseFloat(kalan_borc_str.replace(',', '.')); // Virgülü noktaya çevir
-        var kesilen_tutar = parseFloat(kesilen_tutar_str.replace(',', '.')); // Virgülü noktaya çevir
+    // Ödeme Türü Select2
+    $('#odeme_turu').select2({
+        theme: 'bootstrap4',
+        placeholder: 'Ödeme türü seçin...',
+        allowClear: true,
+        multiple: true
+    });
 
-        if (isNaN(kalan_borc) || isNaN(kesilen_tutar)) {
-            alert('Kalan borç veya kesilen tutar geçerli bir sayı değil.');
-            return false;
+    // Raporlama Modalı
+    $('#raporlamaModal').on('show.bs.modal', function () {
+        // Varsayılan olarak bu ayı seç
+        var today = new Date();
+        var firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        var formattedDate = firstDay.toISOString().split('T')[0];
+        $('#donem').val(formattedDate);
+        // Modal açıldığında otomatik sorgu yapma
+        $('#raporlamaTable tbody').empty();
+    });
+
+    // Kesinti listesi yükleme
+    function loadKesintiListesi() {
+        var donem = $('#donem').val();
+        var odemeTuru = $('#odeme_turu').val();
+        var teskilat = $('#teskilat').val();
+
+        if (!donem) {
+            return; // Dönem seçilmemişse sessizce çık
         }
 
-        if (kesilen_tutar > kalan_borc) {
-            alert('Kesilen tutar kalan borçtan fazla olamaz!');
-            return false;
-        }
         $.ajax({
-            url: form.attr('action'),
-            method: 'POST',
-            data: form.serialize(),
+            url: "{% url 'mutemet_app:icra_kesinti_listesi' %}",
+            type: 'GET',
+            data: {
+                donem: donem,
+                odeme_turu: odemeTuru,
+                teskilat: teskilat
+            },
             success: function(response) {
-                if(response.success) {
-                    var icraId = form.find('input[name="icra_id"]').val();
-                    // Modalı tekrar yükle
-                    var url = "{% url 'mutemet_app:icra_hareketleri_list' 0 %}".replace('0', icraId);
-                    $.get(url, function(data) {
-                        $('#icraHareketModalContent').html(data);
-                        // Ana sayfadaki ilgili personelin bilgilerini de güncellemek gerekebilir (opsiyonel)
-                        // Bu daha karmaşık bir işlem olacağı için şimdilik sadece modal güncelleniyor.
+                var tbody = $('#raporlamaTable tbody');
+                tbody.empty();
+                
+                if (response.data && response.data.length > 0) {
+                    response.data.forEach(function(item) {
+                        tbody.append(`
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input kesinti-checkbox" type="checkbox" value="${item.id}">
+                                    </div>
+                                </td>
+                                <td>${item.ad_soyad}</td>
+                                <td>${item.icra_turu}</td>
+                                <td>${item.kesilen_tutar}</td>
+                                <td>${item.odeme_turu}</td>
+                            </tr>
+                        `);
                     });
                 } else {
-                    alert('Hata: ' + response.message);
+                    tbody.append(`
+                        <tr>
+                            <td colspan="5" class="text-center">Seçili kriterlere uygun kayıt bulunamadı.</td>
+                        </tr>
+                    `);
                 }
             },
             error: function() {
-                alert('Bir hata oluştu. Lütfen tekrar deneyin.');
+                Swal.fire('Hata!', 'Kesinti listesi yüklenirken bir hata oluştu.', 'error');
             }
         });
+    }
+
+    // Filtre değişikliklerinde listeyi güncelle
+    $('#donem').on('change', function() {
+        loadKesintiListesi();
+    });
+
+    $('#odeme_turu, #teskilat').on('change', function() {
+        if ($('#donem').val()) {
+            loadKesintiListesi();
+        }
+    });
+
+    // Tümünü seç/kaldır
+    $('#tumunuSecCheckbox').change(function() {
+        $('.kesinti-checkbox').prop('checked', $(this).prop('checked'));
+    });
+
+    // Tümünü seç butonu
+    $('#tumunuSec').click(function() {
+        $('.kesinti-checkbox').prop('checked', true);
+        $('#tumunuSecCheckbox').prop('checked', true);
+    });
+
+    // Rapor oluştur
+    $('#raporOlustur').on('click', function() {
+        var seciliKesintiler = $('.kesinti-checkbox:checked').map(function() {
+            return $(this).val();
+        }).get();
+
+        if (seciliKesintiler.length === 0) {
+            Swal.fire('Uyarı!', 'Lütfen en az bir kesinti seçiniz.', 'warning');
+            return;
+        }
+
+        var donem = $('#donem').val();
+        var odemeTuru = $('#odeme_turu').val();
+        var teskilat = $('#teskilat').val();
+
+        var url = `{% url 'mutemet_app:aylik_icra_kesinti' %}?donem=${donem}&secili_kesintiler=${seciliKesintiler.join(',')}`;
+        if (odemeTuru) url += `&odeme_turu=${odemeTuru}`;
+        if (teskilat) url += `&teskilat=${teskilat}`;
+
+        window.location.href = url;
     });
 });
 </script>

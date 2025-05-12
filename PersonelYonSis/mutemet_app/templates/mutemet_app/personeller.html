@@ -160,12 +160,22 @@ $(document).ready(function() {
             "url": "{% url 'mutemet_app:personel_listesi_ajax' %}",
             "type": "GET",
             "data": function(d) {
-                // Arama formundaki filtreleri de gönder
                 d.tc_kimlik_no = $('#tc_kimlik_no').val();
                 d.ad_soyad = $('#ad_soyad').val();
-                d.unvan = $('#unvan').val();
-                d.kurum = $('#kurum').val();
-                d.teskilat = $('#teskilat').val();
+                d.unvan = $('#unvan').val() ? $('#unvan').val() : [];
+                d.kurum = $('#kurum').val() ? $('#kurum').val() : [];
+                d.teskilat = $('#teskilat').val() ? $('#teskilat').val() : [];
+            },
+            "dataSrc": function(json) {
+                if (json.error) {
+                    console.error("Sunucu hatası:", json.error);
+                    return [];
+                }
+                return json.data;
+            },
+            "error": function(xhr, error, thrown) {
+                console.error("AJAX hatası:", error, thrown);
+                alert("Veri yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.");
             }
         },
         "columns": [
@@ -177,15 +187,31 @@ $(document).ready(function() {
             { "data": "teskilat" },
             { "data": "kurum" },
             { "data": "durum" },
-            { "data": "hareketler", "orderable": false, "searchable": false }
+            { 
+                "data": "hareketler",
+                "orderable": false,
+                "searchable": false,
+                "render": function(data, type, row) {
+                    return data;
+                }
+            }
         ],
         "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
+            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json",
+            "processing": "Yükleniyor...",
+            "emptyTable": "Kayıt bulunamadı",
+            "zeroRecords": "Eşleşen kayıt bulunamadı",
+            "loadingRecords": "Yükleniyor...",
+            "error": "Veri yüklenirken bir hata oluştu"
         },
         "dom": 'Bfrtip',
         "buttons": [
             'copy', 'excel', 'csv', 'print'
-        ]
+        ],
+        "drawCallback": function(settings) {
+            // Tablo yenilendiğinde yapılacak işlemler
+            console.log("Tablo yenilendi");
+        }
     });
 
     // Arama formu submit edildiğinde tabloyu yeniden yükle
@@ -194,7 +220,7 @@ $(document).ready(function() {
         table.ajax.reload();
     });
 
-    // Hareket göster fonksiyonu asenkron tabloya uygun şekilde güncellenmeli
+    // Hareket göster fonksiyonu
     window.hareketGoster = function(personelId) {
         $('#hareket_personel_id').val(personelId);
         $.ajax({
@@ -205,8 +231,9 @@ $(document).ready(function() {
                 $('#hareketListesi').html(response);
                 $('#hareketModal').modal('show');
             },
-            error: function(xhr) {
-                alert('Bir hata oluştu: ' + xhr.responseText);
+            error: function(xhr, error, thrown) {
+                console.error("Hareket listesi yüklenirken hata:", error);
+                alert("Hareket listesi yüklenirken bir hata oluştu.");
             }
         });
     };

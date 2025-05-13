@@ -56,8 +56,9 @@
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Personel Listesi</h3>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title mb-0">Personel Listesi</h3>
+                    <span class="badge bg-primary">Toplam Kayıt: {{ toplam_kayit }}</span>
                 </div>
                 <div class="card-body">
                     <table id="personelTable" class="table table-bordered table-striped" style="width:100%">
@@ -75,9 +76,54 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Asenkron yükleme için tbody boş bırakıldı -->
+                            {% if personel_list %}
+                                {% for personel in personel_list %}
+                                    <tr>
+                                        <td>{{ personel.tc_kimlik_no }}</td>
+                                        <td>{{ personel.ad }}</td>
+                                        <td>{{ personel.soyad }}</td>
+                                        <td>{{ personel.unvan }}</td>
+                                        <td>{{ personel.brans }}</td>
+                                        <td>{{ personel.teskilat }}</td>
+                                        <td>{{ personel.kurum }}</td>
+                                        <td>{{ personel.durum }}</td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-info" onclick="hareketGoster('{{ personel.tc_kimlik_no }}')">Hareketler</button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center">Kayıt bulunamadı.</td>
+                                </tr>
+                            {% endif %}
                         </tbody>
                     </table>
+                    {% if page_obj %}
+                        <nav>
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{{ query_string }}" aria-label="Önceki">
+                                            <span aria-hidden="true">&laquo;</span>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                {% for num in page_obj.paginator.page_range %}
+                                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                                        <a class="page-link" href="?page={{ num }}{{ query_string }}">{{ num }}</a>
+                                    </li>
+                                {% endfor %}
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{{ query_string }}" aria-label="Sonraki">
+                                            <span aria-hidden="true">&raquo;</span>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -152,72 +198,26 @@
 $(document).ready(function() {
     $('.select2').select2({ width: '100%' });
 
-    // DataTable'ı server-side (asenkron) olarak başlat
-    var table = $('#personelTable').DataTable({
-        "processing": true,
-        "serverSide": true,
-        "ajax": {
-            "url": "{% url 'mutemet_app:personel_listesi_ajax' %}",
-            "type": "GET",
-            "data": function(d) {
-                d.tc_kimlik_no = $('#tc_kimlik_no').val();
-                d.ad_soyad = $('#ad_soyad').val();
-                d.unvan = $('#unvan').val() ? $('#unvan').val() : [];
-                d.kurum = $('#kurum').val() ? $('#kurum').val() : [];
-                d.teskilat = $('#teskilat').val() ? $('#teskilat').val() : [];
-            },
-            "dataSrc": function(json) {
-                if (json.error) {
-                    console.error("Sunucu hatası:", json.error);
-                    return [];
-                }
-                return json.data;
-            },
-            "error": function(xhr, error, thrown) {
-                console.error("AJAX hatası:", error, thrown);
-                alert("Veri yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.");
-            }
-        },
-        "columns": [
-            { "data": "tc_kimlik_no" },
-            { "data": "ad" },
-            { "data": "soyad" },
-            { "data": "unvan" },
-            { "data": "brans" },
-            { "data": "teskilat" },
-            { "data": "kurum" },
-            { "data": "durum" },
-            { 
-                "data": "hareketler",
-                "orderable": false,
-                "searchable": false,
-                "render": function(data, type, row) {
-                    return data;
-                }
-            }
+    // Sadece client-side DataTables başlat, butonları aktif et
+    $('#personelTable').DataTable({
+        paging: false,
+        searching: false,
+        ordering: true,
+        info: false,
+        dom: 'Bfrtip',
+        buttons: [
+            { extend: 'copy', text: 'Kopyala' },
+            { extend: 'excel', text: 'Excel' },
+            { extend: 'pdf', text: 'PDF' }
         ],
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json",
-            "processing": "Yükleniyor...",
-            "emptyTable": "Kayıt bulunamadı",
-            "zeroRecords": "Eşleşen kayıt bulunamadı",
-            "loadingRecords": "Yükleniyor...",
-            "error": "Veri yüklenirken bir hata oluştu"
-        },
-        "dom": 'Bfrtip',
-        "buttons": [
-            'copy', 'excel', 'csv', 'print'
-        ],
-        "drawCallback": function(settings) {
-            // Tablo yenilendiğinde yapılacak işlemler
-            console.log("Tablo yenilendi");
+        language: {
+            url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
         }
     });
 
-    // Arama formu submit edildiğinde tabloyu yeniden yükle
-    $('#personelAramaForm').on('submit', function(e) {
-        e.preventDefault();
-        table.ajax.reload();
+    // Arama formu submit edildiğinde sayfa yenilensin (sunucu tarafı pagination için)
+    $('#personelAramaForm').on('submit', function() {
+        // Normal submit, sayfa yenilenecek
     });
 
     // Hareket göster fonksiyonu

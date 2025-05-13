@@ -195,6 +195,7 @@ def personel_listesi(request):
     if tc_kimlik_no:
         personeller = personeller.filter(tc_kimlik_no__icontains=tc_kimlik_no)
     if ad_soyad:
+        # Ad veya soyadın herhangi birinde arama yap
         personeller = personeller.filter(
             models.Q(ad__icontains=ad_soyad) | models.Q(soyad__icontains=ad_soyad)
         )
@@ -203,24 +204,47 @@ def personel_listesi(request):
     if kurumlar:
         personeller = personeller.filter(kurum_id__in=kurumlar)
     if teskilatlar:
-        personeller = personeller.filter(teskilat__in=teskilatlar)
+        # Sadece boş olmayan teşkilatları filtrele
+        teskilatlar = [t for t in teskilatlar if t]
+        if teskilatlar:
+            personeller = personeller.filter(teskilat__in=teskilatlar)
+
+    toplam_kayit = personeller.count()
+
+    # Pagination
+    page_number = request.GET.get('page', 1)
+    paginator = Paginator(personeller.order_by('ad', 'soyad'), 25)
+    page_obj = paginator.get_page(page_number)
+
+    # Query string'den page parametresi hariç diğer filtreleri oluştur
+    from urllib.parse import urlencode
+    querydict = request.GET.copy()
+    if 'page' in querydict:
+        querydict.pop('page')
+    query_string = ''
+    if querydict:
+        query_string = '&' + urlencode(querydict, doseq=True)
 
     unvan_list = Unvan.objects.all()
     kurum_list = Kurum.objects.all()
 
     context = {
-        'personeller': personeller,
+        'personel_list': page_obj.object_list,
+        'page_obj': page_obj,
         'unvan_list': unvan_list,
         'kurum_list': kurum_list,
         'teskilat_choices': TESKILAT_DEGERLERI,
         'filter_tc_kimlik_no': tc_kimlik_no,
         'filter_ad_soyad': ad_soyad,
-        'filter_unvanlar': [int(u) for u in unvanlar],
-        'filter_kurumlar': [int(k) for k in kurumlar],
+        'filter_unvanlar': [int(u) for u in unvanlar if u.isdigit()],
+        'filter_kurumlar': [int(k) for k in kurumlar if k.isdigit()],
         'filter_teskilatlar': teskilatlar,
+        'query_string': query_string,
+        'toplam_kayit': toplam_kayit,
     }
     return render(request, 'mutemet_app/personeller.html', context)
 
+# --- ASENKRON DATATABLES KODLARI DEVRE DIŞI ---
 def async_login_required(view_func):
     @wraps(view_func)
     async def _wrapped_view(request, *args, **kwargs):
@@ -231,97 +255,14 @@ def async_login_required(view_func):
 
 @sync_to_async
 def get_personel_data(tc_kimlik_no, ad_soyad, unvanlar, kurumlar, teskilatlar, start, length):
-    """Tüm veritabanı işlemlerini tek bir senkron fonksiyonda topluyoruz"""
-    try:
-        queryset = Personel.objects.all()
-        
-        if tc_kimlik_no:
-            queryset = queryset.filter(tc_kimlik_no__icontains=tc_kimlik_no)
-        if ad_soyad:
-            queryset = queryset.filter(
-                models.Q(ad__icontains=ad_soyad) | models.Q(soyad__icontains=ad_soyad)
-            )
-        if unvanlar:
-            queryset = queryset.filter(unvan_id__in=unvanlar)
-        if kurumlar:
-            queryset = queryset.filter(kurum_id__in=kurumlar)
-        if teskilatlar:
-            queryset = queryset.filter(teskilat__in=teskilatlar)
-
-        total_count = queryset.count()
-        paginated_data = list(queryset.select_related('unvan', 'brans', 'kurum')[start:start+length])
-
-        data = []
-        for p in paginated_data:
-            data.append({
-                "tc_kimlik_no": p.tc_kimlik_no,
-                "ad": p.ad,
-                "soyad": p.soyad,
-                "unvan": p.unvan.ad if p.unvan else "",
-                "brans": p.brans.ad if p.brans else "",
-                "teskilat": p.teskilat,
-                "kurum": p.kurum.ad if p.kurum else "",
-                "durum": p.durum,
-                "hareketler": f'<button type="button" class="btn btn-info btn-sm" onclick="hareketGoster(\'{p.tc_kimlik_no}\')"><i class="bi bi-clock-history"></i></button>'
-            })
-
-        return {
-            "total_count": total_count,
-            "data": data
-        }
-    except Exception as e:
-        print(f"Veritabanı hatası: {str(e)}")
-        return {
-            "total_count": 0,
-            "data": [],
-            "error": str(e)
-        }
+    # ...asenkron kodlar...
+    pass
 
 @async_login_required
 async def personel_listesi_ajax(request):
-    """Personel listesini DataTables için asenkron (server-side) döndürür."""
-    try:
-        draw = int(request.GET.get('draw', 1))
-        start = int(request.GET.get('start', 0))
-        length = int(request.GET.get('length', 10))
-
-        # Filtreler
-        tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
-        ad_soyad = request.GET.get('ad_soyad', '').strip()
-        unvanlar = request.GET.getlist('unvan[]')
-        kurumlar = request.GET.getlist('kurum[]')
-        teskilatlar = request.GET.getlist('teskilat[]')
-
-        # Tüm veritabanı işlemlerini tek bir senkron fonksiyonda yapıyoruz
-        result = await get_personel_data(
-            tc_kimlik_no, ad_soyad, unvanlar, kurumlar, teskilatlar, start, length
-        )
-
-        if "error" in result:
-            return JsonResponse({
-                "error": result["error"],
-                "draw": draw,
-                "recordsTotal": 0,
-                "recordsFiltered": 0,
-                "data": []
-            }, status=500)
-
-        return JsonResponse({
-            "draw": draw,
-            "recordsTotal": result["total_count"],
-            "recordsFiltered": result["total_count"],
-            "data": result["data"]
-        })
-
-    except Exception as e:
-        print(f"Genel hata: {str(e)}")
-        return JsonResponse({
-            "error": str(e),
-            "draw": draw,
-            "recordsTotal": 0,
-            "recordsFiltered": 0,
-            "data": []
-        }, status=500)
+    # ...asenkron kodlar...
+    pass
+# --- ASENKRON DATATABLES KODLARI SONU ---
 
 @login_required
 def hareket_listesi(request):

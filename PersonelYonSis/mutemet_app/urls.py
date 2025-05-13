@@ -19,6 +19,7 @@ urlpatterns = [
     path('icra-takibi/aylik-kesinti/', views.aylik_icra_kesinti, name='aylik_icra_kesinti'),
     path('icra-takibi/kesinti-listesi/', views.icra_kesinti_listesi, name='icra_kesinti_listesi'),
     path('odeme-takibi/', views.odeme_takibi, name='odeme_takibi'),
+    path('sorgulamalar/', views.sorgulamalar, name='sorgulamalar'),
 
     # Sendika CRUD URL'leri
     path('sendika/modal/', views.get_sendika_modal_content, name='get_sendika_modal_content'),

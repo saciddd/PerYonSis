@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Sorgulamalar{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3 class="card-title">Sorgulamalar</h3>
+        </div>
+        <!-- sorgu sayfasına git linki-->
+        <div class="card-body">
+            <a href="{{ sorgulama_url }}" class="btn btn-primary">Sorgulama Sayfasına Git</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

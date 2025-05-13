@@ -38,6 +38,9 @@
     .select2-container--bootstrap4 .select2-selection--single .select2-selection__arrow {
         height: calc(1.5em + .75rem);
     }
+    #odeme_turu.select2-hidden-accessible + .select2-container {
+        z-index: 1600 !important;
+    }
 </style>
 {% endblock %}
 
@@ -245,23 +248,32 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label class="form-label">Kesildiği Dönem</label>
-                            <select name="donem" class="form-select" required>
+                            <select id="donem" name="donem" class="form-select" required>
                                 {% for donem in donem_secenekleri %}
                                 <option value="{{ donem|date:'Y-m-d' }}">{{ donem|date:"F Y" }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Ödeme Türü</label>
-                            <select name="odeme_turu" class="form-select" multiple>
-                                {% for value, label in odeme_turu_choices %}
-                                <option value="{{ value }}">{{ label }}</option>
-                                {% endfor %}
+                        <!-- <div class="col-md-4">
+                            <label for="odeme_turu" class="form-label">Ödeme Türü</label>
+                            <select id="odeme_turu" name="odeme_turu" class="form-select select2" multiple>
+                                <option value="DENGE">Denge</option>
+                                <option value="DENGE FARK">Denge Fark</option>
+                                <option value="EK ÖDEME">Ek Ödeme</option>
+                                <option value="ELDEN">Elden</option>
+                                <option value="İKRAMİYE">İkramiye</option>
+                                <option value="MAAŞ">Maaş</option>
+                                <option value="NAFAKA">Nafaka</option>
+                                <option value="SABİT">Sabit</option>
+                                <option value="SABİT FARK">Sabit Fark</option>
+                                <option value="TEMEL">Temel</option>
+                                <option value="TEŞVİK">Teşvik</option>
+                                <option value="TOPLU GİRİŞ">Toplu Giriş</option>
                             </select>
-                        </div>
+                        </div> -->
                         <div class="col-md-4">
                             <label class="form-label">Teşkilat</label>
-                            <select name="teskilat" class="form-select">
+                            <select id="teskilat" name="teskilat" class="form-select">
                                 <option value="">Tümü</option>
                                 {% for t_val, t_disp in teskilat_choices %}
                                 <option value="{{ t_val }}">{{ t_disp }}</option>
@@ -274,7 +286,7 @@
                             <button type="button" class="btn btn-secondary btn-sm" id="tumunuSec">
                                 <i class="bi bi-check-all"></i> Tümünü Seç
                             </button>
-                            <button type="submit" class="btn btn-primary btn-sm float-end">
+                            <button type="submit" class="btn btn-primary btn-sm float-end" id="raporOlustur">
                                 <i class="bi bi-file-earmark-pdf"></i> Rapor Oluştur
                             </button>
                         </div>
@@ -288,8 +300,10 @@
                                     </th>
                                     <th>Ad Soyad</th>
                                     <th>İcra Türü</th>
+                                    <th>Kesildiği Dönem</th>
                                     <th>Kesilen Tutar</th>
                                     <th>Ödeme Türü</th>
+                                    <th>Teşkilat</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -443,7 +457,7 @@ $(document).ready(function() {
         $('#btnIcraEkle').prop('disabled', true);
     });
 
-    // Ödeme Türü Select2
+    // Ödeme Türü Select2 (çoklu seçim)
     $('#odeme_turu').select2({
         theme: 'bootstrap4',
         placeholder: 'Ödeme türü seçin...',
@@ -495,15 +509,17 @@ $(document).ready(function() {
                                 </td>
                                 <td>${item.ad_soyad}</td>
                                 <td>${item.icra_turu}</td>
+                                <td>${item.kesildigi_donem || ''}</td>
                                 <td>${item.kesilen_tutar}</td>
                                 <td>${item.odeme_turu}</td>
+                                <td>${item.teskilat || ''}</td>
                             </tr>
                         `);
                     });
                 } else {
                     tbody.append(`
                         <tr>
-                            <td colspan="5" class="text-center">Seçili kriterlere uygun kayıt bulunamadı.</td>
+                            <td colspan="7" class="text-center">Seçili kriterlere uygun kayıt bulunamadı.</td>
                         </tr>
                     `);
                 }
@@ -536,8 +552,14 @@ $(document).ready(function() {
         $('#tumunuSecCheckbox').prop('checked', true);
     });
 
-    // Rapor oluştur
-    $('#raporOlustur').on('click', function() {
+    // Rapor oluştur butonunun submitini engelle, sadece seçili kayıtlarla çalışsın
+    $('#raporlamaForm').on('submit', function(e) {
+        e.preventDefault();
+        $('#raporOlustur').trigger('click');
+    });
+
+    $('#raporOlustur').on('click', function(e) {
+        e.preventDefault();
         var seciliKesintiler = $('.kesinti-checkbox:checked').map(function() {
             return $(this).val();
         }).get();

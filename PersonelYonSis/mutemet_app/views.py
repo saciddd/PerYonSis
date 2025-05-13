@@ -124,7 +124,12 @@ def sendika_takibi(request):
 @login_required
 def icra_takibi(request):
     """İcra takibi ana sayfası (personel bazlı listeyi gösterir)"""
+    teskilat_filter = request.GET.get('teskilat')
     icralar_query = IcraTakibi.objects.select_related('personel').order_by('personel__ad', 'personel__soyad', 'tarihi')
+
+    # Teşkilat filtresi uygula
+    if teskilat_filter:
+        icralar_query = icralar_query.filter(personel__teskilat=teskilat_filter)
 
     # Tüm personellerin ID'lerini alalım (yinelenenleri önlemek için set kullanıldı)
     personel_ids = list(set(icra.personel_id for icra in icralar_query))
@@ -138,9 +143,7 @@ def icra_takibi(request):
             toplam_kesinti_aktif_hareketler = IcraHareketleri.objects.filter(icra=aktif_icra_obj).aggregate(Sum('kesilen_tutar'))['kesilen_tutar__sum'] or 0
             kalan_borc_aktif = float(aktif_icra_obj.tutar) - float(toplam_kesinti_aktif_hareketler)
 
-        # En son kesinti yapılan dönemi bulmak için, o personele ait tüm icra hareketlerine bakılır
         en_son_kesinti_donemi_hareketler = IcraHareketleri.objects.filter(icra__personel_id=p_id).aggregate(Max('kesildigi_donem'))['kesildigi_donem__max']
-        
         siradaki_icra_sayisi = IcraTakibi.objects.filter(personel_id=p_id, durum='SIRADA').count()
 
         personel_ek_bilgiler_map[p_id] = {
@@ -149,7 +152,6 @@ def icra_takibi(request):
             'siradaki_icra_sayisi': siradaki_icra_sayisi,
         }
 
-    # Her bir icra için toplam kesinti ve kalan borcu hesaplayıp icra objesine ekleyelim
     processed_icralar = []
     for icra_obj in icralar_query:
         toplam_kesinti = IcraHareketleri.objects.filter(icra=icra_obj).aggregate(Sum('kesilen_tutar'))['kesilen_tutar__sum'] or 0
@@ -157,14 +159,13 @@ def icra_takibi(request):
         icra_obj.hesaplanan_kalan_borc = float(icra_obj.tutar) - float(toplam_kesinti)
         processed_icralar.append(icra_obj)
 
+    from collections import defaultdict
     personel_icra_data = defaultdict(lambda: {'icralar': [], 'ek_bilgiler': {}})
     for icra_obj in processed_icralar: 
         personel_icra_data[icra_obj.personel]['icralar'].append(icra_obj)
-        # Ek bilgileri, her personel için sadece bir kez atayalım
         if not personel_icra_data[icra_obj.personel]['ek_bilgiler']:
              personel_icra_data[icra_obj.personel]['ek_bilgiler'] = personel_ek_bilgiler_map.get(icra_obj.personel.id, {})
-             
-    # Dönem seçenekleri (6 ay önce - 6 ay sonrası)
+
     today = date.today().replace(day=1)
     donem_secenekleri = [(today + relativedelta(months=delta)) for delta in range(-6, 7)]
 
@@ -173,7 +174,7 @@ def icra_takibi(request):
         'donem_secenekleri': donem_secenekleri,
         'teskilat_choices': TESKILAT_DEGERLERI,
         'odeme_turu_choices': ODEME_TURU_CHOICES,
-        'selected_teskilat': request.GET.get('teskilat')
+        'selected_teskilat': teskilat_filter
     })
 
 @login_required
@@ -639,7 +640,7 @@ def icra_hareketleri_list(request, icra_id):
 
 @csrf_exempt
 def icra_hareket_ekle(request, icra_id):
-    """AJAX: Yeni icra hareketi ekle, kalan borç kontrolü ile"""
+    """AJAX: Yeni icra hareketi ekle, kalan borç kontrolü ile ve icra durum güncellemesi"""
     icra = get_object_or_404(IcraTakibi, pk=icra_id)
     if request.method == 'POST':
         try:
@@ -652,12 +653,29 @@ def icra_hareket_ekle(request, icra_id):
             if float(kesilen_tutar) > kalan_borc:
                 return JsonResponse({'success': False, 'message': 'Kesilen tutar kalan borçtan fazla olamaz!'})
 
+            # Hareketi ekle
             IcraHareketleri.objects.create(
                 icra=icra,
                 kesilen_tutar=kesilen_tutar,
                 kesildigi_donem=kesildigi_donem,
                 odeme_turu=odeme_turu
             )
+
+            # İcraTakibi kalan borç ve durum güncellemesi
+            icra.refresh_from_db()
+            if icra.kalan_borc <= 0:
+                icra.durum = 'KAPANDI'
+                icra.save(update_fields=['durum'])
+
+                # Aynı personelin sıradaki ilk icrası aktif yapılır
+                siradaki_icra = IcraTakibi.objects.filter(
+                    personel=icra.personel,
+                    durum='SIRADA'
+                ).order_by('tarihi', 'icra_id').first()
+                if siradaki_icra:
+                    siradaki_icra.durum = 'AKTIF'
+                    siradaki_icra.save(update_fields=['durum'])
+
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
@@ -772,12 +790,20 @@ def icra_kesinti_listesi(request):
             data.append({
                 'id': hareket.id,
                 'ad_soyad': f"{hareket.icra.personel.ad} {hareket.icra.personel.soyad}",
-                'icra_turu': hareket.icra.get_icra_turu_display(),
+                'icra_turu': hareket.icra.get_icra_turu_display() if hasattr(hareket.icra, 'get_icra_turu_display') else '',
+                'kesildigi_donem': hareket.kesildigi_donem.strftime('%d.%m.%Y') if hareket.kesildigi_donem else '',
                 'kesilen_tutar': format_currency(hareket.kesilen_tutar),
-                'odeme_turu': dict(ODEME_TURU_CHOICES).get(hareket.odeme_turu, hareket.odeme_turu)
+                'odeme_turu': dict(ODEME_TURU_CHOICES).get(hareket.odeme_turu, hareket.odeme_turu),
+                'teskilat': getattr(hareket.icra.personel, 'teskilat', '')
             })
 
         return JsonResponse({'data': data})
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def sorgulamalar(request):
+    """Sorgulamalar dış adresini iframe ile gösterir."""
+    sorgulama_url = "http://10.38.12.55:16005/mercisreports/mercismemursorgu/"
+    return render(request, 'mutemet_app/sorgulamalar_iframe.html', {'sorgulama_url': sorgulama_url})

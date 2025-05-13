@@ -36,17 +36,17 @@
         </div>
         <div class="col-md-5">
             <h6>Yeni Hareket Ekle</h6>
-            <form id="icraHareketForm" action="{% url 'mutemet_app:icra_hareket_ekle' icra.icra_id %}" method="post">
+            <form id="icraHareketForm" action="{% url 'mutemet_app:icra_hareket_ekle' icra.icra_id %}" method="post" {% if kalan_borc == 0 %}class="readonly-form"{% endif %}>
                 {% csrf_token %}
                 <input type="hidden" name="icra_id" value="{{ icra.icra_id }}">
                 <input type="hidden" name="kalan_borc" value="{{ kalan_borc }}">
                 <div class="mb-3">
                     <label for="kesilen_tutar" class="form-label">Kesilen Tutar</label>
-                    <input type="number" step="0.01" class="form-control" name="kesilen_tutar" required>
+                    <input type="number" step="0.01" class="form-control" name="kesilen_tutar" required {% if kalan_borc == 0 %}readonly{% endif %}>
                 </div>
                 <div class="mb-3">
                     <label for="kesildigi_donem" class="form-label">Kesildiği Dönem</label>
-                    <select class="form-select" name="kesildigi_donem" required>
+                    <select class="form-select" name="kesildigi_donem" required {% if kalan_borc == 0 %}disabled{% endif %}>
                         <option value="" selected disabled>Seçiniz...</option>
                         {% for d in donem_secenekleri %}
                             <option value="{{ d|date:'Y-m-01' }}">
@@ -57,7 +57,7 @@
                 </div>
                 <div class="mb-3">
                     <label for="odeme_turu" class="form-label">Ödeme Türü</label>
-                    <select class="form-select" name="odeme_turu" required>
+                    <select class="form-select" name="odeme_turu" required {% if kalan_borc == 0 %}disabled{% endif %}>
                         <option value="" selected disabled>Seçiniz...</option>
                         <option value="DENGE">Denge</option>
                         <option value="DENGE FARK">Denge Fark</option>
@@ -73,7 +73,7 @@
                         <option value="TOPLU GİRİŞ">Toplu Giriş</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary">Kaydet</button>
+                <button type="submit" class="btn btn-primary" {% if kalan_borc == 0 %}disabled{% endif %}>Kaydet</button>
             </form>
         </div>
     </div>

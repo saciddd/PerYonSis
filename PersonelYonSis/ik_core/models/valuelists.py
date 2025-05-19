@@ -1,5 +1,5 @@
 TESKILAT_DEGERLERI = [
-    ("Sözleşmeli 4B (663 sayılı KHK 45A)", "Sözleşmeli 4B (663 sayılı KHK 45A)"),
+    ("Sözlesmeli 4B (663 sayılı KHK 45A)", "Sözleşmeli 4B (663 sayılı KHK 45A)"),
     ("Döner Sermaye", "Döner Sermaye"),
     ("İşçi Personel (Genel Bütçe)", "İşçi Personel (Genel Bütçe)"),
     ("İşçi Personel 696 (Döner Sermaye)", "İşçi Personel 696 (Döner Sermaye)"),

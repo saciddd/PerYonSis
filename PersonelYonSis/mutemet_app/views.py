@@ -472,7 +472,7 @@ def icra_takibi_list(request):
 
 @csrf_exempt
 def icra_takibi_ekle(request):
-    """Add a new IcraTakibi record. Önceki icra kapanmadan yeni icra eklenebilir, ancak durumu SIRADA olur."""
+    """Add a new IcraTakibi record. Önceki icra kapanmadan yeni icra eklenebilir, ancak durumu SIRADA olur. NAFAKA icraları her zaman AKTIF olur ve sıralamaya dahil edilmez."""
     if request.method == 'POST':
         try:
             # DEBUG: Gelen POST verilerini konsola yaz
@@ -529,14 +529,18 @@ def icra_takibi_ekle(request):
                 messages.error(request, "Tarih formatı hatalı.")
                 return redirect('mutemet_app:icra_takibi')
 
-            # Önceki icra kapanmadan yeni icra eklenebilir, ancak durumu SIRADA olmalı
-            onceki_icra = IcraTakibi.objects.filter(
-                personel=personel
-            ).exclude(durum='KAPANDI').order_by('-tarihi').first()
-            if onceki_icra and onceki_icra.durum in ['AKTIF', 'SIRADA']:
-                durum = 'SIRADA'
-            else:
+            # NAFAKA ise her zaman AKTIF, diğerleri için mevcut mantık
+            if icra_turu == 'NAFAKA':
                 durum = 'AKTIF'
+            else:
+                onceki_icra = IcraTakibi.objects.filter(
+                    personel=personel,
+                    icra_turu__in=['ICRA', 'TAAHHUT']
+                ).exclude(durum='KAPANDI').order_by('-tarihi').first()
+                if onceki_icra and onceki_icra.durum in ['AKTIF', 'SIRADA']:
+                    durum = 'SIRADA'
+                else:
+                    durum = 'AKTIF'
 
             icra = IcraTakibi.objects.create(
                 personel=personel,
@@ -581,7 +585,7 @@ def icra_hareketleri_list(request, icra_id):
 
 @csrf_exempt
 def icra_hareket_ekle(request, icra_id):
-    """AJAX: Yeni icra hareketi ekle, kalan borç kontrolü ile ve icra durum güncellemesi"""
+    """AJAX: Yeni icra hareketi ekle, kalan borç kontrolü ile ve icra durum güncellemesi. NAFAKA icralarında otomatik kapanma ve sıradaki icra güncellemesi yapılmaz."""
     icra = get_object_or_404(IcraTakibi, pk=icra_id)
     if request.method == 'POST':
         try:
@@ -591,7 +595,8 @@ def icra_hareket_ekle(request, icra_id):
 
             toplam_kesinti = IcraHareketleri.objects.filter(icra=icra).aggregate(Sum('kesilen_tutar'))['kesilen_tutar__sum'] or 0
             kalan_borc = float(icra.tutar) - float(toplam_kesinti)
-            if float(kesilen_tutar) > kalan_borc:
+            # NAFAKA ise kalan borç kontrolü yapılmaz
+            if icra.icra_turu != 'NAFAKA' and float(kesilen_tutar) > kalan_borc:
                 return JsonResponse({'success': False, 'message': 'Kesilen tutar kalan borçtan fazla olamaz!'})
 
             # Hareketi ekle
@@ -602,24 +607,38 @@ def icra_hareket_ekle(request, icra_id):
                 odeme_turu=odeme_turu
             )
 
-            # İcraTakibi kalan borç ve durum güncellemesi
-            icra.refresh_from_db()
-            if icra.kalan_borc <= 0:
-                icra.durum = 'KAPANDI'
-                icra.save(update_fields=['durum'])
+            # NAFAKA ise otomatik kapanma ve sıradaki icra güncellemesi yapılmaz
+            if icra.icra_turu != 'NAFAKA':
+                icra.refresh_from_db()
+                if icra.kalan_borc <= 0:
+                    icra.durum = 'KAPANDI'
+                    icra.save(update_fields=['durum'])
 
-                # Aynı personelin sıradaki ilk icrası aktif yapılır
-                siradaki_icra = IcraTakibi.objects.filter(
-                    personel=icra.personel,
-                    durum='SIRADA'
-                ).order_by('tarihi', 'icra_id').first()
-                if siradaki_icra:
-                    siradaki_icra.durum = 'AKTIF'
-                    siradaki_icra.save(update_fields=['durum'])
+                    # Aynı personelin sıradaki ilk icrası aktif yapılır (sadece nafaka olmayanlar)
+                    siradaki_icra = IcraTakibi.objects.filter(
+                        personel=icra.personel,
+                        durum='SIRADA',
+                        icra_turu__in=['ICRA', 'TAAHHUT']
+                    ).order_by('tarihi', 'icra_id').first()
+                    if siradaki_icra:
+                        siradaki_icra.durum = 'AKTIF'
+                        siradaki_icra.save(update_fields=['durum'])
 
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
+    return JsonResponse({'success': False, 'message': 'Geçersiz istek.'})
+
+# --- NAFAKA ve diğer icralar için manuel sonlandırma ---
+@csrf_exempt
+@login_required
+def icra_sonlandir(request, icra_id):
+    """İcrayı manuel olarak sonlandırır (durumunu KAPANDI yapar)."""
+    if request.method == 'POST':
+        icra = get_object_or_404(IcraTakibi, pk=icra_id)
+        icra.durum = 'KAPANDI'
+        icra.save(update_fields=['durum'])
+        return JsonResponse({'success': True})
     return JsonResponse({'success': False, 'message': 'Geçersiz istek.'})
 
 @login_required

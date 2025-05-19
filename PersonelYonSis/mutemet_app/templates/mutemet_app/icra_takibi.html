@@ -1,3 +1,5 @@
+--- START OF FILE icra_takibi.html ---
+
 {% extends 'base.html' %}
 {% load static %}
 
@@ -136,7 +138,7 @@
                                             <td>{{ icra.icra_dairesi }}</td>
                                             <td>{{ icra.dosya_no }}</td>
                                             <td>{{ icra.tarihi|date:"d.m.Y" }}</td>
-                                            <td>{{ icra.tutar|floatformat:2 }}</td>
+                                            <td class="tl-format">{{ icra.tutar|floatformat:2 }}</td> {# Use floatformat for initial display #}
                                             <td>
                                                 {% if icra.durum == 'AKTIF' %}
                                                 <span class="badge bg-success">Aktif</span>
@@ -146,8 +148,8 @@
                                                 <span class="badge bg-danger">Kapandı</span>
                                                 {% endif %}
                                             </td>
-                                            <td>{{ icra.hesaplanan_toplam_kesinti|floatformat:2 }}</td>
-                                            <td>{{ icra.hesaplanan_kalan_borc|floatformat:2 }}</td>
+                                            <td class="tl-format">{{ icra.hesaplanan_toplam_kesinti|floatformat:2 }}</td> {# Use floatformat #}
+                                            <td class="tl-format">{{ icra.hesaplanan_kalan_borc|floatformat:2 }}</td> {# Use floatformat #}
                                             <td>
                                                 <button type="button" class="btn btn-primary btn-sm btn-icon" data-icra-id="{{ icra.pk }}" onclick="hareketGoster(this)" {% if icra.durum == 'SIRADA' %}disabled{% endif %}>
                                                     <i class="bi bi-clock-history"></i> İşlemler
@@ -194,7 +196,8 @@
                         </div>
                         <div class="col-md-6">
                             <label for="tutar" class="form-label">Tutar</label>
-                            <input type="number" id="tutar" name="tutar" class="form-control" step="0.01" required>
+                            {# Removed inputmode and pattern as cleave.js handles input #}
+                            <input type="text" id="tutar" name="tutar" class="form-control" required autocomplete="off" placeholder="0,00">
                         </div>
                         <div class="col-md-6">
                             <label for="alacakli" class="form-label">Alacaklı</label>
@@ -326,6 +329,16 @@
     </div>
 </div>
 
+{# Add modal for adding new movement if needed, currently it's loaded dynamically #}
+<div class="modal fade" id="icraHareketEkleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- AJAX ile doldurulacak form buraya gelecek -->
+        </div>
+    </div>
+</div>
+
+
 {% endblock %}
 
 {% block extra_js %}
@@ -335,8 +348,13 @@
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/cleave.js@1.6.0/dist/cleave.min.js"></script> {# Add Cleave JS #}
+
 
 <script>
+// Store the cleave instance globally or accessible scope
+var cleaveTutar;
+
 function hareketGoster(buttonElement) {
     const icraId = buttonElement.dataset.icraId;
     if (!icraId) {
@@ -361,6 +379,8 @@ function hareketEkle(icraId) {
         Swal.fire('Hata!', 'İcra ID bulunamadı.', 'error');
         return;
     }
+    // Hide the movements modal before showing the add movement modal
+    $('#icraHareketModal').modal('hide');
     $.ajax({
         url: `/mutemet/icra-takibi/${icraId}/modal/`,
         type: 'GET',
@@ -392,6 +412,7 @@ $(document).on('submit', '#icraHareketForm', function(e) {
                     text: 'İcra hareketi başarıyla eklendi.',
                     icon: 'success'
                 }).then(() => {
+                    // Optionally, refresh the page or just the accordion section
                     window.location.href = "{% url 'mutemet_app:icra_takibi' %}";
                 });
             } else {
@@ -434,12 +455,24 @@ $(document).ready(function() {
         $('#btnIcraEkle').prop('disabled', false);
     });
 
-    // İcra Ekleme Modalı açıldığında formu sıfırla
+    // Initialize Cleave.js for the 'Tutar' input field
+    // This handles the live formatting as 123.456,75
+    cleaveTutar = new Cleave('#tutar', {
+        numeral: true,
+        numeralDecimalMark: ',', // Turkish decimal mark
+        delimiter: '.', // Turkish thousands separator
+        numeralDecimalScale: 2, // Allow 2 decimal places
+        numeralPositiveOnly: true // Only allow positive numbers
+    });
+
+
+    // İcra Ekleme Modalı açıldığında formu sıfırla ve cleave inputu resetle
     $('#icraModal').on('show.bs.modal', function () {
         $('#icra_vergi_dairesi_no').val('');
         $('#icra_dairesi').val('');
         $('#dosya_no').val('');
-        $('#tutar').val('');
+        $('#tutar').val(''); // Clear the input
+        cleaveTutar.setRawValue(''); // Reset cleave.js internal state
         $('#alacakli').val('');
         $('#alacakli_vekili').val('');
         $('#tarihi').val('');
@@ -455,7 +488,32 @@ $(document).ready(function() {
         $('#unvan').val('');
         $('#modal_personel_id').val('');
         $('#btnIcraEkle').prop('disabled', true);
+        // No need to reset cleave here, will reset on show
     });
+
+    // Capture form submission for the icraModal form
+    // We need to get the raw value from cleave.js before submitting
+    $('#icraModal form').on('submit', function(e) {
+        // Get the raw numeric value from cleave.js (e.g., "123456.75")
+        let rawValue = cleaveTutar.getRawValue();
+        
+        // Check if the raw value is effectively empty (e.g., "", "0")
+        if (rawValue === "" || parseFloat(rawValue) === 0) {
+             // If tutar is required, HTML5 validation should handle this if the field is empty
+             // But if the user types "0", the raw value is "0", which is valid.
+             // If the field is required and left empty, the browser will prevent submit.
+             // If you need custom validation here, add it.
+        }
+
+        // Temporarily set the input value to the raw value for submission
+        // The browser will submit this value
+        $('#tutar').val(rawValue);
+
+        // Allow the form to submit normally
+        // cleave.js handles putting the formatted value back after submission if needed,
+        // but a page reload after successful submit makes this unnecessary.
+    });
+
 
     // Ödeme Türü Select2 (çoklu seçim)
     $('#odeme_turu').select2({
@@ -473,25 +531,32 @@ $(document).ready(function() {
         var formattedDate = firstDay.toISOString().split('T')[0];
         $('#donem').val(formattedDate);
         // Modal açıldığında otomatik sorgu yapma
-        $('#raporlamaTable tbody').empty();
+        // $('#raporlamaTable tbody').empty(); // list is loaded on change now
+        loadKesintiListesi(); // Load list when modal is shown
     });
 
     // Kesinti listesi yükleme
     function loadKesintiListesi() {
         var donem = $('#donem').val();
-        var odemeTuru = $('#odeme_turu').val();
+        // Ödeme türü select2'den değeri al
+        var odemeTuru = $('#odeme_turu').val(); 
         var teskilat = $('#teskilat').val();
 
         if (!donem) {
-            return; // Dönem seçilmemişse sessizce çık
+            $('#raporlamaTable tbody').html('<tr><td colspan="7" class="text-center">Lütfen bir dönem seçin.</td></tr>');
+            return; 
         }
+
+        // Clear existing data and show loading state
+        $('#raporlamaTable tbody').html('<tr><td colspan="7" class="text-center"><i class="bi bi-arrow-clockwise spin"></i> Yükleniyor...</td></tr>');
 
         $.ajax({
             url: "{% url 'mutemet_app:icra_kesinti_listesi' %}",
             type: 'GET',
             data: {
                 donem: donem,
-                odeme_turu: odemeTuru,
+                // Send array of selected values
+                odeme_turu: odemeTuru, // Select2 returns array directly
                 teskilat: teskilat
             },
             success: function(response) {
@@ -500,48 +565,49 @@ $(document).ready(function() {
                 
                 if (response.data && response.data.length > 0) {
                     response.data.forEach(function(item) {
+                         // Format kesilen_tutar using the formatting function
+                        let formattedKesilenTutar = formatTLCell(item.kesilen_tutar);
                         tbody.append(`
                             <tr>
                                 <td>
                                     <div class="form-check">
-                                        <input class="form-check-input kesinti-checkbox" type="checkbox" value="${item.id}">
+                                        <input class="form-check-input kesinti-checkbox" type="checkbox" value="${item.id}" checked> {# Check by default #}
                                     </div>
                                 </td>
                                 <td>${item.ad_soyad}</td>
                                 <td>${item.icra_turu}</td>
                                 <td>${item.kesildigi_donem || ''}</td>
-                                <td>${item.kesilen_tutar}</td>
+                                <td>${formattedKesilenTutar}</td> {# Use formatted value #}
                                 <td>${item.odeme_turu}</td>
                                 <td>${item.teskilat || ''}</td>
                             </tr>
                         `);
                     });
+                    // Check the "select all" checkbox if all are checked initially
+                     $('#tumunuSecCheckbox').prop('checked', true);
                 } else {
                     tbody.append(`
                         <tr>
                             <td colspan="7" class="text-center">Seçili kriterlere uygun kayıt bulunamadı.</td>
                         </tr>
                     `);
+                     $('#tumunuSecCheckbox').prop('checked', false);
                 }
             },
             error: function() {
+                $('#raporlamaTable tbody').html('<tr><td colspan="7" class="text-center text-danger">Liste yüklenirken bir hata oluştu.</td></tr>');
                 Swal.fire('Hata!', 'Kesinti listesi yüklenirken bir hata oluştu.', 'error');
+                 $('#tumunuSecCheckbox').prop('checked', false);
             }
         });
     }
 
     // Filtre değişikliklerinde listeyi güncelle
-    $('#donem').on('change', function() {
+    $('#donem, #odeme_turu, #teskilat').on('change', function() {
         loadKesintiListesi();
     });
 
-    $('#odeme_turu, #teskilat').on('change', function() {
-        if ($('#donem').val()) {
-            loadKesintiListesi();
-        }
-    });
-
-    // Tümünü seç/kaldır
+    // Tümünü seç/kaldır checkbox
     $('#tumunuSecCheckbox').change(function() {
         $('.kesinti-checkbox').prop('checked', $(this).prop('checked'));
     });
@@ -553,13 +619,18 @@ $(document).ready(function() {
     });
 
     // Rapor oluştur butonunun submitini engelle, sadece seçili kayıtlarla çalışsın
+    // The form submit handler is now bypassed, button directly triggers logic
     $('#raporlamaForm').on('submit', function(e) {
+         // Prevent default form submission
         e.preventDefault();
-        $('#raporOlustur').trigger('click');
+        // The logic is now handled by the click listener on the button
+        // Trigger the button click handler explicitly if needed, or remove this submit handler
+        // For clarity, let's rely only on the button click handler below
     });
 
     $('#raporOlustur').on('click', function(e) {
-        e.preventDefault();
+        e.preventDefault(); // Prevent default button click if it's inside a form
+
         var seciliKesintiler = $('.kesinti-checkbox:checked').map(function() {
             return $(this).val();
         }).get();
@@ -570,15 +641,43 @@ $(document).ready(function() {
         }
 
         var donem = $('#donem').val();
-        var odemeTuru = $('#odeme_turu').val();
+        // Ödeme türü Select2'den değeri al
+        var odemeTuru = $('#odeme_turu').val(); 
         var teskilat = $('#teskilat').val();
 
         var url = `{% url 'mutemet_app:aylik_icra_kesinti' %}?donem=${donem}&secili_kesintiler=${seciliKesintiler.join(',')}`;
-        if (odemeTuru) url += `&odeme_turu=${odemeTuru}`;
-        if (teskilat) url += `&teskilat=${teskilat}`;
+        
+        // Append odeme_turu if any selected
+        if (odemeTuru && odemeTuru.length > 0) {
+             // For array parameters, join them with comma, backend should handle splitting
+             url += `&odeme_turu=${odemeTuru.join(',')}`;
+        }
+        if (teskilat) {
+             url += `&teskilat=${teskilat}`;
+        }
 
-        window.location.href = url;
+
+        // Open the report in a new tab/window
+        window.open(url, '_blank');
     });
+
+    // TL format fonksiyonu (tablo için)
+    function formatTLCell(value) {
+        if (value === undefined || value === null || value === "") return "";
+        // Ensure value is treated as a number for toLocaleString
+        let num = parseFloat(value); 
+         if (isNaN(num)) return value; // Return original value if not a valid number
+
+        // Use Turkish locale for formatting (thousands separator: '.', decimal separator: ',')
+        return num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Apply TL format to existing cells on page load (for the main icra list)
+    // Use floatformat template filter for initial render and format it afterwards
+    // The floatformat filter already handles basic number formatting in Django templates
+    // Let's keep the JS formatting for dynamic content if any, but rely on floatformat for initial load.
+    // Removed the .each() loop as floatformat handles initial render.
+
 });
 </script>
 {% endblock %}

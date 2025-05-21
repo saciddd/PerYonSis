@@ -9,6 +9,8 @@ from .models import Role, Permission, RolePermission, User, Notification
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from notifications.services import notify_role_users, notify_user
+from django.core.paginator import Paginator
+from django.db.models import Q
 
 def get_user_permissions(user):
     if user.is_authenticated:
@@ -67,12 +69,24 @@ def read_notification(request, notif_id):
     return JsonResponse({'status': 'ok'})
 
 def kullanici_tanimlari(request):
+    query = request.GET.get('q', '')
+    page_number = request.GET.get('page', 1)
     users = User.objects.all()
+    if query:
+        users = users.filter(
+            Q(Username__icontains=query) |
+            Q(FullName__icontains=query) |
+            Q(roles__RoleName__icontains=query)
+        ).distinct()
+    users = users.order_by('-CreationTime')
+    paginator = Paginator(users, 15)  # Sayfa başı 15 kayıt
+    page_obj = paginator.get_page(page_number)
     roles = Role.objects.all()
-
     return render(request, 'kullanici_tanimlari.html', {
-        'users': users,
+        'users': page_obj.object_list,
         'roles': roles,
+        'page_obj': page_obj,
+        'query': query,
     })
 
 # Kullanıcının rollerini güncelleme

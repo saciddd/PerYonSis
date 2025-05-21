@@ -22,6 +22,7 @@
                             <th>Roller</th>
                             <th>Aktif</th>
                             <th>Kayıt Tarihi</th>
+                            <th>Kurum</th>
                             <th></th>
                         </tr>
                     </thead>
@@ -44,6 +45,7 @@
                                 </form>
                             </td>
                             <td>{{ user.CreationTime|date:"d.m.Y H:i" }}</td>
+                            <td>{{ user.Organisation }}</td>
                             <td class="text-end">
                                 <button class="btn btn-outline-primary btn-sm" title="Düzenle" onclick="openEditUserForm('{{ user.UserID }}')">
                                     <i class="bi bi-pencil"></i> Düzenle

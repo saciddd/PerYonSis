@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<br>
+<div class="container-fluid">
+    <h3>Hizmet Sunum Raporlama</h3>
+
+    <form method="get" class="mb-4">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-3">
+                <label for="id_donem" class="form-label">Dönem Seçin:</label>
+                <select class="form-select" id="id_donem" name="donem">
+                     <option value="">Dönem Seçiniz</option>
+                     <!-- Dönemler JS ile doldurulacak -->
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="id_kurum" class="form-label">Kurum Seçin:</label>
+                 <select name="kurum" id="id_kurum" class="form-select">
+                    <option value="">Tüm Kurumlar</option>
+                    {% for kurum_adi in kurumlar %}
+                        <option value="{{ kurum_adi }}" {% if selected_kurum == kurum_adi %}selected{% endif %}>{{ kurum_adi }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary mt-4">Raporla</button>
+            </div>
+             {% if excel_url %}
+            <div class="col-md-auto">
+                 <a href="{{ excel_url }}" class="btn btn-success mt-4">Excel'e Aktar</a>
+            </div>
+            {% endif %}
+        </div>
+    </form>
+
+    {# Hata ve Bilgi Mesajları #}
+    {% if error_message %}
+        <div class="alert alert-danger" role="alert">
+            {{ error_message }}
+        </div>
+    {% endif %}
+
+    {% if info_message %}
+        <div class="alert alert-info" role="alert">
+            {{ info_message }}
+        </div>
+    {% endif %}
+
+    {% if calismalar_by_birim %}
+        <div class="accordion" id="birimAccordion">
+            {% for birim_data in calismalar_by_birim %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                    <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% endif %}" aria-controls="collapse{{ forloop.counter }}">
+                        {{ birim_data.birim.BirimAdi }} - {{ birim_data.birim.HSAKodu }} (Personel Sayısı: {{ birim_data.personel_sayisi }})
+                    </button>
+                </h2>
+                <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#birimAccordion">
+                    <div class="accordion-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Sıra No</th>
+                                        <th>T.C. Kimlik No</th>
+                                        <th>Adı</th>
+                                        <th>Soyadı</th>
+                                        <th>Başlangıç</th>
+                                        <th>Bitiş</th>
+                                        <th>Özel Alan Kodu</th>
+                                        <th>Sorumlu</th>
+                                        <th>Sertifika</th>
+                                        <th>Durum</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for calisma in birim_data.calismalar %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>{{ calisma.PersonelId.TCKimlikNo }}</td>
+                                        <td>{{ calisma.PersonelId.PersonelAdi }}</td>
+                                        <td>{{ calisma.PersonelId.PersonelSoyadi }}</td>
+                                        <td>{{ calisma.HizmetBaslangicTarihi|date:"d.m.Y" }}</td>
+                                        <td>{{ calisma.HizmetBitisTarihi|date:"d.m.Y" }}</td>
+                                        <td>{{ calisma.OzelAlanKodu|default:"-" }}</td>
+                                        <td>{% if calisma.Sorumlu %}Evet{% else %}Hayır{% endif %}</td>
+                                        <td>{% if calisma.Sertifika %}Evet{% else %}Hayır{% endif %}</td>
+                                        <td>{% if calisma.Kesinlestirme %}Kesinleşti{% else %}Beklemede{% endif %}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Son 6 dönemi oluşturan fonksiyon (bildirim.html'den alındı)
+    function getDosyaDonemler() {
+        const today = new Date();
+        const months = [];
+
+        // Başlangıç ayını bu ay olarak ayarla
+        today.setDate(1);
+
+        // 6 ay geriye git
+        for (let i = 0; i < 6; i++) {
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const monthLabel = `${month.toString().padStart(2, '0')}/${year}`;
+            const monthValue = `${year}-${month.toString().padStart(2, '0')}`;
+
+            months.push({
+                label: monthLabel,
+                value: monthValue
+            });
+
+            // Bir önceki aya git
+            today.setMonth(today.getMonth() - 1);
+        }
+
+        return months.reverse(); // En yakın dönemin üstte olması için ters çevir
+    }
+
+    // Sayfa yüklendiğinde dönem selectbox'ını doldur
+    document.addEventListener('DOMContentLoaded', function() {
+        const donemler = getDosyaDonemler();
+        const donemSelect = document.getElementById('id_donem');
+        const selectedDonem = '{{ selected_donem|date:"Y-m" }}'; // Views.py'den gelen seçili dönemi al (YYYY-MM formatında)
+
+        donemSelect.innerHTML = '<option value="">Dönem Seçiniz</option>'; // Default option
+        donemler.forEach(donem => {
+             const option = document.createElement('option');
+             option.value = donem.value;
+             option.textContent = donem.label;
+             if (donem.value === selectedDonem) {
+                 option.selected = true;
+             }
+             donemSelect.appendChild(option);
+        });
+    });
+</script>
+{% endblock %} 

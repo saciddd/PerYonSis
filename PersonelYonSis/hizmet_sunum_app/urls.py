@@ -23,4 +23,6 @@ urlpatterns = [
          views.onceki_donem_personel, name='onceki_donem_personel'),
     path('personel/kaydet/', views.personel_kaydet, name='personel_kaydet'),
 
+    path('raporlama/', views.raporlama, name='raporlama'),
+    path('raporlama/excel/', views.export_raporlama_excel, name='export_raporlama_excel'),
 ]

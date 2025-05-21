@@ -37,6 +37,7 @@ class Menu:
             MenuItem('Sendika Takibi', 'mutemet_app:sendika_takibi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             MenuItem('İcra Takibi', 'mutemet_app:icra_takibi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             MenuItem('Sorgulamalar', 'mutemet_app:sorgulamalar', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
+            MenuItem('Hizmet Sunum Raporlama', 'hizmet_sunum_app:raporlama', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             MenuItem('Hekim Bildirimleri', 'hekim_cizelge:mutemetlik_islemleri', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             # Çizelge 657 ve Alt Menüleri
             MenuItem('Çizelge Sistemi 657', '#', 'bi bi-calendar3', 'ÇS 657 Çizelge Sayfası', is_parent=True),

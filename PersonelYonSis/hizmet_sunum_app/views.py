@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import redirect, render, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET
@@ -13,6 +13,17 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.template.loader import get_template
 import pdfkit
+import openpyxl
+import os
+from django.conf import settings
+from io import BytesIO
+from django.db.models import Count, Prefetch
+from django.urls import reverse
+from django.utils.safestring import mark_safe
+from django.db.models.functions import TruncMonth
+from django.forms import Form
+from django import forms
+from django.contrib import messages
 
 @login_required
 def bildirim(request):
@@ -636,4 +647,172 @@ def bildirim_yazdir(request, year, month, birim_id):
 
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="hizmet_sunum_bildirim_{birim_id}_{year}_{month}.pdf"'
+    return response
+
+def raporlama(request):
+    calismalar_by_birim = None
+    donem = None
+    kurum = None
+    excel_url = None
+    error_message = None
+    info_message = None
+
+    birimler = Birim.objects.all()
+    kurumlar = birimler.values_list('KurumAdi', flat=True).distinct()
+
+    # Form yerine GET parametrelerini doğrudan al
+    donem_str = request.GET.get('donem')
+    kurum = request.GET.get('kurum')
+
+    # Dönem parametresi varsa veriyi çek
+    if donem_str:
+        try:
+            # 'YYYY-MM' formatındaki stringi ayın ilk günü olan date objesine çevir
+            donem = datetime.strptime(donem_str, "%Y-%m").date()
+
+            calismalar_query = HizmetSunumCalismasi.objects.select_related(
+                'PersonelId',
+                'CalisilanBirimId'
+            ).filter(
+                 Donem=donem
+            )
+
+            if kurum:
+                calismalar_query = calismalar_query.filter(
+                    CalisilanBirimId__KurumAdi=kurum
+                )
+
+            # Birimlere göre grupla ve her birim altındaki çalışmaları Prefetch ile çek
+            birim_ids_with_calisma = calismalar_query.values_list('CalisilanBirimId', flat=True).distinct()
+
+            birimler_with_calismalar = Birim.objects.filter(BirimId__in=birim_ids_with_calisma).prefetch_related(
+                Prefetch(
+                    'hizmetsunumcalismasi_set',
+                    queryset=calismalar_query.order_by('PersonelId__PersonelSoyadi', 'PersonelId__PersonelAdi', 'HizmetBaslangicTarihi'),
+                    to_attr='calismalar'
+                )
+            ).order_by('BirimAdi')
+
+            calismalar_by_birim = []
+            total_calisma_count = 0
+            for birim in birimler_with_calismalar:
+                 if birim.calismalar:
+                     calismalar_by_birim.append({
+                         'birim': birim,
+                         'calismalar': birim.calismalar,
+                         'personel_sayisi': len(set([c.PersonelId.PersonelId for c in birim.calismalar])) # Unique personel sayısı
+                     })
+                     total_calisma_count += len(birim.calismalar)
+
+            # Excel indirme linki oluştur
+            if calismalar_by_birim:
+                 excel_url = reverse('hizmet_sunum_app:export_raporlama_excel')
+                 excel_url += f'?donem={donem.strftime("%Y-%m")}'
+                 if kurum:
+                     excel_url += f'&kurum={kurum}'
+
+            if total_calisma_count == 0:
+                 info_message = "Seçilen dönem ve kuruma ait hizmet sunum çalışması bulunamadı."
+
+        except ValueError:
+             error_message = "Geçersiz dönem formatı seçildi."
+        except Exception as e:
+            # Hata yönetimi
+            error_message = f"Rapor oluşturulurken bir hata oluştu: {str(e)}"
+            print(f"Raporlama Hatası: {e}") # Konsola yazdır (geliştirme için)
+    else:
+        # İlk sayfa yüklemesi veya dönem seçilmemişse
+        info_message = "Lütfen bir dönem ve isteğe bağlı olarak kurum seçerek raporlayın."
+
+    context = {
+        # 'form': form, # Form kaldırıldı
+        'calismalar_by_birim': calismalar_by_birim,
+        'birimler': birimler, # Kurum seçimi için tüm birimleri geçiyoruz (kurum listesi çekmek için)
+        'kurumlar': kurumlar, # Kurum seçimi için tüm kurumları geçiyoruz
+        'selected_donem': donem_str, # Şablona dönemin string halini gönderelim ki selectbox'ta seçili kalsın
+        'selected_kurum': kurum,
+        'excel_url': excel_url,
+        # 'is_form_valid': is_form_valid, # Form kaldırıldı
+        'error_message': error_message,
+        'info_message': info_message,
+    }
+    return render(request, 'hizmet_sunum_app/raporlama.html', context)
+
+def export_raporlama_excel(request):
+    donem_str = request.GET.get('donem')
+    kurum = request.GET.get('kurum')
+
+    if not donem_str:
+        messages.error(request, "Lütfen bir dönem seçin.")
+        return redirect('hizmet_sunum_app:raporlama')
+
+    try:
+        donem = datetime.strptime(donem_str, "%Y-%m").date()
+    except ValueError:
+         messages.error(request, "Geçersiz dönem formatı.")
+         return redirect('hizmet_sunum_app:raporlama')
+
+    calismalar_query = HizmetSunumCalismasi.objects.select_related(
+        'PersonelId',
+        'CalisilanBirimId'
+    ).filter(
+        Donem=donem
+    )
+
+    if kurum:
+        calismalar_query = calismalar_query.filter(
+            CalisilanBirimId__KurumAdi=kurum
+        )
+
+    calismalar = calismalar_query.order_by(
+        'CalisilanBirimId__BirimAdi',
+        'PersonelId__PersonelSoyadi',
+        'PersonelId__PersonelAdi',
+        'HizmetBaslangicTarihi'
+    )
+
+    if not calismalar.exists():
+        messages.warning(request, "Seçilen filtreye uygun veri bulunamadı.")
+        return redirect('hizmet_sunum_app:raporlama')
+
+    # Şablon dosyasını aç
+    template_path = os.path.join(settings.STATIC_ROOT, 'excels', 'HizmetSunumSablon.xlsx')
+
+    # Şablon dosyasının varlığını kontrol et
+    if not os.path.exists(template_path):
+         messages.error(request, f"Excel şablon dosyası bulunamadı: {template_path}")
+         return redirect('hizmet_sunum_app:raporlama')
+
+    wb = openpyxl.load_workbook(template_path)
+    ws = wb.active
+
+    # Verileri yaz (2. satırdan başla)
+    row = 2
+    for calisma in calismalar:
+        personel = calisma.PersonelId
+        birim = calisma.CalisilanBirimId
+
+        ws.cell(row=row, column=1, value=personel.TCKimlikNo)
+        ws.cell(row=row, column=2, value=personel.PersonelAdi)
+        ws.cell(row=row, column=3, value=personel.PersonelSoyadi)
+        ws.cell(row=row, column=4, value=calisma.HizmetBaslangicTarihi)
+        ws.cell(row=row, column=5, value=calisma.HizmetBitisTarihi)
+        ws.cell(row=row, column=6, value=birim.BirimAdi)
+        ws.cell(row=row, column=7, value=calisma.OzelAlanKodu)
+        ws.cell(row=row, column=8, value="Evet" if calisma.Sorumlu else "Hayır")
+        ws.cell(row=row, column=9, value="Evet" if calisma.Sertifika else "Hayır")
+        row += 1
+
+    # Excel dosyasını kaydet
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    # HTTP response oluştur
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    file_name = f"hizmet_sunum_rapor_{donem_str}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{file_name}"'
     return response

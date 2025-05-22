@@ -1,0 +1,54 @@
+<!-- İcra Düzenle Modal İçeriği -->
+<form id="icraDuzenleForm" method="post" class="m-3">
+    {% csrf_token %}
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label for="edit_icra_vergi_dairesi_no" class="form-label">Vergi Dairesi No</label>
+            <input type="text" id="edit_icra_vergi_dairesi_no" name="icra_vergi_dairesi_no" class="form-control" value="{{ icra.icra_vergi_dairesi_no }}">
+        </div>
+        <div class="col-md-6">
+            <label for="edit_icra_dairesi" class="form-label">İcra Dairesi</label>
+            <input type="text" id="edit_icra_dairesi" name="icra_dairesi" class="form-control" value="{{ icra.icra_dairesi }}" required>
+        </div>
+        <div class="col-md-6">
+            <label for="edit_dosya_no" class="form-label">Dosya No</label>
+            <input type="text" id="edit_dosya_no" name="dosya_no" class="form-control" value="{{ icra.dosya_no }}" required>
+        </div>
+        <div class="col-md-6">
+            <label for="edit_tutar" class="form-label">Tutar</label>
+            <input type="text" id="edit_tutar" name="tutar" class="form-control" value="{{ icra.tutar|floatformat:'2' }}" required autocomplete="off" placeholder="0,00">
+        </div>
+        <div class="col-md-6">
+            <label for="edit_alacakli" class="form-label">Alacaklı</label>
+            <input type="text" id="edit_alacakli" name="alacakli" class="form-control" value="{{ icra.alacakli }}">
+        </div>
+        <div class="col-md-6">
+            <label for="edit_alacakli_vekili" class="form-label">Alacaklı Vekili</label>
+            <input type="text" id="edit_alacakli_vekili" name="alacakli_vekili" class="form-control" value="{{ icra.alacakli_vekili }}">
+        </div>
+        <div class="col-md-6">
+            <label for="edit_tarihi" class="form-label">Tarih</label>
+            <input type="date" id="edit_tarihi" name="tarihi" class="form-control" value="{{ icra.tarihi|date:'Y-m-d' }}" required>
+        </div>
+        <div class="col-md-6">
+            <label for="edit_icra_dairesi_banka" class="form-label">Banka</label>
+            <input type="text" id="edit_icra_dairesi_banka" name="icra_dairesi_banka" class="form-control" value="{{ icra.icra_dairesi_banka }}">
+        </div>
+        <div class="col-md-6">
+            <label for="edit_icra_dairesi_hesap_no" class="form-label">Hesap No</label>
+            <input type="text" id="edit_icra_dairesi_hesap_no" name="icra_dairesi_hesap_no" class="form-control" value="{{ icra.icra_dairesi_hesap_no }}">
+        </div>
+        <div class="col-md-6">
+            <label for="edit_icra_turu" class="form-label">İcra Türü</label>
+            <select id="edit_icra_turu" name="icra_turu" class="form-select">
+                <option value="ICRA" {% if icra.icra_turu == 'ICRA' %}selected{% endif %}>İcra</option>
+                <option value="TAAHHUT" {% if icra.icra_turu == 'TAAHHUT' %}selected{% endif %}>Taahhüt</option>
+                <option value="NAFAKA" {% if icra.icra_turu == 'NAFAKA' %}selected{% endif %}>Nafaka</option>
+            </select>
+        </div>
+    </div>
+    <div class="modal-footer mt-3">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+    </div>
+</form>

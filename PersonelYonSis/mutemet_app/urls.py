@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_icra_edit
 
 app_name = 'mutemet_app'
 
@@ -29,4 +30,7 @@ urlpatterns = [
     path('sendika/sil/<int:pk>/', views.sendika_sil, name='sendika_sil'),
     path('sendika/liste/json/', views.get_sendikalar_json, name='get_sendikalar_json'),
     path('sendika-hareket-sil/<int:pk>/', views.sendika_hareket_sil, name='sendika_hareket_sil'),
+
+    path('icra-takibi/<int:icra_id>/duzenle-modal/', views_icra_edit.icra_takibi_duzenle_modal, name='icra_takibi_duzenle_modal'),
+    path('icra-takibi/<int:icra_id>/guncelle/', views_icra_edit.icra_takibi_guncelle, name='icra_takibi_guncelle'),
 ]

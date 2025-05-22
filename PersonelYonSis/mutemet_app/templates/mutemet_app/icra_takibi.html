@@ -154,6 +154,9 @@
                                                 <button type="button" class="btn btn-primary btn-sm btn-icon" data-icra-id="{{ icra.pk }}" onclick="hareketGoster(this)" {% if icra.durum == 'SIRADA' %}disabled{% endif %}>
                                                     <i class="bi bi-clock-history"></i> İşlemler
                                                 </button>
+                                                <button type="button" class="btn btn-warning btn-sm btn-icon ms-1" data-icra-id="{{ icra.pk }}" onclick="icraDuzenleGoster(this)">
+                                                    <i class="bi bi-pencil-square"></i>
+                                                </button>
                                                 {% if icra.icra_turu == 'NAFAKA' %}
                                                     <span class="badge bg-success ms-2">Nafaka icrası - Kapatılmadıkça süresiz devam eder</span>
                                                 {% endif %}
@@ -341,6 +344,14 @@
     </div>
 </div>
 
+<!-- İcra Düzenle Modal -->
+<div class="modal fade" id="icraDuzenleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- AJAX ile doldurulacak form buraya gelecek -->
+        </div>
+    </div>
+</div>
 
 {% endblock %}
 
@@ -432,6 +443,81 @@ $(document).on('submit', '#icraHareketForm', function(e) {
         },
         error: function() {
             Swal.fire('Hata!', 'Hareket eklenirken bir hata oluştu.', 'error');
+        }
+    });
+});
+
+// İcra Düzenle butonu (kalem ikonu) tıklandığında modalı aç
+function icraDuzenleGoster(buttonElement) {
+    const icraId = buttonElement.dataset.icraId;
+    if (!icraId) {
+        Swal.fire('Hata!', 'İcra ID bulunamadı.', 'error');
+        return;
+    }
+    $.ajax({
+        url: `/mutemet/icra-takibi/${icraId}/duzenle-modal/`,
+        type: 'GET',
+        success: function(response) {
+            $('#icraDuzenleModal .modal-content').html(response);
+            // icra_id'yi forma data attribute olarak ekle
+            $('#icraDuzenleModal').find('form').attr('data-icra-id', icraId);
+            $('#icraDuzenleModal').modal('show');
+            // Cleave.js ile tutar inputunu formatla
+            var $input = $('#icraDuzenleModal').find('input[name="tutar"]');
+            if ($input.length && !$input.hasClass('cleave-applied')) {
+                $input.addClass('cleave-applied');
+                new Cleave($input[0], {
+                    numeral: true,
+                    numeralDecimalMark: ',',
+                    delimiter: '.',
+                    numeralDecimalScale: 2,
+                    numeralPositiveOnly: true
+                });
+            }
+        },
+        error: function() {
+            Swal.fire('Hata!', 'Düzenleme formu yüklenirken bir hata oluştu.', 'error');
+        }
+    });
+}
+
+// Düzenleme formu submit edildiğinde AJAX ile kaydet
+$(document).on('submit', '#icraDuzenleForm', function(e) {
+    e.preventDefault();
+    var form = $(this);
+    // icra_id'yi modal açılırken butondan alıp saklayacağız
+    var icraId = form.data('icra-id');
+    if (!icraId) {
+        // Geriye dönük uyumluluk için fallback: modal-content içindeki hidden inputtan almayı dene
+        icraId = form.closest('.modal-content').find('input[name="icra_id"]').val();
+    }
+    var $input = form.find('input[name="tutar"]');
+    if ($input.length) {
+        var val = $input.val();
+        val = val.replace(/\./g, '').replace(',', '.');
+        $input.val(val);
+    }
+    $.ajax({
+        url: `/mutemet/icra-takibi/${icraId}/guncelle/`,
+        type: 'POST',
+        data: form.serialize(),
+        headers: {'X-CSRFToken': form.find('input[name="csrfmiddlewaretoken"]').val()},
+        success: function(response) {
+            if (response.success) {
+                $('#icraDuzenleModal').modal('hide');
+                Swal.fire({
+                    title: 'Başarılı!',
+                    text: 'İcra kaydı başarıyla güncellendi.',
+                    icon: 'success'
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire('Hata!', response.message || 'Güncelleme sırasında bir hata oluştu.', 'error');
+            }
+        },
+        error: function() {
+            Swal.fire('Hata!', 'Güncelleme sırasında bir hata oluştu.', 'error');
         }
     });
 });

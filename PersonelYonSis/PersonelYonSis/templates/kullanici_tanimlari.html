@@ -19,6 +19,7 @@
                         <tr>
                             <th>Kullanıcı Adı</th>
                             <th>Ad Soyad</th>
+                            <th>Telefon</th>
                             <th>Roller</th>
                             <th>Aktif</th>
                             <th>Kayıt Tarihi</th>
@@ -31,6 +32,7 @@
                         <tr>
                             <td>{{ user.Username }}</td>
                             <td>{{ user.FullName }}</td>
+                            <td>{{ user.Phone }}</td>
                             <td>
                                 {% for role in user.roles.all %}
                                     <span class="badge bg-light text-dark border">{{ role.RoleName }}</span>

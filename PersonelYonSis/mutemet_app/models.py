@@ -162,6 +162,10 @@ class IcraTakibi(models.Model):
     tutar = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Tutar')
     durum = models.CharField(max_length=10, choices=DURUM_TIPLERI, default='AKTIF', verbose_name='Durum')
     icra_turu = models.CharField(max_length=10, choices=ICRA_TURLERI, default='ICRA', verbose_name='İcra Türü')
+    silme_isteyen = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='silme_istegi_icralar', verbose_name='Silme İsteyen'
+    )
 
     class Meta:
         ordering = ['-tarihi']
@@ -247,3 +251,31 @@ class OdemeTakibi(models.Model):
 
     def __str__(self):
         return f"{self.personel} - {self.odeme_tipi} ({self.odeme_tarihi})"
+
+class SilinenIcraTakibi(models.Model):
+    """Silinen icra kayıtlarının yedeği"""
+    # Orijinal IcraTakibi alanları
+    icra_id = models.IntegerField()
+    personel = models.ForeignKey(Personel, on_delete=models.SET_NULL, null=True)
+    icra_vergi_dairesi_no = models.CharField(max_length=50)
+    icra_dairesi = models.CharField(max_length=100)
+    dosya_no = models.CharField(max_length=50)
+    icra_dairesi_banka = models.CharField(max_length=100)
+    icra_dairesi_hesap_no = models.CharField(max_length=50)
+    alacakli = models.CharField(max_length=100)
+    alacakli_vekili = models.CharField(max_length=100, blank=True, null=True)
+    tarihi = models.DateField()
+    tutar = models.DecimalField(max_digits=10, decimal_places=2)
+    durum = models.CharField(max_length=10)
+    icra_turu = models.CharField(max_length=10)
+    silme_isteyen = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='yedek_silme_isteyen')
+    # Ekstra alanlar
+    silen = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='silinen_icralari_silen')
+    silinme_tarihi = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Silinen İcra Takibi'
+        verbose_name_plural = 'Silinen İcra Takipleri'
+
+    def __str__(self):
+        return f"{self.personel} - {self.icra_dairesi} ({self.dosya_no}) [Silindi]"

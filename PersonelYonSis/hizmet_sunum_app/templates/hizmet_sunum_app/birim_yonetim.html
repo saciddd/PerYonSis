@@ -1,0 +1,347 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Birim Yönetimi{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Birim Yönetimi</h3>
+    <div class="row mb-2">
+        <div class="col-md-4">
+            <input type="text" id="birimAramaInput" class="form-control form-control-sm" placeholder="Birim, kurum veya HSA kodu ile ara...">
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-striped table-hover align-middle" id="birimTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Birim</th>
+                    <th>Kurum</th>
+                    <th>HSA</th>
+                    <th class="text-center">Yetkili</th>
+                    <th>Yetkililer</th>
+                    <th>İşlem</th>
+                </tr>
+            </thead>
+            <tbody id="birimTableBody">
+                {% for birim in birimler %}
+                <tr>
+                    <td>{{ birim.adi }}</td>
+                    <td>{{ birim.kurum }}</td>
+                    <td>{{ birim.hsa_adi }} - <small class="text-muted">{{ birim.hsa_kodu }}</small></td>
+                    <td class="text-center">{{ birim.yetkili_sayisi }}</td>
+                    <td>
+                        {% if birim.yetkililer %}
+                            <ul class="mb-0 ps-3 small">
+                                {% for user in birim.yetkililer %}
+                                    <li>{{ user.username }}<span class="text-muted"> - {{ user.full_name }}</span></li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <span class="text-muted small">Yok</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-outline-primary btn-sm" onclick="openYetkiliKullanicilarModal({{ birim.id }})" title="Yetkili Kullanıcılar">
+                            <i class="bi bi-people-fill"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="openBirimDuzenleModal({{ birim.id }})" title="Düzenle">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <nav>
+            <ul class="pagination pagination-sm justify-content-end" id="birimPagination"></ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Yetkili Kullanıcılar Modal -->
+<div class="modal fade" id="yetkiliKullanicilarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-people-fill me-2"></i>
+                    Yetkili Kullanıcılar
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="yetkiliKullaniciEkleForm" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="kullaniciAraInput" placeholder="Kullanıcı adı ile ara...">
+                        <button class="btn btn-success" type="submit">
+                            <i class="bi bi-person-plus"></i> Ekle
+                        </button>
+                    </div>
+                    <div id="kullaniciAraSonuc" class="mt-2"></div>
+                </form>
+                <h6>Yetkili Kullanıcılar</h6>
+                <ul class="list-group" id="yetkiliKullanicilarListesi"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Birim Düzenleme Modal -->
+<div class="modal fade" id="birimDuzenleModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Birim Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="birimDuzenleForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="birimIdDuzenle" name="birimId">
+                    <div class="mb-3">
+                        <label for="birimAdiDuzenle" class="form-label">Birim Adı</label>
+                        <input type="text" class="form-control" id="birimAdiDuzenle" name="birimAdi" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="kurumAdiDuzenle" class="form-label">Kurum Adı</label>
+                        <input type="text" class="form-control" id="kurumAdiDuzenle" name="kurumAdi" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="hsaKoduDuzenle" class="form-label">Hizmet Sunum Alanı</label>
+                        <input type="text" class="form-control" id="hsaKoduDuzenle" name="hsaKodu" required>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="birimGuncelle()">Değişiklikleri Kaydet</button>
+                    <button type="button" class="btn btn-danger ms-2" onclick="birimSil()">Birimi Sil</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Bildirim.html'deki JS fonksiyonlarının aynısı kullanılabilir.
+// Sadece modal açma fonksiyonları burada da tanımlanmalı.
+
+let aktifBirimId = null;
+
+function openYetkiliKullanicilarModal(birimId) {
+    aktifBirimId = birimId;
+    var modal = new bootstrap.Modal(document.getElementById('yetkiliKullanicilarModal'));
+    modal.show();
+
+    fetch(`/hizmet_sunum/birim/${birimId}/yetkililer/`)
+        .then(resp => resp.json())
+        .then(data => {
+            const ul = document.getElementById('yetkiliKullanicilarListesi');
+            ul.innerHTML = '';
+            if (data.status === 'success' && Array.isArray(data.data)) {
+                data.data.forEach(user => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.innerHTML = `
+                        <span>${user.username} - ${user.full_name}</span>
+                        <button class="btn btn-danger btn-sm" onclick="kullaniciYetkiSil(${birimId},'${user.username}', this)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    `;
+                    ul.appendChild(li);
+                });
+            } else {
+                ul.innerHTML = '<li class="list-group-item text-muted">Yetkili kullanıcı yok.</li>';
+            }
+        });
+    document.getElementById('kullaniciAraInput').value = '';
+    document.getElementById('kullaniciAraSonuc').innerHTML = '';
+    const form = document.getElementById('yetkiliKullaniciEkleForm');
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        const username = document.getElementById('kullaniciAraInput').value.trim();
+        if (!username) return;
+        fetch(`/hizmet_sunum/kullanici/ara/?username=${encodeURIComponent(username)}`)
+            .then(resp => resp.json())
+            .then(data => {
+                const sonucDiv = document.getElementById('kullaniciAraSonuc');
+                if (data.status === 'success' && data.data) {
+                    const user = data.data;
+                    sonucDiv.innerHTML = `
+                        <div class="alert alert-success d-flex justify-content-between align-items-center mb-2">
+                            <span>${user.username} - ${user.full_name}</span>
+                            <button class="btn btn-primary btn-sm" id="btnYetkiVer">
+                                <i class="bi bi-person-plus"></i> Yetki Ver
+                            </button>
+                        </div>
+                    `;
+                    document.getElementById('btnYetkiVer').onclick = function() {
+                        fetch(`/hizmet_sunum/birim/${birimId}/yetki-ekle/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({ username: user.username })
+                        })
+                        .then(resp => resp.json())
+                        .then(res => {
+                            if (res.status === 'success') {
+                                sonucDiv.innerHTML = '<div class="alert alert-success">Yetki verildi.</div>';
+                                openYetkiliKullanicilarModal(birimId);
+                            } else {
+                                sonucDiv.innerHTML = `<div class="alert alert-danger">${res.message || 'Yetki verilemedi.'}</div>`;
+                            }
+                        });
+                    };
+                } else {
+                    sonucDiv.innerHTML = `<div class="alert alert-danger">Kullanıcı bulunamadı.</div>`;
+                }
+            });
+    };
+}
+
+function kullaniciYetkiSil(birimId, username, btn) {
+    if (!confirm('Bu kullanıcının yetkisini kaldırmak istiyor musunuz?')) return;
+    fetch(`/hizmet_sunum/birim/${birimId}/yetki-sil/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ username: username })
+    })
+    .then(resp => resp.json())
+    .then(res => {
+        if (res.status === 'success') {
+            btn.closest('li').remove();
+        } else {
+            alert(res.message || 'Yetki silinemedi.');
+        }
+    });
+}
+
+function openBirimDuzenleModal(birimId) {
+    fetch(`/hizmet_sunum/birim/${birimId}/detay/`)
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success'){
+                document.getElementById('birimIdDuzenle').value = data.data.BirimId;
+                document.getElementById('birimAdiDuzenle').value = data.data.BirimAdi;
+                document.getElementById('kurumAdiDuzenle').value = data.data.KurumAdi;
+                document.getElementById('hsaKoduDuzenle').value = data.data.HSAKodu;
+                new bootstrap.Modal(document.getElementById('birimDuzenleModal')).show();
+            } else {
+                alert('Seçili birim bilgileri alınamadı.');
+            }
+        }).catch(error => {
+            alert('Seçili birim bilgileri alınırken hata.');
+        });
+}
+
+function birimGuncelle() {
+    const form = document.getElementById('birimDuzenleForm');
+    const formData = new FormData(form);
+    const birimId = document.getElementById('birimIdDuzenle').value;
+    if (!birimId) {
+        alert('Düzenlenecek birim seçili değil.');
+        return;
+    }
+    const url = `/hizmet_sunum/birim/${birimId}/guncelle/`;
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert('Hata: ' + (data.message || 'Birim güncellenemedi.'));
+        }
+    })
+    .catch(error => {
+        alert('Birim güncellenirken bir hata oluştu.');
+    });
+}
+
+function birimSil() {
+    const birimId = document.getElementById('birimIdDuzenle').value;
+    if (!birimId) {
+        alert('Silinecek birim seçili değil.');
+        return;
+    }
+    if (!confirm('Bu birimi silmek istediğinizden emin misiniz? Bu birime ait tüm bildirimler de silinecektir!')) {
+        return;
+    }
+    const url = `/hizmet_sunum/birim/${birimId}/sil/`;
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.getElementById('birimDuzenleForm').querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert('Hata: ' + (data.message || 'Birim silinemedi.'));
+        }
+    })
+    .catch(error => {
+        alert('Birim silinirken bir hata oluştu.');
+    });
+}
+
+// Pagination ve arama için JS
+const pageSize = 10;
+let currentPage = 1;
+let allRows = [];
+
+function filterAndPaginateTable() {
+    const search = document.getElementById('birimAramaInput').value.trim().toLowerCase();
+    const tbody = document.getElementById('birimTableBody');
+    if (allRows.length === 0) {
+        allRows = Array.from(tbody.querySelectorAll('tr'));
+    }
+    // Filtrele
+    let filtered = allRows.filter(row => {
+        return Array.from(row.cells).some(cell =>
+            cell.textContent.toLowerCase().includes(search)
+        );
+    });
+    // Sayfalama
+    const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    tbody.innerHTML = '';
+    filtered.slice(start, end).forEach(row => tbody.appendChild(row));
+    // Pagination UI
+    const pag = document.getElementById('birimPagination');
+    pag.innerHTML = '';
+    for (let i = 1; i <= totalPages; i++) {
+        pag.innerHTML += `<li class="page-item${i === currentPage ? ' active' : ''}">
+            <a class="page-link" href="#" onclick="gotoPage(${i});return false;">${i}</a>
+        </li>`;
+    }
+}
+
+function gotoPage(page) {
+    currentPage = page;
+    filterAndPaginateTable();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    allRows = Array.from(document.getElementById('birimTableBody').querySelectorAll('tr'));
+    filterAndPaginateTable();
+    document.getElementById('birimAramaInput').addEventListener('input', function() {
+        currentPage = 1;
+        filterAndPaginateTable();
+    });
+});
+</script>
+{% endblock %}

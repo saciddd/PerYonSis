@@ -1,3 +1,5 @@
+import locale
+import platform
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -8,10 +10,13 @@ from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
 from ik_core.models import Personel, Unvan, Kurum  # Unvan ve Kurum eklendi
 from ik_core.models.valuelists import TESKILAT_DEGERLERI  # TESKILAT_DEGERLERI eklendi
-from .models import PersonelHareket, Sendika, SendikaUyelik, IcraTakibi, IcraHareketleri
+from .models import PersonelHareket, Sendika, SendikaUyelik, IcraTakibi, IcraHareketleri, SilinenIcraTakibi
 from django.db import transaction
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
 from django.db import models
 from django.template.loader import render_to_string
 from datetime import datetime, date
@@ -767,3 +772,36 @@ def sorgulamalar(request):
     """Sorgulamalar dış adresini iframe ile gösterir."""
     sorgulama_url = "http://10.38.12.55:16005/mercisreports/mercismemursorgu/"
     return render(request, 'mutemet_app/sorgulamalar_iframe.html', {'sorgulama_url': sorgulama_url})
+
+@login_required
+def icra_sil(request, icra_id):
+    icra = get_object_or_404(IcraTakibi, pk=icra_id)
+    user = request.user
+    if icra.silme_isteyen is None:
+        icra.silme_isteyen = user
+        icra.save(update_fields=['silme_isteyen'])
+        return JsonResponse({"status": "pending", "message": "Silme isteği kaydedildi. Onay bekleniyor."})
+    elif icra.silme_isteyen == user:
+        return JsonResponse({"status": "error", "message": "Siz zaten silme talebini oluşturan kullanıcısınız. Silme işlemi için farklı bir kullanıcı tarafından onay verilmelidir."})
+    else:
+        # Yedekle ve sil
+        SilinenIcraTakibi.objects.create(
+            icra_id=icra.pk,
+            personel=icra.personel,
+            icra_vergi_dairesi_no=icra.icra_vergi_dairesi_no,
+            icra_dairesi=icra.icra_dairesi,
+            dosya_no=icra.dosya_no,
+            icra_dairesi_banka=icra.icra_dairesi_banka,
+            icra_dairesi_hesap_no=icra.icra_dairesi_hesap_no,
+            alacakli=icra.alacakli,
+            alacakli_vekili=icra.alacakli_vekili,
+            tarihi=icra.tarihi,
+            tutar=icra.tutar,
+            durum=icra.durum,
+            icra_turu=icra.icra_turu,
+            silme_isteyen=icra.silme_isteyen,
+            silen=user,
+            silinme_tarihi=timezone.now(),
+        )
+        icra.delete()
+        return JsonResponse({"status": "deleted", "message": "Kayıt başarıyla silindi."})

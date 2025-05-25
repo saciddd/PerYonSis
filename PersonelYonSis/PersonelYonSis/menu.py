@@ -50,6 +50,7 @@ class Menu:
             # Hizmet Sunum Alanı ve Alt Menüleri
             MenuItem('Hizmet Sunum Alanı', '#', 'bi bi-house', 'Hizmet Sunum Alanı Bildirim', is_parent=True),
             MenuItem('Bildirim İşlemleri', 'hizmet_sunum_app:bildirim', 'bi bi-octagon', 'Hizmet Sunum Alanı Bildirim', parent_menu='Hizmet Sunum Alanı'),
+            MenuItem('Birim Bilgileri', 'hizmet_sunum_app:birim_yonetim', 'bi bi-octagon', 'HSA Birim Bilgileri', parent_menu='Hizmet Sunum Alanı'),
             # Hekim Çizelge Sistemi ve Alt Menüleri
             MenuItem('Hekim Çizelge Sistemi', '#', 'bi bi-h-square', 'HÇ Hizmet Raporu', is_parent=True),
             MenuItem('Çizelge', 'hekim_cizelge:cizelge', 'bi bi-octagon', 'HÇ Çizelge Sayfası', parent_menu='Hekim Çizelge Sistemi'),

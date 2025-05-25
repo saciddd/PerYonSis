@@ -24,6 +24,11 @@ from django.db.models.functions import TruncMonth
 from django.forms import Form
 from django import forms
 from django.contrib import messages
+from django.contrib.auth import get_user_model
+
+from .models import UserBirim  # hizmet_sunum_app_userbirim modelinizin importu
+
+User = get_user_model()
 
 @login_required
 def bildirim(request):
@@ -816,3 +821,86 @@ def export_raporlama_excel(request):
     file_name = f"hizmet_sunum_rapor_{donem_str}.xlsx"
     response['Content-Disposition'] = f'attachment; filename="{file_name}"'
     return response
+
+def birim_yetkililer(request, birim_id):
+    # Birime atanmış kullanıcıları getir
+    yetkiler = UserBirim.objects.filter(birim_id=birim_id).select_related('user')
+    data = [
+        {
+            "username": y.user.Username,
+            "full_name": y.user.FullName,
+        }
+        for y in yetkiler
+    ]
+    return JsonResponse({"status": "success", "data": data})
+
+def kullanici_ara(request):
+    username = request.GET.get('username', '').strip()
+    try:
+        user = User.objects.get(Username=username)
+        data = {
+            "username": user.Username,
+            "full_name": user.FullName
+        }
+        return JsonResponse({"status": "success", "data": data})
+    except User.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Kullanıcı bulunamadı."})
+
+@csrf_exempt
+@require_POST
+def birim_yetki_ekle(request, birim_id):
+    import json
+    try:
+        body = json.loads(request.body)
+        username = body.get('username')
+        user = User.objects.get(Username=username)
+        birim = Birim.objects.get(pk=birim_id)
+        obj, created = UserBirim.objects.get_or_create(user=user, birim=birim)
+        if created:
+            return JsonResponse({"status": "success"})
+        else:
+            return JsonResponse({"status": "error", "message": "Kullanıcı zaten yetkili."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
+
+@csrf_exempt
+@require_POST
+def birim_yetki_sil(request, birim_id):
+    import json
+    try:
+        body = json.loads(request.body)
+        username = body.get('username')
+        user = User.objects.get(Username=username)
+        birim = Birim.objects.get(pk=birim_id)
+        deleted, _ = UserBirim.objects.filter(user=user, birim=birim).delete()
+        if deleted:
+            return JsonResponse({"status": "success"})
+        else:
+            return JsonResponse({"status": "error", "message": "Yetki bulunamadı."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
+
+@login_required
+def birim_yonetim(request):
+    from .models import Birim, UserBirim
+    birimler = Birim.objects.select_related('HSAKodu').all()
+    birim_list = []
+    for birim in birimler:
+        yetkiler = UserBirim.objects.filter(birim=birim).select_related('user')
+        yetkili_users = [
+            {
+                "username": y.user.Username,
+                "full_name": y.user.FullName,
+            }
+            for y in yetkiler
+        ]
+        birim_list.append({
+            "id": birim.BirimId,
+            "adi": birim.BirimAdi,
+            "kurum": birim.KurumAdi,
+            "hsa_kodu": birim.HSAKodu.AlanKodu,
+            "hsa_adi": birim.HSAKodu.AlanAdi,
+            "yetkili_sayisi": len(yetkili_users),
+            "yetkililer": yetkili_users,
+        })
+    return render(request, "hizmet_sunum_app/birim_yonetim.html", {"birimler": birim_list})

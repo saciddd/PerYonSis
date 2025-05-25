@@ -33,6 +33,9 @@
                 </tbody>
             </table>
             <p><strong>Toplam Kesinti:</strong> {{ toplam_kesinti }} | <strong>Kalan Borç:</strong> {{ kalan_borc }}</p>
+            <button id="btnIcraSil" class="btn btn-outline-danger w-100 mt-2">
+                <i class="bi bi-trash"></i> İcra Kaydını Sil
+            </button>
         </div>
         <div class="col-md-5">
             <h6>Yeni Hareket Ekle</h6>
@@ -114,6 +117,41 @@ $(document).on('click', '#btnIcraSonlandir', function() {
                 },
                 error: function() {
                     Swal.fire('Hata', 'İcra kapatılamadı.', 'error');
+                }
+            });
+        }
+    });
+});
+
+// İcra silme butonu
+$(document).on('click', '#btnIcraSil', function() {
+    Swal.fire({
+        title: 'İcra Kaydını Sil',
+        text: 'Bu icra kaydını silmek istediğinize emin misiniz? Silme işlemi iki aşamalıdır. İlkinde silme isteği kaydedilir, ikinci kez silerseniz kayıt tamamen silinir!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, Sil',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '/mutemet/icra/{{ icra.icra_id }}/sil/',
+                type: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'},
+                success: function(response) {
+                    if (response.status === 'pending') {
+                        Swal.fire('Silme İsteği Kaydedildi', response.message, 'info');
+                    } else if (response.status === 'deleted') {
+                        $('#icraHareketModal').modal('hide');
+                        Swal.fire('Silindi', response.message, 'success').then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('Hata', response.message || 'Silme işlemi başarısız.', 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Hata', 'Silme işlemi sırasında bir hata oluştu.', 'error');
                 }
             });
         }

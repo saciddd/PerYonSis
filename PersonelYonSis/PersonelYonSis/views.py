@@ -276,6 +276,7 @@ def register(request):
     """User registration view."""
     if request.method == 'POST':
         username = request.POST.get('username')
+        fullname = request.POST.get('fullname')
         password = request.POST.get('password')
         email = request.POST.get('email')
         phone = request.POST.get('phone')
@@ -293,7 +294,7 @@ def register(request):
         try:
             user = User.objects.create(
                 Username=username,
-                FullName=username,  # Default FullName as username
+                FullName=fullname,
                 Email=email,
                 Phone=phone,
                 TCKimlikNo=tckimlikno,

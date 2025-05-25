@@ -33,4 +33,5 @@ urlpatterns = [
 
     path('icra-takibi/<int:icra_id>/duzenle-modal/', views_icra_edit.icra_takibi_duzenle_modal, name='icra_takibi_duzenle_modal'),
     path('icra-takibi/<int:icra_id>/guncelle/', views_icra_edit.icra_takibi_guncelle, name='icra_takibi_guncelle'),
+    path('icra/<int:icra_id>/sil/', views.icra_sil, name='icra_sil'),
 ]

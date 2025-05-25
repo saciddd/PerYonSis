@@ -112,6 +112,36 @@
     <!-- Aktif Birim Bilgisi (Dinamik) -->
     <div id="aktifBirimBilgisi"></div>
 
+    <!-- Yetkili Kullanıcılar Modal -->
+    <div class="modal fade" id="yetkiliKullanicilarModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-people-fill me-2"></i>
+                        Yetkili Kullanıcılar
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="yetkiliKullaniciEkleForm" class="mb-3">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="kullaniciAraInput" placeholder="Kullanıcı adı ile ara...">
+                            <button class="btn btn-success" type="submit">
+                                <i class="bi bi-person-plus"></i> Ekle
+                            </button>
+                        </div>
+                        <div id="kullaniciAraSonuc" class="mt-2"></div>
+                    </form>
+                    <h6>Yetkili Kullanıcılar</h6>
+                    <ul class="list-group" id="yetkiliKullanicilarListesi">
+                        <!-- Dinamik olarak doldurulacak -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bildirimler Tablosu -->
     <div class="table-responsive">
         <table class="table table-sm table-bordered table-hover" id="bildirimlerTable">
@@ -878,11 +908,13 @@
 
     // Sayfa yüklendiğinde
     document.addEventListener('DOMContentLoaded', function() {
+        // Dönemleri doldur
         const donemler = getDosyaDonemler();
         const donemSelect = document.getElementById('donemSecimi');
-        donemSelect.innerHTML = donemler.map(donem => 
-            `<option value="${donem.value}">${donem.label}</option>`
-        ).join('');
+        donemSelect.innerHTML = '<option value="">Dönem Seçiniz</option>' +
+            donemler.map(donem =>
+                `<option value="${donem.value}">${donem.label}</option>`
+            ).join('');
 
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -1074,13 +1106,22 @@
                 if (data.status === 'success') {
                     const birim = data.data;
                     document.getElementById('aktifBirimBilgisi').innerHTML = `
-                        <div class="alert alert-info" role="alert">
-                            <strong>Aktif Birim:</strong> ${birim.BirimAdi}
-                            <span>
-                                - Özel Alan Kodu: ${birim.HSAKodu} (${birim.HSAAdi || ''})
-                            </span>
+                        <div class="alert alert-info d-flex align-items-center" role="alert">
+                            <button class="btn btn-sm btn-outline-primary me-3" id="btnYetkiliKullanicilar">
+                                <i class="bi bi-people-fill"></i> Yetkili Kullanıcılar
+                            </button>
+                            <div>
+                                <strong>Aktif Birim:</strong> ${birim.BirimAdi}
+                                <span>
+                                    - Özel Alan Kodu: ${birim.HSAKodu} (${birim.HSAAdi || ''})
+                                </span>
+                            </div>
                         </div>
                     `;
+                    // Buton eventini ekle
+                    document.getElementById('btnYetkiliKullanicilar').addEventListener('click', function() {
+                        openYetkiliKullanicilarModal(birimId);
+                    });
                 } else {
                     document.getElementById('aktifBirimBilgisi').innerHTML = '';
                 }
@@ -1088,6 +1129,107 @@
             .catch(() => {
                 document.getElementById('aktifBirimBilgisi').innerHTML = '';
             });
+    }
+
+    // Yetkili Kullanıcılar Modalını açan fonksiyon
+    function openYetkiliKullanicilarModal(birimId) {
+        // Modalı aç
+        var modal = new bootstrap.Modal(document.getElementById('yetkiliKullanicilarModal'));
+        modal.show();
+
+        // Listeyi doldur
+        fetch(`/hizmet_sunum/birim/${birimId}/yetkililer/`)
+            .then(resp => resp.json())
+            .then(data => {
+                const ul = document.getElementById('yetkiliKullanicilarListesi');
+                ul.innerHTML = '';
+                if (data.status === 'success' && Array.isArray(data.data)) {
+                    data.data.forEach(user => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        li.innerHTML = `
+                            <span>${user.username} - ${user.full_name}</span>
+                            <button class="btn btn-danger btn-sm" onclick="kullaniciYetkiSil('${birimId}','${user.username}', this)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        `;
+                        ul.appendChild(li);
+                    });
+                } else {
+                    ul.innerHTML = '<li class="list-group-item text-muted">Yetkili kullanıcı yok.</li>';
+                }
+            });
+        // Formu temizle
+        document.getElementById('kullaniciAraInput').value = '';
+        document.getElementById('kullaniciAraSonuc').innerHTML = '';
+        // Form submit eventini güncelle
+        const form = document.getElementById('yetkiliKullaniciEkleForm');
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            const username = document.getElementById('kullaniciAraInput').value.trim();
+            if (!username) return;
+            // Kullanıcıyı ara ve ekle
+            fetch(`/hizmet_sunum/kullanici/ara/?username=${encodeURIComponent(username)}`)
+                .then(resp => resp.json())
+                .then(data => {
+                    const sonucDiv = document.getElementById('kullaniciAraSonuc');
+                    if (data.status === 'success' && data.data) {
+                        const user = data.data;
+                        sonucDiv.innerHTML = `
+                            <div class="alert alert-success d-flex justify-content-between align-items-center mb-2">
+                                <span>${user.username} - ${user.full_name}</span>
+                                <button class="btn btn-primary btn-sm" id="btnYetkiVer">
+                                    <i class="bi bi-person-plus"></i> Yetki Ver
+                                </button>
+                            </div>
+                        `;
+                        document.getElementById('btnYetkiVer').onclick = function() {
+                            // Yetki ver
+                            fetch(`/hizmet_sunum/birim/${birimId}/yetki-ekle/`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': '{{ csrf_token }}'
+                                },
+                                body: JSON.stringify({ username: user.username })
+                            })
+                            .then(resp => resp.json())
+                            .then(res => {
+                                if (res.status === 'success') {
+                                    sonucDiv.innerHTML = '<div class="alert alert-success">Yetki verildi.</div>';
+                                    openYetkiliKullanicilarModal(birimId); // Listeyi yenile
+                                } else {
+                                    sonucDiv.innerHTML = `<div class="alert alert-danger">${res.message || 'Yetki verilemedi.'}</div>`;
+                                }
+                            });
+                        };
+                    } else {
+                        sonucDiv.innerHTML = `<div class="alert alert-danger">Kullanıcı bulunamadı.</div>`;
+                    }
+                });
+        };
+    }
+
+    // Kullanıcıdan yetki silme fonksiyonu
+    function kullaniciYetkiSil(birimId, username, btn) {
+        if (!confirm('Bu kullanıcının yetkisini kaldırmak istiyor musunuz?')) return;
+        fetch(`/hizmet_sunum/birim/${birimId}/yetki-sil/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ username: username })
+        })
+        .then(resp => resp.json())
+        .then(res => {
+            if (res.status === 'success') {
+                // Listeden kaldır
+                btn.closest('li').remove();
+            } else {
+                alert(res.message || 'Yetki silinemedi.');
+            }
+        });
     }
 
     // Dönem veya birim değiştiğinde bildirimleri ve aktif birim bilgisini getir

@@ -42,13 +42,17 @@
         <div class="card-body">
             <form method="post" action="{% url 'mutemet_app:sendika_hareket_ekle' %}" class="row g-3 align-items-end">
                 {% csrf_token %}
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="personel_select" class="form-label">T.C. Kimlik No</label>
                     <select id="personel_select" name="personel_id" class="form-control" required></select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label for="ad_soyad" class="form-label">Ad Soyad</label>
                     <input type="text" id="ad_soyad" class="form-control" readonly>
+                </div>
+                <div class="col-md-2">
+                    <label for="aktif_sendika" class="form-label">Aktif Sendika</label>
+                    <input type="text" id="aktif_sendika" class="form-control" readonly>
                 </div>
                 <div class="col-md-2">
                     <label for="hareket_tarihi" class="form-label">Tarih</label>
@@ -79,6 +83,15 @@
                  <div class="col-md-1">
                      <button type="submit" class="btn btn-primary w-100">Kaydet</button>
                  </div>
+                <div class="col-md-12" id="aktifSendikaUyari" style="display:none;">
+                    <div class="alert alert-warning py-2 my-2">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        Sendika üyesi personellere sadece çıkış kaydı yapabilirsiniz.
+                    </div>
+                </div>
+                 <!-- Gizli input alanları -->
+                 <input type="hidden" id="hidden_sendika" name="sendika_readonly">
+                 <input type="hidden" id="hidden_hareket_tipi" name="hareket_tipi_readonly">
             </form>
         </div>
     </div>
@@ -257,9 +270,49 @@ $(document).ready(function() {
             cache: true
         }
     }).on('select2:select', function (e) {
-        // Personel seçildiğinde Ad Soyad alanını doldur
+        // Personel seçildiğinde Ad Soyad ve sendika alanını doldur
         var data = e.params.data;
         $('#ad_soyad').val(data.ad_soyad);
+        $('#aktif_sendika').val(data.aktif_sendika);
+
+        // Aktif sendika varsa: sendika alanını doldur, readonly yap, hareket_tipi çıkış ve readonly yap, uyarı göster
+        if (data.aktif_sendika && data.aktif_sendika !== "") {
+            // Sendika select'i aktif sendikaya set et
+            var aktifSendikaText = data.aktif_sendika;
+            var aktifSendikaOption = $('#sendika option').filter(function() {
+                return $(this).text().trim() === aktifSendikaText.trim();
+            });
+            if (aktifSendikaOption.length) {
+                var selectedSendikaVal = aktifSendikaOption.val();
+                $('#sendika').val(selectedSendikaVal);
+                // select'i disabled yapma, bunun yerine değerini gizli alana kopyala
+                $('#sendika').removeClass('form-select').addClass('form-control').css('pointer-events', 'none').prop('disabled', true); // Görsel olarak disabled gibi yap
+                $('#hidden_sendika').val(selectedSendikaVal); // Değeri gizli inputa ata
+
+            } else {
+                // Eğer option yoksa, select'i sıfırla ve aktif et (readonly durumu kalkar)
+                $('#sendika').val('').prop('disabled', false).removeClass('form-control').addClass('form-select').css('pointer-events', 'auto');
+                 $('#hidden_sendika').val('');
+            }
+
+            // Hareket tipi sadece çıkış
+            var selectedHareketTipi = 'CIKIS';
+            $('#hareket_tipi').val(selectedHareketTipi);
+            // select'i disabled yapma, bunun yerine değerini gizli alana kopyala
+            $('#hareket_tipi').removeClass('form-select').addClass('form-control').css('pointer-events', 'none').prop('disabled', true); // Görsel olarak disabled gibi yap
+            $('#hidden_hareket_tipi').val(selectedHareketTipi); // Değeri gizli inputa ata
+
+
+            // Uyarı göster
+            $('#aktifSendikaUyari').show();
+        } else {
+            // Alanları aktif et, değerleri sıfırla
+            $('#sendika').val('').prop('disabled', false).removeClass('form-control').addClass('form-select').css('pointer-events', 'auto');
+            $('#hareket_tipi').val('').prop('disabled', false).removeClass('form-control').addClass('form-select').css('pointer-events', 'auto');
+            $('#aktifSendikaUyari').hide();
+            $('#hidden_sendika').val('');
+            $('#hidden_hareket_tipi').val('');
+        }
     });
 
     // DataTable'ı yalnızca veri varsa başlat

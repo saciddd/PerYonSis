@@ -373,6 +373,7 @@ def personel_ara(request):
             'id': p.tc_kimlik_no,
             'text': f"{p.tc_kimlik_no} - {p.ad} {p.soyad}",
             'ad_soyad': f"{p.ad} {p.soyad}",
+            'aktif_sendika': p.aktif_sendika.sendika_adi if p.aktif_sendika else "",
             'unvan': p.unvan.ad if p.unvan else ""
         }
         for p in personeller

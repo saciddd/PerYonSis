@@ -147,6 +147,24 @@ class Personel(models.Model):
     def sinif(self):
         return self.unvan.sinif if self.unvan else ""
 
+    @property
+    def aktif_sendika(self):
+        """
+        Personelin en son GİRİŞ hareketi olan sendikasını döndürür.
+        Çıkıştan sonra tekrar giriş varsa onu dikkate alır.
+        """
+        # Son GİRİŞ hareketini bul
+        son_giris = self.sendika_hareketleri.filter(hareket_tipi='GIRIS').order_by('-hareket_tarihi', '-uyelik_id').first()
+        if not son_giris:
+            return None
+        # Son GİRİŞ'ten sonra bir ÇIKIŞ var mı?
+        cikis_sonra = self.sendika_hareketleri.filter(
+            hareket_tipi='CIKIS',
+            hareket_tarihi__gte=son_giris.hareket_tarihi
+        ).order_by('hareket_tarihi', 'uyelik_id').first()
+        if cikis_sonra:
+            return None
+        return son_giris.sendika
     # Kalan izin hesaplaması için not:
     # @property
     # def kalan_izin(self):

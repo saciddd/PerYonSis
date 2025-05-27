@@ -5,13 +5,6 @@ class Personel(models.Model):
     PersonelID = models.BigIntegerField(primary_key=True)
     PersonelName = models.CharField(max_length=100, null=False)
     PersonelTitle = models.CharField(max_length=100, null=True)
-    BirthDate = models.DateField(null=True)
-
-    def Age(self):
-        if self.BirthDate:
-            today = date.today()
-            return today.year - self.BirthDate.year - ((today.month, today.day) < (self.BirthDate.month, self.BirthDate.day))
-        return None
 
     def __str__(self):
         return self.PersonelName

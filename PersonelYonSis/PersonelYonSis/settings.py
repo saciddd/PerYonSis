@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'mutemet_app',
     'hizmet_sunum_app',
     'ik_core',
+    'kdhold',
 ]
 
 MIDDLEWARE = [

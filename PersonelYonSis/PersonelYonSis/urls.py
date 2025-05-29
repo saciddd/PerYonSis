@@ -28,6 +28,7 @@ urlpatterns = [
     path('mutemet/', include('mutemet_app.urls')),
     path('hizmet_sunum/', include('hizmet_sunum_app.urls')),
     path('ik_core/', include('ik_core.urls')),
+    path('kdhold/', include('kdhold.urls')),
     path('admin/', admin.site.urls),
     # Bildirim işlemleri
     path('notifications/unread/', views.unread_notifications, name='unread_notifications'),

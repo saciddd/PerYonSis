@@ -771,7 +771,7 @@ def icra_kesinti_listesi(request):
 @login_required
 def sorgulamalar(request):
     """Sorgulamalar dış adresini iframe ile gösterir."""
-    sorgulama_url = "http://10.38.12.59:16153/mercisreports/mercismemursorgu/"
+    sorgulama_url = "http://10.38.12.59:15153/mercisreports/mercismemursorgu/"
     return render(request, 'mutemet_app/sorgulamalar_iframe.html', {'sorgulama_url': sorgulama_url})
 
 @login_required

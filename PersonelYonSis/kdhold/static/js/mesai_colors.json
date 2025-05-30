@@ -1,0 +1,14 @@
+{
+    "08:00 16:00": {
+        "text_color": "#2a8722",
+        "font_weight": "bold"
+    },
+    "08:00 22:00": {
+        "text_color": "#0000ff",
+        "font_weight": "bold"
+    },
+    "08:00 08:00": {
+        "text_color": "#872222",
+        "font_weight": "bold"
+    }
+} 

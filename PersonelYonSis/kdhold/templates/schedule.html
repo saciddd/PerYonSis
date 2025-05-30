@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}Çizelge Oluştur{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    
+    .schedule-container {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .schedule-form {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 500px;
+    }
+    
+    .schedule-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .schedule-header h2 {
+        color: #333;
+        font-weight: 500;
+        font-size: 24px;
+    }
+    
+    .form-control {
+        height: 45px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    
+    .form-control:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .btn-create {
+        height: 45px;
+        font-size: 14px;
+        background-color: #0d6efd;
+        border: none;
+        width: 100%;
+        margin-top: 20px;
+    }
+    
+    .btn-create:hover {
+        background-color: #0b5ed7;
+    }
+    
+    .form-label {
+        font-size: 14px;
+        color: #555;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="schedule-container">
+    <div class="schedule-form">
+        <div class="schedule-header">
+            <h2>Çizelge Oluştur - 1</h2>
+        </div>
+        
+        <form method="GET" action="{% url 'mercis657:schedule_edit' %}" id="scheduleForm">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="unit_id" class="form-label">Birim Seçimi</label>
+                <select name="unit_id" id="unit_id" class="form-control" required>
+                    <option value="">Birim Seçiniz</option>
+                    {% for unit in authorized_units %}
+                        <option value="{{ unit.id }}">{{ unit.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="year" class="form-label">Yıl</label>
+                <select name="year" id="year" class="form-control" required>
+                    {% for year in years %}
+                        <option value="{{ year }}">{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="month" class="form-label">Ay</label>
+                <select name="month" id="month" class="form-control" required>
+                    <option value="1">Ocak</option>
+                    <option value="2">Şubat</option>
+                    <option value="3">Mart</option>
+                    <option value="4">Nisan</option>
+                    <option value="5">Mayıs</option>
+                    <option value="6">Haziran</option>
+                    <option value="7">Temmuz</option>
+                    <option value="8">Ağustos</option>
+                    <option value="9">Eylül</option>
+                    <option value="10">Ekim</option>
+                    <option value="11">Kasım</option>
+                    <option value="12">Aralık</option>
+                </select>
+            </div>
+            <input type="hidden" name="start_date" id="start_date">
+            <input type="hidden" name="end_date" id="end_date">
+            <button type="submit" class="btn btn-primary btn-create">Çizelge Oluştur</button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('scheduleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const year = document.getElementById('year').value;
+    const month = document.getElementById('month').value;
+    
+    // Ayın ilk günü - UTC offset'ini önlemek için tarihi string olarak oluşturuyoruz
+    const startDate = `${year}-${month.padStart(2, '0')}-01`;
+    
+    // Ayın son günü
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${month.padStart(2, '0')}-${lastDay}`;
+    
+    document.getElementById('start_date').value = startDate;
+    document.getElementById('end_date').value = endDate;
+    
+    this.submit();
+});
+
+// Populate year dropdown with current year and ±2 years
+window.onload = function() {
+    const yearSelect = document.getElementById('year');
+    const currentYear = new Date().getFullYear();
+    
+    for (let year = currentYear - 2; year <= currentYear + 2; year++) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        if (year === currentYear) {
+            option.selected = true;
+        }
+        yearSelect.appendChild(option);
+    }
+    
+    // Set current month as default
+    const currentMonth = new Date().getMonth() + 1;
+    document.getElementById('month').value = currentMonth;
+};
+</script>
+{% endblock %}

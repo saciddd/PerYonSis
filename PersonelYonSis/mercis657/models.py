@@ -1,5 +1,78 @@
 from django.db import models
 from datetime import date, timedelta
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+class Kurum(models.Model):
+    ad = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.ad
+
+class UstBirim(models.Model):
+    ad = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.ad
+
+class MudurYardimcisi(models.Model):
+    ad = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.ad
+
+class Birim(models.Model):
+    BirimID = models.AutoField(primary_key=True)
+    BirimAdi = models.CharField(max_length=100, unique=True)
+
+    Kurum = models.ForeignKey(Kurum, on_delete=models.SET_NULL, null=True, blank=True)
+    UstBirim = models.ForeignKey(UstBirim, on_delete=models.SET_NULL, null=True, blank=True)
+    MudurYrd = models.ForeignKey(MudurYardimcisi, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return self.BirimAdi
+
+
+class UserBirim(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='mercis657_birimleri')
+    birim = models.ForeignKey(Birim, on_delete=models.CASCADE, related_name='mercis657_kullanicilari')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'birim')
+        verbose_name = "Kullanıcı Birim Yetkisi"
+        verbose_name_plural = "Kullanıcı Birim Yetkileri"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.birim.BirimAdi}"
+
+class PersonelListesi(models.Model):
+    birim = models.ForeignKey(Birim, on_delete=models.CASCADE, related_name='personel_listeleri')
+    yil = models.PositiveIntegerField()
+    ay = models.PositiveIntegerField()
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('birim', 'yil', 'ay')
+        verbose_name = 'Personel Listesi'
+        verbose_name_plural = 'Personel Listeleri'
+
+    def __str__(self):
+        return f"{self.birim.BirimAdi} - {self.ay}/{self.yil}"
+
+class PersonelListesiKayit(models.Model):
+    liste = models.ForeignKey(PersonelListesi, on_delete=models.CASCADE, related_name='kayitlar')
+    personel = models.ForeignKey('ik_core.Personel', on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('liste', 'personel')
+        verbose_name = 'Personel Listesi Kayıt'
+        verbose_name_plural = 'Personel Listesi Kayıtları'
+
+    def __str__(self):
+        return f"{self.liste} - {self.personel}"
 
 class Personel(models.Model):
     PersonelID = models.BigIntegerField(primary_key=True)

@@ -39,8 +39,8 @@ class Birim(models.Model):
         return f"{self.BirimAdi} - {self.KurumAdi}"
 
 class UserBirim(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='yetkili_oldugu_birimler')
-    birim = models.ForeignKey(Birim, on_delete=models.CASCADE, related_name='yetkili_kullanicilar')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='hizmet_sunum_birimleri')
+    birim = models.ForeignKey(Birim, on_delete=models.CASCADE, related_name='hizmet_sunum_kullanicilari')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

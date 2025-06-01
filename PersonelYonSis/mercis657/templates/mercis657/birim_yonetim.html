@@ -1,0 +1,644 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Birim Yönetimi{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Birim Yönetimi</h3>
+    <div class="row mb-2">
+        <div class="col-md-4">
+            <input type="text" id="birimAramaInput" class="form-control form-control-sm" placeholder="Birim, kurum, üst birim veya müdür yrd ile ara...">
+        </div>
+        <div class="col-md-8 text-end">
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#birimEkleModal">
+                <i class="bi bi-plus-circle"></i> Birim Ekle
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#kurumModal">Kurumları Yönet</button>
+            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#ustBirimModal">Üst Birimleri Yönet</button>
+            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#mudurYrdModal">Müdür Yrd. Yönet</button>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-striped table-hover align-middle" id="birimTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Birim</th>
+                    <th>Kurum</th>
+                    <th>Üst Birim</th>
+                    <th>Müdür Yrd.</th>
+                    <th class="text-center">Yetkili</th>
+                    <th>Yetkililer</th>
+                    <th>İşlem</th>
+                </tr>
+            </thead>
+            <tbody id="birimTableBody">
+                {% for birim in birimler %}
+                <tr>
+                    <td>{{ birim.adi }}</td>
+                    <td>{{ birim.kurum }}</td>
+                    <td>{{ birim.ust_birim }}</td>
+                    <td>{{ birim.mudur_yrd }}</td>
+                    <td class="text-center">{{ birim.yetkili_sayisi }}</td>
+                    <td>
+                        {% if birim.yetkililer %}
+                            <ul class="mb-0 ps-3 small">
+                                {% for user in birim.yetkililer %}
+                                    <li>{{ user.username }}<span class="text-muted"> - {{ user.full_name }}</span></li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <span class="text-muted small">Yok</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-outline-primary btn-sm" onclick="openYetkiliKullanicilarModal({{ birim.id }})" title="Yetkili Kullanıcılar">
+                            <i class="bi bi-people-fill"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="openBirimDuzenleModal({{ birim.id }})" title="Düzenle">
+                            <i class="bi bi-gear"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <nav>
+            <ul class="pagination pagination-sm justify-content-end" id="birimPagination"></ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Birim Ekle Modal -->
+<div class="modal fade" id="birimEkleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="birimEkleForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Yeni Birim Ekle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label for="birimAdiEkle" class="form-label">Birim Adı</label>
+                        <input type="text" class="form-control" id="birimAdiEkle" name="BirimAdi" required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="kurumEkle" class="form-label">Kurum</label>
+                        <select class="form-select" id="kurumEkle" name="Kurum">
+                            <option value="">Seçiniz...</option>
+                            {% for kurum in kurumlar %}
+                                <option value="{{ kurum.id }}">{{ kurum.ad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label for="ustBirimEkle" class="form-label">Üst Birim</label>
+                        <select class="form-select" id="ustBirimEkle" name="UstBirim">
+                            <option value="">Seçiniz...</option>
+                            {% for ust in ust_birimler %}
+                                <option value="{{ ust.id }}">{{ ust.ad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label for="mudurYrdEkle" class="form-label">Müdür Yardımcısı</label>
+                        <select class="form-select" id="mudurYrdEkle" name="MudurYrd">
+                            <option value="">Seçiniz...</option>
+                            {% for m in mudur_yrdler %}
+                                <option value="{{ m.id }}">{{ m.ad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Ekle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Kurum Modal -->
+<div class="modal fade" id="kurumModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Kurumlar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul id="kurumList" class="list-group mb-3">
+                    {% for kurum in kurumlar %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="kurum-ad">{{ kurum.ad }}</span>
+                            <span>
+                                <button class="btn btn-sm btn-outline-secondary me-1" onclick="editKurum({{ kurum.id }}, '{{ kurum.ad }}')"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteKurum({{ kurum.id }})"><i class="bi bi-trash"></i></button>
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <form id="kurumEkleForm" class="input-group">
+                    <input type="text" class="form-control" name="kurum_ad" placeholder="Yeni kurum adı..." required>
+                    <button class="btn btn-success" type="submit">Ekle</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Üst Birim Modal -->
+<div class="modal fade" id="ustBirimModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Üst Birimler</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul id="ustBirimList" class="list-group mb-3">
+                    {% for ust in ust_birimler %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="ust-ad">{{ ust.ad }}</span>
+                            <span>
+                                <button class="btn btn-sm btn-outline-secondary me-1" onclick="editUstBirim({{ ust.id }}, '{{ ust.ad }}')"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteUstBirim({{ ust.id }})"><i class="bi bi-trash"></i></button>
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <form id="ustBirimEkleForm" class="input-group">
+                    <input type="text" class="form-control" name="ust_birim_ad" placeholder="Yeni üst birim adı..." required>
+                    <button class="btn btn-success" type="submit">Ekle</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Müdür Yardımcısı Modal -->
+<div class="modal fade" id="mudurYrdModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Müdür Yardımcıları</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul id="mudurYrdList" class="list-group mb-3">
+                    {% for m in mudur_yrdler %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="mudur-yrd-ad">{{ m.ad }}</span>
+                            <span>
+                                <button class="btn btn-sm btn-outline-secondary me-1" onclick="editMudurYrd({{ m.id }}, '{{ m.ad }}')"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteMudurYrd({{ m.id }})"><i class="bi bi-trash"></i></button>
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <form id="mudurYrdEkleForm" class="input-group">
+                    <input type="text" class="form-control" name="mudur_yrd_ad" placeholder="Yeni müdür yrd. adı..." required>
+                    <button class="btn btn-success" type="submit">Ekle</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Yetkili Kullanıcılar Modal -->
+<div class="modal fade" id="yetkiliKullanicilarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-people-fill me-2"></i>
+                    Yetkili Kullanıcılar
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="yetkiliKullaniciEkleForm" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="kullaniciAraInput" placeholder="Kullanıcı adı ile ara...">
+                        <button class="btn btn-success" type="submit">
+                            <i class="bi bi-person-plus"></i> Ekle
+                        </button>
+                    </div>
+                    <div id="kullaniciAraSonuc" class="mt-2"></div>
+                </form>
+                <h6>Yetkili Kullanıcılar</h6>
+                <ul class="list-group" id="yetkiliKullanicilarListesi"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Birim Düzenleme Modal -->
+<div class="modal fade" id="birimDuzenleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="birimDuzenleForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Birim Düzenle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="birimIdDuzenle" name="BirimID">
+                    <div class="mb-2">
+                        <label for="birimAdiDuzenle" class="form-label">Birim Adı</label>
+                        <input type="text" class="form-control" id="birimAdiDuzenle" name="BirimAdi" required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="kurumDuzenle" class="form-label">Kurum</label>
+                        <select class="form-select" id="kurumDuzenle" name="Kurum">
+                            <option value="">Seçiniz...</option>
+                            {% for kurum in kurumlar %}
+                                <option value="{{ kurum.id }}">{{ kurum.ad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label for="ustBirimDuzenle" class="form-label">Üst Birim</label>
+                        <select class="form-select" id="ustBirimDuzenle" name="UstBirim">
+                            <option value="">Seçiniz...</option>
+                            {% for ust in ust_birimler %}
+                                <option value="{{ ust.id }}">{{ ust.ad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label for="mudurYrdDuzenle" class="form-label">Müdür Yardımcısı</label>
+                        <select class="form-select" id="mudurYrdDuzenle" name="MudurYrd">
+                            <option value="">Seçiniz...</option>
+                            {% for m in mudur_yrdler %}
+                                <option value="{{ m.id }}">{{ m.ad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="birimGuncelle()">Kaydet</button>
+                    <button type="button" class="btn btn-danger ms-2" onclick="birimSil()">Sil</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Arama ve sayfalama için temel JS (hizmet_sunum_app ile aynı yapı)
+const pageSize = 10;
+let currentPage = 1;
+let allRows = [];
+
+function filterAndPaginateTable() {
+    const search = document.getElementById('birimAramaInput').value.trim().toLowerCase();
+    const tbody = document.getElementById('birimTableBody');
+    if (allRows.length === 0) {
+        allRows = Array.from(tbody.querySelectorAll('tr'));
+    }
+    let filtered = allRows.filter(row => {
+        return Array.from(row.cells).some(cell =>
+            cell.textContent.toLowerCase().includes(search)
+        );
+    });
+    const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
+    tbody.innerHTML = '';
+    filtered.slice(start, end).forEach(row => tbody.appendChild(row));
+    const pag = document.getElementById('birimPagination');
+    pag.innerHTML = '';
+    for (let i = 1; i <= totalPages; i++) {
+        pag.innerHTML += `<li class="page-item${i === currentPage ? ' active' : ''}">
+            <a class="page-link" href="#" onclick="gotoPage(${i});return false;">${i}</a>
+        </li>`;
+    }
+}
+
+function gotoPage(page) {
+    currentPage = page;
+    filterAndPaginateTable();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    allRows = Array.from(document.getElementById('birimTableBody').querySelectorAll('tr'));
+    filterAndPaginateTable();
+    document.getElementById('birimAramaInput').addEventListener('input', function() {
+        currentPage = 1;
+        filterAndPaginateTable();
+    });
+});
+
+// Birim ekleme
+document.getElementById('birimEkleForm').onsubmit = function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    fetch("{% url 'mercis657:birim_ekle' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value},
+        body: formData
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert(data.message || 'Birim eklenemedi.');
+        }
+    });
+};
+
+// Kurum ekle
+document.getElementById('kurumEkleForm').onsubmit = function(e) {
+    e.preventDefault();
+    const input = this.querySelector('input[name="kurum_ad"]');
+    fetch("{% url 'mercis657:kurum_ekle' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: input.value})
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'Kurum eklenemedi.');
+    });
+};
+
+// Üst birim ekle
+document.getElementById('ustBirimEkleForm').onsubmit = function(e) {
+    e.preventDefault();
+    const input = this.querySelector('input[name="ust_birim_ad"]');
+    fetch("{% url 'mercis657:ust_birim_ekle' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: input.value})
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'Üst birim eklenemedi.');
+    });
+};
+
+// Müdür yrd ekle
+document.getElementById('mudurYrdEkleForm').onsubmit = function(e) {
+    e.preventDefault();
+    const input = this.querySelector('input[name="mudur_yrd_ad"]');
+    fetch("{% url 'mercis657:mudur_yrd_ekle' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: input.value})
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'Müdür yardımcısı eklenemedi.');
+    });
+};
+
+// Sil ve düzenle fonksiyonları (örnek)
+function deleteKurum(id) {
+    if (!confirm('Kurum silinsin mi?')) return;
+    fetch("{% url 'mercis657:kurum_sil' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'Kurum silinemedi.');
+    });
+}
+function editKurum(id, ad) {
+    const yeniAd = prompt('Yeni kurum adı:', ad);
+    if (!yeniAd || yeniAd.trim() === ad) return;
+    fetch("{% url 'mercis657:kurum_guncelle' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: yeniAd})
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'Kurum güncellenemedi.');
+    });
+}
+function deleteUstBirim(id) {
+    if (!confirm('Üst birim silinsin mi?')) return;
+    fetch("{% url 'mercis657:ust_birim_sil' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'Üst birim silinemedi.');
+    });
+}
+function editUstBirim(id, ad) {
+    const yeniAd = prompt('Yeni üst birim adı:', ad);
+    if (!yeniAd || yeniAd.trim() === ad) return;
+    fetch("{% url 'mercis657:ust_birim_guncelle' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: yeniAd})
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'Üst birim güncellenemedi.');
+    });
+}
+function deleteMudurYrd(id) {
+    if (!confirm('Müdür yardımcısı silinsin mi?')) return;
+    fetch("{% url 'mercis657:mudur_yrd_sil' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'Müdür yardımcısı silinemedi.');
+    });
+}
+function editMudurYrd(id, ad) {
+    const yeniAd = prompt('Yeni müdür yardımcısı adı:', ad);
+    if (!yeniAd || yeniAd.trim() === ad) return;
+    fetch("{% url 'mercis657:mudur_yrd_guncelle' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: yeniAd})
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'Müdür yardımcısı güncellenemedi.');
+    });
+}
+
+// Yetkili Kullanıcılar Modalı
+function openYetkiliKullanicilarModal(birimId) {
+    var modal = new bootstrap.Modal(document.getElementById('yetkiliKullanicilarModal'));
+    modal.show();
+    fetch(`/mercis657/birim/${birimId}/yetkililer/`)
+        .then(resp => resp.json())
+        .then(data => {
+            const ul = document.getElementById('yetkiliKullanicilarListesi');
+            ul.innerHTML = '';
+            if (data.status === 'success' && Array.isArray(data.data)) {
+                data.data.forEach(user => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    li.innerHTML = `
+                        <span>${user.username} - ${user.full_name}</span>
+                        <button class="btn btn-danger btn-sm" onclick="kullaniciYetkiSil(${birimId},'${user.username}', this)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    `;
+                    ul.appendChild(li);
+                });
+            } else {
+                ul.innerHTML = '<li class="list-group-item text-muted">Yetkili kullanıcı yok.</li>';
+            }
+        });
+    document.getElementById('kullaniciAraInput').value = '';
+    document.getElementById('kullaniciAraSonuc').innerHTML = '';
+    const form = document.getElementById('yetkiliKullaniciEkleForm');
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        const username = document.getElementById('kullaniciAraInput').value.trim();
+        if (!username) return;
+        fetch(`/mercis657/kullanici/ara/?username=${encodeURIComponent(username)}`)
+            .then(resp => resp.json())
+            .then(data => {
+                const sonucDiv = document.getElementById('kullaniciAraSonuc');
+                if (data.status === 'success' && data.data) {
+                    const user = data.data;
+                    sonucDiv.innerHTML = `
+                        <div class="alert alert-success d-flex justify-content-between align-items-center mb-2">
+                            <span>${user.username} - ${user.full_name}</span>
+                            <button class="btn btn-primary btn-sm" id="btnYetkiVer">
+                                <i class="bi bi-person-plus"></i> Yetki Ver
+                            </button>
+                        </div>
+                    `;
+                    document.getElementById('btnYetkiVer').onclick = function() {
+                        fetch(`/mercis657/birim/${birimId}/yetki-ekle/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({ username: user.username })
+                        })
+                        .then(resp => resp.json())
+                        .then(res => {
+                            if (res.status === 'success') {
+                                sonucDiv.innerHTML = '<div class="alert alert-success">Yetki verildi.</div>';
+                                openYetkiliKullanicilarModal(birimId);
+                            } else {
+                                sonucDiv.innerHTML = `<div class="alert alert-danger">${res.message || 'Yetki verilemedi.'}</div>`;
+                            }
+                        });
+                    };
+                } else {
+                    sonucDiv.innerHTML = `<div class="alert alert-danger">Kullanıcı bulunamadı.</div>`;
+                }
+            });
+    };
+}
+
+function kullaniciYetkiSil(birimId, username, btn) {
+    if (!confirm('Bu kullanıcının yetkisini kaldırmak istiyor musunuz?')) return;
+    fetch(`/mercis657/birim/${birimId}/yetki-sil/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ username: username })
+    })
+    .then(resp => resp.json())
+    .then(res => {
+        if (res.status === 'success') {
+            btn.closest('li').remove();
+        } else {
+            alert(res.message || 'Yetki silinemedi.');
+        }
+    });
+}
+
+// Birim Düzenle Modalı
+function openBirimDuzenleModal(birimId) {
+    fetch(`/mercis657/birim/${birimId}/detay/`)
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success'){
+                document.getElementById('birimIdDuzenle').value = data.data.BirimID;
+                document.getElementById('birimAdiDuzenle').value = data.data.BirimAdi;
+                document.getElementById('kurumDuzenle').value = data.data.Kurum || '';
+                document.getElementById('ustBirimDuzenle').value = data.data.UstBirim || '';
+                document.getElementById('mudurYrdDuzenle').value = data.data.MudurYrd || '';
+                new bootstrap.Modal(document.getElementById('birimDuzenleModal')).show();
+            } else {
+                alert('Seçili birim bilgileri alınamadı.');
+            }
+        }).catch(error => {
+            alert('Seçili birim bilgileri alınırken hata.');
+        });
+}
+
+function birimGuncelle() {
+    const form = document.getElementById('birimDuzenleForm');
+    const formData = new FormData(form);
+    const birimId = document.getElementById('birimIdDuzenle').value;
+    if (!birimId) {
+        alert('Düzenlenecek birim seçili değil.');
+        return;
+    }
+    const url = `/mercis657/birim/${birimId}/guncelle/`;
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert('Hata: ' + (data.message || 'Birim güncellenemedi.'));
+        }
+    })
+    .catch(error => {
+        alert('Birim güncellenirken bir hata oluştu.');
+    });
+}
+
+function birimSil() {
+    const birimId = document.getElementById('birimIdDuzenle').value;
+    if (!birimId) {
+        alert('Silinecek birim seçili değil.');
+        return;
+    }
+    if (!confirm('Bu birimi silmek istediğinizden emin misiniz?')) {
+        return;
+    }
+    const url = `/mercis657/birim/${birimId}/sil/`;
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.getElementById('birimDuzenleForm').querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload();
+        } else {
+            alert('Hata: ' + (data.message || 'Birim silinemedi.'));
+        }
+    })
+    .catch(error => {
+        alert('Birim silinirken bir hata oluştu.');
+    });
+}
+
+// ...existing code...
+</script>
+{% endblock %}

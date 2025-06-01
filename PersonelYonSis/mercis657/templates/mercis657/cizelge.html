@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}657 Çizelge İşlemleri{% endblock %}
+
+{% block content %}
+<br>
+<div class="container-fluid">
+    <form method="get" id="filterForm">
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <label for="selectBirim">Birim Seçimi</label>
+                <select name="birim_id" id="selectBirim" class="form-control" required>
+                    <option value="">Seçiniz</option>
+                    {% for user_birim in user_birimler %}
+                        <option value="{{ user_birim.birim.BirimID }}" {% if user_birim.birim.BirimID|stringformat:"s" == selected_birim_id|stringformat:"s" %}selected{% endif %}>
+                            {{ user_birim.birim.BirimAdi }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="selectDonem">Dönem</label>
+                <select name="donem" id="selectDonem" class="form-control" required>
+                    <option value="">Dönem Seçiniz</option>
+                    {% for donem in donemler %}
+                        <option value="{{ donem.value }}" {% if donem.value == selected_donem %}selected{% endif %}>
+                            {{ donem.label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 text-middle">
+                <br>
+                <button type="submit" class="btn btn-primary">Sorgula</button>
+                <button type="button" class="btn btn-secondary" id="btnPersonelEkle">
+                    <i class="bi bi-person-plus"></i> Personel Ekle
+                </button>
+            </div>
+            <div class="col-md-2">
+                <label for="mesaiSelection">Mesai Seçimi</label>
+                <select id="mesaiSelection" class="form-control">
+                    <option value="">Mesai Seçin</option>
+                    {% for mesai in mesai_options %}
+                    <option value="{{ mesai.id }}">{{ mesai.Saat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 text-end">
+                <br>
+                <button type="button" class="btn btn-success" id="saveButton">Kaydet</button>
+            </div>
+        </div>
+    </form>
+
+    {% if personeller %}
+    <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
+        <colgroup>
+            <col style="width: 160px;">
+            <col style="width: 100px;">
+            {% for day in days %}
+            <col style="width: 40px;">
+            {% endfor %}
+        </colgroup>
+        <thead class="table-light">
+            <tr>
+                <th>T.C.</th>
+                <th>Personel Adı Soyadı</th>
+                <th>Unvanı</th>
+                {% for day in days %}
+                <th class="{% if day.is_weekend %}weekend{% endif %}">{{ day.day_num }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            {% for personel in personeller %}
+            <tr>
+                <td>{{ personel.PersonelID }}</td>
+                <td>{{ personel.PersonelName }}</td>
+                <td>{{ personel.PersonelTitle }}</td>
+                {% for mesai in personel.mesai_data %}
+                <td contenteditable="true"
+                    class="mesai-cell {% if mesai.Saat %}has-value{% endif %} {% if day.is_weekend %}weekend{% endif %}"
+                    data-personel-id="{{ personel.PersonelID }}"
+                    data-date="{{ mesai.MesaiDate }}">
+                    {{ mesai.Saat }}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="alert alert-warning">Lütfen bir birim ve dönem seçerek sorgulama yapın.</div>
+    {% endif %}
+</div>
+
+<!-- Personel Ekleme Modal -->
+<div class="modal fade" id="personelEkleModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <form id="personelEkleForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Personel Ekleme</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Sol Taraf: Önceki Dönem Personelleri -->
+                        <div class="col-md-6">
+                            <h6>Önceki Dönem Personelleri</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="oncekiDonemTable">
+                                    <thead>
+                                        <tr>
+                                            <th><input type="checkbox" id="selectAllOnceki"></th>
+                                            <th>T.C.</th>
+                                            <th>Adı Soyadı</th>
+                                            <th>Unvanı</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-primary" id="btnPersonelAktar" type="button">
+                                <i class="bi bi-arrow-right"></i> Seçilenleri Aktar
+                            </button>
+                        </div>
+                        <!-- Sağ Taraf: Manuel/Excel Giriş -->
+                        <div class="col-md-6">
+                            <h6>Yeni Personel Girişi</h6>
+                            <div class="alert alert-info">
+                                Excel'den kopyaladığınız verileri direkt tabloya yapıştırabilir veya manuel giriş yapabilirsiniz.
+                                <br>Enter veya aşağı ok tuşu ile yeni satır ekleyebilirsiniz.
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="yeniPersonelTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Sıra No</th>
+                                            <th>T.C.</th>
+                                            <th>Adı Soyadı</th>
+                                            <th>Unvanı</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>1</td>
+                                            <td contenteditable="true"></td>
+                                            <td contenteditable="true"></td>
+                                            <td contenteditable="true"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-success" id="btnPersonelKaydet" type="button">
+                                <i class="bi bi-save"></i> Personelleri Ekle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    var changes = {};
+
+    document.querySelectorAll('.mesai-cell').forEach(function (cell) {
+        cell.addEventListener('click', function () {
+            let mesaiID = document.getElementById('mesaiSelection').value;
+            if (!mesaiID) return;
+
+            cell.setAttribute('data-mesai-id', mesaiID);
+            cell.innerText = document.querySelector(`#mesaiSelection option[value="${mesaiID}"]`).textContent;
+
+            let personelID = cell.getAttribute('data-personel-id');
+            let date = cell.getAttribute('data-date');
+
+            changes[`${personelID}_${date}`] = mesaiID;
+            cell.blur();
+        });
+    });
+
+    document.getElementById('saveButton').addEventListener('click', function () {
+        if (Object.keys(changes).length === 0) {
+            alert("Herhangi bir değişiklik yapılmadı.");
+            return;
+        }
+
+        fetch("{% url 'mercis657:cizelge_kaydet' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify(changes)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Değişiklikler kaydedildi.');
+                location.reload();
+            } else if (data.status === 'partial') {
+                alert("Bazı kayıtlar kaydedilemedi:\n" + data.errors.join('\n'));
+            } else {
+                alert('Bir hata oluştu.');
+            }
+        });
+    });
+
+    // Personel Ekle butonu: modalı aç
+    document.getElementById('btnPersonelEkle').addEventListener('click', function() {
+        const donem = document.getElementById('selectDonem').value;
+        const birimId = document.getElementById('selectBirim').value;
+        if (!donem || !birimId) {
+            alert('Lütfen dönem ve birim seçiniz.');
+            return;
+        }
+        fetch(`/mercis657/onceki-donem-personel/${donem}/${birimId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'error') {
+                    alert(data.message || 'Veriler alınırken bir hata oluştu');
+                    return;
+                }
+                const personeller = Array.isArray(data) ? data : (data.data || []);
+                const tbody = document.querySelector('#oncekiDonemTable tbody');
+                tbody.innerHTML = personeller.map(p => `
+                    <tr>
+                        <td><input type="checkbox" value="${p.PersonelID}"></td>
+                        <td>${p.PersonelID || ''}</td>
+                        <td>${p.PersonelName || ''}</td>
+                        <td>${p.PersonelTitle || ''}</td>
+                    </tr>
+                `).join('');
+            })
+            .catch(error => {
+                console.error('Veri getirme hatası:', error);
+                alert('Veriler alınırken bir hata oluştu');
+            });
+        new bootstrap.Modal(document.getElementById('personelEkleModal')).show();
+    });
+
+    // Personel aktarma işlemleri
+    document.getElementById('btnPersonelAktar').addEventListener('click', function() {
+        const checkedRows = document.querySelectorAll('#oncekiDonemTable tbody input[type="checkbox"]:checked');
+        const personelTable = document.getElementById('yeniPersonelTable').querySelector('tbody');
+        checkedRows.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>${personelTable.children.length + 1}</td>
+                <td contenteditable="true">${row.cells[1].textContent}</td>
+                <td contenteditable="true">${row.cells[2].textContent}</td>
+                <td contenteditable="true">${row.cells[3].textContent}</td>
+            `;
+            personelTable.appendChild(newRow);
+        });
+    });
+
+    // Yeni personel tablosu: Enter veya aşağı ok ile yeni satır ekle
+    function initYeniPersonelTable() {
+        const table = document.getElementById('yeniPersonelTable');
+        const tbody = table.querySelector('tbody');
+        function addRowListeners(row) {
+            row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+                cell.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        addNewRow();
+                    }
+                });
+            });
+        }
+        function addNewRow() {
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = `
+                <td>${tbody.children.length + 1}</td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+            `;
+            tbody.appendChild(newRow);
+            addRowListeners(newRow);
+            newRow.querySelector('td[contenteditable="true"]').focus();
+        }
+        table.addEventListener('paste', function(e) {
+            e.preventDefault();
+            let data = e.clipboardData.getData('text');
+            let rows = data.split('\n').filter(row => row.trim());
+            tbody.innerHTML = '';
+            rows.forEach((row, index) => {
+                const cols = row.split('\t');
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td contenteditable="true">${cols[0] || ''}</td>
+                    <td contenteditable="true">${cols[1] || ''}</td>
+                    <td contenteditable="true">${cols[2] || ''}</td>
+                `;
+                tbody.appendChild(tr);
+                addRowListeners(tr);
+            });
+        });
+        addRowListeners(tbody.querySelector('tr'));
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        initYeniPersonelTable();
+    });
+
+    // Personelleri ekle butonu
+    document.getElementById('btnPersonelKaydet').addEventListener('click', function() {
+        const donem = document.getElementById('selectDonem').value;
+        const birimId = document.getElementById('selectBirim').value;
+        if (!donem || !birimId) {
+            alert('Lütfen dönem ve birim seçiniz');
+            return;
+        }
+        const personeller = [];
+        document.querySelectorAll('#yeniPersonelTable tbody tr').forEach(row => {
+            const cells = row.querySelectorAll('td[contenteditable="true"]');
+            if (cells.length === 3) {
+                const personel = {
+                    PersonelID: cells[0].textContent.trim(),
+                    PersonelName: cells[1].textContent.trim(),
+                    PersonelTitle: cells[2].textContent.trim()
+                };
+                if (personel.PersonelID && personel.PersonelName && personel.PersonelTitle) {
+                    personeller.push(personel);
+                }
+            }
+        });
+        if (personeller.length === 0) {
+            alert('Eklenecek personel bulunamadı!');
+            return;
+        }
+        // CSRF token'ını modal içinden al
+        const modalElement = document.getElementById('personelEkleModal');
+        const csrfTokenInput = modalElement.querySelector('[name=csrfmiddlewaretoken]');
+        if (!csrfTokenInput) {
+            alert('CSRF token bulunamadı. Sayfayı yenileyip tekrar deneyin.');
+            return;
+        }
+        const csrfToken = csrfTokenInput.value;
+        fetch('/mercis657/personel/kaydet/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                donem: donem,
+                birim_id: birimId,
+                personeller: personeller
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message || 'Personeller eklendi.');
+                location.reload();
+            } else {
+                throw new Error(data.message || 'Bilinmeyen bir hata oluştu.');
+            }
+        })
+        .catch(error => {
+            alert('Kayıt sırasında bir hata oluştu: ' + error.message);
+        });
+    });
+</script>
+<style>
+    #cizelgeTable .weekend {
+        background-color: #f5d2d2;
+        color: #222;
+    }
+
+    #cizelgeTable td, #cizelgeTable th {
+        padding: 3px;
+    }
+
+    #cizelgeTable td.mesai-cell:hover {
+        background-color: #bbe9f7;
+        cursor: pointer;
+    }
+
+    #cizelgeTable tbody tr:hover {
+        background-color: #f0f8ff;
+    }
+</style>
+{% endblock %}

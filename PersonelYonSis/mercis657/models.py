@@ -64,7 +64,7 @@ class PersonelListesi(models.Model):
 
 class PersonelListesiKayit(models.Model):
     liste = models.ForeignKey(PersonelListesi, on_delete=models.CASCADE, related_name='kayitlar')
-    personel = models.ForeignKey('ik_core.Personel', on_delete=models.CASCADE)
+    personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
 
     class Meta:
         unique_together = ('liste', 'personel')
@@ -75,24 +75,25 @@ class PersonelListesiKayit(models.Model):
         return f"{self.liste} - {self.personel}"
 
 class Personel(models.Model):
-    PersonelID = models.BigIntegerField(primary_key=True)
+    PersonelID = models.AutoField(primary_key=True)
+    PersonelTCKN = models.BigIntegerField(unique=True, null=False)
     PersonelName = models.CharField(max_length=100, null=False)
     PersonelTitle = models.CharField(max_length=100, null=True)
 
     def __str__(self):
-        return self.PersonelName
+        return f"{self.PersonelName} ({self.PersonelTCKN})"
 
 class Mesai(models.Model):
     MesaiID = models.AutoField(primary_key=True)
     Personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
     MesaiDate = models.DateField(null=False)
-    MesaiTanim = models.ForeignKey('Mesai_Tanimlari', on_delete=models.CASCADE, null=True)  # Relation to Mesai_Tanimlari
+    MesaiTanim = models.ForeignKey('Mesai_Tanimlari', on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return f"{self.Personel.PersonelName} - {self.MesaiDate}"
 
 class Mesai_Tanimlari(models.Model):
-    Saat = models.CharField(max_length=11)  # Saat aralığı '08:00 16:00' olarak güncellendi
+    Saat = models.CharField(max_length=11)
     GunduzMesaisi = models.BooleanField(default=False)
     AksamMesaisi = models.BooleanField(default=False)
     GeceMesaisi = models.BooleanField(default=False)
@@ -105,7 +106,7 @@ class Mesai_Tanimlari(models.Model):
 
     def calculate_sure(self):
         """Mesai süresini (Sure) hesaplayan yöntem."""
-        start, end = self.Saat.split(' ')  # '08:00 16:00' formatında boşlukla böl
+        start, end = self.Saat.split(' ')
         start_time = self._parse_time(start)
         end_time = self._parse_time(end)
 

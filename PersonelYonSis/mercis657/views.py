@@ -23,9 +23,14 @@ User = get_user_model()
 
 @login_required
 def onceki_donem_personel(request, donem, birim_id):
-    # donem: "YYYY/MM" formatında
+    # donem: "YYYY/MM" veya "YYYY-MM" formatında gelebilir
     try:
-        year, month = map(int, donem.split('/'))
+        if '-' in donem:
+            year, month = map(int, donem.split('-'))
+        elif '/' in donem:
+            year, month = map(int, donem.split('/'))
+        else:
+            return JsonResponse({'status': 'error', 'message': 'Geçersiz dönem.'})
     except Exception:
         return JsonResponse({'status': 'error', 'message': 'Geçersiz dönem.'})
     # Bir önceki ayı bul
@@ -42,6 +47,7 @@ def onceki_donem_personel(request, donem, birim_id):
     try:
         liste = PersonelListesi.objects.get(birim=birim, yil=prev_year, ay=prev_month)
     except PersonelListesi.DoesNotExist:
+        # Önceki dönem yoksa boş liste dön
         return JsonResponse({'status': 'success', 'data': []})
     kayitlar = PersonelListesiKayit.objects.filter(liste=liste).select_related('personel')
     data = []
@@ -66,7 +72,7 @@ def personel_kaydet(request):
         personeller = data.get('personeller', [])
         if not (donem and birim_id and personeller):
             return JsonResponse({'status': 'error', 'message': 'Eksik veri.'})
-        year, month = map(int, donem.split('/'))
+        year, month = map(int, donem.replace('-', '/').split('/'))
         birim = Birim.objects.get(BirimID=birim_id)
         with transaction.atomic():
             liste, _ = PersonelListesi.objects.get_or_create(birim=birim, yil=year, ay=month)
@@ -75,8 +81,6 @@ def personel_kaydet(request):
                 pid = p.get('PersonelID')
                 pname = p.get('PersonelName')
                 ptitle = p.get('PersonelTitle')
-                if not (pid and pname and ptitle):
-                    continue
                 personel, _ = Personel.objects.get_or_create(
                     PersonelID=pid,
                     defaults={'PersonelName': pname, 'PersonelTitle': ptitle}

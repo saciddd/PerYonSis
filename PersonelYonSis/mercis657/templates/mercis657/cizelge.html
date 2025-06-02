@@ -223,20 +223,25 @@
         fetch(`/mercis657/onceki-donem-personel/${donem}/${birimId}/`)
             .then(response => response.json())
             .then(data => {
+                // Hata değilse ve data yoksa tabloyu boş göster
                 if (data.status === 'error') {
                     alert(data.message || 'Veriler alınırken bir hata oluştu');
                     return;
                 }
-                const personeller = Array.isArray(data) ? data : (data.data || []);
+                const personeller = Array.isArray(data.data) ? data.data : [];
                 const tbody = document.querySelector('#oncekiDonemTable tbody');
-                tbody.innerHTML = personeller.map(p => `
-                    <tr>
-                        <td><input type="checkbox" value="${p.PersonelID}"></td>
-                        <td>${p.PersonelID || ''}</td>
-                        <td>${p.PersonelName || ''}</td>
-                        <td>${p.PersonelTitle || ''}</td>
-                    </tr>
-                `).join('');
+                if (personeller.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Önceki döneme ait personel bulunamadı.</td></tr>`;
+                } else {
+                    tbody.innerHTML = personeller.map(p => `
+                        <tr>
+                            <td><input type="checkbox" value="${p.PersonelID}"></td>
+                            <td>${p.PersonelID || ''}</td>
+                            <td>${p.PersonelName || ''}</td>
+                            <td>${p.PersonelTitle || ''}</td>
+                        </tr>
+                    `).join('');
+                }
             })
             .catch(error => {
                 console.error('Veri getirme hatası:', error);

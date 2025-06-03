@@ -668,6 +668,9 @@ def raporlama(request):
     # Form yerine GET parametrelerini doğrudan al
     donem_str = request.GET.get('donem')
     kurum = request.GET.get('kurum')
+    durum = request.GET.get('durum')  # "1", "0" veya ""
+
+    toplam_kayit = 0
 
     # Dönem parametresi varsa veriyi çek
     if donem_str:
@@ -687,6 +690,11 @@ def raporlama(request):
                     CalisilanBirimId__KurumAdi=kurum
                 )
 
+            if durum == "1":
+                calismalar_query = calismalar_query.filter(Kesinlestirme=True)
+            elif durum == "0":
+                calismalar_query = calismalar_query.filter(Kesinlestirme=False)
+
             # Birimlere göre grupla ve her birim altındaki çalışmaları Prefetch ile çek
             birim_ids_with_calisma = calismalar_query.values_list('CalisilanBirimId', flat=True).distinct()
 
@@ -699,7 +707,6 @@ def raporlama(request):
             ).order_by('BirimAdi')
 
             calismalar_by_birim = []
-            total_calisma_count = 0
             for birim in birimler_with_calismalar:
                  if birim.calismalar:
                      calismalar_by_birim.append({
@@ -707,16 +714,20 @@ def raporlama(request):
                          'calismalar': birim.calismalar,
                          'personel_sayisi': len(set([c.PersonelId.PersonelId for c in birim.calismalar])) # Unique personel sayısı
                      })
-                     total_calisma_count += len(birim.calismalar)
+
+            toplam_kayit = sum(len(birim['calismalar']) for birim in calismalar_by_birim)
 
             # Excel indirme linki oluştur
             if calismalar_by_birim:
                  excel_url = reverse('hizmet_sunum_app:export_raporlama_excel')
                  excel_url += f'?donem={donem.strftime("%Y-%m")}'
+
                  if kurum:
                      excel_url += f'&kurum={kurum}'
+                 if durum:
+                     excel_url += f'&durum={durum}'
 
-            if total_calisma_count == 0:
+            if toplam_kayit == 0:
                  info_message = "Seçilen dönem ve kuruma ait hizmet sunum çalışması bulunamadı."
 
         except ValueError:
@@ -727,7 +738,7 @@ def raporlama(request):
             print(f"Raporlama Hatası: {e}") # Konsola yazdır (geliştirme için)
     else:
         # İlk sayfa yüklemesi veya dönem seçilmemişse
-        info_message = "Lütfen bir dönem ve isteğe bağlı olarak kurum seçerek raporlayın."
+        info_message = "Lütfen bir dönem ve isteğe bağlı olarak kurum seçarak raporlayın."
 
     context = {
         # 'form': form, # Form kaldırıldı
@@ -736,10 +747,12 @@ def raporlama(request):
         'kurumlar': kurumlar, # Kurum seçimi için tüm kurumları geçiyoruz
         'selected_donem': donem_str, # Şablona dönemin string halini gönderelim ki selectbox'ta seçili kalsın
         'selected_kurum': kurum,
+        'selected_durum': durum,
         'excel_url': excel_url,
         # 'is_form_valid': is_form_valid, # Form kaldırıldı
         'error_message': error_message,
         'info_message': info_message,
+        'toplam_kayit': toplam_kayit,
     }
     return render(request, 'hizmet_sunum_app/raporlama.html', context)
 

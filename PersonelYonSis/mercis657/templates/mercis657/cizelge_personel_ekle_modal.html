@@ -1,0 +1,68 @@
+<!-- Personel Ekleme Modal -->
+<div class="modal fade" id="personelEkleModal" tabindex="-1">
+    {% csrf_token %}
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Personel Ekleme</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- Sol Taraf: Önceki Dönem Personelleri -->
+                    <div class="col-md-6">
+                        <h6>Önceki Dönem Personelleri</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm" id="oncekiDonemTable">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" id="selectAllOnceki"></th>
+                                        <th>T.C.</th>
+                                        <th>Adı Soyadı</th>
+                                        <th>Unvanı</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <button class="btn btn-primary" id="btnPersonelAktar">
+                            <i class="bi bi-arrow-right"></i> Seçilenleri Aktar
+                        </button>
+                    </div>
+
+                    <!-- Sağ Taraf: Manuel/Excel Giriş -->
+                    <div class="col-md-6">
+                        <h6>Yeni Personel Girişi</h6>
+                        <div class="alert alert-info">
+                            Excel'den kopyaladığınız verileri direkt tabloya yapıştırabilir veya manuel giriş yapabilirsiniz.
+                            <br>Enter veya aşağı ok tuşu ile yeni satır ekleyebilirsiniz.
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm" id="yeniPersonelTable">
+                                <thead>
+                                    <tr>
+                                        <th>Sıra No</th>
+                                        <th>T.C.</th>
+                                        <th>Adı Soyadı</th>
+                                        <th>Unvanı</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>1</td>
+                                        <td contenteditable="true"></td>
+                                        <td contenteditable="true"></td>
+                                        <td contenteditable="true"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button class="btn btn-success" id="btnPersonelKaydet">
+                            <i class="bi bi-save"></i> Personelleri Ekle
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

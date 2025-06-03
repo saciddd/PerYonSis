@@ -76,7 +76,7 @@ class PersonelListesiKayit(models.Model):
 
 class Personel(models.Model):
     PersonelID = models.AutoField(primary_key=True)
-    PersonelTCKN = models.BigIntegerField(unique=True, null=False)
+    PersonelTCKN = models.BigIntegerField(unique=True)
     PersonelName = models.CharField(max_length=100, null=False)
     PersonelTitle = models.CharField(max_length=100, null=True)
 
@@ -126,3 +126,10 @@ class Mesai_Tanimlari(models.Model):
 
     def __str__(self):
         return self.Saat
+
+class Izin(models.Model):
+    ad = models.CharField(max_length=100, unique=True)
+    kod = models.CharField(max_length=20, unique=True)
+
+    def __str__(self):
+        return self.ad

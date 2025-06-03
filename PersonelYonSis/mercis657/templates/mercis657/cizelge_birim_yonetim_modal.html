@@ -1,0 +1,241 @@
+<div class="modal fade" id="birimYonetimModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Birim Yönetimi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- Birim Ekleme Formu -->
+                    <div class="col-md-6 border-end">
+                        <h6>Yeni Birim Ekle</h6>
+                        <form id="birimEkleForm">
+                             {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="birimAdiEkle" class="form-label">Birim Adı</label>
+                                <input type="text" class="form-control" id="birimAdiEkle" name="BirimAdi" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="kurumSecEkle" class="form-label">Kurum</label>
+                                <select class="form-select" id="kurumSecEkle" name="Kurum">
+                                    <option value="">Seçiniz...</option>
+                                    {% for kurum in kurumlar %}
+                                        <option value="{{ kurum.id|default:kurum.pk }}">{{ kurum.ad }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="ustBirimSecEkle" class="form-label">Üst Birim</label>
+                                <select class="form-select" id="ustBirimSecEkle" name="UstBirim">
+                                    <option value="">Seçiniz...</option>
+                                    {% for ust in ust_birimler %}
+                                        <option value="{{ ust.id|default:ust.pk }}">{{ ust.ad }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="mudurYrdSecEkle" class="form-label">Müdür Yrd.</label>
+                                <select class="form-select" id="mudurYrdSecEkle" name="MudurYrd">
+                                    <option value="">Seçiniz...</option>
+                                    {% for m in mudur_yrdler %}
+                                        <option value="{{ m.id|default:m.pk }}">{{ m.ad }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                             <button type="button" class="btn btn-success" onclick="birimEkle()">Yeni Birimi Kaydet</button>
+                        </form>
+                    </div>
+
+                    <!-- Birim Düzenleme Formu -->
+                    <div class="col-md-6">
+                        <h6>Seçili Birimi Düzenle</h6>
+                        <form id="birimDuzenleForm">
+                             {% csrf_token %}
+                            <input type="hidden" id="birimIdDuzenle" name="birimId">
+                             <div class="mb-3">
+                                <label for="birimAdiDuzenle" class="form-label">Birim Adı</label>
+                                <input type="text" class="form-control" id="birimAdiDuzenle" name="birimAdi" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="kurumSecDuzenle" class="form-label">Kurum Adı</label>
+                                <select class="form-select" id="kurumSecDuzenle" name="Kurum" required>
+                                     <option value="">Seçiniz...</option>
+                                     {% for kurum in kurumlar %}
+                                        <option value="{{ kurum.id|default:kurum.pk }}">{{ kurum.ad }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="ustBirimSecDuzenle" class="form-label">Üst Birim</label>
+                                <select class="form-select" id="ustBirimSecDuzenle" name="UstBirim" required>
+                                    <option value="">Seçiniz...</option>
+                                    {% for ust in ust_birimler %}
+                                        <option value="{{ ust.id|default:ust.pk }}">{{ ust.ad }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                             <div class="mb-3">
+                                <label for="mudurYrdSecDuzenle" class="form-label">Müdür Yrd.</label>
+                                <select class="form-select" id="mudurYrdSecDuzenle" name="MudurYrd" required>
+                                     <option value="">Seçiniz...</option>
+                                     {% for m in mudur_yrdler %}
+                                        <option value="{{ m.id|default:m.pk }}">{{ m.ad }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                             <button type="button" class="btn btn-primary" onclick="birimGuncelle()">Değişiklikleri Kaydet</button>
+                             <button type="button" class="btn btn-danger ms-2" onclick="birimSil()" disabled>Birimi Sil</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+function birimEkle() {
+    const form = document.getElementById('birimEkleForm');
+    const formData = new FormData(form);
+    fetch("{% url 'mercis657:birim_ekle' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value},
+        body: formData
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert('Birim başarıyla eklendi.');
+            location.reload(); // Sayfayı yenile
+        } else {
+            alert(data.message || 'Birim eklenemedi.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Bir hata oluştu.');
+    });
+}
+
+// Birim detaylarını çekip düzenleme formunu dolduran fonksiyon (bir birim seçildiğinde çağrılacak)
+function loadBirimForEdit(birimId) {
+    const birimDuzenleForm = document.getElementById('birimDuzenleForm');
+    // Formu temizle
+    birimDuzenleForm.reset();
+    document.getElementById('birimIdDuzenle').value = '';
+
+    fetch(`/mercis657/birim/${birimId}/detay/`)
+    .then(resp => resp.json())
+    .then(data => {
+        if (data.status === 'success') {
+            const birim = data.data;
+            document.getElementById('birimIdDuzenle').value = birim.BirimID;
+            document.getElementById('birimAdiDuzenle').value = birim.BirimAdi;
+            document.getElementById('kurumSecDuzenle').value = birim.Kurum || '';
+            document.getElementById('ustBirimSecDuzenle').value = birim.UstBirim || '';
+            document.getElementById('mudurYrdSecDuzenle').value = birim.MudurYrd || '';
+            // Sil butonunu aktifleştir
+            document.querySelector('#birimDuzenleForm .btn-danger').disabled = false;
+        } else {
+            alert(data.message || 'Birim bilgileri alınamadı.');
+             // Formu temizle ve sil butonunu devre dışı bırak
+            birimDuzenleForm.reset();
+            document.getElementById('birimIdDuzenle').value = '';
+            document.querySelector('#birimDuzenleForm .btn-danger').disabled = true;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Birim bilgileri alınırken bir hata oluştu.');
+         // Formu temizle ve sil butonunu devre dışı bırak
+        birimDuzenleForm.reset();
+        document.getElementById('birimIdDuzenle').value = '';
+        document.querySelector('#birimDuzenleForm .btn-danger').disabled = true;
+    });
+}
+
+// Birim Güncelleme Fonksiyonu
+function birimGuncelle() {
+    const birimDuzenleForm = document.getElementById('birimDuzenleForm');
+    const birimId = document.getElementById('birimIdDuzenle').value;
+    if (!birimId) {
+        alert('Düzenlenecek birim seçilmedi.');
+        return;
+    }
+    const formData = new FormData(birimDuzenleForm);
+    fetch(`/mercis657/birim/${birimId}/guncelle/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': birimDuzenleForm.querySelector('[name=csrfmiddlewaretoken]').value},
+        body: formData
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            location.reload(); // Sayfayı yenile
+        } else {
+            alert(data.message || 'Birim güncellenemedi.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Birim güncellenirken bir hata oluştu.');
+    });
+}
+
+// Birim Silme Fonksiyonu
+function birimSil() {
+    const birimId = document.getElementById('birimIdDuzenle').value;
+     if (!birimId) {
+        alert('Silinecek birim seçilmedi.');
+        return;
+    }
+    if (confirm('Bu birimi silmek istediğinizden emin misiniz?')) {
+        const birimDuzenleForm = document.getElementById('birimDuzenleForm'); // CSRF token için formu kullan
+        fetch(`/mercis657/birim/${birimId}/sil/`, {
+            method: 'POST',
+             headers: {'X-CSRFToken': birimDuzenleForm.querySelector('[name=csrfmiddlewaretoken]').value},
+        })
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                location.reload(); // Sayfayı yenile
+            } else {
+                alert(data.message || 'Birim silinemedi.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Birim silinirken bir hata oluştu.');
+        });
+    }
+}
+
+// Modal açıldığında düzenleme formunu temizle ve sil butonunu devre dışı bırak
+document.getElementById('birimYonetimModal').addEventListener('show.bs.modal', function (event) {
+    const birimDuzenleForm = document.getElementById('birimDuzenleForm');
+    birimDuzenleForm.reset();
+    document.getElementById('birimIdDuzenle').value = '';
+    document.querySelector('#birimDuzenleForm .btn-danger').disabled = true;
+
+    // cizelge.html sayfasındaki birim seçim dropdown'ından seçili birim ID'sini al
+    const selectBirimElement = document.getElementById('selectBirim'); // cizelge.html'deki element
+    const selectedBirimId = selectBirimElement ? selectBirimElement.value : ''; // Eğer element varsa değerini al
+
+    // Eğer bir birim seçiliyse, detaylarını yükle
+    if (selectedBirimId) {
+        loadBirimForEdit(selectedBirimId);
+    }
+
+    // Not: cizelge.html'deki btnBirimYonetim butonu şu anda data-birim-id içermiyor.
+    // Eğer modalı cizelge.html'deki birim seçimine göre açmak isterseniz,
+    // birim seçimi değiştiğinde modalı açan butonun data-birim-id'sini güncellemeniz
+    // veya birim seçimini loadBirimForEdit fonksiyonuna doğrudan iletmeniz gerekir.
+    // Mevcut durumda modal açıldığında eğer #selectBirim'de bir değer seçiliyse form dolacaktır.
+});
+
+</script>

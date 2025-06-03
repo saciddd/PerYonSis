@@ -27,6 +27,11 @@ urlpatterns = [
     # Kullanıcı işlemleri
     path('kullanici/ara/', views.kullanici_ara, name='kullanici_ara'),
 
+    # Birim Yönetimi API Endpoints
+    path('birim/<int:birim_id>/detay/', views.birim_detay, name='birim_detay'),
+    path('birim/<int:birim_id>/guncelle/', views.birim_guncelle, name='birim_guncelle'),
+    path('birim/<int:birim_id>/sil/', views.birim_sil, name='birim_sil'),
+
     path('kurum-ekle/', views.kurum_ekle, name='kurum_ekle'),
     path('kurum-sil/<int:pk>/', views.kurum_sil, name='kurum_sil'),
     path('kurum-guncelle/<int:pk>/', views.kurum_guncelle, name='kurum_guncelle'),
@@ -39,6 +44,7 @@ urlpatterns = [
     path('mudur-yrd-sil/<int:pk>/', views.mudur_yrd_sil, name='mudur_yrd_sil'),
     path('mudur-yrd-guncelle/<int:pk>/', views.mudur_yrd_guncelle, name='mudur_yrd_guncelle'),
 
-    path('onceki-donem-personel/<str:donem>/<int:birim_id>/', views.onceki_donem_personel, name='onceki_donem_personel'),
+    path('onceki-donem-personel/<int:year>/<int:month>/<int:birim_id>/', views.onceki_donem_personel, name='onceki_donem_personel'),
     path('personel/kaydet/', views.personel_kaydet, name='personel_kaydet'),
+    path('cizelge/yazdir/', views.cizelge_yazdir, name='cizelge_yazdir'),
 ]

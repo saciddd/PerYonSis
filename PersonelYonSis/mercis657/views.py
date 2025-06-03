@@ -9,7 +9,7 @@ import json
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from PersonelYonSis import settings
-from .models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, MudurYardimcisi
+from .models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, MudurYardimcisi, Izin
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 import locale
@@ -22,17 +22,8 @@ User = get_user_model()
 
 
 @login_required
-def onceki_donem_personel(request, donem, birim_id):
-    # donem: "YYYY/MM" veya "YYYY-MM" formatında gelebilir
-    try:
-        if '-' in donem:
-            year, month = map(int, donem.split('-'))
-        elif '/' in donem:
-            year, month = map(int, donem.split('/'))
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Geçersiz dönem.'})
-    except Exception:
-        return JsonResponse({'status': 'error', 'message': 'Geçersiz dönem.'})
+def onceki_donem_personel(request, year, month, birim_id):
+    # year: int, month: int, birim_id: int
     # Bir önceki ayı bul
     if month == 1:
         prev_year = year - 1
@@ -171,7 +162,11 @@ def cizelge(request):
     user = request.user
     user_birimler = UserBirim.objects.filter(user=user).select_related('birim')
     print(f"Kullanıcı: {user.Username}, Birimler: {[b.birim.BirimAdi for b in user_birimler]}")
-
+    izinler = Izin.objects.all()
+    kurumlar = Kurum.objects.all()
+    print(f"Kurumlar: {kurumlar}")
+    ust_birimler = UstBirim.objects.all()
+    mudur_yrdler = MudurYardimcisi.objects.all()
     # Dönemler: mevcut aydan 6 ay önce ile 2 ay sonrası arası
     today = date.today().replace(day=1)
     donemler = []
@@ -183,42 +178,32 @@ def cizelge(request):
 
     selected_birim_id = request.GET.get('birim_id') or ""
     selected_donem = request.GET.get('donem') or ""
-
-    # Eğer GET ile birim ve dönem seçilmemişse, context'e sadece seçim listelerini gönder
-    if not selected_birim_id or not selected_donem:
-        return render(request, 'mercis657/cizelge.html', {
+    pastcontext = {
             "user_birimler": user_birimler,
             "selected_birim_id": selected_birim_id,
             "donemler": donemler,
             "selected_donem": selected_donem,
             "mesai_options": Mesai_Tanimlari.objects.all(),
-            # personeller, days gibi alanlar yok => tablo görünmez
-        })
-
+            "kurumlar": kurumlar,
+            "ust_birimler": ust_birimler,
+            "mudur_yrdler": mudur_yrdler,
+            "izinler": izinler,
+        }
+    # Eğer GET ile birim ve dönem seçilmemişse, context'e sadece seçim listelerini gönder
+    if not selected_birim_id or not selected_donem:
+        return render(request, 'mercis657/cizelge.html', pastcontext)
     # Dönem bilgisini parse et ("YYYY/MM" formatı)
     try:
         current_year, current_month = map(int, selected_donem.split('/'))
     except Exception:
         messages.warning(request, "Geçersiz dönem formatı.")
-        return render(request, 'mercis657/cizelge.html', {
-            "user_birimler": user_birimler,
-            "selected_birim_id": selected_birim_id,
-            "donemler": donemler,
-            "selected_donem": selected_donem,
-            "mesai_options": Mesai_Tanimlari.objects.all(),
-        })
+        return render(request, 'mercis657/cizelge.html', pastcontext)
 
     birim_id = selected_birim_id
 
     if not birim_id:
         messages.warning(request, "Lütfen bir birim seçiniz.")
-        return render(request, 'mercis657/cizelge.html', {
-            "user_birimler": user_birimler,
-            "selected_birim_id": selected_birim_id,
-            "donemler": donemler,
-            "selected_donem": selected_donem,
-            "mesai_options": Mesai_Tanimlari.objects.all(),
-        })
+        return render(request, 'mercis657/cizelge.html', pastcontext)
 
     birim = get_object_or_404(Birim, BirimID=birim_id)
 
@@ -230,13 +215,7 @@ def cizelge(request):
         liste = PersonelListesi.objects.get(birim=birim, yil=current_year, ay=current_month)
     except PersonelListesi.DoesNotExist:
         messages.warning(request, f"{current_month}/{current_year} için personel listesi oluşturulmamış.")
-        return render(request, 'mercis657/cizelge.html', {
-            "user_birimler": user_birimler,
-            "selected_birim_id": selected_birim_id,
-            "donemler": donemler,
-            "selected_donem": selected_donem,
-            "mesai_options": Mesai_Tanimlari.objects.all(),
-        })
+        return render(request, 'mercis657/cizelge.html', pastcontext)
 
     personeller = Personel.objects.filter(personellistesikayit__liste=liste).distinct()
     mesai_tanimlari = Mesai_Tanimlari.objects.all()
@@ -275,6 +254,7 @@ def cizelge(request):
     context = {
         "personeller": personeller,
         "mesai_options": mesai_tanimlari,
+        "izinler": izinler,
         "days": days,
         "birim": birim,
         "current_year": current_year,
@@ -285,8 +265,17 @@ def cizelge(request):
         "selected_birim_id": selected_birim_id,
         "donemler": donemler,
         "selected_donem": selected_donem,
+        "kurumlar": kurumlar,
+        "ust_birimler": ust_birimler,
+        "mudur_yrdler": mudur_yrdler,
+        "izinler": izinler,
     }
     return render(request, 'mercis657/cizelge.html', context)
+
+@login_required
+def cizelge_yazdir(request):
+    # Şimdilik boş, ileride PDF şablonu ile doldurulacak
+    return HttpResponse("Yazdır PDF fonksiyonu hazırlanacak.", content_type="text/plain")
 
 @login_required
 def cizelge_kaydet(request):
@@ -589,14 +578,87 @@ def birim_ekle(request):
         mudur_id = request.POST.get('MudurYrd') or None
         if not ad:
             return JsonResponse({'status': 'error', 'message': 'Birim adı zorunlu.'})
-        birim = Birim.objects.create(
-            BirimAdi=ad,
-            Kurum_id=kurum_id if kurum_id else None,
-            UstBirim_id=ust_id if ust_id else None,
-            MudurYrd_id=mudur_id if mudur_id else None
-        )
-        return JsonResponse({'status': 'success'})
+        try:
+            birim = Birim.objects.create(
+                BirimAdi=ad,
+                Kurum_id=kurum_id if kurum_id else None,
+                UstBirim_id=ust_id if ust_id else None,
+                MudurYrd_id=mudur_id if mudur_id else None
+            )
+            # Yeni eklenen birime mevcut kullanıcıyı yetkilendir
+            UserBirim.objects.create(user=request.user, birim=birim)
+            return JsonResponse({'status': 'success', 'birim_id': birim.BirimID})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
     return JsonResponse({'status': 'error', 'message': 'Geçersiz istek.'})
+
+@login_required
+def birim_detay(request, birim_id):
+    try:
+        birim = get_object_or_404(Birim, BirimID=birim_id)
+        # Kullanıcının bu birim için yetkisi var mı kontrol et
+        if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
+             return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
+
+        data = {
+            'BirimID': birim.BirimID,
+            'BirimAdi': birim.BirimAdi,
+            'Kurum': birim.Kurum.pk if birim.Kurum else None,
+            'UstBirim': birim.UstBirim.pk if birim.UstBirim else None,
+            'MudurYrd': birim.MudurYrd.pk if birim.MudurYrd else None,
+        }
+        return JsonResponse({'status': 'success', 'data': data})
+    except Birim.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Birim bulunamadı.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@csrf_exempt # CSRF korumasını geçici olarak devre dışı bırakıyoruz, uygun token yönetimi eklenmeli
+@require_POST
+@login_required
+def birim_guncelle(request, birim_id):
+    try:
+        birim = get_object_or_404(Birim, BirimID=birim_id)
+        # Kullanıcının bu birim için yetkisi var mı kontrol et
+        if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
+             return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
+
+        ad = request.POST.get('birimAdi')
+        kurum_id = request.POST.get('Kurum') or None
+        ust_id = request.POST.get('UstBirim') or None
+        mudur_id = request.POST.get('MudurYrd') or None
+
+        if not ad:
+            return JsonResponse({'status': 'error', 'message': 'Birim adı zorunlu.'})
+
+        birim.BirimAdi = ad
+        birim.Kurum_id = kurum_id
+        birim.UstBirim_id = ust_id
+        birim.MudurYrd_id = mudur_id
+        birim.save()
+
+        return JsonResponse({'status': 'success', 'message': 'Birim başarıyla güncellendi.'})
+    except Birim.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Birim bulunamadı.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@csrf_exempt # CSRF korumasını geçici olarak devre dışı bırakıyoruz, uygun token yönetimi eklenmeli
+@require_POST
+@login_required
+def birim_sil(request, birim_id):
+    try:
+        birim = get_object_or_404(Birim, BirimID=birim_id)
+         # Kullanıcının bu birim için yetkisi var mı kontrol et (isteğe bağlı: silme yetkisi farklı olabilir)
+        if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
+             return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
+
+        birim.delete()
+        return JsonResponse({'status': 'success', 'message': 'Birim başarıyla silindi.'})
+    except Birim.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Birim bulunamadı.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 @csrf_exempt
 def kurum_ekle(request):

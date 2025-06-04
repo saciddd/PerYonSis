@@ -54,8 +54,11 @@
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Personel Listesi</h3>
+                <div class="card-header d-flex align-items-center" style="gap: 1rem;">
+                    <h3 class="card-title mb-0 flex-grow-1">Personel Listesi</h3>
+                    <a href="{% url 'ik_core:personel_ekle' %}" class="btn btn-success btn-sm ms-auto d-flex align-items-center">
+                        <i class="bi bi-plus-lg me-1"></i> Personel Ekle
+                    </a>
                 </div>
                 <div class="card-body">
                     <table id="personelTable" class="table table-bordered table-striped" style="width:100%">

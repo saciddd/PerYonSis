@@ -17,6 +17,7 @@ class Personel(models.Model):
 class HizmetSunumAlani(models.Model):
     AlanAdi = models.CharField(max_length=100, verbose_name="Alan Adı")
     AlanKodu = models.CharField(max_length=50, unique=True, verbose_name="Alan Kodu")
+    SorumluAtanabilir = models.BooleanField(default=False, verbose_name="Sorumlu Atanabilir")
 
     class Meta:
         verbose_name = "Hizmet Sunum Alanı"

@@ -817,8 +817,22 @@ def export_raporlama_excel(request):
         ws.cell(row=row, column=5, value=calisma.HizmetBitisTarihi)
         ws.cell(row=row, column=6, value=birim.BirimAdi)
         ws.cell(row=row, column=7, value=calisma.OzelAlanKodu)
-        ws.cell(row=row, column=8, value="Evet" if calisma.Sorumlu else "Hayır")
-        ws.cell(row=row, column=9, value="Evet" if calisma.Sertifika else "Hayır")
+        # ...column 8: Sorumlu/SorumluAtanabilir...
+        if calisma.Sorumlu:
+            sorumlu_alan = None
+            if calisma.OzelAlanKodu:
+                try:
+                    sorumlu_alan = HizmetSunumAlani.objects.get(AlanKodu=calisma.OzelAlanKodu)
+                except HizmetSunumAlani.DoesNotExist:
+                    sorumlu_alan = None
+            # SorumluAtanabilir True ise 1, False ise 0 yaz
+            if sorumlu_alan is not None and hasattr(sorumlu_alan, "SorumluAtanabilir"):
+                ws.cell(row=row, column=8, value=1 if sorumlu_alan.SorumluAtanabilir else 0)
+            else:
+                ws.cell(row=row, column=8, value="")
+        else:
+            ws.cell(row=row, column=8, value=0)
+        ws.cell(row=row, column=9, value=1 if calisma.Sertifika else 0)
         row += 1
 
     # Excel dosyasını kaydet

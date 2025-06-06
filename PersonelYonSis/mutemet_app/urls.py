@@ -34,4 +34,7 @@ urlpatterns = [
     path('icra-takibi/<int:icra_id>/duzenle-modal/', views_icra_edit.icra_takibi_duzenle_modal, name='icra_takibi_duzenle_modal'),
     path('icra-takibi/<int:icra_id>/guncelle/', views_icra_edit.icra_takibi_guncelle, name='icra_takibi_guncelle'),
     path('icra/<int:icra_id>/sil/', views.icra_sil, name='icra_sil'),
+
+    path('icra-hareket/<int:hareket_id>/sil/', views.icra_hareket_sil, name='icra_hareket_sil'),
+    path('icra-hareket/<int:hareket_id>/duzenle-modal/', views.icra_hareket_duzenle_modal, name='icra_hareket_duzenle_modal'),
 ]

@@ -25,8 +25,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Sum, Max, Count, Q
 from collections import defaultdict
 import pdfkit
-import locale
-import platform
 from django.core.paginator import Paginator
 import asyncio
 from asgiref.sync import sync_to_async
@@ -806,3 +804,79 @@ def icra_sil(request, icra_id):
         )
         icra.delete()
         return JsonResponse({"status": "deleted", "message": "Kayıt başarıyla silindi."})
+
+@login_required
+@csrf_exempt
+def icra_hareket_duzenle_modal(request, hareket_id):
+    hareket = get_object_or_404(IcraHareketleri, pk=hareket_id)
+    if request.method == 'GET':
+        html = render_to_string('mutemet_app/_icra_hareket_duzenle_modal.html', {'hareket': hareket})
+        return HttpResponse(html)
+    if request.method == 'POST':
+        kesilen_tutar = request.POST.get('kesilen_tutar')
+        # Türkçe formatı düzelt: 100.000,00 -> 100000.00
+        if kesilen_tutar:
+            kesilen_tutar = kesilen_tutar.replace(',', '.')
+        hareket.kesilen_tutar = kesilen_tutar
+        hareket.kesildigi_donem = request.POST.get('kesildigi_donem')
+        hareket.odeme_turu = request.POST.get('odeme_turu')
+        try:
+            hareket.save()
+            # İlgili icra kaydını güncelle (kapanma/sıradaki icra açma)
+            icra = hareket.icra
+            icra.refresh_from_db()
+            # Toplam kesinti ve kalan borç hesapla
+            toplam_kesinti = IcraHareketleri.objects.filter(icra=icra).aggregate(Sum('kesilen_tutar'))['kesilen_tutar__sum'] or 0
+            kalan_borc = float(icra.tutar) - float(toplam_kesinti)
+            # NAFAKA ise otomatik kapanma ve sıradaki icra güncellemesi yapılmaz
+            if icra.icra_turu != 'NAFAKA':
+                if kalan_borc <= 0:
+                    icra.durum = 'KAPANDI'
+                    icra.save(update_fields=['durum'])
+                    # Sıradaki icra aktif yapılır
+                    siradaki_icra = IcraTakibi.objects.filter(
+                        personel=icra.personel,
+                        durum='SIRADA',
+                        icra_turu__in=['ICRA', 'TAAHHUT']
+                    ).order_by('tarihi', 'icra_id').first()
+                    if siradaki_icra:
+                        siradaki_icra.durum = 'AKTIF'
+                        siradaki_icra.save(update_fields=['durum'])
+                else:
+                    if icra.durum != 'AKTIF':
+                        icra.durum = 'AKTIF'
+                        icra.save(update_fields=['durum'])
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+
+@csrf_exempt
+def icra_hareket_sil(request, hareket_id):
+    """İcra hareketini siler (AJAX) ve icra kaydının durumunu günceller."""
+    try:
+        hareket = get_object_or_404(IcraHareketleri, pk=hareket_id)
+        icra = hareket.icra
+        hareket.delete()
+        # İlgili icra kaydını güncelle (kapanma/sıradaki icra açma)
+        icra.refresh_from_db()
+        toplam_kesinti = IcraHareketleri.objects.filter(icra=icra).aggregate(Sum('kesilen_tutar'))['kesilen_tutar__sum'] or 0
+        kalan_borc = float(icra.tutar) - float(toplam_kesinti)
+        if icra.icra_turu != 'NAFAKA':
+            if kalan_borc <= 0:
+                icra.durum = 'KAPANDI'
+                icra.save(update_fields=['durum'])
+                siradaki_icra = IcraTakibi.objects.filter(
+                    personel=icra.personel,
+                    durum='SIRADA',
+                    icra_turu__in=['ICRA', 'TAAHHUT']
+                ).order_by('tarihi', 'icra_id').first()
+                if siradaki_icra:
+                    siradaki_icra.durum = 'AKTIF'
+                    siradaki_icra.save(update_fields=['durum'])
+            else:
+                if icra.durum != 'AKTIF':
+                    icra.durum = 'AKTIF'
+                    icra.save(update_fields=['durum'])
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})

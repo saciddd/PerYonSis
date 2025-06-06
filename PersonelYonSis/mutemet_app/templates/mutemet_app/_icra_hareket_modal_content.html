@@ -12,6 +12,7 @@
                         <th>Kesilen Tutar</th>
                         <th>Kesildiği Dönem</th>
                         <th>Ödeme Türü</th>
+                        <th>İşlem</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -24,10 +25,18 @@
                             {% endwith %}
                         </td>
                         <td>{{ hareket.get_odeme_turu_display }}</td>
+                        <td>
+                            <button type="button" class="btn btn-outline-secondary btn-sm me-1" onclick="duzenleIcraHareket({{ hareket.id }})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="silIcraHareket({{ hareket.id }})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="3" class="text-center">Kayıt bulunamadı.</td>
+                        <td colspan="4" class="text-center">Kayıt bulunamadı.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -157,4 +166,64 @@ $(document).on('click', '#btnIcraSil', function() {
         }
     });
 });
+
+function duzenleIcraHareket(hareketId) {
+    Swal.fire({
+        title: 'Hareketi Düzenle',
+        text: 'Bu hareket kaydını düzenlemek istiyor musunuz?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, düzenle',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // AJAX ile düzenleme formunu getir ve modalda göster
+            $.ajax({
+                url: `/mutemet/icra-hareket/${hareketId}/duzenle-modal/`,
+                type: 'GET',
+                success: function(response) {
+                    // Modalı aç (aynı modalı kullanabiliriz veya ayrı bir modal gösterebiliriz)
+                    // Burada örnek olarak yeni bir modal açıyoruz
+                    let modal = $('#icraHareketEkleModal');
+                    modal.find('.modal-content').html(response);
+                    modal.modal('show');
+                },
+                error: function() {
+                    Swal.fire('Hata!', 'Düzenleme formu yüklenirken bir hata oluştu.', 'error');
+                }
+            });
+        }
+    });
+}
+
+function silIcraHareket(hareketId) {
+    Swal.fire({
+        title: 'Hareketi Sil',
+        text: 'Bu hareket kaydını silmek istediğinize emin misiniz?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, sil',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: `/mutemet/icra-hareket/${hareketId}/sil/`,
+                type: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token }}'},
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire('Başarılı', 'Hareket kaydı silindi.', 'success').then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire('Hata', response.message || 'Hareket silinemedi.', 'error');
+                    }
+                },
+                error: function() {
+                    Swal.fire('Hata', 'Hareket silinirken bir hata oluştu.', 'error');
+                }
+            });
+        }
+    });
+}
 </script>

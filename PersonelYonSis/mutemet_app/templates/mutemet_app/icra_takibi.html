@@ -151,7 +151,7 @@
                                             <td class="tl-format">{{ icra.hesaplanan_toplam_kesinti|floatformat:2 }}</td>
                                             <td class="tl-format">{{ icra.hesaplanan_kalan_borc|floatformat:2 }}</td>
                                             <td>
-                                                <button type="button" class="btn btn-primary btn-sm btn-icon" data-icra-id="{{ icra.pk }}" onclick="hareketGoster(this)" {% if icra.durum == 'SIRADA' %}disabled{% endif %}>
+                                                <button type="button" class="btn btn-primary btn-sm btn-icon" data-icra-id="{{ icra.pk }}" onclick="hareketGoster(this, '{{ icra.durum }}')">
                                                     <i class="bi bi-clock-history"></i> İşlemler
                                                 </button>
                                                 <button type="button" class="btn btn-warning btn-sm btn-icon ms-1" data-icra-id="{{ icra.pk }}" onclick="icraDuzenleGoster(this)">
@@ -369,12 +369,31 @@
 // Store the cleave instance globally or accessible scope
 var cleaveTutar;
 
-function hareketGoster(buttonElement) {
+function hareketGoster(buttonElement, durum) {
     const icraId = buttonElement.dataset.icraId;
     if (!icraId) {
         Swal.fire('Hata!', 'İcra ID bulunamadı.', 'error');
         return;
     }
+    if (durum === 'SIRADA') {
+        Swal.fire({
+            title: 'Uyarı',
+            text: 'Personelin devam eden aktif icra kaydı mevcut fakat siz sırada bekleyen icra kaydına işlem yapacaksınız. Emin misiniz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, devam et',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                loadIcraHareketModal(icraId);
+            }
+        });
+    } else {
+        loadIcraHareketModal(icraId);
+    }
+}
+
+function loadIcraHareketModal(icraId) {
     $.ajax({
         url: `/mutemet/icra-takibi/${icraId}/hareketler/`,
         type: 'GET',

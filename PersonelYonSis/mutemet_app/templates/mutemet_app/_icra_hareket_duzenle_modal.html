@@ -1,0 +1,66 @@
+<div class="modal-header">
+    <h5 class="modal-title">Hareketi Düzenle</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<form id="icraHareketDuzenleForm">
+    <div class="modal-body">
+        <input type="hidden" name="hareket_id" value="{{ hareket.id }}">
+        <div class="mb-3">
+            <label class="form-label">Kesilen Tutar</label>
+            <input type="text" class="form-control" name="kesilen_tutar" id="kesilenTutarInput" value="{{ hareket.kesilen_tutar|floatformat:2 }}" autocomplete="off">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Kesildiği Dönem</label>
+            <input type="date" class="form-control" name="kesildigi_donem" value="{{ hareket.kesildigi_donem|date:'Y-m-d' }}">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Ödeme Türü</label>
+            <input type="text" class="form-control" name="odeme_turu" value="{{ hareket.odeme_turu }}">
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+    </div>
+</form>
+<script src="https://cdn.jsdelivr.net/npm/cleave.js@1.6.0/dist/cleave.min.js"></script>
+<script>
+var cleaveTutar = new Cleave('#kesilenTutarInput', {
+    numeral: true,
+    numeralDecimalMark: ',',
+    delimiter: '.',
+    numeralDecimalScale: 2,
+    numeralPositiveOnly: true
+});
+
+$('#icraHareketDuzenleForm').on('submit', function(e) {
+    e.preventDefault();
+    var hareketId = $(this).find('input[name="hareket_id"]').val();
+    // Cleave.js ile formatlanmış değeri düzelt
+    var $input = $(this).find('input[name="kesilen_tutar"]');
+    var val = $input.val();
+    // 100.000,00 -> 100000.00
+    val = val.replace(/\./g, '').replace(',', '.');
+    $input.val(val);
+
+    $.ajax({
+        url: `/mutemet/icra-hareket/${hareketId}/duzenle-modal/`,
+        type: 'POST',
+        data: $(this).serialize(),
+        headers: {'X-CSRFToken': '{{ csrf_token }}'},
+        success: function(response) {
+            if (response.success) {
+                $('#icraHareketEkleModal').modal('hide');
+                Swal.fire('Başarılı', 'Hareket kaydı güncellendi.', 'success').then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire('Hata', response.message || 'Güncelleme başarısız.', 'error');
+            }
+        },
+        error: function() {
+            Swal.fire('Hata', 'Güncelleme sırasında bir hata oluştu.', 'error');
+        }
+    });
+});
+</script>

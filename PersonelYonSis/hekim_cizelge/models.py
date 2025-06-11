@@ -105,7 +105,6 @@ class Hizmet(models.Model):
 
 class Personel(models.Model):
     PersonelID = models.AutoField(primary_key=True)
-    # PersonelName = models.CharField(max_length=100)  # Ad Soyad
     FirstName = models.CharField(max_length=50, null=True, blank=True)
     LastName = models.CharField(max_length=50, null=True, blank=True)
     PersonelTitle = models.CharField(max_length=50)  # Unvan (ör. Uzman Tabip)
@@ -151,6 +150,7 @@ class Mesai(models.Model):
     Personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
     MesaiDate = models.DateField(null=False)
     Hizmetler = models.ManyToManyField('Hizmet', related_name='mesai_hizmetleri', blank=True)
+    TaslakHizmetler = models.ManyToManyField('Hizmet', related_name='taslak_hizmetler', blank=True)
     Izin = models.ForeignKey('Izin', on_delete=models.SET_NULL, null=True, blank=True)
     OnayDurumu = models.IntegerField(default=0)  # 0: Beklemede, 1: Onaylandı
     OnayTarihi = models.DateTimeField(null=True, blank=True)

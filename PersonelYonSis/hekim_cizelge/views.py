@@ -291,7 +291,7 @@ def cizelge(request):
         MesaiDate__year=current_year,
         MesaiDate__month=current_month
     ).select_related('Personel', 'Izin').prefetch_related(
-        'Hizmetler'
+        'Hizmetler', 'TaslakHizmetler'
     )
 
     personel_dict = {p.PersonelID: p.PersonelName for p in personeller}
@@ -305,10 +305,19 @@ def cizelge(request):
                     'type': hizmet.HizmetTipi,
                     'is_varsayilan': hizmet.HizmetID == selected_birim.VarsayilanHizmet.HizmetID
                 })
+
+            taslak_hizmet_list = []
+            for hizmet in mesai.TaslakHizmetler.all():
+                taslak_hizmet_list.append({
+                    'name': hizmet.HizmetName,
+                    'type': hizmet.HizmetTipi,
+                    'is_varsayilan': hizmet.HizmetID == selected_birim.VarsayilanHizmet.HizmetID
+                })
             
             mesai_data = {
                 'MesaiDate': mesai.MesaiDate.strftime("%Y-%m-%d"),
                 'Hizmetler': hizmet_list,
+                'TaslakHizmetler': taslak_hizmet_list,
                 'OnayDurumu': mesai.OnayDurumu,
                 'MesaiID': mesai.MesaiID
             }
@@ -378,17 +387,16 @@ def cizelge_kaydet(request):
                     mesai.save()
 
                 if value.get('type') == 'clear':
-                    mesai.Hizmetler.clear()
+                    mesai.TaslakHizmetler.clear()
                     mesai.Izin = None
                     mesai.save()
                 elif value.get('type') == 'hizmet':
                     mesai.Izin = None
                     mesai.save()
-                    # Buradaki hatayı düzelttim - parantezleri kaldırdımm
                     hizmetler = Hizmet.objects.filter(HizmetID__in=value.get('hizmetler', []))
-                    mesai.Hizmetler.set(hizmetler)
+                    mesai.TaslakHizmetler.set(hizmetler)
                 elif value.get('type') == 'izin':
-                    mesai.Hizmetler.clear()
+                    mesai.TaslakHizmetler.clear()
                     if value.get('izin'):
                         izin = Izin.objects.get(IzinID=value.get('izin'))
                         mesai.Izin = izin
@@ -407,7 +415,6 @@ def cizelge_kaydet(request):
                 'status': 'error',
                 'message': f'Beklenmeyen bir hata oluştu: {str(e)}'
             })
-
     return JsonResponse({'status': 'error', 'message': 'Invalid request method.'})
 
 @csrf_exempt
@@ -416,23 +423,28 @@ def mesai_onay(request, mesai_id):
         try:
             data = json.loads(request.body)
             mesai = get_object_or_404(Mesai, MesaiID=mesai_id)
-            
+
+            # Onay işlemi
+            mesai.Hizmetler.set(mesai.TaslakHizmetler.all())  # Hizmetleri kopyala
+            # mesai.Izin = mesai.TaslakIzin  # İzin bilgisini kopyala
+
             mesai.OnayDurumu = data.get('onay_durumu', 0)
             mesai.Onaylayan = request.user
             mesai.OnayTarihi = datetime.now()
             mesai.Degisiklik = False
             mesai.save()
-            
+
             return JsonResponse({
                 'status': 'success',
                 'mesai_id': mesai_id
             })
-            
+
         except Exception as e:
             return JsonResponse({
                 'status': 'error',
                 'message': str(e)
             })
+
 
 def mesai_onay_durumu(request, mesai_id):
     mesai = get_object_or_404(Mesai, MesaiID=mesai_id)
@@ -444,50 +456,95 @@ def mesai_onay_durumu(request, mesai_id):
     })
 
 def onay_bekleyen_mesailer(request):
-    user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
+    # Yıl ve ay parametrelerini al
+    current_year = int(request.GET.get('year', timezone.now().year))
+    current_month = int(request.GET.get('month', timezone.now().month))
     
-    birimler = Birim.objects.filter(BirimID__in=user_birimler).annotate(
-        bekleyen_mesai=models.Count(
-            'personelbirim__personel__mesai',
-            filter=models.Q(
-                personelbirim__personel__mesai__OnayDurumu=0,
-                personelbirim__personel__mesai__Degisiklik=True
-            )
-        )
-    ).filter(bekleyen_mesai__gt=0)
+    # Yıl ve ay listelerini hazırla
+    years = range(timezone.now().year - 1, timezone.now().year + 2)
+    months = [
+        {'value': i, 'label': timezone.datetime(2000, i, 1).strftime('%B')}
+        for i in range(1, 13)
+    ]
 
-    return render(request, 'hekim_cizelge/onay_bekleyen_mesailer.html', {
-        'birimler': birimler
-    })
+    # Kullanıcının yetkili olduğu birimleri al
+    user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim', flat=True)
+    birimler = Birim.objects.filter(BirimID__in=user_birimler)
+
+    # Her birim için bekleyen mesaileri hesapla
+    for birim in birimler:
+        # Tarih aralığını belirle
+        start_date = timezone.datetime(current_year, current_month, 1)
+        if current_month == 12:
+            end_date = timezone.datetime(current_year + 1, 1, 1)
+        else:
+            end_date = timezone.datetime(current_year, current_month + 1, 1)
+
+        # Bekleyen mesaileri sorgula
+        bekleyen_mesailer = Mesai.objects.filter(
+            Personel__personelbirim__birim_id=birim.BirimID,
+            OnayDurumu=0,
+            MesaiDate__gte=start_date.date(),
+            MesaiDate__lt=end_date.date()
+        ).select_related('Personel')
+
+        # Birim için istatistikleri hesapla
+        birim.bekleyen_mesai_sayisi = bekleyen_mesailer.count()
+        birim.degisiklik_bekleyen = bekleyen_mesailer.filter(Degisiklik=True).count()
+        birim.yeni_mesai = bekleyen_mesailer.filter(Degisiklik=False).count()
+        
+
+    context = {
+        'birimler': birimler,
+        'years': years,
+        'months': months,
+        'current_year': current_year,
+        'current_month': current_month,
+        'selected_month_name': timezone.datetime(2000, current_month, 1).strftime('%B')
+    }
+
+    return render(request, 'hekim_cizelge/onay_bekleyen_mesailer.html', context)
 
 @csrf_exempt
 def toplu_onay(request, birim_id):
     if request.method == 'POST':
         try:
+            data = json.loads(request.body)
+            yil = int(data.get('yil'))
+            ay = int(data.get('ay'))
+
+            baslangic_tarih = datetime(yil, ay, 1).date()
+            gun_sayisi = calendar.monthrange(yil, ay)[1]
+            bitis_tarih = datetime(yil, ay, gun_sayisi).date()
+
             mesailer = Mesai.objects.filter(
                 Personel__personelbirim__birim_id=birim_id,
+                MesaiDate__range=(baslangic_tarih, bitis_tarih),
                 OnayDurumu=0,
                 Degisiklik=True
-            )
+            ).distinct()
+
             onay_sayisi = mesailer.count()
-            
-            mesailer.update(
-                OnayDurumu=1,
-                Onaylayan=request.user,
-                OnayTarihi=datetime.now(),
-                Degisiklik=False
-            )
-            
+
+            for mesai in mesailer:
+                mesai.Hizmetler.set(mesai.TaslakHizmetler.all())  # Taslaktan gerçek veriye
+                mesai.OnayDurumu = 1
+                mesai.Onaylayan = request.user
+                mesai.OnayTarihi = datetime.now()
+                mesai.Degisiklik = False
+                mesai.save()
+
             return JsonResponse({
                 'status': 'success',
                 'message': f'{onay_sayisi} adet mesai onaylandı.'
             })
-            
+
         except Exception as e:
             return JsonResponse({
                 'status': 'error',
                 'message': str(e)
             })
+
 
 @csrf_exempt
 def auto_fill_default(request):

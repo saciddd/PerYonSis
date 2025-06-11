@@ -4,43 +4,88 @@
 
 {% block content %}
 <div class="container-fluid mt-3">
-    <h4>Onay Bekleyen Mesailer</h4>
+    <h4>Onay Bekleyen Mesailer - {{ selected_month_name }} {{ current_year }}</h4>
     
+    <!-- Dönem Seçimi -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <label for="selectYear">Yıl Seçimi</label>
+            <select id="selectYear" class="form-control">
+                {% for year in years %}
+                <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="selectMonth">Ay Seçimi</label>
+            <select id="selectMonth" class="form-control">
+                {% for month in months %}
+                <option value="{{ month.value }}" {% if month.value == current_month %}selected{% endif %}>
+                    {{ month.label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <br>
+            <button class="btn btn-primary" id="filterButton">Sorgula</button>
+        </div>
+    </div>
     <!-- Birimler Listesi -->
     <div class="row">
         {% for birim in birimler %}
         <div class="col-md-4 mb-3">
             <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">{{ birim.BirimAdi }}</h5>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">{{ birim.BirimAdi }}</h5>
-                    <p class="card-text">
-                        Bekleyen Değişiklik: <span class="badge bg-warning">{{ birim.bekleyen_mesai }}</span>
-                    </p>
-                    <button class="btn btn-primary" onclick="goToCizelge('{{ birim.BirimID }}')">
-                        Değişiklikleri Görüntüle
-                    </button>
+                    <div class="stats mb-3">
+                        <p class="mb-2">
+                            <i class="fas fa-clock"></i> Toplam Bekleyen: 
+                            <span class="badge bg-primary">{{ birim.bekleyen_mesai_sayisi }}</span>
+                        </p>
+                        <p class="mb-2">
+                            <i class="fas fa-edit"></i> Değişiklik Bekleyen: 
+                            <span class="badge bg-warning">{{ birim.degisiklik_bekleyen }}</span>
+                        </p>
+                        <p class="mb-2">
+                            <i class="fas fa-plus"></i> Yeni Mesai: 
+                            <span class="badge bg-info">{{ birim.yeni_mesai }}</span>
+                        </p>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button class="btn btn-primary w-100" onclick="goToCizelge('{{ birim.BirimID }}')">
+                            <i class="fas fa-calendar-alt"></i> Çizelgeyi Görüntüle
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
         {% empty %}
         <div class="col-12">
             <div class="alert alert-info">
-                Onay bekleyen değişiklik bulunmamaktadır.
+                <i class="fas fa-info-circle"></i> Seçili dönem için onay bekleyen mesai bulunmamaktadır.
             </div>
         </div>
         {% endfor %}
     </div>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
     function goToCizelge(birimId) {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = today.getMonth() + 1;
+        const year = document.getElementById('selectYear').value;
+        const month = document.getElementById('selectMonth').value;
         window.location.href = `{% url 'hekim_cizelge:cizelge' %}?year=${year}&month=${month}&birim_id=${birimId}&mode=approval`;
     }
+
+    document.getElementById('filterButton').addEventListener('click', function() {
+        const year = document.getElementById('selectYear').value;
+        const month = document.getElementById('selectMonth').value;
+        window.location.href = `{% url 'hekim_cizelge:onay_bekleyen_mesailer' %}?year=${year}&month=${month}`;
+    });
 </script>
 {% endblock %}

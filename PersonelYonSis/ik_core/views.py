@@ -47,11 +47,21 @@ def personel_list(request):
 
 @login_required
 def personel_list_ajax(request):
-    """Personel listesini DataTables için asenkron (server-side) döndürür."""
     draw = int(request.GET.get('draw', 1))
     start = int(request.GET.get('start', 0))
     length = int(request.GET.get('length', 10))
 
+    # Dinamik sıralama (DataTables'dan gelen)
+    order_column_index = request.GET.get('order[0][column]')
+    order_dir = request.GET.get('order[0][dir]', 'asc')
+
+    order_column = request.GET.get(f'columns[{order_column_index}][data]', 'ad')  # Varsayılan: ad
+
+    # '-' prefix'i ile ters sıralama
+    if order_dir == 'desc':
+        order_column = f'-{order_column}'
+
+    # Filtreler
     tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
     ad_soyad = request.GET.get('ad_soyad', '').strip()
     unvanlar = request.GET.getlist('unvan[]')
@@ -59,12 +69,11 @@ def personel_list_ajax(request):
     teskilatlar = request.GET.getlist('teskilat[]')
 
     queryset = Personel.objects.all()
+
     if tc_kimlik_no:
         queryset = queryset.filter(tc_kimlik_no__icontains=tc_kimlik_no)
     if ad_soyad:
-        queryset = queryset.filter(
-            Q(ad__icontains=ad_soyad) | Q(soyad__icontains=ad_soyad)
-        )
+        queryset = queryset.filter(Q(ad__icontains=ad_soyad) | Q(soyad__icontains=ad_soyad))
     if unvanlar:
         queryset = queryset.filter(unvan_id__in=unvanlar)
     if kurumlar:
@@ -73,7 +82,8 @@ def personel_list_ajax(request):
         queryset = queryset.filter(teskilat__in=teskilatlar)
 
     total_count = queryset.count()
-    queryset = queryset.select_related('unvan', 'brans', 'kurum')[start:start+length]
+
+    queryset = queryset.select_related('unvan', 'brans', 'kurum').order_by(order_column)[start:start + length]
 
     data = []
     for p in queryset:

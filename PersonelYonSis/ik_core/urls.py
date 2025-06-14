@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from ik_core.api import views as api_views
 
 app_name = 'ik_core'
 
@@ -16,4 +17,7 @@ urlpatterns = [
     path('unvan-brans-tanimlari/', views.unvan_branstanimlari, name='unvan_branstanimlari'),
     path('tanimlamalar/', views.tanimlamalar, name='tanimlamalar'),
     path('personel_kontrol/', views.personel_kontrol, name='personel_kontrol'),
+    # API endpoints
+    path('api/personel_aktar/', api_views.filemaker_personel_aktar, name='filemaker_personel_aktar'),
+
 ]

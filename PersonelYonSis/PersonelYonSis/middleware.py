@@ -6,6 +6,9 @@ class LoginRequiredMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        # API endpointleri için login gerekmesin
+        if request.path.startswith('/ik_core/api/'):
+            return self.get_response(request)
         # kdhold uygulamasındaki url'ler için login gerekmesin
         if request.path.startswith('/kdhold/'):
             return self.get_response(request)

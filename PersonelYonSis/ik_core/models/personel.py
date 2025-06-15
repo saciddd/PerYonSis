@@ -43,26 +43,26 @@ class Personel(models.Model):
     soyad = models.CharField(max_length=50)
     unvan = models.ForeignKey(Unvan, on_delete=models.SET_NULL, null=True)
     brans = models.ForeignKey(Brans, on_delete=models.SET_NULL, null=True)
-    sicil_no = models.CharField(max_length=30, blank=True)
+    sicil_no = models.CharField(max_length=30, blank=True, null=True)
     dogum_tarihi = models.DateField(null=True, blank=True)
-    cinsiyet = models.CharField(max_length=6, choices=[('Erkek', 'Erkek'), ('Kadin', 'Kadın')])
+    cinsiyet = models.CharField(max_length=6, choices=[('Erkek', 'Erkek'), ('Kadin', 'Kadın')], blank=True, null=True)
     # Kurumsal bilgiler
     kurum = models.ForeignKey(Kurum, on_delete=models.SET_NULL, null=True, related_name='kurum_personelleri')
     kadro_yeri = models.ForeignKey(Kurum, on_delete=models.SET_NULL, null=True, related_name='kadro_personelleri')
     fiili_gorev_yeri = models.ForeignKey(Kurum, on_delete=models.SET_NULL, null=True, related_name='fiili_gorev_personelleri')
-    kadrolu_personel = models.BooleanField(default=True)
+    kadrolu_personel = models.BooleanField(default=True, null=True, blank=True)
     # Görev bilgileri
     atama_karar_tarihi = models.DateField(null=True, blank=True)
-    atama_karar_no = models.CharField(max_length=50, blank=True)
+    atama_karar_no = models.CharField(max_length=50, blank=True, null=True)
     goreve_baslama_tarihi = models.DateField(null=True, blank=True)
     memuriyete_baslama_tarihi = models.DateField(null=True, blank=True)
     kamu_baslangic_tarihi = models.DateField(null=True, blank=True)
-    teskilat = models.CharField(max_length=50, choices=TESKILAT_DEGERLERI)
-    emekli_sicil_no = models.CharField(max_length=30, blank=True)
-    tahsil_durumu = models.CharField(max_length=30, choices=EGITIM_DEGERLERI)
-    aile_hek_sozlesmesi = models.BooleanField(default=False)
+    teskilat = models.CharField(max_length=50, choices=TESKILAT_DEGERLERI, blank=True, null=True)
+    emekli_sicil_no = models.CharField(max_length=30, blank=True, null=True)
+    tahsil_durumu = models.CharField(max_length=30, choices=EGITIM_DEGERLERI, blank=True, null=True)
+    aile_hek_sozlesmesi = models.BooleanField(default=False, null=True, blank=True)
     # Mazeret bilgileri
-    mazeret_durumu = models.CharField(max_length=30, choices=MAZERET_DEGERLERI, blank=True)
+    mazeret_durumu = models.CharField(max_length=30, choices=MAZERET_DEGERLERI, blank=True, null=True)
     mazeret_baslangic = models.DateField(null=True, blank=True)
     mazeret_bitis = models.DateField(null=True, blank=True)
     # Özel durum bilgileri
@@ -71,21 +71,21 @@ class Personel(models.Model):
         blank=True,
         related_name='personeller'
     )
-    ozel_durumu_aciklama = models.TextField(blank=True)
-    engel_orani = models.PositiveSmallIntegerField(null=True, blank=True)
-    vergi_indirimi = models.CharField(max_length=31, choices=ENGEL_DERECESI_DEGERLERI, blank=True)
+    ozel_durumu_aciklama = models.TextField(blank=True, null=True)
+    engel_orani = models.TextField(null=True, blank=True)
+    vergi_indirimi = models.CharField(max_length=31, choices=ENGEL_DERECESI_DEGERLERI, blank=True, null=True)
     # İzin bilgileri
-    memur_devreden_izin = models.FloatField(default=0)
-    memur_hak_ettigi_izin = models.FloatField(default=0)
+    memur_devreden_izin = models.FloatField(default=0, null=True, blank=True)
+    memur_hak_ettigi_izin = models.FloatField(default=0, null=True, blank=True)
     # kalan_izin hesaplanacak, şimdilik yorum
     # İletişim bilgileri
-    adres = models.TextField(blank=True)
-    telefon = models.CharField(max_length=10, blank=True)
-    eposta = models.EmailField(blank=True)
+    adres = models.TextField(blank=True, null=True)
+    telefon = models.CharField(max_length=14, blank=True, null=True)
+    eposta = models.EmailField(blank=True, null=True)
     # Ayrılış bilgileri
     ayrilma_tarihi = models.DateField(null=True, blank=True)
-    ayrilma_nedeni = models.CharField(max_length=30, choices=AYRILMA_NEDENI_DEGERLERI, blank=True)
-    ayrilma_detay = models.TextField(blank=True)
+    ayrilma_nedeni = models.CharField(max_length=30, choices=AYRILMA_NEDENI_DEGERLERI, blank=True, null=True)
+    ayrilma_detay = models.TextField(blank=True, null=True)
     # Diğer bilgiler
     dhy = models.BooleanField(default=False)
     sgk = models.BooleanField(default=False)

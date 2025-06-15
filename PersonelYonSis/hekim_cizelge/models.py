@@ -105,6 +105,7 @@ class Hizmet(models.Model):
 
 class Personel(models.Model):
     PersonelID = models.AutoField(primary_key=True)
+    TcKimlikNo = models.BigIntegerField(unique=True, null=True)
     FirstName = models.CharField(max_length=50, null=True, blank=True)
     LastName = models.CharField(max_length=50, null=True, blank=True)
     PersonelTitle = models.CharField(max_length=50)  # Unvan (ör. Uzman Tabip)

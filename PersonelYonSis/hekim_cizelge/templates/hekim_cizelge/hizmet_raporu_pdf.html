@@ -110,6 +110,7 @@
             <tr>
                 <th>Tarih</th>
                 <th>Personel</th>
+                {% if telefon_goster %}<th>Telefon</th>{% endif %}
                 <th>Hizmetler</th>
                 <th>Durum</th>
             </tr>
@@ -119,6 +120,9 @@
             <tr>
                 <td>{{ mesai.tarih }}</td>
                 <td>{{ mesai.personel }}</td>
+                {% if telefon_goster %}
+                    <td>{{ mesai.telefon }}</td>
+                {% endif %}
                 <td>{{ mesai.hizmetler }}</td>
                 <td class="text-center">{{ mesai.durum }}</td>
             </tr>
@@ -136,4 +140,4 @@
         </table>
     </div>
 </body>
-</html> 
+</html>

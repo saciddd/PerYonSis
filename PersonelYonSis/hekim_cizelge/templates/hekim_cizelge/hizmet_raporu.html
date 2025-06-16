@@ -13,13 +13,13 @@
                     <!-- Filtre Formu -->
                     <form id="raporFiltreForm" class="mb-4">
                         <div class="row">
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label>Başlangıç Tarihi</label>
                                     <input type="date" class="form-control" id="baslangicTarihi" required>
                                 </div>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <div class="form-group">
                                     <label>Bitiş Tarihi</label>
                                     <input type="date" class="form-control" id="bitisTarihi" required>
@@ -33,6 +33,16 @@
                                         <option value="{{ hizmet.HizmetID }}">{{ hizmet.HizmetName }}</option>
                                         {% endfor %}
                                     </select>
+                                </div>
+                            </div>
+                            <!-- Telefonları göster checkboxu -->
+                            <div class="col-md-2">
+                                <div class="form-group">
+                                    <label>&nbsp;</label>
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="telefonGoster">
+                                        <label class="form-check-label" for="telefonGoster">Telefonları Göster</label>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-md-2">
@@ -90,6 +100,7 @@ $(document).ready(function() {
         const baslangicTarihi = $('#baslangicTarihi').val();
         const bitisTarihi = $('#bitisTarihi').val();
         const hizmetler = $('#hizmetler').val();
+        const telefonGoster = $('#telefonGoster').is(':checked');
 
         if (!baslangicTarihi || !bitisTarihi || !hizmetler || hizmetler.length === 0) {
             alert('Lütfen tüm alanları doldurunuz.');
@@ -104,6 +115,7 @@ $(document).ready(function() {
                 baslangic_tarihi: baslangicTarihi,
                 bitis_tarihi: bitisTarihi,
                 hizmetler: hizmetler,
+                telefon_goster: telefonGoster,
                 csrfmiddlewaretoken: '{{ csrf_token }}'
             },
             success: function(response) {
@@ -155,13 +167,14 @@ $(document).ready(function() {
         const baslangicTarihi = $('#baslangicTarihi').val();
         const bitisTarihi = $('#bitisTarihi').val();
         const hizmetler = $('#hizmetler').val();
+        const telefonGoster = $('#telefonGoster').is(':checked');
 
         // PDF indirme URL'sini oluştur
-        const url = `{% url "hekim_cizelge:hizmet_raporu_pdf" %}?baslangic=${baslangicTarihi}&bitis=${bitisTarihi}&hizmetler=${hizmetler.join(',')}`;
+        const url = `{% url "hekim_cizelge:hizmet_raporu_pdf" %}?baslangic=${baslangicTarihi}&bitis=${bitisTarihi}&hizmetler=${hizmetler.join(',')}&telefon_goster=${telefonGoster}`;
         
         // Yeni sekmede aç
         window.open(url, '_blank');
     });
 });
 </script>
-{% endblock %} 
+{% endblock %}

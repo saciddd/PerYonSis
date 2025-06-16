@@ -111,6 +111,7 @@ class Personel(models.Model):
     PersonelTitle = models.CharField(max_length=50)  # Unvan (ör. Uzman Tabip)
     PersonelBranch = models.CharField(max_length=100)  # Branş (ör. İç Hastalıkları)
     birim = models.ManyToManyField(Birim, through='PersonelBirim')
+    Phone = models.CharField(max_length=15, null=True, blank=True)
 
     @property
     def PersonelName(self):

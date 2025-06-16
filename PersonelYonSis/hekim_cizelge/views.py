@@ -1208,7 +1208,6 @@ def bildirim_listele(request, yil, ay, birim_id):
             'message': str(e)
         })
 
-@csrf_exempt
 def hizmet_raporu(request):
     """Hizmet raporu sayfasını gösterir"""
     if request.method == 'GET':
@@ -1222,6 +1221,7 @@ def hizmet_raporu(request):
             baslangic_tarihi = request.POST.get('baslangic_tarihi')
             bitis_tarihi = request.POST.get('bitis_tarihi')
             hizmet_ids = request.POST.getlist('hizmetler[]')
+            telefon_goster = request.POST.get('telefon_goster')
 
             if not all([baslangic_tarihi, bitis_tarihi, hizmet_ids]):
                 return JsonResponse({
@@ -1267,7 +1267,7 @@ def hizmet_raporu(request):
                 
                 # Detay bilgilerini ekle
                 gunluk_ozet[tarih]['detaylar'].append({
-                    'personel': mesai.Personel.PersonelName,
+                    'personel': f"{mesai.Personel.PersonelName} - ({mesai.Personel.PersonelTitle}- {mesai.Personel.PersonelBranch}) - {mesai.Personel.Phone if telefon_goster else ''}",
                     'hizmetler': hizmet_isimleri,
                     'durum': durum
                 })
@@ -1302,6 +1302,7 @@ def hizmet_raporu_pdf(request):
         baslangic_tarihi = request.GET.get('baslangic')
         bitis_tarihi = request.GET.get('bitis')
         hizmet_ids = request.GET.get('hizmetler').split(',')
+        telefon_goster = request.GET.get('telefon_goster') == 'true'
 
         if not all([baslangic_tarihi, bitis_tarihi, hizmet_ids]):
             return JsonResponse({
@@ -1320,6 +1321,14 @@ def hizmet_raporu_pdf(request):
             SilindiMi=False
         ).select_related('Personel').prefetch_related('Hizmetler')
 
+        # Mesaileri sıralı hale getir: tarih, unvan, branş
+        mesai_list = list(mesailer)
+        mesai_list.sort(key=lambda m: (
+            m.MesaiDate,
+            getattr(m.Personel, 'PersonelTitle', ''),
+            getattr(m.Personel, 'PersonelBranch', '')
+        ))
+
         # Rapor verilerini hazırla
         rapor_data = {
             'baslangic_tarihi': baslangic.strftime('%d.%m.%Y'),
@@ -1328,25 +1337,22 @@ def hizmet_raporu_pdf(request):
             'mesailer': []
         }
 
-        for mesai in mesailer:
+        for mesai in mesai_list:
             hizmet_isimleri = ', '.join([h.HizmetName for h in mesai.Hizmetler.all()])
             durum = 'Onaylı' if mesai.OnayDurumu == 1 else 'Beklemede'
-            
+            personel_str = f"{mesai.Personel.PersonelName} ({mesai.Personel.PersonelTitle} - {mesai.Personel.PersonelBranch})"
             rapor_data['mesailer'].append({
                 'tarih': mesai.MesaiDate.strftime('%d.%m.%Y'),
-                'personel': mesai.Personel.PersonelName,
+                'personel': personel_str,
+                'telefon': mesai.Personel.Phone if telefon_goster else '',
                 'hizmetler': hizmet_isimleri,
                 'durum': durum
             })
 
-        # Tarihe göre sırala
-        rapor_data['mesailer'].sort(key=lambda x: datetime.strptime(x['tarih'], '%d.%m.%Y'))
-
         # PDF oluştur
         template = get_template('hekim_cizelge/hizmet_raporu_pdf.html')
-        html = template.render({'rapor': rapor_data})
+        html = template.render({'rapor': rapor_data, 'telefon_goster': telefon_goster})
 
-        # PDF oluşturma seçenekleri
         options = {
             'page-size': 'A4',
             'orientation': 'Portrait',
@@ -1361,10 +1367,7 @@ def hizmet_raporu_pdf(request):
             'quiet': ''
         }
 
-        # PDF oluştur
         pdf = pdfkit.from_string(html, False, options=options, configuration=config)
-
-        # HTTP response oluştur
         response = HttpResponse(pdf, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="hizmet_raporu_{baslangic_tarihi}_{bitis_tarihi}.pdf"'
         return response
@@ -1685,6 +1688,7 @@ def cizelge_form(request, birim_id):
                         'name': hizmet.HizmetName,
                         'type': hizmet.HizmetTipi,
                         'is_varsayilan': hizmet.HizmetID == birim.VarsayilanHizmet.HizmetID
+
                     })
                 mesai_data = {
                     'MesaiDate': mesai.MesaiDate.strftime("%Y-%m-%d"),

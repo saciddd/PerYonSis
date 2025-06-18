@@ -9,6 +9,7 @@ urlpatterns = [
     path('bildirimler/listele/<int:year>/<int:month>/<int:birim_id>/', views.bildirimler_listele, name='bildirimler_listele'),
     path('bildirimler/kaydet/', views.bildirimler_kaydet, name='bildirimler_kaydet'),
     path('bildirimler/kesinlestir/', views.bildirimler_kesinlestir, name='bildirimler_kesinlestir'),
+    path('bildirimler/kesinlestirmeyi-kaldir/', views.bildirimler_kesinlestirmeyi_kaldir, name='bildirimler_kesinlestirmeyi_kaldir'),
     path('bildirim/<int:bildirim_id>/sil/', views.bildirim_sil, name='bildirim_sil'),
     path('bildirimler/yazdir/<int:year>/<int:month>/<int:birim_id>/', views.bildirim_yazdir, name='bildirim_yazdir'),
     

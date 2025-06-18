@@ -25,6 +25,7 @@ from django.forms import Form
 from django import forms
 from django.contrib import messages
 from django.contrib.auth import get_user_model
+from PersonelYonSis.views import get_user_permissions
 
 from .models import UserBirim  # hizmet_sunum_app_userbirim modelinizin importu
 
@@ -517,7 +518,6 @@ def bildirimler_kaydet(request):
         return JsonResponse({'status': 'error', 'message': 'Geçersiz JSON formatı.'}, status=400)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': f'Genel bir hata oluştu: {str(e)}'}, status=500)
-
 @csrf_exempt
 @login_required
 def bildirimler_kesinlestir(request):
@@ -575,6 +575,35 @@ def bildirimler_kesinlestir(request):
         'status': 'error',
         'message': 'Geçersiz istek metodu.'
     })
+
+
+@csrf_exempt
+@login_required
+@require_POST
+def bildirimler_kesinlestirmeyi_kaldir(request):
+    """
+    Birim ve dönem bazında tüm HizmetSunumCalismasi kayıtlarının Kesinlestirme alanını False yapar.
+    Sadece 'HSA Bildirim Kesinleştirme' yetkisi olan kullanıcılar erişebilir.
+    POST ile birim_id ve donem (YYYY-MM) parametreleri bekler.
+    """
+    try:
+        data = json.loads(request.body)
+        birim_id = data.get('birim_id')
+        donem_str = data.get('donem')
+        if not birim_id or not donem_str:
+            return JsonResponse({'status': 'error', 'message': 'Birim ID ve dönem zorunludur.'}, status=400)
+        if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
+            return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
+        try:
+            donem = datetime.strptime(donem_str, '%Y-%m').date()
+        except Exception:
+            return JsonResponse({'status': 'error', 'message': 'Geçersiz dönem formatı.'}, status=400)
+        with transaction.atomic():
+            calismalar = HizmetSunumCalismasi.objects.filter(CalisilanBirimId_id=birim_id, Donem=donem, Kesinlestirme=True)
+            updated = calismalar.update(Kesinlestirme=False)
+        return JsonResponse({'status': 'success', 'message': f'{updated} kayıt kesinleştirmesi kaldırıldı.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': f'İşlem sırasında hata oluştu: {str(e)}'}, status=500)
 
 @login_required
 @require_POST
@@ -708,12 +737,16 @@ def raporlama(request):
 
             calismalar_by_birim = []
             for birim in birimler_with_calismalar:
-                 if birim.calismalar:
-                     calismalar_by_birim.append({
-                         'birim': birim,
-                         'calismalar': birim.calismalar,
-                         'personel_sayisi': len(set([c.PersonelId.PersonelId for c in birim.calismalar])) # Unique personel sayısı
-                     })
+                if birim.calismalar:
+                    kesinlesmis = sum(1 for c in birim.calismalar if c.Kesinlestirme)
+                    beklemede = sum(1 for c in birim.calismalar if not c.Kesinlestirme)
+                    calismalar_by_birim.append({
+                        'birim': birim,
+                        'calismalar': birim.calismalar,
+                        'personel_sayisi': len(set([c.PersonelId.PersonelId for c in birim.calismalar])),
+                        'kesinlesmis_sayisi': kesinlesmis,
+                        'beklemede_sayisi': beklemede,
+                    })
 
             toplam_kayit = sum(len(birim['calismalar']) for birim in calismalar_by_birim)
 
@@ -740,6 +773,7 @@ def raporlama(request):
         # İlk sayfa yüklemesi veya dönem seçilmemişse
         info_message = "Lütfen bir dönem ve isteğe bağlı olarak kurum seçarak raporlayın."
 
+    user_permissions = get_user_permissions(request.user)
     context = {
         # 'form': form, # Form kaldırıldı
         'calismalar_by_birim': calismalar_by_birim,
@@ -753,6 +787,7 @@ def raporlama(request):
         'error_message': error_message,
         'info_message': info_message,
         'toplam_kayit': toplam_kayit,
+        'user_permissions': user_permissions,
     }
     return render(request, 'hizmet_sunum_app/raporlama.html', context)
 

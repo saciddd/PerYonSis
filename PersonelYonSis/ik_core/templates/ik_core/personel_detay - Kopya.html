@@ -1,0 +1,806 @@
+{% extends "base.html" %}
+{% load static %} {# Add static tag if not already present #}
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+<style>
+    /* Style for Durum field */
+    .durum-aktif { color: green; font-weight: bold; }
+    .durum-pasif { color: gray; font-weight: bold; }
+    .durum-ayrildi { color: darkred; font-weight: bold; }
+    /* Style for Geçici Görev rows */
+    .gorev-gidis { background-color: #e9ecef; /* Light gray */ }
+    .gorev-gelis { background-color: #cfe2ff; /* Light blue */ }
+    /* Ensure select2 dropdowns appear correctly */
+    .select2-container--bootstrap-5 .select2-dropdown { z-index: 1060; }
+    .editable-display {
+        padding-top: 0.375rem; /* Align with form-control padding */
+        padding-bottom: 0.375rem;
+        min-height: calc(1.5em + 0.75rem + 2px); /* Match form-control height */
+        display: block; /* Ensure it takes block space */
+        width: 100%;
+        border: 1px solid transparent; /* Maintain layout */
+    }
+    /* Hide display elements when input is shown */
+    .edit-mode .editable-display { display: none; }
+    /* Show input elements when in edit mode */
+    .edit-mode .editable-input,
+    .edit-mode select.editable-input + .select2-container { display: block !important; } /* Use !important to override d-none */
+
+    /* Initially hide input elements */
+    .editable-input,
+    select.editable-input + .select2-container { display: none !important; } /* Ensure hidden by default */
+
+    /* Special handling for form-check */
+    .form-check.editable-input { display: none !important; } /* Ensure hidden by default */
+    .edit-mode .form-check.editable-input { display: block !important; } /* Show the wrapper */
+    .edit-mode .form-check-label.editable-display { display: none; } /* Hide the display label */
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid"> {# Use container-fluid for better spacing #}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <h3>Personel Bilgileri</h3>
+    <!-- Üstte sadece temel kişi bilgileri -->
+    <div class="card mb-3">
+        <div class="card-body">
+            {# Main form now wraps everything including tabs #}
+            <form id="personelDetayForm" method="post" autocomplete="off">
+                {% csrf_token %}
+                <div class="row mb-2 align-items-center"> {# Align items vertically #}
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">T.C. Kimlik No</label>
+                        {# TC Kimlik No is always readonly and part of the form #}
+                        <input type="text" class="form-control-plaintext" name="tc_kimlik_no_display" value="{{ personel.tc_kimlik_no }}" readonly>
+                        {# Actual hidden field for submission if needed, though PersonelForm might handle it via instance #}
+                        {# <input type="hidden" name="tc_kimlik_no" value="{{ personel.tc_kimlik_no }}"> #}
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Ad</label>
+                        <span class="editable-display">{{ personel.ad }}</span>
+                        <input type="text" class="form-control editable-input" id="id_ad" name="ad" value="{{ personel.ad }}" readonly>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold">Soyad</label>
+                        <span class="editable-display">{{ personel.soyad }}</span>
+                        <input type="text" class="form-control editable-input" id="id_soyad" name="soyad" value="{{ personel.soyad }}" readonly>
+                    </div>
+                    <div class="col-md-2"> {# Wider column for Durum #}
+                        <label class="form-label fw-bold">Durum</label>
+                        {% if personel.durum == "Aktif" %}
+                            <span class="form-control-plaintext durum-aktif">{{ personel.durum }}</span>
+                        {% elif personel.durum == "Kurumdan Ayrıldı" %}
+                             <span class="form-control-plaintext durum-ayrildi">{{ personel.durum }}</span>
+                        {% else %}
+                            <span class="form-control-plaintext durum-pasif">{{ personel.durum }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label fw-bold">Burç</label>
+                        <input type="text" class="form-control-plaintext" value="{% if personel.dogum_tarihi %}{{ personel.burc }}{% else %}-{% endif %}" readonly>
+                    </div>
+                    <div class="col-md-3 text-end"> {# Adjusted column width #}
+                        <button type="button" class="btn btn-warning" id="editBtn">Düzenle</button>
+                        <button type="submit" class="btn btn-success d-none" id="saveBtn" name="save_main" value="save_main">Kaydet</button>
+                        <button type="button" class="btn btn-secondary d-none" id="cancelBtn">İptal</button>
+                        <a href="{% url 'ik_core:personel_list' %}" class="btn btn-secondary">Geri</a>
+                    </div>
+                </div>
+
+                {# --- Tabs --- #}
+                <ul class="nav nav-tabs" id="personelTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="kurumsal-tab" data-bs-toggle="tab" data-bs-target="#kurumsal" type="button" role="tab">Kurumsal Bilgiler</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="gorev-tab" data-bs-toggle="tab" data-bs-target="#gorev" type="button" role="tab">Görev Bilgileri</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="kisi-tab" data-bs-toggle="tab" data-bs-target="#kisi" type="button" role="tab">Kişi Bilgileri</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="izin-tab" data-bs-toggle="tab" data-bs-target="#izin" type="button" role="tab">İzin Bilgileri</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="gecici-tab" data-bs-toggle="tab" data-bs-target="#gecici" type="button" role="tab">Geçici Görevler</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="ayrilis-tab" data-bs-toggle="tab" data-bs-target="#ayrilis" type="button" role="tab">Ayrılış</button>
+                    </li>
+                </ul>
+
+                {# --- Tab Content --- #}
+                <div class="tab-content mt-2 border p-3" id="formTabContent"> {# Add ID for easier JS targeting #}
+                    <!-- Kurumsal Bilgiler -->
+                    <div class="tab-pane fade show active" id="kurumsal" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-9">
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Kurum</label>
+                                        <span class="editable-display">{{ personel.kurum.ad|default:"-" }}</span>
+                                        <select class="form-select editable-input select2" id="id_kurum" name="kurum">
+                                            <option value="">---------</option>
+                                            {% for k in kurumlar %}
+                                            <option value="{{ k.id }}" {% if personel.kurum.id == k.id %}selected{% endif %}>{{ k.ad }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Teşkilat</label>
+                                        <span class="editable-display">{{ personel.get_teskilat_display|default:"-" }}</span>
+                                        <select class="form-select editable-input" id="id_teskilat" name="teskilat">
+                                            <option value="">---------</option>
+                                            {% for t_val, t_disp in teskilat_choices %}
+                                            <option value="{{ t_val }}" {% if personel.teskilat == t_val %}selected{% endif %}>{{ t_disp }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Sicil No</label>
+                                        <span class="editable-display">{{ personel.sicil_no|default:"-" }}</span>
+                                        <input type="text" class="form-control editable-input" id="id_sicil_no" name="sicil_no" value="{{ personel.sicil_no }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Unvan</label>
+                                        <span class="editable-display">{{ personel.unvan.ad|default:"-" }}</span>
+                                        <select class="form-select editable-input select2" id="id_unvan" name="unvan" disabled>
+                                            <option value="">---------</option>
+                                            {% for u in unvanlar %}
+                                            <option value="{{ u.id }}" {% if personel.unvan.id == u.id %}selected{% endif %}>{{ u.ad }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Branş</label>
+                                        <span class="editable-display">{{ personel.brans.ad|default:"-" }}</span>
+                                        <select class="form-select editable-input select2" id="id_brans" name="brans" disabled>
+                                            <option value="">---------</option>
+                                            {% for b in branslar %}
+                                            <option value="{{ b.id }}" {% if personel.brans.id == b.id %}selected{% endif %}>{{ b.ad }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Emekli Sicil No</label>
+                                        <span class="editable-display">{{ personel.emekli_sicil_no|default:"-" }}</span>
+                                        <input type="text" class="form-control editable-input" id="id_emekli_sicil_no" name="emekli_sicil_no" value="{{ personel.emekli_sicil_no }}" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3"></div>
+                        </div>
+                    </div>
+                    <!-- Görev Bilgileri -->
+                    <div class="tab-pane fade" id="gorev" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-9">
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Kadrolu Personel</label>
+                                        <span class="editable-display">{% if personel.kadrolu_personel %}Evet{% else %}Hayır{% endif %}</span>
+                                        <div class="form-check form-switch mt-1 editable-input">
+                                            <input class="form-check-input" type="checkbox" id="id_kadrolu_personel" name="kadrolu_personel" {% if personel.kadrolu_personel %}checked{% endif %} disabled>
+                                            <label class="form-check-label" for="id_kadrolu_personel"></label> {# Label for switch #}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Kadro Yeri</label>
+                                        <span class="editable-display">{{ personel.kadro_yeri.ad|default:"-" }}</span>
+                                        <select class="form-select editable-input select2" id="id_kadro_yeri" name="kadro_yeri" disabled>
+                                            <option value="">---------</option>
+                                            {% for k in kurumlar %}
+                                            <option value="{{ k.id }}" {% if personel.kadro_yeri.id == k.id %}selected{% endif %}>{{ k.ad }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Fiili Görev Yeri</label>
+                                        <span class="editable-display">{{ personel.fiili_gorev_yeri.ad|default:"-" }}</span>
+                                        <select class="form-select editable-input select2" id="id_fiili_gorev_yeri" name="fiili_gorev_yeri" disabled>
+                                            <option value="">---------</option>
+                                            {% for k in kurumlar %}
+                                            <option value="{{ k.id }}" {% if personel.fiili_gorev_yeri.id == k.id %}selected{% endif %}>{{ k.ad }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Atama Karar Tarihi</label>
+                                        <span class="editable-display">{{ personel.atama_karar_tarihi|date:'d.m.Y'|default:"-" }}</span>
+                                        <input type="date" class="form-control editable-input" id="id_atama_karar_tarihi" name="atama_karar_tarihi" value="{{ personel.atama_karar_tarihi|date:'Y-m-d' }}" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Atama Karar No</label>
+                                        <span class="editable-display">{{ personel.atama_karar_no|default:"-" }}</span>
+                                        <input type="text" class="form-control editable-input" id="id_atama_karar_no" name="atama_karar_no" value="{{ personel.atama_karar_no }}" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Göreve Başlama Tarihi</label>
+                                        <span class="editable-display">{{ personel.goreve_baslama_tarihi|date:'d.m.Y'|default:"-" }}</span>
+                                        <input type="date" class="form-control editable-input" id="id_goreve_baslama_tarihi" name="goreve_baslama_tarihi" value="{{ personel.goreve_baslama_tarihi|date:'Y-m-d' }}" readonly>
+                                    </div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Memuriyete Başlama Tarihi</label>
+                                        <span class="editable-display">{{ personel.memuriyete_baslama_tarihi|date:'d.m.Y'|default:"-" }}</span>
+                                        <input type="date" class="form-control editable-input" id="id_memuriyete_baslama_tarihi" name="memuriyete_baslama_tarihi" value="{{ personel.memuriyete_baslama_tarihi|date:'Y-m-d' }}" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label text-success">Kamu Başlangıç Tarihi</label>
+                                        <span class="editable-display">{{ personel.kamu_baslangic_tarihi|date:'d.m.Y'|default:"-" }}</span>
+                                        <input type="date" class="form-control editable-input" id="id_kamu_baslangic_tarihi" name="kamu_baslangic_tarihi" value="{{ personel.kamu_baslangic_tarihi|date:'Y-m-d' }}" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Aile Hek. Sözleşmesi</label>
+                                        <span class="editable-display">{% if personel.aile_hek_sozlesmesi %}Var{% else %}Yok{% endif %}</span>
+                                        <div class="form-check form-switch mt-1 editable-input">
+                                            <input class="form-check-input" type="checkbox" id="id_aile_hek_sozlesmesi" name="aile_hek_sozlesmesi" {% if personel.aile_hek_sozlesmesi %}checked{% endif %} disabled>
+                                            <label class="form-check-label" for="id_aile_hek_sozlesmesi"></label>
+                                        </div>
+                                    </div>
+                                </div>
+                                 {# --- Moved DHY/SGK/DSS/SHCEK here --- #}
+                                <div class="row mb-2">
+                                    <div class="col-md-3">
+                                        <label class="form-label">DHY</label>
+                                        <span class="editable-display">{% if personel.dhy %}Evet{% else %}Hayır{% endif %}</span>
+                                        <div class="form-check form-switch mt-1 editable-input">
+                                            <input class="form-check-input" type="checkbox" id="id_dhy" name="dhy" {% if personel.dhy %}checked{% endif %} disabled>
+                                            <label class="form-check-label" for="id_dhy"></label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">SGK</label>
+                                         <span class="editable-display">{% if personel.sgk %}Evet{% else %}Hayır{% endif %}</span>
+                                        <div class="form-check form-switch mt-1 editable-input">
+                                            <input class="form-check-input" type="checkbox" id="id_sgk" name="sgk" {% if personel.sgk %}checked{% endif %} disabled>
+                                            <label class="form-check-label" for="id_sgk"></label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">DSS</label>
+                                         <span class="editable-display">{% if personel.dss %}Evet{% else %}Hayır{% endif %}</span>
+                                        <div class="form-check form-switch mt-1 editable-input">
+                                            <input class="form-check-input" type="checkbox" id="id_dss" name="dss" {% if personel.dss %}checked{% endif %} disabled>
+                                            <label class="form-check-label" for="id_dss"></label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label">SHÇEK</label>
+                                         <span class="editable-display">{% if personel.shcek %}Evet{% else %}Hayır{% endif %}</span>
+                                        <div class="form-check form-switch mt-1 editable-input">
+                                            <input class="form-check-input" type="checkbox" id="id_shcek" name="shcek" {% if personel.shcek %}checked{% endif %} disabled>
+                                            <label class="form-check-label" for="id_shcek"></label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-info mb-3">
+                                    <div class="card-header bg-info text-white py-1 px-2">Mazeret Bilgileri</div>
+                                    <div class="card-body py-2 px-2">
+                                        <div class="mb-2">
+                                            <label class="form-label">Durum:</label>
+                                            <span class="editable-display">{{ personel.get_mazeret_durumu_display|default:"-" }}</span>
+                                            <select class="form-select editable-input" id="id_mazeret_durumu" name="mazeret_durumu" disabled>
+                                                <option value="">---------</option>
+                                                {% for m_val, m_disp in mazeret_durumu_choices %}
+                                                <option value="{{ m_val }}" {% if personel.mazeret_durumu == m_val %}selected{% endif %}>{{ m_disp }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label">Başlangıç:</label>
+                                            <span class="editable-display">{{ personel.mazeret_baslangic|date:'d.m.Y'|default:"-" }}</span>
+                                            <input type="date" class="form-control editable-input" id="id_mazeret_baslangic" name="mazeret_baslangic" value="{{ personel.mazeret_baslangic|date:'Y-m-d' }}" readonly>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Bitiş:</label>
+                                            <span class="editable-display">{{ personel.mazeret_bitis|date:'d.m.Y'|default:"-" }}</span>
+                                            <input type="date" class="form-control editable-input" id="id_mazeret_bitis" name="mazeret_bitis" value="{{ personel.mazeret_bitis|date:'Y-m-d' }}" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Kişi Bilgileri -->
+                    <div class="tab-pane fade" id="kisi" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-9">
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Tahsil Durumu</label>
+                                        <span class="editable-display">{{ personel.get_tahsil_durumu_display|default:"-" }}</span>
+                                        <select class="form-select editable-input" id="id_tahsil_durumu" name="tahsil_durumu" disabled>
+                                            <option value="">---------</option>
+                                            {% for t_val, t_disp in tahsil_durumu_choices %}
+                                            <option value="{{ t_val }}" {% if personel.tahsil_durumu == t_val %}selected{% endif %}>{{ t_disp }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Doğum Tarihi</label>
+                                        <span class="editable-display">{{ personel.dogum_tarihi|date:'d.m.Y'|default:"-" }}</span>
+                                        <input type="date" class="form-control editable-input" id="id_dogum_tarihi" name="dogum_tarihi" value="{{ personel.dogum_tarihi|date:'Y-m-d' }}" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Cinsiyet</label>
+                                        <span class="editable-display">{{ personel.get_cinsiyet_display|default:"-" }}</span>
+                                        <select class="form-select editable-input" id="id_cinsiyet" name="cinsiyet" disabled>
+                                            <option value="">---------</option>
+                                            {% for c_val, c_disp in cinsiyet_choices %}
+                                            <option value="{{ c_val }}" {% if personel.cinsiyet == c_val %}selected{% endif %}>{{ c_disp }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Telefon</label>
+                                        <span class="editable-display">{{ personel.telefon|default:"-" }}</span>
+                                        <input type="text" class="form-control editable-input" id="id_telefon" name="telefon" value="{{ personel.telefon }}" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">E-posta</label>
+                                        <span class="editable-display">{{ personel.eposta|default:"-" }}</span>
+                                        <input type="email" class="form-control editable-input" id="id_eposta" name="eposta" value="{{ personel.eposta }}" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Adres</label>
+                                        <span class="editable-display" style="white-space: pre-wrap;">{{ personel.adres|default:"-" }}</span>
+                                        <textarea class="form-control editable-input" id="id_adres" name="adres" rows="2" readonly>{{ personel.adres }}</textarea>
+                                    </div>
+                                </div>
+                                {# --- DHY/SGK/DSS/SHCEK moved to Görev tab --- #}
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card border-warning mb-3">
+                                    <div class="card-header bg-warning text-dark py-1 px-2">Özel Durum Bilgileri</div>
+                                    <div class="card-body py-2 px-2">
+                                        <div class="mb-2">
+                                            <label class="form-label">Özel Durumu:</label>
+                                            <span class="editable-display">
+                                                {% for od in personel.ozel_durumu.all %}
+                                                    {{ od.ad }}{% if not forloop.last %}, {% endif %}
+                                                {% empty %} - {% endfor %}
+                                            </span>
+                                            <select class="form-select editable-input select2" id="id_ozel_durumu" name="ozel_durumu" multiple disabled>
+                                                {% for o in ozel_durumu_choices %}
+                                                    <option value="{{ o.id }}" {% if o.id in ozel_durumu_ids %}selected{% endif %}>{{ o.ad }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label">Açıklama:</label>
+                                            <span class="editable-display">{{ personel.ozel_durumu_aciklama|default:"-" }}</span>
+                                            <input type="text" class="form-control editable-input" id="id_ozel_durumu_aciklama" name="ozel_durumu_aciklama" value="{{ personel.ozel_durumu_aciklama }}" readonly>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label">Engel Oranı:</label>
+                                            <span class="editable-display">{{ personel.engel_orani|default:"-" }}</span>
+                                            <input type="number" class="form-control editable-input" id="id_engel_orani" name="engel_orani" value="{{ personel.engel_orani }}" readonly>
+                                        </div>
+                                        <div>
+                                            <label class="form-label">Vergi İndirimi:</label>
+                                            <span class="editable-display">{{ personel.get_vergi_indirimi_display|default:"-" }}</span>
+                                            <select class="form-select editable-input" id="id_vergi_indirimi" name="vergi_indirimi" disabled>
+                                                <option value="">---------</option>
+                                                {% for v_val, v_disp in vergi_indirimi_choices %}
+                                                <option value="{{ v_val }}" {% if personel.vergi_indirimi == v_val %}selected{% endif %}>{{ v_disp }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- İzin Bilgileri -->
+                    <div class="tab-pane fade" id="izin" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <dl class="row">
+                                    <dt class="col-sm-5">Memur Devreden İzin</dt>
+                                    <dd class="col-sm-7">
+                                        <span class="editable-display">{{ personel.memur_devreden_izin|default_if_none:"0"|floatformat:"-2g" }}</span>
+                                        <input type="number" step="0.5" class="form-control editable-input" id="id_memur_devreden_izin" name="memur_devreden_izin" value="{{ personel.memur_devreden_izin|default_if_none:'0'|floatformat:"-2g" }}" readonly>
+                                    </dd>
+                                    <dt class="col-sm-5">Memur Hak Ettiği İzin</dt>
+                                    <dd class="col-sm-7">
+                                        <span class="editable-display">{{ personel.memur_hak_ettigi_izin|default_if_none:"0"|floatformat:"-2g" }}</span>
+                                        <input type="number" step="0.5" class="form-control editable-input" id="id_memur_hak_ettigi_izin" name="memur_hak_ettigi_izin" value="{{ personel.memur_hak_ettigi_izin|default_if_none:'0'|floatformat:"-2g" }}" readonly>
+                                    </dd>
+                                </dl>
+                            </div>
+                            <div class="col-md-6"></div>
+                        </div>
+                    </div>
+                    <!-- Geçici Görevler -->
+                    <div class="tab-pane fade" id="gecici" role="tabpanel">
+                        <div class="card mb-3">
+                            <div class="card-header">Yeni Geçici Görev Kaydı</div>
+                            <div class="card-body">
+                                <form id="geciciGorevForm" method="post" action="{% url 'ik_core:gecici_gorev_ekle' personel.id %}">
+                                    {% csrf_token %}
+                                    <div class="row mb-2">
+                                        <div class="col-md-3">
+                                            {{ gecici_gorev_form.gecici_gorev_tipi.label_tag }}
+                                            {{ gecici_gorev_form.gecici_gorev_tipi }}
+                                        </div>
+                                        <div class="col-md-3">
+                                            {{ gecici_gorev_form.gecici_gorev_baslangic.label_tag }}
+                                            {{ gecici_gorev_form.gecici_gorev_baslangic }}
+                                        </div>
+                                        <div class="col-md-3">
+                                            {{ gecici_gorev_form.gecici_gorev_bitis.label_tag }}
+                                            {{ gecici_gorev_form.gecici_gorev_bitis }}
+                                        </div>
+                                        <div class="col-md-3">
+                                            {{ gecici_gorev_form.gorevlendirildigi_birim.label_tag }}
+                                            {{ gecici_gorev_form.gorevlendirildigi_birim }}
+                                        </div>
+                                    </div>
+                                    <div class="row mb-2">
+                                        <div class="col-md-6">
+                                            {{ gecici_gorev_form.asil_kurumu.label_tag }}
+                                            {{ gecici_gorev_form.asil_kurumu }}
+                                        </div>
+                                        <div class="col-md-6 align-self-end text-end">
+                                            <button type="submit" class="btn btn-success" name="save_gecici_gorev" value="save_gecici_gorev">Geçici Görev Ekle</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">Geçici Görev Kayıtları</div>
+                            <div class="card-body p-0">
+                                <table class="table table-bordered table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tipi</th><th>Başlangıç</th><th>Bitiş</th><th>Asıl Kurumu</th><th>Görevlendirildiği Birim</th><th>İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for gg in personel.gecicigorev_set.all %}
+                                        <tr class="{% if gg.gecici_gorev_tipi == 'Gidis' %}gorev-gidis{% elif gg.gecici_gorev_tipi == 'Gelis' %}gorev-gelis{% endif %}">
+                                            <td>{{ gg.get_gecici_gorev_tipi_display }}</td>
+                                            <td>{{ gg.gecici_gorev_baslangic|date:'d.m.Y' }}</td>
+                                            <td>{{ gg.gecici_gorev_bitis|date:'d.m.Y'|default:"-" }}</td>
+                                            <td>{{ gg.asil_kurumu }}</td>
+                                            <td>{{ gg.gorevlendirildigi_birim }}</td>
+                                            <td>
+                                                <form method="post" action="{% url 'ik_core:gecici_gorev_sil' personel.id gg.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Bu geçici görevi silmek istediğinize emin misiniz?')">Sil</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr><td colspan="6" class="text-center">Geçici görev kaydı yok.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Ayrılış -->
+                    <div class="tab-pane fade" id="ayrilis" role="tabpanel">
+                        {# Ayrilis fields are part of the main form but handled separately by view logic #}
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="row mb-2">
+                                    <div class="col-md-4">
+                                        <label for="id_ayrilma_tarihi" class="form-label">Ayrılma Tarihi</label>
+                                        <input type="date" class="form-control ayrilis-input" id="id_ayrilma_tarihi" name="ayrilma_tarihi" value="{{ personel.ayrilma_tarihi|date:'Y-m-d' }}" readonly>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="id_ayrilma_nedeni" class="form-label">Ayrılma Nedeni</label>
+                                        <select class="form-select ayrilis-input" id="id_ayrilma_nedeni" name="ayrilma_nedeni" disabled>
+                                            <option value="">---------</option>
+                                            {% for n_val, n_disp in ayrilma_nedeni_choices %}
+                                            <option value="{{ n_val }}" {% if personel.ayrilma_nedeni == n_val %}selected{% endif %}>{{ n_disp }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-md-8">
+                                        <label for="id_ayrilma_detay" class="form-label">Ayrılma Detay</label>
+                                        <textarea class="form-control ayrilis-input" id="id_ayrilma_detay" name="ayrilma_detay" rows="3" readonly>{{ personel.ayrilma_detay }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 align-self-start text-end">
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-info {% if personel.ayrilma_tarihi %}d-none{% endif %}" id="ayrilisBaslatBtn">Ayrılış İşlemi Başlat</button>
+                                    <button type="submit" class="btn btn-success d-none" id="ayrilisKaydetBtn" name="save_ayrilis" value="save_ayrilis">Kaydet</button>
+                                    <a href="{% if personel.ayrilma_tarihi %}{% url 'ik_core:ilisik_kesme_formu' personel.pk %}{% else %}#{% endif %}"
+                                       class="btn btn-primary {% if not personel.ayrilma_tarihi %}d-none{% endif %}"
+                                       id="ilisikKesmeBtn"
+                                       {% if not personel.ayrilma_tarihi %}aria-disabled="true" tabindex="-1"{% endif %}>
+                                       İlişik Kesme Formu
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div> {# End tab-content #}
+            </form> {# End Main Form #}
+        </div> {# End Card Body #}
+    </div> {# End Card #}
+</div> {# End container #}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    const editBtn = document.getElementById('editBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const mainForm = document.getElementById('personelDetayForm');
+    const formTabContent = document.getElementById('formTabContent');
+
+    // Ayrılış Tab Elements
+    const ayrilisBaslatBtn = document.getElementById('ayrilisBaslatBtn');
+    const ayrilisKaydetBtn = document.getElementById('ayrilisKaydetBtn');
+    const ilisikKesmeBtn = document.getElementById('ilisikKesmeBtn');
+    const ayrilisInputs = formTabContent.querySelectorAll('.ayrilis-input');
+
+    let originalValues = {};
+
+    // Initialize Select2
+    function initializeSelect2() {
+        $('.select2').each(function() { // Iterate over each select2 element
+            $(this).select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                dropdownParent: $(this).closest('.tab-pane') // Correctly reference current select
+            });
+        });
+    }
+
+    // Sayfa yüklendiğinde Select2'yi başlat
+    initializeSelect2();
+
+    function setMainEditable(editable) {
+        // Ana container'a edit-mode class'ını ekle/kaldır
+        $('.card-body').toggleClass('edit-mode', editable);
+
+        // Tüm editable-input elementlerini işle
+        $('.editable-input').each(function() {
+            const $el = $(this); // $el can be the input/select itself, or a wrapper div
+            
+            // Ayrılış inputlarını atla
+            if ($el.hasClass('ayrilis-input')) return;
+
+            if ($el.is('select')) { // If editable-input is ON the select
+                $el.prop('disabled', !editable);
+                if ($el.hasClass('select2-hidden-accessible')) {
+                    $el.select2('enable', editable);
+                }
+            } else if ($el.is('input[type="checkbox"]')) { // If editable-input is ON the checkbox itself
+                $el.prop('disabled', !editable);
+            } else if ($el.hasClass('form-check')) { // If editable-input is ON a form-check div (wrapper for a checkbox)
+                $el.find('input[type="checkbox"]').prop('disabled', !editable);
+            } else if ($el.is('input, textarea')) { // For other inputs (text, date, email, number) and textareas
+                // TC Kimlik No hariç tüm inputları düzenlenebilir yap
+                if ($el.attr('id') !== 'id_tc_kimlik_no' && $el.attr('name') !== 'tc_kimlik_no_display') {
+                    $el.prop('readonly', !editable);
+                }
+            }
+            // Add other specific input types if necessary
+        });
+
+        // Butonları göster/gizle
+        $(saveBtn).toggleClass('d-none', !editable);
+        $(cancelBtn).toggleClass('d-none', !editable);
+        $(editBtn).toggleClass('d-none', editable);
+    }
+
+    // Ayrılış alanlarını düzenlenebilir yapma fonksiyonu
+    function setAyrilisEditable(editable) {
+        $('.ayrilis-input').each(function() {
+            const $el = $(this);
+            if ($el.is('select')) {
+                $el.prop('disabled', !editable);
+                if ($el.hasClass('select2-hidden-accessible')) {
+                    $el.select2('enable', editable);
+                }
+            } else {
+                $el.prop('readonly', !editable);
+            }
+        });
+        
+        $(ayrilisKaydetBtn).toggleClass('d-none', !editable);
+        if (ayrilisBaslatBtn) {
+            $(ayrilisBaslatBtn).toggleClass('d-none', editable);
+        }
+    }
+
+    function storeOriginalValues() {
+        originalValues = {};
+        $('.editable-input').each(function() {
+            const $el = $(this);
+            if ($el.hasClass('ayrilis-input')) return;
+
+            const name = $el.attr('name');
+            if (!name) return;
+
+            if ($el.is(':checkbox')) {
+                originalValues[name] = $el.prop('checked');
+            } else if ($el.is('select[multiple]')) {
+                originalValues[name] = $el.val() || [];
+            } else {
+                // Sayısal değerleri nokta ile ayır
+                let value = $el.val();
+                if (typeof value === 'string' && value.includes(',')) {
+                    value = value.replace(',', '.');
+                }
+                originalValues[name] = value;
+            }
+        });
+    }
+
+    function restoreOriginalValues() {
+        $('.editable-input').each(function() {
+            const $el = $(this);
+            if ($el.hasClass('ayrilis-input')) return;
+
+            const name = $el.attr('name');
+            if (!name || !originalValues.hasOwnProperty(name)) return;
+
+            if ($el.is(':checkbox')) {
+                $el.prop('checked', originalValues[name]);
+            } else if ($el.is('select[multiple]')) {
+                $el.val(originalValues[name]);
+                if ($el.hasClass('select2-hidden-accessible')) {
+                    $el.trigger('change.select2');
+                }
+            } else {
+                // Sayısal değerleri nokta ile ayır
+                let value = originalValues[name];
+                if (typeof value === 'string' && value.includes('.')) {
+                    value = value.replace('.', ',');
+                }
+                $el.val(value);
+                if ($el.hasClass('select2-hidden-accessible')) {
+                    $el.trigger('change.select2');
+                }
+            }
+        });
+    }
+
+    // Event Listeners
+    $(editBtn).on('click', function() {
+        storeOriginalValues();
+        setMainEditable(true);
+    });
+
+    $(cancelBtn).on('click', function() {
+        restoreOriginalValues();
+        setMainEditable(false);
+    });
+
+    if (ayrilisBaslatBtn) {
+        $(ayrilisBaslatBtn).on('click', function() {
+            setAyrilisEditable(true);
+        });
+    }
+
+    // Form Submit for personelDetayForm
+    $(mainForm).on('submit', function(e) {
+        const submitter = e.submitter;
+        const triggeredButtonName = submitter ? $(submitter).attr('name') : null;
+
+        // If the submission was initiated by a button from geciciGorevForm,
+        // its own handler should have dealt with it and stopped propagation.
+        // If it still reaches here (e.g. stopPropagation was missed), prevent mainForm from acting.
+        if (triggeredButtonName === 'save_gecici_gorev') {
+            e.preventDefault();
+            return false;
+        }
+
+        let isMainFormScopeAction = false;
+        let effectiveActionForMain = null;
+
+        if (triggeredButtonName === 'save_main' || triggeredButtonName === 'save_ayrilis') {
+            isMainFormScopeAction = true;
+            effectiveActionForMain = triggeredButtonName;
+        } else if (!triggeredButtonName && $(e.target).closest('form')[0] === mainForm) {
+            // No specific button, likely Enter key press within mainForm's general scope.
+            // This check ensures it's not an Enter key press from within geciciGorevForm that bubbled up.
+            isMainFormScopeAction = true;
+            effectiveActionForMain = 'save_main'; // Default action for Enter key in main form.
+        }
+
+        if (isMainFormScopeAction) {
+            // Temporarily disable inputs of the geciciGorevForm
+            // so they are not validated or submitted with the main form.
+            const $geciciGorevFormInputs = $('#geciciGorevForm').find('input, select, textarea');
+            const originalDisabledStates = new Map();
+            $geciciGorevFormInputs.each(function() {
+                originalDisabledStates.set(this, $(this).prop('disabled'));
+                $(this).prop('disabled', true);
+            });
+
+            // Logic for enabling/disabling main form's own editable inputs based on the action
+            if (effectiveActionForMain === 'save_main') {
+                $('.editable-input:not(.ayrilis-input)').prop('disabled', false).prop('readonly', false);
+                $('select.editable-input:not(.ayrilis-input).select2-hidden-accessible').select2('enable', true);
+
+                $('.ayrilis-input').prop('disabled', true).prop('readonly', true);
+                $('select.ayrilis-input.select2-hidden-accessible').select2('enable', false);
+            } else if (effectiveActionForMain === 'save_ayrilis') {
+                $('.editable-input:not(.ayrilis-input)').prop('disabled', true).prop('readonly', true);
+                $('select.editable-input:not(.ayrilis-input).select2-hidden-accessible').select2('enable', false);
+
+                $('.ayrilis-input').prop('disabled', false).prop('readonly', false);
+                $('select.ayrilis-input.select2-hidden-accessible').select2('enable', true);
+            }
+
+            // Schedule re-enabling of geciciGorevForm inputs after a short delay.
+            // This handles cases where the main form submission might be prevented client-side
+            // (e.g., by other validation errors), ensuring geciciGorevForm remains usable.
+            setTimeout(() => {
+                $geciciGorevFormInputs.each(function() {
+                    $(this).prop('disabled', originalDisabledStates.get(this));
+                });
+            }, 200);
+
+            return true; // Allow main form submission
+        } else {
+            // If the event target is part of geciciGorevForm, and it reached here,
+            // it implies geciciGorevForm's stopPropagation might have been missed (e.g., Enter key not caught by its submit).
+            // This is a fallback to prevent mainForm from hijacking geciciGorevForm's Enter key submission.
+            if ($(e.target).closest('form')[0] === $('#geciciGorevForm')[0]) {
+                 e.preventDefault(); // Prevent mainForm from submitting.
+                 return false;
+            }
+        }
+        // Default to allow if not explicitly prevented by the logic above.
+        return true;
+    });
+
+    // Geçici Görev Formu için ayrı submit handler
+    $('#geciciGorevForm').on('submit', function(e) {
+        // Perform HTML5 validation check.
+        if (!this.checkValidity()) {
+            e.preventDefault(); // Prevent submission if form is invalid.
+            // Add 'was-validated' class to trigger Bootstrap's validation feedback styles.
+            $(this).addClass('was-validated');
+            return false;
+        }
+
+        // IMPORTANT: Prevent the submit event from bubbling up to the mainForm.
+        e.stopPropagation();
+
+        // Ensure its own fields are enabled for submission (they should be by default, but good practice).
+        $(this).find('input, select, textarea').prop('disabled', false);
+
+        return true; // Allow natural form submission for geciciGorevForm.
+    });
+
+    // Initial state
+    setMainEditable(false);
+    setAyrilisEditable(false);
+});
+</script>
+{% endblock %}

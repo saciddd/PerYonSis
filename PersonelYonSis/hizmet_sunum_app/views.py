@@ -288,9 +288,10 @@ def bildirimler_listele(request, year, month, birim_id):
     (Mevcut fonksiyon doğru görünüyor, yetki kontrolü eklenebilir)
     """
     # Yetki kontrolü
-    if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
-        return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
-        
+    if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
+        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+            return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
+    # Yetkisi varsa veya UserBirim ilişkisi varsa devam et
     try:
         donem = date(year, month, 1)
         # İlgili birim nesnesini de alalım (HSA adı için)
@@ -345,8 +346,11 @@ def bildirimler_kaydet(request):
             return JsonResponse({'status': 'error', 'message': 'Dönem veya Birim ID eksik.'}, status=400)
         
         # Yetki kontrolü
-        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
-            return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
+        if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
+            if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+                return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
+        # Yetkisi varsa veya UserBirim ilişkisi varsa devam et
+
 
         donem_date = datetime.strptime(donem_str, '%Y-%m').date()
         donem_baslangic = donem_date.replace(day=1)

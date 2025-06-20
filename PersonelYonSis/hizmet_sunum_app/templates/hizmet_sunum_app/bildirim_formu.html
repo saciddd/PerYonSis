@@ -17,6 +17,25 @@
             font-size: 12px;
             color: #555;
         }
+        .accordion {
+            margin-bottom: 20px;
+        }
+        .accordion-item {
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background: #fff;
+        }
+        .accordion-header {
+            background: #f2f2f2;
+            padding: 8px 16px;
+            font-weight: bold;
+            font-size: 1.1em;
+            border-bottom: 1px solid #ddd;
+        }
+        .accordion-body {
+            padding: 10px 16px 16px 16px;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -50,47 +69,58 @@
     <div class="timestamp">
         Oluşturulma Zamanı: {{ now|date:"d.m.Y H:i" }}
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>Sıra No</th>
-                <th>T.C. Kimlik No</th>
-                <th>Adı</th>
-                <th>Soyadı</th>
-                <th>Başlangıç</th>
-                <th>Bitiş</th>
-                <th>Özel Alan Kodu</th>
-                <th>Sorumlu</th>
-                <th>Sertifika</th>
-                <th>Sistem Onayı</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for bildirim in bildirimler %}
-            <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ bildirim.tc_kimlik_no }}</td>
-                <td>{{ bildirim.ad }}</td>
-                <td>{{ bildirim.soyad }}</td>
-                <td>{{ bildirim.baslangic }}</td>
-                <td>{{ bildirim.bitis }}</td>
-                <td>{{ bildirim.ozel_alan_kodu }}</td>
-                <td>{% if bildirim.sorumlu %}Evet{% else %}-{% endif %}</td>
-                <td>{% if bildirim.sertifika %}Evet{% else %}-{% endif %}</td>
-                <td>
-                    {% if bildirim.kesinlesmis %}
-                        <span class="onay-evet">Onaylı</span>
-                    {% else %}
-                        <span class="onay-hayir">Onaysız</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="10">Kayıt bulunamadı.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="accordion">
+        {% for birim in birim_bildirimleri %}
+        <div class="accordion-item">
+            <div class="accordion-header">
+                {{ birim.birim_adi }} {% if birim.hsa_adi %}- {{ birim.hsa_adi }}{% endif %} {% if birim.alan_kodu %} ({{ birim.alan_kodu }}){% endif %}
+            </div>
+            <div class="accordion-body">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Sıra No</th>
+                            <th>T.C. Kimlik No</th>
+                            <th>Adı</th>
+                            <th>Soyadı</th>
+                            <th>Başlangıç</th>
+                            <th>Bitiş</th>
+                            <th>Özel Alan Kodu</th>
+                            <th>Sorumlu</th>
+                            <th>Sertifika</th>
+                            <th>Sistem Onayı</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bildirim in birim.bildirimler %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ bildirim.tc_kimlik_no }}</td>
+                            <td>{{ bildirim.ad }}</td>
+                            <td>{{ bildirim.soyad }}</td>
+                            <td>{{ bildirim.baslangic }}</td>
+                            <td>{{ bildirim.bitis }}</td>
+                            <td>{{ bildirim.ozel_alan_kodu }}</td>
+                            <td>{% if bildirim.sorumlu %}Evet{% else %}-{% endif %}</td>
+                            <td>{% if bildirim.sertifika %}Evet{% else %}-{% endif %}</td>
+                            <td>
+                                {% if bildirim.kesinlesmis %}
+                                    <span class="onay-evet">Onaylı</span>
+                                {% else %}
+                                    <span class="onay-hayir">Onaysız</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10">Kayıt bulunamadı.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
 </body>
 </html>

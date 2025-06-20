@@ -36,15 +36,23 @@ def bildirim(request):
     # Kullanıcının yetkili olduğu birimleri getir 
     user_birimler_qs = UserBirim.objects.filter(user=request.user).select_related('birim', 'birim__HSAKodu')
     birimler = [ub.birim for ub in user_birimler_qs]
+    kesinlestirme_yetkisi = request.user.has_permission('HSA Bildirim Kesinleştirme')
 
     # Tüm HSA listesini modal için alalım
     hsa_listesi = HizmetSunumAlani.objects.all().order_by('AlanAdi')
+
+    # Birimleri JSON'a çevir
+    birimler_json = json.dumps([
+        {'BirimId': b.BirimId, 'BirimAdi': b.BirimAdi} for b in birimler
+    ])
 
     # Başlangıçta context'e seçili birim veya bildirim eklemeye gerek yok,
     # bu bilgiler AJAX ile yüklenecek.
     context = {
         'birimler': birimler,
+        'birimler_json': birimler_json,
         'hsa_listesi': hsa_listesi,
+        'kesinlestirme_yetkisi': kesinlestirme_yetkisi,
         # 'donemler' frontend JS ile oluşturuluyor, Django context'ine gerek yok.
     }
     return render(request, 'hizmet_sunum_app/bildirim.html', context)
@@ -639,32 +647,59 @@ def bildirim_sil(request, bildirim_id):
         return JsonResponse({'status': 'error', 'message': f'Bildirim silinirken hata oluştu: {str(e)}'}, status=500)
 
 @login_required
-def bildirim_yazdir(request, year, month, birim_id):
+def bildirim_yazdir(request, year, month, birim_id=None):
     """
-    Seçili yıl, ay ve birim için bildirimleri PDF olarak döndürür.
+    Seçili yıl, ay ve birim(ler) için bildirimleri PDF olarak döndürür.
+    birim_id: tek birim için int veya birden fazla için '1,2,3' gibi string olabilir.
+    Ayrıca GET ile birim_id'ler alınabilir: ?birim_id=1,2,3
     """
-    # bildirimler_listele fonksiyonunu kullanarak veri çek
-    # from .views import bildirimler_listele
-
-    # Yıl ve ayı int'e çevir
     year = int(year)
     month = int(month)
     donem = f"{year}-{month:02d}"
 
-    # JSON veri çek
-    response = bildirimler_listele(request, year, month, birim_id)
-    if hasattr(response, 'content'):
-        data = json.loads(response.content)
+    # Birim ID'leri al
+    birim_ids = []
+    if birim_id:
+        if ',' in str(birim_id):
+            birim_ids = [int(bid) for bid in str(birim_id).split(',') if bid.strip().isdigit()]
+        else:
+            birim_ids = [int(birim_id)]
     else:
-        data = response  # dict ise
+        # GET ile de alınabilir
+        birim_id_param = request.GET.get('birim_id')
+        if birim_id_param:
+            birim_ids = [int(bid) for bid in birim_id_param.split(',') if bid.strip().isdigit()]
 
-    bildirimler = data.get('data', [])
+    if not birim_ids:
+        return HttpResponse('Birim seçilmedi.', status=400)
+
+    birim_bildirimleri = []
+    for bid in birim_ids:
+        # Her bir birim için bildirimleri çek
+        response = bildirimler_listele(request, year, month, bid)
+        if hasattr(response, 'content'):
+            data = json.loads(response.content)
+        else:
+            data = response
+        bildirimler = data.get('data', [])
+        # Birim adı ve HSA adı
+        birim_adi = data.get('birim_adi', f'Birim {bid}')
+        hsa_adi = data.get('hsa_adi', '')
+        alan_kodu = data.get('alan_kodu', '')
+        birim_bildirimleri.append({
+            'birim_id': bid,
+            'birim_adi': birim_adi,
+            'hsa_adi': hsa_adi,
+            'alan_kodu': alan_kodu,
+            'bildirimler': bildirimler
+        })
 
     # PDF için template render
     template = get_template('hizmet_sunum_app/bildirim_formu.html')
     html = template.render({
-        'bildirimler': bildirimler,
-        'now': django_now()
+        'birim_bildirimleri': birim_bildirimleri,
+        'now': django_now(),
+        'donem': donem
     })
 
     options = {
@@ -684,7 +719,7 @@ def bildirim_yazdir(request, year, month, birim_id):
     pdf = pdfkit.from_string(html, False, options=options, configuration=config)
 
     response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="hizmet_sunum_bildirim_{birim_id}_{year}_{month}.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="hizmet_sunum_bildirim_{year}_{month}.pdf"'
     return response
 
 def raporlama(request):

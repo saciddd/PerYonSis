@@ -66,8 +66,8 @@
                 <h4 class="accordion-header" id="heading{{ forloop.counter }}">
                     <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% endif %}" aria-controls="collapse{{ forloop.counter }}">
                         {{ birim_data.birim.KurumAdi }} - {{ birim_data.birim.BirimAdi }} - {{ birim_data.birim.HSAKodu }} (Personel Sayısı: {{ birim_data.personel_sayisi }})
-                        <span class="badge bg-success ms-2">Kesinleşmiş: {{ birim_data.kesinlesmis_sayisi }}</span>
-                        <span class="badge bg-warning text-dark ms-1">Beklemede: {{ birim_data.beklemede_sayisi }}</span>
+                        <span class="badge bg-success ms-2{% if birim_data.kesinlesmis_sayisi == 0 %} bg-white text-black border border-success{% endif %}">Kesinleşmiş: {{ birim_data.kesinlesmis_sayisi }}</span>
+                        <span class="badge bg-warning text-dark ms-1{% if birim_data.beklemede_sayisi == 0 %} bg-white text-black border border-warning{% endif %}">Beklemede: {{ birim_data.beklemede_sayisi }}</span>
                     </button>
                 </h4>
                 <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#birimAccordion">
@@ -279,5 +279,85 @@
             }
         });
     }
+
+    // Ortak modalı açan fonksiyon
+function showYazdirmaSecenekleriModal(birimler, donem) {
+    const tbody = document.getElementById('modalBirimlerBody');
+    tbody.innerHTML = '';
+    if (!birimler || birimler.length === 0) {
+        document.getElementById('yazdirmaSecenekleriAlert').style.display = 'block';
+        document.getElementById('yazdirmaSecenekleriAlert').innerText = 'Listelenecek birim yok.';
+        document.getElementById('modalYazdirBtn').disabled = true;
+        return;
+    } else {
+        document.getElementById('yazdirmaSecenekleriAlert').style.display = 'none';
+        document.getElementById('modalYazdirBtn').disabled = false;
+    }
+    document.getElementById('modalDonem').value = donem;
+    birimler.forEach(birim => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><input type="checkbox" class="birim-checkbox" value="${birim.BirimId}" /></td><td>${birim.BirimAdi}</td>`;
+        tbody.appendChild(tr);
+    });
+    document.getElementById('tumBirimleriSec').checked = false;
+    var modal = new bootstrap.Modal(document.getElementById('yazdirmaSecenekleriModal'));
+    modal.show();
+}
+// Tümünü seç fonksiyonu
+if (document.getElementById('tumBirimleriSec')) {
+    document.getElementById('tumBirimleriSec').addEventListener('change', function() {
+        document.querySelectorAll('.birim-checkbox').forEach(cb => cb.checked = this.checked);
+    });
+}
+// Yazdır butonu fonksiyonu
+if (document.getElementById('modalYazdirBtn')) {
+    document.getElementById('modalYazdirBtn').addEventListener('click', function() {
+        const donem = document.getElementById('modalDonem').value;
+        const seciliBirimler = Array.from(document.querySelectorAll('.birim-checkbox:checked')).map(cb => cb.value);
+        if (seciliBirimler.length === 0) {
+            document.getElementById('yazdirmaSecenekleriAlert').style.display = 'block';
+            document.getElementById('yazdirmaSecenekleriAlert').innerText = 'Lütfen en az bir birim seçiniz.';
+            return;
+        }
+        // PDF endpointine yönlendir
+        const url = `/hizmet_sunum/bildirimler/yazdir/?donem=${encodeURIComponent(donem)}&birim_id=${seciliBirimler.join(',')}`;
+        window.open(url, '_blank');
+        // Modalı kapat
+        var modal = bootstrap.Modal.getInstance(document.getElementById('yazdirmaSecenekleriModal'));
+        if (modal) modal.hide();
+    });
+}
 </script>
+<!-- Ortak Yazdırma Seçenekleri Modalı -->
+<div class="modal fade" id="yazdirmaSecenekleriModal" tabindex="-1" aria-labelledby="yazdirmaSecenekleriModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="yazdirmaSecenekleriModalLabel">Yazdırma Seçenekleri</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body">
+        <div id="yazdirmaSecenekleriAlert" style="display:none;" class="alert alert-warning"></div>
+        <form id="yazdirmaSecenekleriForm">
+          <input type="hidden" id="modalDonem" name="donem" />
+          <table class="table table-bordered align-middle">
+            <thead>
+              <tr>
+                <th style="width:40px"><input type="checkbox" id="tumBirimleriSec" /></th>
+                <th>Birim Adı</th>
+              </tr>
+            </thead>
+            <tbody id="modalBirimlerBody">
+              <!-- Dinamik olarak doldurulacak -->
+            </tbody>
+          </table>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+        <button type="button" class="btn btn-primary" id="modalYazdirBtn">Yazdır</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

@@ -147,6 +147,11 @@ def reset_password(request, user_id):
     messages.success(request, f"{user.Username} kullanıcısının şifresi sıfırlandı.")
     return redirect('kullanici_tanimlari')
 
+# İletişim
+def iletisim(request):
+    messages.warning(request, "Şu anda iletişime kapalıyız -.-")
+    return redirect('index')
+
 # Yeni kullanıcı ekleme
 def add_user(request):
     if request.method == 'POST':

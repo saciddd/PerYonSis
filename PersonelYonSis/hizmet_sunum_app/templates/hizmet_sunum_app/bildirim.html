@@ -43,9 +43,11 @@
 
         <!-- İşlem Butonları -->
         <div class="col-md-4">
+            {% if kesinlestirme_yetkisi %}
             <button class="btn btn-info me-2" id="btnYazdir">
                 Kesinleştir ve Formu Yazdır
             </button>
+            {% endif %}
             <button class="btn btn-success" id="btnKaydet">
                 <i class="bi bi-save"></i> Kaydet
             </button>
@@ -218,16 +220,29 @@
                                 <label for="birimAdiEkle" class="form-label">Birim Adı</label>
                                 <input type="text" class="form-control" id="birimAdiEkle" name="birimAdi" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="kurumAdiEkle" class="form-label">Kurum Adı</label>
-                                <select class="form-select" id="kurumAdiEkle" name="kurumAdi" required>
-                                    <option value="">Seçiniz...</option>
-                                    <option value="Kayseri DH">Kayseri DH</option>
-                                    <option value="Özvatan DH">Özvatan DH</option>
-                                    <option value="Akkışla DH">Akkışla DH</option>
-                                    <option value="Felahiye DH">Felahiye DH</option>
-                                    <option value="Sarıoğlan DH">Sarıoğlan DH</option>
-                                </select>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="kurumAdiEkle" class="form-label">Kurum Adı</label>
+                                        <select class="form-select" id="kurumAdiEkle" name="kurumAdi" required>
+                                            <option value="">Seçiniz...</option>
+                                            {% for kurum in kurumlar%}
+                                            <option value="{{kurum.name}}">{{kurum.name}}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="idareAdiEkle" class="form-label">Nereye Bağlı?</label>
+                                        <select class="form-select" id="idareAdiEkle" name="idareAdi" required>
+                                            <option value="">Seçiniz...</option>
+                                            {% for idare in idareler%}
+                                            <option value="{{idare.name}}">{{idare.name}}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="hsaKoduEkle" class="form-label">Hizmet Sunum Alanı</label>
@@ -252,15 +267,29 @@
                                 <label for="birimAdiDuzenle" class="form-label">Birim Adı</label>
                                 <input type="text" class="form-control" id="birimAdiDuzenle" name="birimAdi" required>
                             </div>
-                            <div class="mb-3">
-                                <label for="kurumAdiDuzenle" class="form-label">Kurum Adı</label>
-                                <select class="form-select" id="kurumAdiDuzenle" name="kurumAdi" required>
-                                     <option value="">Seçiniz...</option>
-                                    <option value="Kayseri DH">Kayseri DH</option>
-                                    <option value="Özvatan DH">Özvatan DH</option>
-                                    <option value="Felahiye DH">Felahiye DH</option>
-                                    <option value="Sarıoğlan DH">Sarıoğlan DH</option>
-                                </select>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="kurumAdiDuzenle" class="form-label">Kurum Adı</label>
+                                        <select class="form-select" id="kurumAdiDuzenle" name="kurumAdi" required>
+                                            <option value="">Seçiniz...</option>
+                                            {% for kurum in kurumlar%}
+                                            <option value="{{kurum.name}}">{{kurum.name}}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="idareAdiDuzenle" class="form-label">Nereye Bağlı?</label>
+                                        <select class="form-select" id="idareAdiDuzenle" name="idareAdi" required>
+                                            <option value="">Seçiniz...</option>
+                                            {% for idare in idareler%}
+                                            <option value="{{idare.name}}">{{idare.name}}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                             <div class="mb-3">
                                 <label for="hsaKoduDuzenle" class="form-label">Hizmet Sunum Alanı</label>
@@ -353,6 +382,39 @@
     </div>
 </div>
 
+<!-- Ortak Yazdırma Seçenekleri Modalı -->
+<div class="modal fade" id="yazdirmaSecenekleriModal" tabindex="-1" aria-labelledby="yazdirmaSecenekleriModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="yazdirmaSecenekleriModalLabel">Yazdırma Seçenekleri</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+        </div>
+        <div class="modal-body">
+          <div id="yazdirmaSecenekleriAlert" style="display:none;" class="alert alert-warning"></div>
+          <form id="yazdirmaSecenekleriForm">
+            <input type="hidden" id="modalDonem" name="donem" />
+            <table class="table table-bordered align-middle">
+              <thead>
+                <tr>
+                  <th style="width:40px"><input type="checkbox" id="tumBirimleriSec" /></th>
+                  <th>Birim Adı</th>
+                </tr>
+              </thead>
+              <tbody id="modalBirimlerBody">
+                <!-- Dinamik olarak doldurulacak -->
+              </tbody>
+            </table>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+          <button type="button" class="btn btn-primary" id="modalYazdirBtn">Yazdır</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_css %}
@@ -403,6 +465,8 @@
 
 {% block extra_js %}
 <script>
+    window.birimler = JSON.parse('{{ birimler_json|escapejs }}');
+
     // Birim Ekleme Fonksiyonu
     function birimEkle() {
         const form = document.getElementById('birimEkleForm');
@@ -521,22 +585,25 @@
     }
 
     // Kesinleştir ve Formu Yazdır butonu
-    document.getElementById('btnYazdir').addEventListener('click', function() {
-        Swal.fire({
-            title: 'Emin misiniz?',
-            text: "Veriler kesinleştirildikten sonra değişiklik yapamayacaksınız. Onaylıyor musunuz?",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Evet, kesinleştir!',
-            cancelButtonText: 'İptal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                kesinlestirVeYazdir();
-            }
+    var btnYazdir = document.getElementById('btnYazdir');
+    if (btnYazdir) {
+        btnYazdir.addEventListener('click', function() {
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Veriler kesinleştirildikten sonra değişiklik yapamayacaksınız. Onaylıyor musunuz?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Evet, kesinleştir!',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    kesinlestirVeYazdir();
+                }
+            });
         });
-    });
+    }
 
     // Kesinleştirme ve yazdırma fonksiyonu
     function kesinlestirVeYazdir() {
@@ -646,11 +713,12 @@
                 Swal.fire({
                     icon: 'success',
                     title: 'Başarılı!',
-                    text: 'Tüm kayıtlar kesinleştirildi. PDF indiriliyor...'
+                    text: 'Tüm kayıtlar kesinleştirildi. Yazdırmak istediğiniz birimleri seçiniz.'
                 }).then(() => {
                     fetchBildirimlerForSelected();
-                    // PDF indir
-                    window.open(`/hizmet_sunum/bildirimler/yazdir/${year}/${parseInt(month)}/${birimId}/`, '_blank');
+                    // Yetkili olunan birimleri ve dönemi modal ile göster
+                    const donem = document.getElementById('donemSecimi').value;
+                    showYazdirmaSecenekleriModal(window.birimler, donem);
                 });
             } else {
                 Swal.fire({
@@ -943,6 +1011,7 @@
                         document.getElementById('birimAdiDuzenle').value = data.data.BirimAdi;
                         document.getElementById('kurumAdiDuzenle').value = data.data.KurumAdi;
                         document.getElementById('hsaKoduDuzenle').value = data.data.HSAKodu;
+                        document.getElementById('idareAdiDuzenle').value = data.data.IdareAdi;
                         editForm.style.display = 'block'; 
                     } else {
                          editForm.style.display = 'none';
@@ -1061,6 +1130,53 @@
             alert('Kayıt sırasında bir hata oluştu: ' + error.message);
         });
     });
+
+    function showYazdirmaSecenekleriModal(birimler, donem) {
+        const tbody = document.getElementById('modalBirimlerBody');
+        tbody.innerHTML = '';
+        if (!birimler || birimler.length === 0) {
+            document.getElementById('yazdirmaSecenekleriAlert').style.display = 'block';
+            document.getElementById('yazdirmaSecenekleriAlert').innerText = 'Listelenecek birim yok.';
+            document.getElementById('modalYazdirBtn').disabled = true;
+            return;
+        } else {
+            document.getElementById('yazdirmaSecenekleriAlert').style.display = 'none';
+            document.getElementById('modalYazdirBtn').disabled = false;
+        }
+        document.getElementById('modalDonem').value = donem;
+        birimler.forEach(birim => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td><input type="checkbox" class="birim-checkbox" value="${birim.BirimId}" /></td><td>${birim.BirimAdi}</td>`;
+            tbody.appendChild(tr);
+        });
+        document.getElementById('tumBirimleriSec').checked = false;
+        var modal = new bootstrap.Modal(document.getElementById('yazdirmaSecenekleriModal'));
+        modal.show();
+    }
+    // Tümünü seç fonksiyonu
+    if (document.getElementById('tumBirimleriSec')) {
+        document.getElementById('tumBirimleriSec').addEventListener('change', function() {
+            document.querySelectorAll('.birim-checkbox').forEach(cb => cb.checked = this.checked);
+        });
+    }
+    // Yazdır butonu fonksiyonu
+    if (document.getElementById('modalYazdirBtn')) {
+        document.getElementById('modalYazdirBtn').addEventListener('click', function() {
+            const donem = document.getElementById('modalDonem').value;
+            const seciliBirimler = Array.from(document.querySelectorAll('.birim-checkbox:checked')).map(cb => cb.value);
+            if (seciliBirimler.length === 0) {
+                document.getElementById('yazdirmaSecenekleriAlert').style.display = 'block';
+                document.getElementById('yazdirmaSecenekleriAlert').innerText = 'Lütfen en az bir birim seçiniz.';
+                return;
+            }
+            // PDF endpointine yönlendir
+            const url = `/hizmet_sunum/bildirimler/yazdir/?donem=${encodeURIComponent(donem)}&birim_id=${seciliBirimler.join(',')}`;
+            window.open(url, '_blank');
+            // Modalı kapat
+            var modal = bootstrap.Modal.getInstance(document.getElementById('yazdirmaSecenekleriModal'));
+            if (modal) modal.hide();
+        });
+    }
 
     // Bildirimler tablosunu dolduran fonksiyon
     function fillBildirimlerTable(bildirimler) {

@@ -3,7 +3,7 @@ from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET
 from datetime import datetime, date
-from .models import Birim, HizmetSunumAlani, UserBirim, HizmetSunumCalismasi, Personel
+from .models import Birim, HizmetSunumAlani, UserBirim, HizmetSunumCalismasi, Personel, Kurum, Idare
 import json
 import calendar
 from django.utils.timezone import now as django_now
@@ -37,7 +37,8 @@ def bildirim(request):
     user_birimler_qs = UserBirim.objects.filter(user=request.user).select_related('birim', 'birim__HSAKodu')
     birimler = [ub.birim for ub in user_birimler_qs]
     kesinlestirme_yetkisi = request.user.has_permission('HSA Bildirim Kesinleştirme')
-
+    kurumlar = Kurum.objects.all()
+    idareler = Idare.objects.all()
     # Tüm HSA listesini modal için alalım
     hsa_listesi = HizmetSunumAlani.objects.all().order_by('AlanAdi')
 
@@ -50,6 +51,8 @@ def bildirim(request):
     # bu bilgiler AJAX ile yüklenecek.
     context = {
         'birimler': birimler,
+        'kurumlar': kurumlar,
+        'idareler': idareler,
         'birimler_json': birimler_json,
         'hsa_listesi': hsa_listesi,
         'kesinlestirme_yetkisi': kesinlestirme_yetkisi,
@@ -71,6 +74,7 @@ def birim_detay(request, birim_id):
         'BirimId': birim.BirimId,
         'BirimAdi': birim.BirimAdi,
         'KurumAdi': birim.KurumAdi,
+        'IdareAdi': birim.IdareAdi,
         'HSAKodu': birim.HSAKodu.AlanKodu if birim.HSAKodu else None,
         'HSAAdi': birim.HSAKodu.AlanAdi if birim.HSAKodu else None
     }
@@ -82,6 +86,7 @@ def birim_ekle(request):
     try:
         birim_adi = request.POST.get('birimAdi')
         kurum_adi = request.POST.get('kurumAdi')
+        idare_adi = request.POST.get("idareAdi")
         hsa_kodu_str = request.POST.get('hsaKodu')
 
         if not all([birim_adi, kurum_adi, hsa_kodu_str]):
@@ -97,7 +102,8 @@ def birim_ekle(request):
             birim = Birim.objects.create(
                 BirimAdi=birim_adi,
                 KurumAdi=kurum_adi,
-                HSAKodu=hsa_nesnesi 
+                HSAKodu=hsa_nesnesi,
+                IdareAdi=idare_adi
                 # AlanKodu alanı modelde otomatik atanıyor olabilir, kontrol edin.
                 # Eğer modelde AlanKodu'nu ayrıca set ediyorsanız, burada da yapın.
             )
@@ -125,6 +131,7 @@ def birim_guncelle(request, birim_id):
         birim_adi = request.POST.get('birimAdi')
         kurum_adi = request.POST.get('kurumAdi')
         hsa_kodu_str = request.POST.get('hsaKodu')
+        idare_adi = request.POST.get("idareAdi")
 
         if not all([birim_adi, kurum_adi, hsa_kodu_str]):
              return JsonResponse({'status': 'error', 'message': 'Tüm alanlar zorunludur.'}, status=400)
@@ -138,8 +145,10 @@ def birim_guncelle(request, birim_id):
         birim.BirimAdi = birim_adi
         birim.KurumAdi = kurum_adi
         birim.HSAKodu = hsa_nesnesi
+        birim.IdareAdi = idare_adi
         # AlanKodu alanı modelde otomatik atanıyor olabilir, kontrol edin.
         birim.save()
+        messages.success(request, "Birim bilgileri başarıyla güncellendi.")
         return JsonResponse({'status': 'success', 'message': 'Birim başarıyla güncellendi.'})
     except HizmetSunumAlani.DoesNotExist:
          return JsonResponse({'status': 'error', 'message': 'Geçersiz Hizmet Sunum Alanı kodu.'}, status=400)
@@ -647,15 +656,28 @@ def bildirim_sil(request, bildirim_id):
         return JsonResponse({'status': 'error', 'message': f'Bildirim silinirken hata oluştu: {str(e)}'}, status=500)
 
 @login_required
-def bildirim_yazdir(request, year, month, birim_id=None):
+def bildirim_yazdir(request, year=None, month=None, birim_id=None):
     """
     Seçili yıl, ay ve birim(ler) için bildirimleri PDF olarak döndürür.
     birim_id: tek birim için int veya birden fazla için '1,2,3' gibi string olabilir.
-    Ayrıca GET ile birim_id'ler alınabilir: ?birim_id=1,2,3
+    Ayrıca GET ile birim_id'ler alınabilir: ?donem=YYYY-MM&birim_id=1,2,3
     """
-    year = int(year)
-    month = int(month)
-    donem = f"{year}-{month:02d}"
+    # Parametreli çağrı mı, query string mi?
+    if year is not None and month is not None:
+        try:
+            year = int(year)
+            month = int(month)
+            donem = f"{year}-{month:02d}"
+        except Exception:
+            return HttpResponse('Geçersiz yıl/ay parametresi.', status=400)
+    else:
+        donem = request.GET.get('donem')
+        if not donem or '-' not in donem:
+            return HttpResponse('Dönem (YYYY-MM) parametresi eksik veya hatalı.', status=400)
+        try:
+            year, month = map(int, donem.split('-'))
+        except Exception:
+            return HttpResponse('Dönem (YYYY-MM) parametresi hatalı.', status=400)
 
     # Birim ID'leri al
     birim_ids = []
@@ -665,7 +687,6 @@ def bildirim_yazdir(request, year, month, birim_id=None):
         else:
             birim_ids = [int(birim_id)]
     else:
-        # GET ile de alınabilir
         birim_id_param = request.GET.get('birim_id')
         if birim_id_param:
             birim_ids = [int(bid) for bid in birim_id_param.split(',') if bid.strip().isdigit()]
@@ -726,16 +747,19 @@ def raporlama(request):
     calismalar_by_birim = None
     donem = None
     kurum = None
+    idare = None
     excel_url = None
     error_message = None
     info_message = None
-
+    birimler_json = None
     birimler = Birim.objects.all()
     kurumlar = birimler.values_list('KurumAdi', flat=True).distinct()
+    idareler = birimler.values_list('IdareAdi', flat=True).distinct()
 
     # Form yerine GET parametrelerini doğrudan al
     donem_str = request.GET.get('donem')
     kurum = request.GET.get('kurum')
+    idare = request.GET.get('idare')
     durum = request.GET.get('durum')  # "1", "0" veya ""
 
     toplam_kayit = 0
@@ -757,6 +781,10 @@ def raporlama(request):
                 calismalar_query = calismalar_query.filter(
                     CalisilanBirimId__KurumAdi=kurum
                 )
+            if idare:
+                calismalar_query = calismalar_query.filter(
+                    CalisilanBirimId__IdareAdi=idare
+                )
 
             if durum == "1":
                 calismalar_query = calismalar_query.filter(Kesinlestirme=True)
@@ -773,7 +801,10 @@ def raporlama(request):
                     to_attr='calismalar'
                 )
             ).order_by('BirimAdi')
-
+                # Birimleri JSON'a çevir
+            birimler_json = json.dumps([
+                {'BirimId': b.BirimId, 'BirimAdi': b.BirimAdi} for b in birimler_with_calismalar
+            ])
             calismalar_by_birim = []
             for birim in birimler_with_calismalar:
                 if birim.calismalar:
@@ -798,6 +829,8 @@ def raporlama(request):
                      excel_url += f'&kurum={kurum}'
                  if durum:
                      excel_url += f'&durum={durum}'
+                 if idare:
+                     excel_url += f'&idare={idare}'
 
             if toplam_kayit == 0:
                  info_message = "Seçilen dönem ve kuruma ait hizmet sunum çalışması bulunamadı."
@@ -810,16 +843,19 @@ def raporlama(request):
             print(f"Raporlama Hatası: {e}") # Konsola yazdır (geliştirme için)
     else:
         # İlk sayfa yüklemesi veya dönem seçilmemişse
-        info_message = "Lütfen bir dönem ve isteğe bağlı olarak kurum seçarak raporlayın."
+        info_message = "Lütfen bir dönem ve isteğe bağlı kriterlerinizi seçerek raporlayın."
 
     user_permissions = get_user_permissions(request.user)
     context = {
         # 'form': form, # Form kaldırıldı
         'calismalar_by_birim': calismalar_by_birim,
         'birimler': birimler, # Kurum seçimi için tüm birimleri geçiyoruz (kurum listesi çekmek için)
+        'birimler_json': birimler_json,
         'kurumlar': kurumlar, # Kurum seçimi için tüm kurumları geçiyoruz
+        'idareler': idareler,
         'selected_donem': donem_str, # Şablona dönemin string halini gönderelim ki selectbox'ta seçili kalsın
         'selected_kurum': kurum,
+        'selected_idare': idare,
         'selected_durum': durum,
         'excel_url': excel_url,
         # 'is_form_valid': is_form_valid, # Form kaldırıldı
@@ -833,6 +869,7 @@ def raporlama(request):
 def export_raporlama_excel(request):
     donem_str = request.GET.get('donem')
     kurum = request.GET.get('kurum')
+    idare = request.GET.get('idare')
 
     if not donem_str:
         messages.error(request, "Lütfen bir dönem seçin.")
@@ -854,6 +891,10 @@ def export_raporlama_excel(request):
     if kurum:
         calismalar_query = calismalar_query.filter(
             CalisilanBirimId__KurumAdi=kurum
+        )
+    if idare:
+        calismalar_query = calismalar_query.filter(
+            CalisilanBirimId__IdareAdi=idare
         )
 
     calismalar = calismalar_query.order_by(
@@ -891,7 +932,9 @@ def export_raporlama_excel(request):
         ws.cell(row=row, column=5, value=calisma.HizmetBitisTarihi)
         ws.cell(row=row, column=6, value=birim.BirimAdi)
         ws.cell(row=row, column=7, value=calisma.OzelAlanKodu)
-        # ...column 8: Sorumlu/SorumluAtanabilir...
+        ws.cell(row=row, column=10, value=birim.KurumAdi)
+        ws.cell(row=row, column=11, value=birim.IdareAdi)
+        # Sütun eklenirse devam ettir
         if calisma.Sorumlu:
             sorumlu_alan = None
             if calisma.OzelAlanKodu:
@@ -983,8 +1026,13 @@ def birim_yetki_sil(request, birim_id):
 
 @login_required
 def birim_yonetim(request):
-    from .models import Birim, UserBirim
     birimler = Birim.objects.select_related('HSAKodu').all()
+    # Modal için değerler
+    kurumlar = Kurum.objects.all()
+    idareler = Idare.objects.all()
+    hsa_listesi = HizmetSunumAlani.objects.all().order_by('AlanAdi')
+    
+
     birim_list = []
     for birim in birimler:
         yetkiler = UserBirim.objects.filter(birim=birim).select_related('user')
@@ -999,9 +1047,16 @@ def birim_yonetim(request):
             "id": birim.BirimId,
             "adi": birim.BirimAdi,
             "kurum": birim.KurumAdi,
+            "idare": birim.IdareAdi,
             "hsa_kodu": birim.HSAKodu.AlanKodu,
             "hsa_adi": birim.HSAKodu.AlanAdi,
             "yetkili_sayisi": len(yetkili_users),
             "yetkililer": yetkili_users,
         })
-    return render(request, "hizmet_sunum_app/birim_yonetim.html", {"birimler": birim_list})
+    context = {
+            "kurumlar": kurumlar,
+            "idareler": idareler,
+            "hsa_listesi": hsa_listesi,
+            "birimler": birim_list
+            }
+    return render(request, "hizmet_sunum_app/birim_yonetim.html", context)

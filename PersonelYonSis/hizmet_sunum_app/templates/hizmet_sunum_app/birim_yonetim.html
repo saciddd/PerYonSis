@@ -17,6 +17,7 @@
                 <tr>
                     <th>Birim</th>
                     <th>Kurum</th>
+                    <th>İdare</th>
                     <th>HSA</th>
                     <th class="text-center">Yetkili</th>
                     <th>Yetkililer</th>
@@ -28,6 +29,7 @@
                 <tr>
                     <td>{{ birim.adi }}</td>
                     <td>{{ birim.kurum }}</td>
+                    <td>{{ birim.idare }}</td>
                     <td>{{ birim.hsa_adi }} - <small class="text-muted">{{ birim.hsa_kodu }}</small></td>
                     <td class="text-center">{{ birim.yetkili_sayisi }}</td>
                     <td>
@@ -98,22 +100,47 @@
             <div class="modal-body">
                 <form id="birimDuzenleForm">
                     {% csrf_token %}
-                    <input type="hidden" id="birimIdDuzenle" name="birimId">
+                   <input type="hidden" id="birimIdDuzenle" name="birimId">
                     <div class="mb-3">
-                        <label for="birimAdiDuzenle" class="form-label">Birim Adı</label>
-                        <input type="text" class="form-control" id="birimAdiDuzenle" name="birimAdi" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="kurumAdiDuzenle" class="form-label">Kurum Adı</label>
-                        <input type="text" class="form-control" id="kurumAdiDuzenle" name="kurumAdi" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="hsaKoduDuzenle" class="form-label">Hizmet Sunum Alanı</label>
-                        <input type="text" class="form-control" id="hsaKoduDuzenle" name="hsaKodu" required>
-                    </div>
+                       <label for="birimAdiDuzenle" class="form-label">Birim Adı</label>
+                       <input type="text" class="form-control" id="birimAdiDuzenle" name="birimAdi" required>
+                   </div>
+                   <div class="row">
+                       <div class="col-md-6">
+                           <div class="mb-3">
+                               <label for="kurumAdiDuzenle" class="form-label">Kurum Adı</label>
+                               <select class="form-select" id="kurumAdiDuzenle" name="kurumAdi" required>
+                                   <option value="">Seçiniz...</option>
+                                   {% for kurum in kurumlar%}
+                                   <option value="{{kurum.name}}">{{kurum.name}}</option>
+                                   {% endfor %}
+                               </select>
+                           </div>
+                       </div>
+                       <div class="col-md-6">
+                           <div class="mb-3">
+                               <label for="idareAdiDuzenle" class="form-label">Nereye Bağlı?</label>
+                               <select class="form-select" id="idareAdiDuzenle" name="idareAdi" required>
+                                   <option value="">Seçiniz...</option>
+                                   {% for idare in idareler%}
+                                   <option value="{{idare.name}}">{{idare.name}}</option>
+                                   {% endfor %}
+                               </select>
+                           </div>
+                       </div>
+                   </div>
+                   <div class="mb-3">
+                       <label for="hsaKoduDuzenle" class="form-label">Hizmet Sunum Alanı</label>
+                       <select class="form-select" id="hsaKoduDuzenle" name="hsaKodu" required>
+                           <option value="" selected disabled>Seçiniz...</option>
+                           {% for hsa in hsa_listesi %}
+                               <option value="{{ hsa.AlanKodu }}">{{ hsa.AlanAdi }} ({{ hsa.AlanKodu }})</option>
+                           {% endfor %}
+                       </select>
+                   </div>
                     <button type="button" class="btn btn-primary" onclick="birimGuncelle()">Değişiklikleri Kaydet</button>
                     <button type="button" class="btn btn-danger ms-2" onclick="birimSil()">Birimi Sil</button>
-                </form>
+               </form>
             </div>
         </div>
     </div>

@@ -1,6 +1,16 @@
 from django.db import models
 from PersonelYonSis.models import User
 
+class Kurum(models.Model):
+    name = models.CharField(max_length=50)
+    def __str__(self):
+        return self.name
+
+class Idare(models.Model):
+    name = models.CharField(max_length=50)
+    def __str__(self):
+        return self.name
+
 class Personel(models.Model):
     PersonelId = models.AutoField(primary_key=True)
     TCKimlikNo = models.CharField(max_length=11, unique=True, verbose_name="T.C. Kimlik No")
@@ -30,6 +40,7 @@ class Birim(models.Model):
     BirimId = models.AutoField(primary_key=True)
     BirimAdi = models.CharField(max_length=100, verbose_name="Birim Adı")
     KurumAdi = models.CharField(max_length=100, verbose_name="Kurum Adı")
+    IdareAdi = models.CharField(max_length=50, verbose_name="İdare Adı", null=True)
     HSAKodu = models.ForeignKey(HizmetSunumAlani, on_delete=models.CASCADE, verbose_name="Hizmet Sunum Alan Kodu")
     
     class Meta:

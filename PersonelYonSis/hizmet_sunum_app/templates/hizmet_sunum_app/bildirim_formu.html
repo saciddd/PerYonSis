@@ -4,42 +4,43 @@
     <meta charset="UTF-8">
     <title>Hizmet Sunum Alanları Formu</title>
     <style>
-        body { font-family: Arial, sans-serif; font-size: 13px; }
+        body { font-family: Arial, sans-serif; font-size: 10px; }
         .antet {
             text-align: center;
             margin-bottom: 20px;
             font-weight: bold;
+            font-size: 12px;
         }
         .timestamp {
             position: absolute;
             top: 20px;
-            right: 40px;
+            right: 30px;
             font-size: 12px;
             color: #555;
         }
         .accordion {
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         .accordion-item {
             border: 1px solid #ccc;
             border-radius: 6px;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             background: #fff;
         }
         .accordion-header {
             background: #f2f2f2;
-            padding: 8px 16px;
+            padding: 4px 8px;
             font-weight: bold;
             font-size: 1.1em;
             border-bottom: 1px solid #ddd;
         }
         .accordion-body {
-            padding: 10px 16px 16px 16px;
+            padding: 5px 8px 8px 8px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 5px;
         }
         th, td {
             border: 1px solid #333;
@@ -80,14 +81,14 @@
                     <thead>
                         <tr>
                             <th>Sıra No</th>
-                            <th>T.C. Kimlik No</th>
+                            <th style="width: 80px;">T.C. Kimlik No</th>
                             <th>Adı</th>
                             <th>Soyadı</th>
-                            <th>Başlangıç</th>
-                            <th>Bitiş</th>
-                            <th>Özel Alan Kodu</th>
-                            <th>Sorumlu</th>
-                            <th>Sertifika</th>
+                            <th style="width: 80px;">Başlangıç</th>
+                            <th style="width: 80px;">Bitiş</th>
+                            <th style="width: 40px;">Alan Kodu</th>
+                            <th style="width: 40px;">Sorumlu</th>
+                            <th style="width: 40px;">Sertifika</th>
                             <th>Sistem Onayı</th>
                         </tr>
                     </thead>
@@ -95,14 +96,14 @@
                         {% for bildirim in birim.bildirimler %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
-                            <td>{{ bildirim.tc_kimlik_no }}</td>
+                            <td style="width: 80px;">{{ bildirim.tc_kimlik_no }}</td>
                             <td>{{ bildirim.ad }}</td>
                             <td>{{ bildirim.soyad }}</td>
-                            <td>{{ bildirim.baslangic }}</td>
-                            <td>{{ bildirim.bitis }}</td>
-                            <td>{{ bildirim.ozel_alan_kodu }}</td>
-                            <td>{% if bildirim.sorumlu %}Evet{% else %}-{% endif %}</td>
-                            <td>{% if bildirim.sertifika %}Evet{% else %}-{% endif %}</td>
+                            <td style="width: 80px;">{{ bildirim.baslangic }}</td>
+                            <td style="width: 80px;">{{ bildirim.bitis }}</td>
+                            <td style="width: 40px;">{{ bildirim.ozel_alan_kodu }}</td>
+                            <td style="width: 40px;">{% if bildirim.sorumlu %}Evet{% else %}-{% endif %}</td>
+                            <td style="width: 40px;">{% if bildirim.sertifika %}Evet{% else %}-{% endif %}</td>
                             <td>
                                 {% if bildirim.kesinlesmis %}
                                     <span class="onay-evet">Onaylı</span>

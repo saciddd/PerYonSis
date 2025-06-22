@@ -11,7 +11,8 @@ urlpatterns = [
     path('bildirimler/kesinlestir/', views.bildirimler_kesinlestir, name='bildirimler_kesinlestir'),
     path('bildirimler/kesinlestirmeyi-kaldir/', views.bildirimler_kesinlestirmeyi_kaldir, name='bildirimler_kesinlestirmeyi_kaldir'),
     path('bildirim/<int:bildirim_id>/sil/', views.bildirim_sil, name='bildirim_sil'),
-    path('bildirimler/yazdir/<int:year>/<int:month>/<int:birim_id>/', views.bildirim_yazdir, name='bildirim_yazdir'),
+    path('bildirimler/yazdir/', views.bildirim_yazdir, name='bildirim_yazdir'),  # Query string ile (donem, birim_id)
+    path('bildirimler/yazdir/<int:year>/<int:month>/<int:birim_id>/', views.bildirim_yazdir, name='bildirim_yazdir_parametreli'),
     
     # Birim işlemleri
     path('birim/<int:birim_id>/detay/', views.birim_detay, name='birim_detay'),

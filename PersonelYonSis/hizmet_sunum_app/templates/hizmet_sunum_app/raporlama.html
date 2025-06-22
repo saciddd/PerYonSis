@@ -6,9 +6,9 @@
 <div class="container-fluid">
     <h3>Hizmet Sunum Raporlama</h3>
 
-    <form method="get" class="mb-4">
+    <form method="get" class="mb-2">
         <div class="row g-3 align-items-center">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label for="id_donem" class="form-label">Dönem Seçin:</label>
                 <select class="form-select" id="id_donem" name="donem">
                      <option value="">Dönem Seçiniz</option>
@@ -24,7 +24,16 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label for="id_idare" class="form-label">Üst Birim Seçin:</label>
+                 <select name="idare" id="id_idare" class="form-select">
+                    <option value="">Tüm Birimler</option>
+                    {% for idare_adi in idareler %}
+                        <option value="{{ idare_adi }}" {% if selected_idare == idare_adi %}selected{% endif %}>{{ idare_adi }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
                 <label for="id_durum" class="form-label">Durum:</label>
                 <select name="durum" id="id_durum" class="form-select">
                     <option value="" {% if not selected_durum %}selected{% endif %}>Tümü</option>
@@ -34,12 +43,11 @@
             </div>
             <div class="col-md-auto">
                 <button type="submit" class="btn btn-primary mt-4">Raporla</button>
-            </div>
-             {% if excel_url %}
-            <div class="col-md-auto">
-                 <a href="{{ excel_url }}" class="btn btn-success mt-4">Excel'e Aktar</a>
-            </div>
+            {% if excel_url %}
+                <a href="{{ excel_url }}" class="btn btn-success mt-4">Excel'e Aktar</a>
+                <button type="button" class="btn btn-secondary mt-4" id="yazdirBtn" data-birimler="{{ calismalar_by_birim|safe }}" data-donem="{{ selected_donem|default_if_none:'' }}"> <i class="bi bi-printer"></i>Yazdır</button>
             {% endif %}
+            </div>
         </div>
     </form>
 
@@ -122,12 +130,46 @@
             {% endfor %}
         </div>
     {% endif %}
+</div>
 
+
+<!-- Ortak Yazdırma Seçenekleri Modalı -->
+<div class="modal fade" id="yazdirmaSecenekleriModal" tabindex="-1" aria-labelledby="yazdirmaSecenekleriModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="yazdirmaSecenekleriModalLabel">Yazdırma Seçenekleri</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+        </div>
+        <div class="modal-body">
+          <div id="yazdirmaSecenekleriAlert" style="display:none;" class="alert alert-warning"></div>
+          <form id="yazdirmaSecenekleriForm">
+            <input type="hidden" id="modalDonem" name="donem" />
+            <table class="table table-bordered align-middle">
+              <thead>
+                <tr>
+                  <th style="width:40px"><input type="checkbox" id="tumBirimleriSec" /></th>
+                  <th>Birim Adı</th>
+                </tr>
+              </thead>
+              <tbody id="modalBirimlerBody">
+                <!-- Dinamik olarak doldurulacak -->
+              </tbody>
+            </table>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+          <button type="button" class="btn btn-primary" id="modalYazdirBtn">Yazdır</button>
+        </div>
+      </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    
     // Son 6 dönemi oluşturan fonksiyon (bildirim.html'den alındı)
     function getDosyaDonemler() {
         const today = new Date();
@@ -155,8 +197,9 @@
         return months.reverse(); // En yakın dönemin üstte olması için ters çevir
     }
 
-    // Sayfa yüklendiğinde dönem selectbox'ını doldur
+    // Sayfa yüklendiğinde dönem selectbox'ını doldur ve event listener'ları ekle
     document.addEventListener('DOMContentLoaded', function() {
+        // Dönem selectbox'ını doldur
         const donemler = getDosyaDonemler();
         const donemSelect = document.getElementById('id_donem');
         // selectedDonem artık context'ten string olarak geliyor
@@ -173,6 +216,43 @@
              donemSelect.appendChild(option);
         });
         // Durum alanı zaten template ile seçili kalıyor
+        
+        // Yazdır butonuna event listener ekle
+        const yazdirBtn = document.getElementById('yazdirBtn');
+        if (yazdirBtn) {
+            yazdirBtn.addEventListener('click', function() {
+                const donem = document.getElementById('id_donem').value;
+                showYazdirmaSecenekleriModal(donem);
+            });
+        }
+        
+        // Tümünü seç fonksiyonu
+        const tumBirimleriSec = document.getElementById('tumBirimleriSec');
+        if (tumBirimleriSec) {
+            tumBirimleriSec.addEventListener('change', function() {
+                document.querySelectorAll('.birim-checkbox').forEach(cb => cb.checked = this.checked);
+            });
+        }
+        
+        // Yazdır butonu fonksiyonu
+        const modalYazdirBtn = document.getElementById('modalYazdirBtn');
+        if (modalYazdirBtn) {
+            modalYazdirBtn.addEventListener('click', function() {
+                const donem = document.getElementById('modalDonem').value;
+                const seciliBirimler = Array.from(document.querySelectorAll('.birim-checkbox:checked')).map(cb => cb.value);
+                if (seciliBirimler.length === 0) {
+                    document.getElementById('yazdirmaSecenekleriAlert').style.display = 'block';
+                    document.getElementById('yazdirmaSecenekleriAlert').innerText = 'Lütfen en az bir birim seçiniz.';
+                    return;
+                }
+                // PDF endpointine yönlendir
+                const url = `/hizmet_sunum/bildirimler/yazdir/?donem=${encodeURIComponent(donem)}&birim_id=${seciliBirimler.join(',')}`;
+                window.open(url, '_blank');
+                // Modalı kapat
+                var modal = bootstrap.Modal.getInstance(document.getElementById('yazdirmaSecenekleriModal'));
+                if (modal) modal.hide();
+            });
+        }
     });
 
     // Birim bazlı kesinleştir
@@ -281,83 +361,28 @@
     }
 
     // Ortak modalı açan fonksiyon
-function showYazdirmaSecenekleriModal(birimler, donem) {
-    const tbody = document.getElementById('modalBirimlerBody');
-    tbody.innerHTML = '';
-    if (!birimler || birimler.length === 0) {
-        document.getElementById('yazdirmaSecenekleriAlert').style.display = 'block';
-        document.getElementById('yazdirmaSecenekleriAlert').innerText = 'Listelenecek birim yok.';
-        document.getElementById('modalYazdirBtn').disabled = true;
-        return;
-    } else {
-        document.getElementById('yazdirmaSecenekleriAlert').style.display = 'none';
-        document.getElementById('modalYazdirBtn').disabled = false;
-    }
-    document.getElementById('modalDonem').value = donem;
-    birimler.forEach(birim => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td><input type="checkbox" class="birim-checkbox" value="${birim.BirimId}" /></td><td>${birim.BirimAdi}</td>`;
-        tbody.appendChild(tr);
-    });
-    document.getElementById('tumBirimleriSec').checked = false;
-    var modal = new bootstrap.Modal(document.getElementById('yazdirmaSecenekleriModal'));
-    modal.show();
-}
-// Tümünü seç fonksiyonu
-if (document.getElementById('tumBirimleriSec')) {
-    document.getElementById('tumBirimleriSec').addEventListener('change', function() {
-        document.querySelectorAll('.birim-checkbox').forEach(cb => cb.checked = this.checked);
-    });
-}
-// Yazdır butonu fonksiyonu
-if (document.getElementById('modalYazdirBtn')) {
-    document.getElementById('modalYazdirBtn').addEventListener('click', function() {
-        const donem = document.getElementById('modalDonem').value;
-        const seciliBirimler = Array.from(document.querySelectorAll('.birim-checkbox:checked')).map(cb => cb.value);
-        if (seciliBirimler.length === 0) {
+    function showYazdirmaSecenekleriModal(donem) {
+        const tbody = document.getElementById('modalBirimlerBody');
+        birimler = JSON.parse('{{ birimler_json|escapejs }}');
+        tbody.innerHTML = '';
+        if (!birimler || birimler.length === 0) {
             document.getElementById('yazdirmaSecenekleriAlert').style.display = 'block';
-            document.getElementById('yazdirmaSecenekleriAlert').innerText = 'Lütfen en az bir birim seçiniz.';
+            document.getElementById('yazdirmaSecenekleriAlert').innerText = 'Listelenecek birim yok.';
+            document.getElementById('modalYazdirBtn').disabled = true;
             return;
+        } else {
+            document.getElementById('yazdirmaSecenekleriAlert').style.display = 'none';
+            document.getElementById('modalYazdirBtn').disabled = false;
         }
-        // PDF endpointine yönlendir
-        const url = `/hizmet_sunum/bildirimler/yazdir/?donem=${encodeURIComponent(donem)}&birim_id=${seciliBirimler.join(',')}`;
-        window.open(url, '_blank');
-        // Modalı kapat
-        var modal = bootstrap.Modal.getInstance(document.getElementById('yazdirmaSecenekleriModal'));
-        if (modal) modal.hide();
-    });
-}
+        document.getElementById('modalDonem').value = donem;
+        birimler.forEach(birim => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td><input type="checkbox" class="birim-checkbox" value="${birim.BirimId}" /></td><td>${birim.BirimAdi}</td>`;
+            tbody.appendChild(tr);
+        });
+        document.getElementById('tumBirimleriSec').checked = false;
+        var modal = new bootstrap.Modal(document.getElementById('yazdirmaSecenekleriModal'));
+        modal.show();
+    }
 </script>
-<!-- Ortak Yazdırma Seçenekleri Modalı -->
-<div class="modal fade" id="yazdirmaSecenekleriModal" tabindex="-1" aria-labelledby="yazdirmaSecenekleriModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="yazdirmaSecenekleriModalLabel">Yazdırma Seçenekleri</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
-      </div>
-      <div class="modal-body">
-        <div id="yazdirmaSecenekleriAlert" style="display:none;" class="alert alert-warning"></div>
-        <form id="yazdirmaSecenekleriForm">
-          <input type="hidden" id="modalDonem" name="donem" />
-          <table class="table table-bordered align-middle">
-            <thead>
-              <tr>
-                <th style="width:40px"><input type="checkbox" id="tumBirimleriSec" /></th>
-                <th>Birim Adı</th>
-              </tr>
-            </thead>
-            <tbody id="modalBirimlerBody">
-              <!-- Dinamik olarak doldurulacak -->
-            </tbody>
-          </table>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-        <button type="button" class="btn btn-primary" id="modalYazdirBtn">Yazdır</button>
-      </div>
-    </div>
-  </div>
-</div>
 {% endblock %}

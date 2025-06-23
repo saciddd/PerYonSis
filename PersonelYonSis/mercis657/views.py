@@ -18,6 +18,7 @@ from django.views.decorators.http import require_POST
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from dateutil.relativedelta import relativedelta
+from .valuelists import CKYS_BTF_VALUES
 User = get_user_model()
 
 
@@ -357,7 +358,8 @@ def personel_update(request):
     return JsonResponse({'status': 'error'})  # Hatalı durum
 def mesai_tanimlari(request):
     mesai_tanimlari = Mesai_Tanimlari.objects.all()
-    return render(request, 'mesai_tanimlari.html', {"mesai_tanimlari": mesai_tanimlari})
+    ckys_btf_values = CKYS_BTF_VALUES
+    return render(request, 'mesai_tanimlari.html', {"mesai_tanimlari": mesai_tanimlari, "ckys_btf_values": ckys_btf_values})
 # Yeni Mesai Tanımı Ekleme Fonksiyonu
 def add_mesai_tanim(request):
     if request.method == 'POST':

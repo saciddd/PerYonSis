@@ -6,18 +6,21 @@ User = get_user_model()
 
 class Kurum(models.Model):
     ad = models.CharField(max_length=100, unique=True)
+    aktif = models.BooleanField(default=True)
 
     def __str__(self):
         return self.ad
 
 class UstBirim(models.Model):
     ad = models.CharField(max_length=100, unique=True)
+    aktif = models.BooleanField(default=True)
 
     def __str__(self):
         return self.ad
 
-class MudurYardimcisi(models.Model):
+class Idareci(models.Model):
     ad = models.CharField(max_length=100, unique=True)
+    aktif = models.BooleanField(default=True)
 
     def __str__(self):
         return self.ad
@@ -28,7 +31,7 @@ class Birim(models.Model):
 
     Kurum = models.ForeignKey(Kurum, on_delete=models.SET_NULL, null=True, blank=True)
     UstBirim = models.ForeignKey(UstBirim, on_delete=models.SET_NULL, null=True, blank=True)
-    MudurYrd = models.ForeignKey(MudurYardimcisi, on_delete=models.SET_NULL, null=True, blank=True)
+    Idareci = models.ForeignKey(Idareci, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return self.BirimAdi

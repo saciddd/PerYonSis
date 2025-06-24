@@ -30,21 +30,21 @@ urlpatterns = [
     # Birim Yönetimi API Endpoints
     path('birim/<int:birim_id>/detay/', views.birim_detay, name='birim_detay'),
     path('birim/<int:birim_id>/guncelle/', views.birim_guncelle, name='birim_guncelle'),
-    path('birim/<int:birim_id>/sil/', views.birim_sil, name='birim_sil'),
 
     path('kurum-ekle/', views.kurum_ekle, name='kurum_ekle'),
-    path('kurum-sil/<int:pk>/', views.kurum_sil, name='kurum_sil'),
     path('kurum-guncelle/<int:pk>/', views.kurum_guncelle, name='kurum_guncelle'),
+    path('kurum-toggle-aktif/<int:pk>/', views.kurum_toggle_aktif, name='kurum_toggle_aktif'),
 
     path('ust-birim-ekle/', views.ust_birim_ekle, name='ust_birim_ekle'),
-    path('ust-birim-sil/<int:pk>/', views.ust_birim_sil, name='ust_birim_sil'),
     path('ust-birim-guncelle/<int:pk>/', views.ust_birim_guncelle, name='ust_birim_guncelle'),
-
-    path('mudur-yrd-ekle/', views.mudur_yrd_ekle, name='mudur_yrd_ekle'),
-    path('mudur-yrd-sil/<int:pk>/', views.mudur_yrd_sil, name='mudur_yrd_sil'),
-    path('mudur-yrd-guncelle/<int:pk>/', views.mudur_yrd_guncelle, name='mudur_yrd_guncelle'),
+    path('ust-birim-toggle-aktif/<int:pk>/', views.ust_birim_toggle_aktif, name='ust_birim_toggle_aktif'),
 
     path('onceki-donem-personel/<int:year>/<int:month>/<int:birim_id>/', views.onceki_donem_personel, name='onceki_donem_personel'),
     path('personel/kaydet/', views.personel_kaydet, name='personel_kaydet'),
     path('cizelge/yazdir/', views.cizelge_yazdir, name='cizelge_yazdir'),
+    path('tanimlamalar/', views.tanimlamalar, name='tanimlamalar'),
+
+    path('idareci-toggle-aktif/<int:pk>/', views.idareci_toggle_aktif, name='idareci_toggle_aktif'),
+    path('idareci-ekle/', views.idareci_ekle, name='idareci_ekle'),
+    path('idareci-guncelle/<int:pk>/', views.idareci_guncelle, name='idareci_guncelle'),
 ]

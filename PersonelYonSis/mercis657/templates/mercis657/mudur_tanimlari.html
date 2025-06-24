@@ -1,0 +1,71 @@
+<div>
+    <h5>İdareciler</h5>
+    <form id="idareciEkleForm" class="mb-3">
+        <div class="input-group">
+            <input type="text" class="form-control" name="ad" placeholder="Yeni idareci adı..." required>
+            <button class="btn btn-success" type="submit">Ekle</button>
+        </div>
+    </form>
+    <table class="table table-sm table-bordered">
+        <thead>
+            <tr>
+                <th>Adı</th>
+                <th>Aktif</th>
+                <th>İşlem</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for m in idareciler %}
+            <tr>
+                <td>{{ m.ad }}</td>
+                <td>
+                    <input type="checkbox" {% if m.aktif %}checked{% endif %} disabled>
+                </td>
+                <td>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="editIdareci({{ m.id }}, '{{ m.ad }}')"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="toggleIdareciAktif({{ m.id }}, this)">
+                       <i class="bi bi-toggle-{% if m.aktif %}on{% else %}off{% endif %}"></i> {% if m.aktif %}Pasif Yap{% else %}Aktif Yap{% endif %}
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>
+document.getElementById('idareciEkleForm').onsubmit = function(e) {
+    e.preventDefault();
+    const input = this.querySelector('input[name="ad"]');
+    fetch("{% url 'mercis657:idareci_ekle' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: input.value})
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'İdareci eklenemedi.');
+    });
+};
+function toggleIdareciAktif(id, btn) {
+    fetch("{% url 'mercis657:idareci_toggle_aktif' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'İşlem başarısız.');
+    });
+}
+function editIdareci(id, ad) {
+    const yeniAd = prompt('Yeni idareci adı:', ad);
+    if (!yeniAd || yeniAd.trim() === ad) return;
+    fetch("{% url 'mercis657:idareci_guncelle' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: yeniAd})
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'İdareci güncellenemedi.');
+    });
+}
+</script>

@@ -9,7 +9,7 @@ import json
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from PersonelYonSis import settings
-from .models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, MudurYardimcisi, Izin
+from .models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, Idareci, Izin
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 import locale
@@ -167,7 +167,7 @@ def cizelge(request):
     kurumlar = Kurum.objects.all()
     print(f"Kurumlar: {kurumlar}")
     ust_birimler = UstBirim.objects.all()
-    mudur_yrdler = MudurYardimcisi.objects.all()
+    mudur_yrdler = Idareci.objects.all()
     # Dönemler: mevcut aydan 6 ay önce ile 2 ay sonrası arası
     today = date.today().replace(day=1)
     donemler = []
@@ -358,8 +358,12 @@ def personel_update(request):
     return JsonResponse({'status': 'error'})  # Hatalı durum
 def mesai_tanimlari(request):
     mesai_tanimlari = Mesai_Tanimlari.objects.all()
+<<<<<<< Updated upstream
     ckys_btf_values = CKYS_BTF_VALUES
     return render(request, 'mesai_tanimlari.html', {"mesai_tanimlari": mesai_tanimlari, "ckys_btf_values": ckys_btf_values})
+=======
+    return render(request, 'mercis657/mesai_tanimlari.html', {"mesai_tanimlari": mesai_tanimlari})
+>>>>>>> Stashed changes
 # Yeni Mesai Tanımı Ekleme Fonksiyonu
 def add_mesai_tanim(request):
     if request.method == 'POST':
@@ -563,7 +567,7 @@ def birim_yonetim(request):
         })
     kurumlar = Kurum.objects.all()
     ust_birimler = UstBirim.objects.all()
-    mudur_yrdler = MudurYardimcisi.objects.all()
+    mudur_yrdler = Idareci.objects.all()
     return render(request, "mercis657/birim_yonetim.html", {
         "birimler": birim_list,
         "kurumlar": kurumlar,
@@ -672,17 +676,8 @@ def kurum_ekle(request):
         if Kurum.objects.filter(ad=ad).exists():
             return JsonResponse({'status': 'error', 'message': 'Bu ad ile kurum zaten var.'})
         Kurum.objects.create(ad=ad)
+        messages.success(request, f'{ad} isimli Kurum başarıyla eklendi.')
         return JsonResponse({'status': 'success'})
-    return JsonResponse({'status': 'error'})
-
-@csrf_exempt
-def kurum_sil(request, pk):
-    if request.method == 'POST':
-        try:
-            Kurum.objects.get(pk=pk).delete()
-            return JsonResponse({'status': 'success'})
-        except:
-            return JsonResponse({'status': 'error', 'message': 'Kurum silinemedi.'})
     return JsonResponse({'status': 'error'})
 
 @csrf_exempt
@@ -708,17 +703,8 @@ def ust_birim_ekle(request):
         if UstBirim.objects.filter(ad=ad).exists():
             return JsonResponse({'status': 'error', 'message': 'Bu ad ile üst birim zaten var.'})
         UstBirim.objects.create(ad=ad)
+        messages.success(request, f'{ad} isimli Üst Birim başarıyla eklendi.')
         return JsonResponse({'status': 'success'})
-    return JsonResponse({'status': 'error'})
-
-@csrf_exempt
-def ust_birim_sil(request, pk):
-    if request.method == 'POST':
-        try:
-            UstBirim.objects.get(pk=pk).delete()
-            return JsonResponse({'status': 'success'})
-        except:
-            return JsonResponse({'status': 'error', 'message': 'Üst birim silinemedi.'})
     return JsonResponse({'status': 'error'})
 
 @csrf_exempt
@@ -735,38 +721,29 @@ def ust_birim_guncelle(request, pk):
     return JsonResponse({'status': 'error'})
 
 @csrf_exempt
-def mudur_yrd_ekle(request):
+def idareci_ekle(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         ad = data.get('ad', '').strip()
         if not ad:
-            return JsonResponse({'status': 'error', 'message': 'Müdür yardımcısı adı zorunlu.'})
-        if MudurYardimcisi.objects.filter(ad=ad).exists():
-            return JsonResponse({'status': 'error', 'message': 'Bu ad ile müdür yardımcısı zaten var.'})
-        MudurYardimcisi.objects.create(ad=ad)
+            return JsonResponse({'status': 'error', 'message': 'İdareci adı zorunlu.'})
+        if Idareci.objects.filter(ad=ad).exists():
+            return JsonResponse({'status': 'error', 'message': 'Bu ad ile idareci zaten var.'})
+        Idareci.objects.create(ad=ad)
+        messages.success(request, f'{ad} isimli İdareci başarıyla eklendi.')
         return JsonResponse({'status': 'success'})
     return JsonResponse({'status': 'error'})
 
 @csrf_exempt
-def mudur_yrd_sil(request, pk):
-    if request.method == 'POST':
-        try:
-            MudurYardimcisi.objects.get(pk=pk).delete()
-            return JsonResponse({'status': 'success'})
-        except:
-            return JsonResponse({'status': 'error', 'message': 'Müdür yardımcısı silinemedi.'})
-    return JsonResponse({'status': 'error'})
-
-@csrf_exempt
-def mudur_yrd_guncelle(request, pk):
+def idareci_guncelle(request, pk):
     if request.method == 'POST':
         data = json.loads(request.body)
         ad = data.get('ad', '').strip()
         if not ad:
-            return JsonResponse({'status': 'error', 'message': 'Müdür yardımcısı adı zorunlu.'})
-        m = MudurYardimcisi.objects.get(pk=pk)
-        m.ad = ad
-        m.save()
+            return JsonResponse({'status': 'error', 'message': 'İdareci adı zorunlu.'})
+        idareci = Idareci.objects.get(pk=pk)
+        idareci.ad = ad
+        idareci.save()
         return JsonResponse({'status': 'success'})
     return JsonResponse({'status': 'error'})
 
@@ -802,3 +779,55 @@ def birim_yetki_ekle(request, birim_id):
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)})
     return JsonResponse({"status": "error", "message": "Geçersiz istek."})
+
+@login_required
+def tanimlamalar(request):
+    kurumlar = Kurum.objects.all()
+    ust_birimler = UstBirim.objects.all()
+    idareciler = Idareci.objects.all()
+    mesai_tanimlari = Mesai_Tanimlari.objects.all()
+    return render(request, "mercis657/tanimlamalar.html", {
+        "kurumlar": kurumlar,
+        "ust_birimler": ust_birimler,
+        "idareciler": idareciler,
+        "mesai_tanimlari": mesai_tanimlari,
+    })
+
+@csrf_exempt
+def kurum_toggle_aktif(request, pk):
+    if request.method == 'POST':
+        try:
+            kurum = Kurum.objects.get(pk=pk)
+            kurum.aktif = not kurum.aktif
+            kurum.save()
+            messages.success(request, f"{kurum.ad} kurumunun durumu {'aktif' if kurum.aktif else 'pasif'} olarak güncellendi.")
+            return JsonResponse({'status': 'success', 'aktif': kurum.aktif})
+        except Kurum.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Kurum bulunamadı.'})
+    return JsonResponse({'status': 'error'})
+
+@csrf_exempt
+def ust_birim_toggle_aktif(request, pk):
+    if request.method == 'POST':
+        try:
+            ust = UstBirim.objects.get(pk=pk)
+            ust.aktif = not ust.aktif
+            ust.save()
+            messages.success(request, f"{ust.ad} üst biriminin durumu {'aktif' if ust.aktif else 'pasif'} olarak güncellendi.")
+            return JsonResponse({'status': 'success', 'aktif': ust.aktif})
+        except UstBirim.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'İdare bulunamadı.'})
+    return JsonResponse({'status': 'error'})
+
+@csrf_exempt
+def idareci_toggle_aktif(request, pk):
+    if request.method == 'POST':
+        try:
+            idareci = Idareci.objects.get(pk=pk)
+            idareci.aktif = not idareci.aktif
+            idareci.save()
+            messages.success(request, f"{idareci.ad} idarecisinin durumu {'aktif' if idareci.aktif else 'pasif'} olarak güncellendi.")
+            return JsonResponse({'status': 'success', 'aktif': idareci.aktif})
+        except Idareci.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'İdareci bulunamadı.'})
+    return JsonResponse({'status': 'error'})

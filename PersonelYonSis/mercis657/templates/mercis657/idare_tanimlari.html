@@ -1,0 +1,71 @@
+<div>
+    <h5>İdare Tanımları</h5>
+    <form id="ustBirimEkleForm" class="mb-3">
+        <div class="input-group">
+            <input type="text" class="form-control" name="ad" placeholder="Yeni idare adı..." required>
+            <button class="btn btn-success" type="submit">Ekle</button>
+        </div>
+    </form>
+    <table class="table table-sm table-bordered">
+        <thead>
+            <tr>
+                <th>İdare Adı</th>
+                <th>Aktif</th>
+                <th>İşlem</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ust in ust_birimler %}
+            <tr>
+                <td>{{ ust.ad }}</td>
+                <td>
+                    <input type="checkbox" {% if ust.aktif %}checked{% endif %} disabled>
+                </td>
+                <td>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="editUstBirim({{ ust.id }}, '{{ ust.ad }}')"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="toggleUstBirimAktif({{ ust.id }}, this)">
+                        <i class="bi bi-toggle-{% if ust.aktif %}on{% else %}off{% endif %}"></i> {% if ust.aktif %}Pasif Yap{% else %}Aktif Yap{% endif %}
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>
+document.getElementById('ustBirimEkleForm').onsubmit = function(e) {
+    e.preventDefault();
+    const input = this.querySelector('input[name="ad"]');
+    fetch("{% url 'mercis657:ust_birim_ekle' %}", {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: input.value})
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'İdare eklenemedi.');
+    });
+};
+function toggleUstBirimAktif(id, btn) {
+    fetch("{% url 'mercis657:ust_birim_toggle_aktif' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'İşlem başarısız.');
+    });
+}
+function editUstBirim(id, ad) {
+    const yeniAd = prompt('Yeni idare adı:', ad);
+    if (!yeniAd || yeniAd.trim() === ad) return;
+    fetch("{% url 'mercis657:ust_birim_guncelle' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: yeniAd})
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'İdare güncellenemedi.');
+    });
+}
+</script>

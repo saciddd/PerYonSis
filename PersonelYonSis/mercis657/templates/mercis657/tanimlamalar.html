@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Tanımlamalar{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Tanımlamalar</h3>
+    <ul class="nav nav-tabs" id="tanimTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="mesai-tab" data-bs-toggle="tab" data-bs-target="#mesai" type="button" role="tab">Mesai Tanımları</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="kurum-tab" data-bs-toggle="tab" data-bs-target="#kurum" type="button" role="tab">Kurum Tanımları</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="idare-tab" data-bs-toggle="tab" data-bs-target="#idare" type="button" role="tab">İdare Tanımları</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="mudur-tab" data-bs-toggle="tab" data-bs-target="#mudur" type="button" role="tab">Müdür Yardımcıları</button>
+        </li>
+    </ul>
+    <div class="tab-content mt-3" id="tanimTabContent">
+        <div class="tab-pane fade show active" id="mesai" role="tabpanel">
+            {% include "mercis657/mesai_tanimlari.html" %}
+        </div>
+        <div class="tab-pane fade" id="kurum" role="tabpanel">
+            {% include "mercis657/kurum_tanimlari.html" %}
+        </div>
+        <div class="tab-pane fade" id="idare" role="tabpanel">
+            {% include "mercis657/idare_tanimlari.html" %}
+        </div>
+        <div class="tab-pane fade" id="mudur" role="tabpanel">
+            {% include "mercis657/mudur_tanimlari.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}

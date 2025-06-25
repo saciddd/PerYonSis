@@ -61,7 +61,7 @@ class Menu:
             MenuItem('Bildirim İşlemleri', 'hekim_cizelge:bildirimler', 'bi bi-octagon', 'HÇ Bildirim İşlemleri', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Hizmet Raporu', 'hekim_cizelge:hizmet_raporu', 'bi bi-octagon', 'HÇ Hizmet Raporu', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Personeller', 'hekim_cizelge:personeller', 'bi bi-octagon', 'HÇ Personel Yönetimi', parent_menu='Hekim Çizelge Sistemi'),
-            MenuItem('Kullanıcı Tanımları', 'kullanici_tanimlari', 'bi bi-octagon', 'HÇ Tanımlama Yapma Yetkisi', parent_menu='Yönetim Paneli'),
+            MenuItem('Kullanıcı Tanımları', 'kullanici_tanimlari', 'bi bi-octagon', 'HÇ Tanımlama Yapma Yetkisi', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Hizmet Tanımları', 'hekim_cizelge:hizmet_tanimlari', 'bi bi-octagon', 'HÇ Tanımlama Yapma Yetkisi', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Birim Tanımları', 'hekim_cizelge:birim_tanimlari', 'bi bi-octagon', 'HÇ Tanımlama Yapma Yetkisi', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Resmi Tatil Tanımları', 'hekim_cizelge:resmi_tatiller', 'bi bi-octagon', 'HÇ Tanımlama Yapma Yetkisi', parent_menu='Hekim Çizelge Sistemi'),

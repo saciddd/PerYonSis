@@ -46,7 +46,7 @@ def onceki_donem_personel(request, year, month, birim_id):
     for kayit in kayitlar:
         p = kayit.personel
         data.append({
-            "PersonelID": p.PersonelID,
+            "PersonelTCKN": p.PersonelTCKN,
             "PersonelName": p.PersonelName,
             "PersonelTitle": p.PersonelTitle,
         })
@@ -70,11 +70,11 @@ def personel_kaydet(request):
             liste, _ = PersonelListesi.objects.get_or_create(birim=birim, yil=year, ay=month)
             eklenenler = []
             for p in personeller:
-                pid = p.get('PersonelID')
+                pid = p.get('PersonelTCKN')
                 pname = p.get('PersonelName')
                 ptitle = p.get('PersonelTitle')
                 personel, _ = Personel.objects.get_or_create(
-                    PersonelID=pid,
+                    PersonelTCKN=pid,
                     defaults={'PersonelName': pname, 'PersonelTitle': ptitle}
                 )
                 # Eğer personel varsa, ad/ünvan güncelle
@@ -167,7 +167,7 @@ def cizelge(request):
     kurumlar = Kurum.objects.all()
     print(f"Kurumlar: {kurumlar}")
     ust_birimler = UstBirim.objects.all()
-    mudur_yrdler = Idareci.objects.all()
+    idareciler = Idareci.objects.all()
     # Dönemler: mevcut aydan 6 ay önce ile 2 ay sonrası arası
     today = date.today().replace(day=1)
     donemler = []
@@ -187,7 +187,7 @@ def cizelge(request):
             "mesai_options": Mesai_Tanimlari.objects.all(),
             "kurumlar": kurumlar,
             "ust_birimler": ust_birimler,
-            "mudur_yrdler": mudur_yrdler,
+            "idareciler": idareciler,
             "izinler": izinler,
         }
     # Eğer GET ile birim ve dönem seçilmemişse, context'e sadece seçim listelerini gönder
@@ -268,8 +268,7 @@ def cizelge(request):
         "selected_donem": selected_donem,
         "kurumlar": kurumlar,
         "ust_birimler": ust_birimler,
-        "mudur_yrdler": mudur_yrdler,
-        "izinler": izinler,
+        "idareciler": idareciler,
     }
     return render(request, 'mercis657/cizelge.html', context)
 
@@ -322,17 +321,15 @@ def personel_ekle_form(request):
 def personel_ekle(request):
     if request.method == 'POST':
         # Form verilerini al
-        personel_id = request.POST['PersonelID']
+        personel_tc = request.POST['PersonelTCKN']
         personel_name = request.POST['PersonelName']
         personel_title = request.POST['PersonelTitle']
-        birth_date = request.POST['BirthDate']
-
+        
         # Yeni personel kaydet
         personel = Personel(
-            PersonelID=personel_id,
+            PersonelTCKN=personel_tc,
             PersonelName=personel_name,
-            PersonelTitle=personel_title,
-            BirthDate=birth_date
+            PersonelTitle=personel_title
         )
         personel.save()
 
@@ -341,12 +338,12 @@ def personel_ekle(request):
     return HttpResponse("Geçersiz istek", status=400)
 def personel_update(request):
     if request.method == 'POST':
-        personel_id = request.POST.get('id')
+        personel_tc = request.POST.get('tckn')
         personel_name = request.POST.get('name')
         personel_title = request.POST.get('title')
 
         # Personeli bul
-        personel = get_object_or_404(Personel, PersonelID=personel_id)
+        personel = get_object_or_404(Personel, PersonelTCKN=personel_tc)
         
         # Güncellenen alanlar
         personel.PersonelName = personel_name
@@ -358,12 +355,7 @@ def personel_update(request):
     return JsonResponse({'status': 'error'})  # Hatalı durum
 def mesai_tanimlari(request):
     mesai_tanimlari = Mesai_Tanimlari.objects.all()
-<<<<<<< Updated upstream
-    ckys_btf_values = CKYS_BTF_VALUES
-    return render(request, 'mesai_tanimlari.html', {"mesai_tanimlari": mesai_tanimlari, "ckys_btf_values": ckys_btf_values})
-=======
     return render(request, 'mercis657/mesai_tanimlari.html', {"mesai_tanimlari": mesai_tanimlari})
->>>>>>> Stashed changes
 # Yeni Mesai Tanımı Ekleme Fonksiyonu
 def add_mesai_tanim(request):
     if request.method == 'POST':
@@ -545,7 +537,7 @@ def personel_cikar(request, liste_id, personel_id):
     return redirect('mercis657:personel_listesi_detay', liste_id=liste.id)
 
 def birim_yonetim(request):
-    birimler = Birim.objects.select_related('Kurum', 'UstBirim', 'MudurYrd').all()
+    birimler = Birim.objects.select_related('Kurum', 'UstBirim', 'idareci').all()
     birim_list = []
     for birim in birimler:
         yetkiler = UserBirim.objects.filter(birim=birim).select_related('user')
@@ -561,18 +553,18 @@ def birim_yonetim(request):
             "adi": birim.BirimAdi,
             "kurum": birim.Kurum.ad if birim.Kurum else "",
             "ust_birim": birim.UstBirim.ad if birim.UstBirim else "",
-            "mudur_yrd": birim.MudurYrd.ad if birim.MudurYrd else "",
+            "idareci": birim.idareci.ad if birim.idareci else "",
             "yetkili_sayisi": len(yetkili_users),
             "yetkililer": yetkili_users,
         })
     kurumlar = Kurum.objects.all()
     ust_birimler = UstBirim.objects.all()
-    mudur_yrdler = Idareci.objects.all()
+    idareciler = Idareci.objects.all()
     return render(request, "mercis657/birim_yonetim.html", {
         "birimler": birim_list,
         "kurumlar": kurumlar,
         "ust_birimler": ust_birimler,
-        "mudur_yrdler": mudur_yrdler,
+        "idareciler": idareciler,
     })
 
 @csrf_exempt
@@ -581,7 +573,7 @@ def birim_ekle(request):
         ad = request.POST.get('BirimAdi')
         kurum_id = request.POST.get('Kurum') or None
         ust_id = request.POST.get('UstBirim') or None
-        mudur_id = request.POST.get('MudurYrd') or None
+        mudur_id = request.POST.get('idareci') or None
         if not ad:
             return JsonResponse({'status': 'error', 'message': 'Birim adı zorunlu.'})
         try:
@@ -589,7 +581,7 @@ def birim_ekle(request):
                 BirimAdi=ad,
                 Kurum_id=kurum_id if kurum_id else None,
                 UstBirim_id=ust_id if ust_id else None,
-                MudurYrd_id=mudur_id if mudur_id else None
+                Idareci_id=mudur_id if mudur_id else None
             )
             # Yeni eklenen birime mevcut kullanıcıyı yetkilendir
             UserBirim.objects.create(user=request.user, birim=birim)
@@ -611,7 +603,7 @@ def birim_detay(request, birim_id):
             'BirimAdi': birim.BirimAdi,
             'Kurum': birim.Kurum.pk if birim.Kurum else None,
             'UstBirim': birim.UstBirim.pk if birim.UstBirim else None,
-            'MudurYrd': birim.MudurYrd.pk if birim.MudurYrd else None,
+            'idareci': birim.idareci.pk if birim.idareci else None,
         }
         return JsonResponse({'status': 'success', 'data': data})
     except Birim.DoesNotExist:
@@ -632,7 +624,7 @@ def birim_guncelle(request, birim_id):
         ad = request.POST.get('birimAdi')
         kurum_id = request.POST.get('Kurum') or None
         ust_id = request.POST.get('UstBirim') or None
-        mudur_id = request.POST.get('MudurYrd') or None
+        mudur_id = request.POST.get('idareci') or None
 
         if not ad:
             return JsonResponse({'status': 'error', 'message': 'Birim adı zorunlu.'})
@@ -640,7 +632,7 @@ def birim_guncelle(request, birim_id):
         birim.BirimAdi = ad
         birim.Kurum_id = kurum_id
         birim.UstBirim_id = ust_id
-        birim.MudurYrd_id = mudur_id
+        birim.idareci_id = mudur_id
         birim.save()
 
         return JsonResponse({'status': 'success', 'message': 'Birim başarıyla güncellendi.'})

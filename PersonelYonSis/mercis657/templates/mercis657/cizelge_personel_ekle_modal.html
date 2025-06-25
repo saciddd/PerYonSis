@@ -41,7 +41,8 @@
                             <table class="table table-sm" id="yeniPersonelTable">
                                 <thead>
                                     <tr>
-                                        <th>Sıra No</th>
+                                        <!-- Sıra no sütunu sabit 20 px genişliğinde -->
+                                        <th style="width: 45px; min-width: 45px; max-width: 45px;">Sıra No</th>
                                         <th>T.C.</th>
                                         <th>Adı Soyadı</th>
                                         <th>Unvanı</th>
@@ -49,7 +50,7 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td>1</td>
+                                        <td style="width: 45px; min-width: 45px; max-width: 45px;">1</td>
                                         <td contenteditable="true"></td>
                                         <td contenteditable="true"></td>
                                         <td contenteditable="true"></td>
@@ -66,3 +67,72 @@
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('btnPersonelKaydet').addEventListener('click', function() {
+    // Dönem ve birim id'sini ana formdan al
+    const donem = document.getElementById('selectDonem').value;
+    const birimId = document.getElementById('selectBirim').value;
+    if (!donem || !birimId) {
+        alert('Lütfen dönem ve birim seçiniz');
+        return;
+    }
+
+    const personeller = [];
+    document.querySelectorAll('#yeniPersonelTable tbody tr').forEach(row => {
+        const cells = row.querySelectorAll('td[contenteditable="true"]');
+        if (cells.length === 3) {
+            const personel = {
+                PersonelTCKN: cells[0].textContent.trim(),
+                PersonelName: cells[1].textContent.trim(),
+                PersonelTitle: cells[2].textContent.trim()
+            };
+            if (personel.PersonelTCKN && personel.PersonelName && personel.PersonelTitle) {
+                personeller.push(personel);
+            }
+        }
+    });
+
+    if (personeller.length === 0) {
+        alert('Eklenecek personel bulunamadı!');
+        return;
+    }
+
+    // CSRF token'ı modal içinden al
+    const modalElement = document.getElementById('personelEkleModal');
+    const csrfTokenInput = modalElement.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfTokenInput) {
+        alert('CSRF token bulunamadı. Sayfayı yenileyip tekrar deneyin.');
+        console.error('CSRF token input not found inside #personelEkleModal');
+        return;
+    }
+    const csrfToken = csrfTokenInput.value;
+
+    fetch('/mercis657/personel/kaydet/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            donem: donem,
+            birim_id: birimId,
+            personeller: personeller
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            alert(data.message);
+            // Sayfayı yenile veya tabloyu güncelle
+            window.location.reload();
+        } else {
+            throw new Error(data.message || 'Bilinmeyen bir hata oluştu.');
+        }
+    })
+    .catch(error => {
+        console.error('Kayıt hatası:', error);
+        alert('Kayıt sırasında bir hata oluştu: ' + error.message);
+    });
+});
+</script>

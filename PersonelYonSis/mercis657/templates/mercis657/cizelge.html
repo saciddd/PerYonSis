@@ -32,7 +32,7 @@
                     <button class="btn btn-outline-secondary btn-sm" type="button" id="btnBirimYonetim" data-bs-toggle="modal" data-bs-target="#birimYonetimModal">
                         <i class="bi bi-gear"></i>
                     </button>
-                    <button class="btn btn-success btn-sm" type="button" id="btnPersonelEkle">
+                    <button class="btn btn-success btn-sm" type="button" id="btnPersonelEkle" data-bs-toggle="modal" data-bs-target="#personelEkleModal">
                         <i class="bi bi-person-plus"></i> Personel Ekle
                     </button>
                 </div>
@@ -110,7 +110,8 @@
                     data-date="{{ mesai.MesaiDate }}"
                     data-mesai-id="{{ mesai.MesaiID|default:'' }}"
                     data-izin-id="{{ mesai.IzinID|default:'' }}">
-                    {{ mesai.Saat|default:mesai.IzinAd }}
+                    {{ mesai.Saat }}
+                    <!-- mesai.Saat|default:mesai.IzinAd -->
                 </td>
                 {% endfor %}
             </tr>

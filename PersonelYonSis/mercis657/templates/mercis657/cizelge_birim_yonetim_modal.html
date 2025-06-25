@@ -35,11 +35,11 @@
                                 </select>
                             </div>
                             <div class="mb-3">
-                                <label for="mudurYrdSecEkle" class="form-label">Müdür Yrd.</label>
-                                <select class="form-select" id="mudurYrdSecEkle" name="MudurYrd">
+                                <label for="idareciSecEkle" class="form-label">İdareci</label>
+                                <select class="form-select" id="idareciSecEkle" name="idareci">
                                     <option value="">Seçiniz...</option>
-                                    {% for m in mudur_yrdler %}
-                                        <option value="{{ m.id|default:m.pk }}">{{ m.ad }}</option>
+                                    {% for i in idareciler %}
+                                        <option value="{{ i.id|default:i.pk }}">{{ i.ad }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -76,8 +76,8 @@
                                 </select>
                             </div>
                              <div class="mb-3">
-                                <label for="mudurYrdSecDuzenle" class="form-label">Müdür Yrd.</label>
-                                <select class="form-select" id="mudurYrdSecDuzenle" name="MudurYrd" required>
+                                <label for="idareciSecDuzenle" class="form-label">Müdür Yrd.</label>
+                                <select class="form-select" id="idareciSecDuzenle" name="idareci" required>
                                      <option value="">Seçiniz...</option>
                                      {% for m in mudur_yrdler %}
                                         <option value="{{ m.id|default:m.pk }}">{{ m.ad }}</option>
@@ -136,7 +136,7 @@ function loadBirimForEdit(birimId) {
             document.getElementById('birimAdiDuzenle').value = birim.BirimAdi;
             document.getElementById('kurumSecDuzenle').value = birim.Kurum || '';
             document.getElementById('ustBirimSecDuzenle').value = birim.UstBirim || '';
-            document.getElementById('mudurYrdSecDuzenle').value = birim.MudurYrd || '';
+            document.getElementById('idareciSecDuzenle').value = birim.idareci || '';
             // Sil butonunu aktifleştir
             document.querySelector('#birimDuzenleForm .btn-danger').disabled = false;
         } else {

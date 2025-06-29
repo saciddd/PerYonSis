@@ -2,9 +2,36 @@
 {% load static %}
 {% block title %}Personel Listesi{% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .table-responsive {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+    
+    .table th {
+        position: sticky;
+        top: 0;
+        background-color: #f8f9fa;
+        z-index: 1;
+    }
+    
+    .btn-sm {
+        padding: 2px 6px;
+        font-size: 0.75rem;
+    }
+    
+    .form-control, .form-select {
+        font-size: 0.85rem;
+        padding: 4px 8px;
+    }
+    
+    .form-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -14,34 +41,32 @@
         <div class="row g-2 align-items-end">
             <div class="col-md-2">
                 <label for="tc_kimlik_no" class="form-label">T.C. Kimlik No</label>
-                <input type="text" class="form-control" id="tc_kimlik_no" name="tc_kimlik_no">
+                <input type="text" class="form-control" id="tc_kimlik_no" name="tc_kimlik_no" value="{{ arama.tc_kimlik_no }}">
             </div>
             <div class="col-md-2">
                 <label for="ad_soyad" class="form-label">Ad Soyad</label>
-                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad">
+                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad" value="{{ arama.ad_soyad }}">
+            </div>
+            <div class="col-md-2">
+                <label for="telefon" class="form-label">Telefon</label>
+                <input type="text" class="form-control" id="telefon" name="telefon" value="{{ arama.telefon }}">
             </div>
             <div class="col-md-2">
                 <label for="unvan" class="form-label">Unvan</label>
-                <select id="unvan" name="unvan" class="form-select select2" multiple>
-                    {% for unvan in unvan_list %}
-                        <option value="{{ unvan.id }}">{{ unvan.ad }}</option>
+                <select id="unvan" name="unvan" class="form-select select2">
+                    <option value="">Tümü</option>
+                    {% for unvan in unvanlar %}
+                        <option value="{{ unvan.id }}" {% if arama.unvan == unvan.id|stringformat:"s" %}selected{% endif %}>{{ unvan.ad }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="col-md-2">
-                <label for="kurum" class="form-label">Kurum</label>
-                <select id="kurum" name="kurum" class="form-select select2" multiple>
-                    {% for kurum in kurum_list %}
-                        <option value="{{ kurum.id }}">{{ kurum.ad }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label for="teskilat" class="form-label">Teşkilat</label>
-                <select id="teskilat" name="teskilat" class="form-select select2" multiple>
-                    {% for teskilat_val, teskilat_label in teskilat_choices %}
-                        <option value="{{ teskilat_val }}">{{ teskilat_label }}</option>
-                    {% endfor %}
+                <label for="durum" class="form-label">Durum</label>
+                <select id="durum" name="durum" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="Aktif" {% if arama.durum == "Aktif" %}selected{% endif %}>Aktif</option>
+                    <option value="Pasif" {% if arama.durum == "Pasif" %}selected{% endif %}>Pasif</option>
+                    <option value="Kurumdan Ayrıldı" {% if arama.durum == "Kurumdan Ayrıldı" %}selected{% endif %}>Kurumdan Ayrıldı</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -61,24 +86,63 @@
                     </a>
                 </div>
                 <div class="card-body">
-                    <table id="personelTable" class="table table-bordered table-striped" style="width:100%">
-                        <thead>
-                            <tr>
-                                <th>T.C. Kimlik No</th>
-                                <th>Ad</th>
-                                <th>Soyad</th>
-                                <th>Unvan</th>
-                                <th>Branş</th>
-                                <th>Teşkilat</th>
-                                <th>Kurum</th>
-                                <th>Durum</th>
-                                <th>İşlemler</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Asenkron yükleme için tbody boş bırakıldı -->
-                        </tbody>
-                    </table>
+                    {% if personeller %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>T.C. Kimlik No</th>
+                                        <th>Ad</th>
+                                        <th>Soyad</th>
+                                        <th>Telefon</th>
+                                        <th>Unvan</th>
+                                        <th>Branş</th>
+                                        <th>Kurum</th>
+                                        <th>Durum</th>
+                                        <th>İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for personel in personeller %}
+                                    <tr>
+                                        <td>{{ personel.tc_kimlik_no }}</td>
+                                        <td>{{ personel.ad }}</td>
+                                        <td>{{ personel.soyad }}</td>
+                                        <td>{{ personel.telefon|default:"-" }}</td>
+                                        <td>{{ personel.unvan.ad|default:"-" }}</td>
+                                        <td>{{ personel.brans.ad|default:"-" }}</td>
+                                        <td>{{ personel.kurum.ad|default:"-" }}</td>
+                                        <td>
+                                            {% if personel.durum == "Aktif" %}
+                                                <span class="badge bg-success">{{ personel.durum }}</span>
+                                            {% elif personel.durum == "Pasif" %}
+                                                <span class="badge bg-warning text-dark">{{ personel.durum }}</span>
+                                            {% elif personel.durum == "Kurumdan Ayrıldı" %}
+                                                <span class="badge bg-danger">{{ personel.durum }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ personel.durum }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'ik_core:personel_detay' personel.pk %}" class="btn btn-info btn-sm">
+                                                <i class="bi bi-eye"></i> Detay
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="mt-3">
+                            <small class="text-muted">Toplam {{ personeller.count }} personel bulundu.</small>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-search" style="font-size: 3rem; color: #6c757d;"></i>
+                            <h5 class="mt-3 text-muted">Personel Bulunamadı</h5>
+                            <p class="text-muted">Arama kriterlerinizi değiştirerek tekrar deneyin.</p>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -87,57 +151,17 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
-    $('.select2').select2({ width: '100%' });
-
-    var table = $('#personelTable').DataTable({
-        "processing": true,
-        "serverSide": true,
-        "ajax": {
-            "url": "{% url 'ik_core:personel_list_ajax' %}",
-            "type": "GET",
-            "data": function(d) {
-                d.tc_kimlik_no = $('#tc_kimlik_no').val();
-                d.ad_soyad = $('#ad_soyad').val();
-                d.unvan = $('#unvan').val();
-                d.kurum = $('#kurum').val();
-                d.teskilat = $('#teskilat').val();
-            }
-        },
-        "columns": [
-            { "data": "tc_kimlik_no" },
-            { "data": "ad" },
-            { "data": "soyad" },
-            { "data": "unvan" },
-            { "data": "brans" },
-            { "data": "teskilat" },
-            { "data": "kurum" },
-            { "data": "durum" },
-            { "data": "islemler", "orderable": false, "searchable": false }
-        ],
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Turkish.json"
-        },
-        "dom": 'Bfrtip',
-        "buttons": [
-            'copy', 'excel', 'csv', 'print'
-        ]
+    $('.select2').select2({ 
+        width: '100%',
+        placeholder: 'Seçiniz...'
     });
-
-    $('#personelAramaForm').on('submit', function(e) {
-        e.preventDefault();
-        table.ajax.reload();
+    
+    // Form submit edildiğinde loading göster
+    $('#personelAramaForm').on('submit', function() {
+        // Form submit işlemi normal şekilde devam eder
     });
 });
 </script>

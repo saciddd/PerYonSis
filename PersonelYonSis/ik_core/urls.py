@@ -6,7 +6,6 @@ app_name = 'ik_core'
 
 urlpatterns = [
     path('personeller/', views.personel_list, name='personel_list'),
-    path('personeller-ajax/', views.personel_list_ajax, name='personel_list_ajax'),
     path('personel/ekle/', views.personel_ekle, name='personel_ekle'),
     path('personel/<int:pk>/', views.personel_detay, name='personel_detay'),
     path('personel/<int:pk>/duzenle/', views.personel_duzenle, name='personel_duzenle'),
@@ -17,6 +16,7 @@ urlpatterns = [
     path('unvan-brans-tanimlari/', views.unvan_branstanimlari, name='unvan_branstanimlari'),
     path('tanimlamalar/', views.tanimlamalar, name='tanimlamalar'),
     path('personel_kontrol/', views.personel_kontrol, name='personel_kontrol'),
+    path('get_brans_by_unvan/', views.get_brans_by_unvan, name='get_brans_by_unvan'),
     # API endpoints
     path('api/personel_aktar/', api_views.filemaker_personel_aktar, name='filemaker_personel_aktar'),
 

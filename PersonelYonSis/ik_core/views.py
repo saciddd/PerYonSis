@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.db.models import Q
+from django.db.models import Q, Value as V
+from django.db.models.functions import Concat
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse, reverse_lazy
@@ -19,19 +20,35 @@ def personel_list(request):
     query = Q()
     tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
     ad_soyad = request.GET.get('ad_soyad', '').strip()
-    unvan = request.GET.get('unvan', '')
     telefon = request.GET.get('telefon', '').strip()
+    unvan = request.GET.get('unvan', '')
+    durum = request.GET.get('durum', '')
 
     if tc_kimlik_no:
         query &= Q(tc_kimlik_no__icontains=tc_kimlik_no)
     if ad_soyad:
-        query &= (Q(ad__icontains=ad_soyad) | Q(soyad__icontains=ad_soyad))
-    if unvan:
-        query &= Q(unvan_id=unvan)
+        query &= (
+            Q(ad__icontains=ad_soyad) | 
+            Q(soyad__icontains=ad_soyad) |
+            Q(ad__icontains=ad_soyad.split()[0]) |
+            Q(soyad__icontains=ad_soyad.split()[-1])
+        )
     if telefon:
         query &= Q(telefon__icontains=telefon)
+    if unvan:
+        query &= Q(unvan_id=unvan)
 
-    personeller = Personel.objects.filter(query).select_related('unvan', 'brans', 'kurum')
+    # Eğer hiç arama kriteri yoksa boş queryset döndür
+    if not any([tc_kimlik_no, ad_soyad, telefon, unvan, durum]):
+        personeller = Personel.objects.none()
+    else:
+        queryset = Personel.objects.filter(query).select_related('unvan', 'brans', 'kurum')
+        if durum:
+            # queryset'i listeye çevirip property ile filtrele
+            personeller = [p for p in queryset if p.durum == durum]
+        else:
+            personeller = queryset
+
     unvanlar = Unvan.objects.all()
 
     return render(request, 'ik_core/personel_list.html', {
@@ -40,77 +57,27 @@ def personel_list(request):
         'arama': {
             'tc_kimlik_no': tc_kimlik_no,
             'ad_soyad': ad_soyad,
-            'unvan': unvan,
             'telefon': telefon,
+            'unvan': unvan,
+            'durum': durum,
         }
     })
 
 @login_required
-def personel_list_ajax(request):
-    draw = int(request.GET.get('draw', 1))
-    start = int(request.GET.get('start', 0))
-    length = int(request.GET.get('length', 10))
-
-    # Dinamik sıralama (DataTables'dan gelen)
-    order_column_index = request.GET.get('order[0][column]')
-    order_dir = request.GET.get('order[0][dir]', 'asc')
-
-    order_column = request.GET.get(f'columns[{order_column_index}][data]', 'ad')  # Varsayılan: ad
-
-    # '-' prefix'i ile ters sıralama
-    if order_dir == 'desc':
-        order_column = f'-{order_column}'
-
-    # Filtreler
-    tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
-    ad_soyad = request.GET.get('ad_soyad', '').strip()
-    unvanlar = request.GET.getlist('unvan[]')
-    kurumlar = request.GET.getlist('kurum[]')
-    teskilatlar = request.GET.getlist('teskilat[]')
-
-    queryset = Personel.objects.all()
-
-    if tc_kimlik_no:
-        queryset = queryset.filter(tc_kimlik_no__icontains=tc_kimlik_no)
-    if ad_soyad:
-        queryset = queryset.filter(Q(ad__icontains=ad_soyad) | Q(soyad__icontains=ad_soyad))
-    if unvanlar:
-        queryset = queryset.filter(unvan_id__in=unvanlar)
-    if kurumlar:
-        queryset = queryset.filter(kurum_id__in=kurumlar)
-    if teskilatlar:
-        queryset = queryset.filter(teskilat__in=teskilatlar)
-
-    total_count = queryset.count()
-
-    queryset = queryset.select_related('unvan', 'brans', 'kurum').order_by(order_column)[start:start + length]
-
-    data = []
-    for p in queryset:
-        data.append({
-            "tc_kimlik_no": p.tc_kimlik_no,
-            "ad": p.ad,
-            "soyad": p.soyad,
-            "unvan": p.unvan.ad if p.unvan else "",
-            "brans": p.brans.ad if p.brans else "",
-            "teskilat": p.teskilat,
-            "kurum": p.kurum.ad if p.kurum else "",
-            "durum": p.durum,
-            "islemler": f'<a href="{reverse("ik_core:personel_detay", args=[p.pk])}" class="btn btn-info btn-sm">Detay</a>'
-        })
-
-    return JsonResponse({
-        "draw": draw,
-        "recordsTotal": total_count,
-        "recordsFiltered": total_count,
-        "data": data
-    })
-
 def personel_kontrol(request):
     """AJAX: T.C. Kimlik No ile sistemde kayıtlı personel var mı?"""
     tc = request.GET.get('tc_kimlik_no', '').strip()
     exists = Personel.objects.filter(tc_kimlik_no=tc).exists()
     return JsonResponse({'exists': exists})
+
+@login_required
+def get_brans_by_unvan(request):
+    """AJAX: Unvan ID'sine göre branşları getir"""
+    unvan_id = request.GET.get('unvan_id')
+    if unvan_id:
+        branslar = Brans.objects.filter(unvan_id=unvan_id).values('id', 'ad')
+        return JsonResponse({'branslar': list(branslar)})
+    return JsonResponse({'branslar': []})
 
 def personel_ekle(request):
     if request.method == 'POST':
@@ -139,7 +106,7 @@ def personel_ekle(request):
 def personel_detay(request, pk):
     personel = get_object_or_404(Personel.objects.select_related('unvan', 'brans', 'kurum', 'kadro_yeri', 'fiili_gorev_yeri').prefetch_related('ozel_durumu', 'gecicigorev_set'), pk=pk)
     unvanlar = Unvan.objects.all()
-    branslar = Brans.objects.all() # Consider filtering by unvan if needed dynamically
+    branslar = Brans.objects.all()
     kurumlar = Kurum.objects.all()
     ozel_durum_all = OzelDurum.objects.all()
     ozel_durumu_ids = list(personel.ozel_durumu.values_list('id', flat=True))
@@ -148,7 +115,7 @@ def personel_detay(request, pk):
     teskilat_choices = TESKILAT_DEGERLERI
     mazeret_durumu_choices = MAZERET_DEGERLERI
     tahsil_durumu_choices = EGITIM_DEGERLERI
-    cinsiyet_choices = Personel._meta.get_field('cinsiyet').choices # Get choices from model field
+    cinsiyet_choices = Personel._meta.get_field('cinsiyet').choices
     ayrilma_nedeni_choices = AYRILMA_NEDENI_DEGERLERI
     vergi_indirimi_choices = ENGEL_DERECESI_DEGERLERI
 
@@ -156,44 +123,45 @@ def personel_detay(request, pk):
         'asil_kurumu': personel.kurum.ad if personel.kurum else ''
     })
 
+    # PersonelForm instance'ını oluştur
+    form = PersonelForm(instance=personel)
+
     if request.method == 'POST':
-        # Check if the save is for the main form or the separation form
-        if 'save_main' in request.POST: # Assuming main save button has name="save_main"
+        if 'save_main' in request.POST:
             form = PersonelForm(request.POST, instance=personel)
             if form.is_valid():
                 form.save()
-                messages.success(request, f"{personel.ad_soyad} bilgileri başarıyla güncellendi.")
+                messages.success(request, f"{personel.ad} {personel.soyad} bilgileri başarıyla güncellendi.")
                 return redirect('ik_core:personel_detay', pk=pk)
             else:
                 messages.error(request, "Formda hatalar var. Lütfen kontrol ediniz.")
-        elif 'save_ayrilis' in request.POST: # Assuming separation save button has name="save_ayrilis"
-             # Only update separation fields
-             personel.ayrilma_tarihi = request.POST.get('ayrilma_tarihi') or None
-             personel.ayrilma_nedeni = request.POST.get('ayrilma_nedeni') or ''
-             personel.ayrilma_detay = request.POST.get('ayrilma_detay') or ''
-             try:
-                 personel.save(update_fields=['ayrilma_tarihi', 'ayrilma_nedeni', 'ayrilma_detay'])
-                 messages.success(request, f"{personel.ad_soyad} için ayrılış bilgileri kaydedildi.")
-             except Exception as e:
-                 messages.error(request, f"Ayrılış bilgileri kaydedilirken hata oluştu: {e}")
-             return redirect('ik_core:personel_detay', pk=pk)
-        # Handle other potential POST actions if needed
+        elif 'save_ayrilis' in request.POST:
+            # Ayrılış bilgilerini güncelle
+            personel.ayrilma_tarihi = request.POST.get('ayrilma_tarihi') or None
+            personel.ayrilma_nedeni = request.POST.get('ayrilma_nedeni') or ''
+            personel.ayrilma_detay = request.POST.get('ayrilma_detay') or ''
+            try:
+                personel.save(update_fields=['ayrilma_tarihi', 'ayrilma_nedeni', 'ayrilma_detay'])
+                messages.success(request, f"{personel.ad} {personel.soyad} için ayrılış bilgileri kaydedildi.")
+            except Exception as e:
+                messages.error(request, f"Ayrılış bilgileri kaydedilirken hata oluştu: {e}")
+            return redirect('ik_core:personel_detay', pk=pk)
 
-    # No need to pass the form instance if the template builds fields manually using 'personel' object
     context = {
         'personel': personel,
+        'form': form,  # PersonelForm instance'ını context'e ekle
         'unvanlar': unvanlar,
         'branslar': branslar,
-        'kurumlar': kurumlar, # Used for Kurum, Kadro Yeri, Fiili Görev Yeri selects
+        'kurumlar': kurumlar,
         'gecici_gorev_form': gecici_gorev_form,
         'teskilat_choices': teskilat_choices,
         'mazeret_durumu_choices': mazeret_durumu_choices,
         'tahsil_durumu_choices': tahsil_durumu_choices,
         'cinsiyet_choices': cinsiyet_choices,
-        'ozel_durumu_choices': ozel_durum_all, # Pass all OzelDurum objects for the multi-select
-        'ozel_durumu_ids': ozel_durumu_ids, # Pass selected IDs
-        'ayrilma_nedeni_choices': ayrilma_nedeni_choices, # Add separation reason choices
-        'vergi_indirimi_choices': vergi_indirimi_choices, # Add tax reduction choices
+        'ozel_durumu_choices': ozel_durum_all,
+        'ozel_durumu_ids': ozel_durumu_ids,
+        'ayrilma_nedeni_choices': ayrilma_nedeni_choices,
+        'vergi_indirimi_choices': vergi_indirimi_choices,
     }
     return render(request, 'ik_core/personel_detay.html', context)
 
@@ -205,7 +173,10 @@ def gecici_gorev_ekle(request, personel_id):
         gecici_gorev = form.save(commit=False)
         gecici_gorev.personel = personel
         gecici_gorev.save()
-    return redirect(reverse('ik_core:personel_detay', args=[personel_id]))
+        messages.success(request, f"{personel.ad} {personel.soyad} için geçici görev kaydı başarıyla eklendi.")
+    return JsonResponse({
+        'success': True,
+    })
 
 @require_POST
 def gecici_gorev_sil(request, personel_id, gorev_id):

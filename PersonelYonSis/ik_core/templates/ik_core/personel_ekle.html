@@ -60,14 +60,16 @@
                     </div>
                     <div class="row mb-3">
                         <label for="id_unvan" class="col-sm-3 col-form-label">Unvan</label>
-                        <div class="col-sm-9">
+                        <div class="col-sm-9 d-flex align-items-center">
                             {{ form.unvan }}
+                            <button type="button" class="btn btn-outline-secondary btn-sm ms-2" id="clearUnvan">X</button>
                         </div>
                     </div>
                     <div class="row mb-3">
                         <label for="id_brans" class="col-sm-3 col-form-label">Branş</label>
-                        <div class="col-sm-9">
+                        <div class="col-sm-9 d-flex align-items-center">
                             {{ form.brans }}
+                            <button type="button" class="btn btn-outline-secondary btn-sm ms-2" id="clearBrans">X</button>
                         </div>
                     </div>
                     <div class="d-flex justify-content-end">
@@ -229,14 +231,233 @@
 {% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bs-stepper/dist/css/bs-stepper.min.css">
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <style>
-/* ...existing code... */
+/* Stepper stilleri */
+.bs-stepper {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.bs-stepper-header {
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+}
+
+.step-trigger {
+    background: none;
+    border: none;
+    color: #6c757d;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.step-trigger:hover {
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+.step.active .step-trigger {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.step.completed .step-trigger {
+    background-color: #198754;
+    color: white;
+}
+
+.line {
+    flex: 1;
+    height: 2px;
+    background-color: #dee2e6;
+    margin: 0 10px;
+}
+
+.step.completed + .line {
+    background-color: #198754;
+}
+
+/* Form stilleri */
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.form-control, .form-select {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    padding: 8px 12px;
+    font-size: 14px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Select2 stilleri */
+.select2-container--bootstrap-5 .select2-selection {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single {
+    padding: 8px 12px;
+}
+
+.select2-container--bootstrap-5 .select2-selection__rendered {
+    color: #495057;
+    font-size: 14px;
+}
+
+.select2-container--bootstrap-5 .select2-selection__placeholder {
+    color: #6c757d;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+}
+
+/* Buton stilleri */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 8px 16px;
+    font-size: 14px;
+    transition: all 0.15s ease-in-out;
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-secondary:hover {
+    background-color: #5c636a;
+    border-color: #565e64;
+}
+
+.btn-success {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.btn-success:hover {
+    background-color: #157347;
+    border-color: #146c43;
+}
+
+/* Sticky header stilleri */
+#kisibilgiSticky {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Alert stilleri */
+.alert {
+    border-radius: 6px;
+    border: none;
+    padding: 12px 16px;
+    margin-bottom: 15px;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+/* Validation stilleri */
+.is-valid {
+    border-color: #198754 !important;
+    box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25) !important;
+}
+
+.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection.is-valid {
+    border-color: #198754 !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+/* Form validation mesajları */
+.validation-message {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.validation-message.valid-feedback {
+    color: #198754;
+}
+
+.validation-message.invalid-feedback {
+    color: #dc3545;
+}
+
+/* Responsive düzenlemeler */
+@media (max-width: 768px) {
+    .bs-stepper {
+        padding: 15px;
+    }
+    
+    .step-trigger {
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+    
+    .form-label {
+        font-size: 14px;
+    }
+    
+    .btn {
+        font-size: 13px;
+        padding: 6px 12px;
+    }
+}
 </style>
 {% endblock %}
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/bs-stepper/dist/js/bs-stepper.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var stepperElement = document.getElementById('personelStepper');
@@ -249,12 +470,159 @@ document.addEventListener('DOMContentLoaded', function() {
     $('#id_unvan').select2({
         theme: 'bootstrap-5',
         width: '100%',
-        placeholder: 'Unvan seçiniz'
+        placeholder: 'Unvan seçiniz',
+        allowClear: true,
+        dropdownParent: $('body')
     });
     $('#id_brans').select2({
         theme: 'bootstrap-5',
         width: '100%',
-        placeholder: 'Branş seçiniz'
+        placeholder: 'Branş seçiniz',
+        allowClear: true,
+        dropdownParent: $('body')
+    });
+
+    // Form validation'ı düzelt
+    $('#id_brans').removeAttr('required');
+    $('#id_brans').attr('data-required', 'false');
+    
+    // Select2 alanlarının focusable olmasını sağla
+    $('.select2-hidden-accessible').removeAttr('tabindex');
+    $('.select2-hidden-accessible').removeAttr('aria-hidden');
+    
+    // Select2 alanlarının validation'da focusable olmasını sağla
+    $('.select2-hidden-accessible').attr('tabindex', '0');
+
+    // Form submit işlemini iyileştir
+    // Artık kaydet butonuna özel handler kullanıyoruz
+
+    // Form alanlarında Enter tuşuna basıldığında formun submit olmasını engelle
+    $('#personelStepperForm input, #personelStepperForm select, #personelStepperForm textarea').on('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Select2 alanı ise özel işlem yap
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                // Select2 dropdown'ı açık ise kapat
+                if ($(this).next('.select2-container').find('.select2-dropdown').is(':visible')) {
+                    $(this).select2('close');
+                } else {
+                    // Dropdown kapalı ise aç
+                    $(this).select2('open');
+                }
+            } else {
+                // Normal input alanı ise bir sonraki step'e geç
+                var currentStep = stepper._currentIndex;
+                var totalSteps = stepper._steps.length;
+                
+                // Eğer son step değilse bir sonraki step'e geç
+                if (currentStep < totalSteps - 1) {
+                    // Mevcut step'e göre uygun butonu tetikle
+                    switch(currentStep) {
+                        case 0: // Step 1 -> Step 2
+                            if (document.getElementById('toStep2')) {
+                                document.getElementById('toStep2').click();
+                            }
+                            break;
+                        case 1: // Step 2 -> Step 3
+                            if (document.getElementById('toStep3')) {
+                                document.getElementById('toStep3').click();
+                            }
+                            break;
+                        case 2: // Step 3 -> Step 4 veya Step 5
+                            if (document.getElementById('toStep4')) {
+                                document.getElementById('toStep4').click();
+                            }
+                            break;
+                        case 3: // Step 4 -> Step 5
+                            if (document.getElementById('toStep5')) {
+                                document.getElementById('toStep5').click();
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+    });
+
+    // Select2 alanları için özel validation
+    $('.select2').on('select2:select', function() {
+        $(this).removeClass('is-invalid').addClass('is-valid');
+        // Select2 container'ı da güncelle
+        $(this).next('.select2-container').find('.select2-selection').removeClass('is-invalid').addClass('is-valid');
+    });
+
+    $('.select2').on('select2:unselect', function() {
+        if ($(this).attr('required')) {
+            $(this).removeClass('is-valid').addClass('is-invalid');
+            // Select2 container'ı da güncelle
+            $(this).next('.select2-container').find('.select2-selection').removeClass('is-valid').addClass('is-invalid');
+        }
+    });
+
+    // Input alanları için real-time validation
+    $('input[required], select[required]').on('input change', function() {
+        if (this.value) {
+            $(this).removeClass('is-invalid').addClass('is-valid');
+            // Select2 container'ı da güncelle
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).next('.select2-container').find('.select2-selection').removeClass('is-invalid').addClass('is-valid');
+            }
+        } else {
+            $(this).removeClass('is-valid').addClass('is-invalid');
+            // Select2 container'ı da güncelle
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).next('.select2-container').find('.select2-selection').removeClass('is-valid').addClass('is-invalid');
+            }
+        }
+    });
+
+    // Sayfa yüklendiğinde mevcut değerleri kontrol et
+    $('input[required], select[required]').each(function() {
+        if (this.value) {
+            $(this).addClass('is-valid');
+            if ($(this).hasClass('select2-hidden-accessible')) {
+                $(this).next('.select2-container').find('.select2-selection').addClass('is-valid');
+            }
+        }
+    });
+
+    // Temizleme butonları
+    document.getElementById('clearUnvan').addEventListener('click', function() {
+        $('#id_unvan').val(null).trigger('change');
+    });
+    
+    document.getElementById('clearBrans').addEventListener('click', function() {
+        $('#id_brans').val(null).trigger('change');
+    });
+
+    // Unvan değiştiğinde branşları filtrele
+    $('#id_unvan').on('change', function() {
+        var unvanId = $(this).val();
+        var bransSelect = $('#id_brans');
+        
+        // Branş seçimini temizle
+        bransSelect.val(null).trigger('change');
+        
+        if (unvanId) {
+            // AJAX ile branşları getir
+            $.get("{% url 'ik_core:get_brans_by_unvan' %}", {unvan_id: unvanId}, function(data) {
+                bransSelect.empty();
+                bransSelect.append('<option value="">Branş seçiniz</option>');
+                
+                data.branslar.forEach(function(brans) {
+                    bransSelect.append('<option value="' + brans.id + '">' + brans.ad + '</option>');
+                });
+                
+                bransSelect.trigger('change');
+            });
+        } else {
+            // Unvan seçilmemişse tüm branşları göster
+            bransSelect.empty();
+            bransSelect.append('<option value="">Branş seçiniz</option>');
+            bransSelect.trigger('change');
+        }
     });
 
     // Sticky header update function
@@ -390,6 +758,64 @@ document.addEventListener('DOMContentLoaded', function() {
 
     toggleFieldsVisibility();
     updateStickyHeader();
+
+    // Kaydet butonuna özel validation
+    $('button[type="submit"]').on('click', function(e) {
+        e.preventDefault();
+        
+        // Branş alanının required olmamasını sağla
+        $('#id_brans').removeAttr('required');
+        
+        // Required alanları kontrol et ve kullanıcıya bildir
+        var requiredFields = [
+            { id: 'id_tc_kimlik_no', name: 'T.C. Kimlik No' },
+            { id: 'id_ad', name: 'Ad' },
+            { id: 'id_soyad', name: 'Soyad' },
+            { id: 'id_unvan', name: 'Unvan' },
+            { id: 'id_kurum', name: 'Kurum' },
+            { id: 'id_kadro_yeri', name: 'Kadro Yeri' },
+            { id: 'id_fiili_gorev_yeri', name: 'Fiili Görev Yeri' }
+        ];
+        
+        var missingFields = [];
+        
+        requiredFields.forEach(function(field) {
+            var element = document.getElementById(field.id);
+            if (element && !element.value) {
+                missingFields.push(field.name);
+            }
+        });
+        
+        if (missingFields.length > 0) {
+            var message = 'Lütfen aşağıdaki zorunlu alanları doldurun:\n\n';
+            message += missingFields.join('\n');
+            alert(message);
+            
+            // İlk eksik alana odaklan
+            var firstMissingField = document.getElementById(requiredFields.find(f => 
+                missingFields.includes(f.name)).id);
+            if (firstMissingField) {
+                // Select2 alanı ise özel işlem yap
+                if (firstMissingField.classList.contains('select2-hidden-accessible')) {
+                    // Select2 container'ına odaklan ve dropdown'ı aç
+                    setTimeout(function() {
+                        $(firstMissingField).select2('open');
+                        // Select2 container'ına scroll yap
+                        var select2Container = $(firstMissingField).next('.select2-container');
+                        select2Container[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 100);
+                } else {
+                    firstMissingField.focus();
+                    // Scroll to element
+                    firstMissingField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+            return false; // Form gönderimini durdur
+        }
+        
+        // Tüm validation geçtiyse formu gönder
+        $('#personelStepperForm').submit();
+    });
 });
 </script>
 {% endblock %}

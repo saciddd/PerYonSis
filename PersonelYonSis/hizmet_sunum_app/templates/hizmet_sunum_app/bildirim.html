@@ -44,7 +44,7 @@
         <!-- İşlem Butonları -->
         <div class="col-md-4">
             {% if kesinlestirme_yetkisi %}
-            <button class="btn btn-info me-2" id="btnYazdir">
+            <button class="btn btn-primary me-2" id="btnYazdir">
                 Kesinleştir ve Formu Yazdır
             </button>
             {% endif %}
@@ -353,7 +353,7 @@
                             <br>Enter veya aşağı ok tuşu ile yeni satır ekleyebilirsiniz.
                         </div>
                         <div class="table-responsive">
-                            <table class="table table-sm" id="yeniPersonelTable">
+                            <table class="table table-sm" id="yeniPersonelTable" style="border:2px solid #80a3d4;">
                                 <thead>
                                     <tr>
                                         <th>Sıra No</th>
@@ -364,16 +364,19 @@
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td>1</td>
-                                        <td contenteditable="true"></td>
-                                        <td contenteditable="true"></td>
-                                        <td contenteditable="true"></td>
+                                        <td style="width: 45px; min-width: 45px; max-width: 45px;">1</td>
+                                        <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
+                                        <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
+                                        <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                         <button class="btn btn-success" id="btnPersonelKaydet">
                             <i class="bi bi-save"></i> Personelleri Ekle
+                        </button>
+                        <button class="btn btn-outline-danger ms-2" id="btnTabloyuBosalt">
+                            <i class="bi bi-x-circle"></i> Tabloyu Temizle
                         </button>
                     </div>
                 </div>
@@ -1379,6 +1382,19 @@
     document.getElementById('btnAciklama').addEventListener('click', function() {
         var aciklamaModal = new bootstrap.Modal(document.getElementById('aciklamaModal'));
         aciklamaModal.show();
+    });
+
+    // Tabloyu Boşalt butonu fonksiyonu
+    document.getElementById('btnTabloyuBosalt').addEventListener('click', function() {
+        const tbody = document.querySelector('#yeniPersonelTable tbody');
+        tbody.innerHTML = `
+            <tr>
+                <td style="width: 45px; min-width: 45px; max-width: 45px;">1</td>
+                <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
+                <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
+                <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
+            </tr>
+        `;
     });
 </script>
 {% endblock %}

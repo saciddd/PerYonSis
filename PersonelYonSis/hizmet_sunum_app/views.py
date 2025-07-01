@@ -37,8 +37,10 @@ def bildirim(request):
     user_birimler_qs = UserBirim.objects.filter(user=request.user).select_related('birim', 'birim__HSAKodu')
     birimler = [ub.birim for ub in user_birimler_qs]
     kesinlestirme_yetkisi = request.user.has_permission('HSA Bildirim Kesinleştirme')
+    tum_birimler_yetkisi = request.user.has_permission('HSA Tüm Birimleri Görebilir')
     kurumlar = Kurum.objects.all()
     idareler = Idare.objects.all()
+    tum_birimler = Birim.objects.all().order_by('BirimAdi') if tum_birimler_yetkisi else birimler
     # Tüm HSA listesini modal için alalım
     hsa_listesi = HizmetSunumAlani.objects.all().order_by('AlanAdi')
 
@@ -50,12 +52,13 @@ def bildirim(request):
     # Başlangıçta context'e seçili birim veya bildirim eklemeye gerek yok,
     # bu bilgiler AJAX ile yüklenecek.
     context = {
-        'birimler': birimler,
+        'birimler': tum_birimler,
         'kurumlar': kurumlar,
         'idareler': idareler,
         'birimler_json': birimler_json,
         'hsa_listesi': hsa_listesi,
         'kesinlestirme_yetkisi': kesinlestirme_yetkisi,
+        'tum_birimler_yetkisi': tum_birimler_yetkisi,
         # 'donemler' frontend JS ile oluşturuluyor, Django context'ine gerek yok.
     }
     return render(request, 'hizmet_sunum_app/bildirim.html', context)

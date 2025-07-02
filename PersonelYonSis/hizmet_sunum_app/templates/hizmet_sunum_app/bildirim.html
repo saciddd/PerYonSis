@@ -753,11 +753,26 @@
                     const donem = document.getElementById('donemSecimi').value;
                     showYazdirmaSecenekleriModal(window.birimler, donem);
                 });
+            } else if (data.status === 'partial') {
+                let msg = (data.message || 'Bazı kayıtlar kesinleştirilemedi.') + '\n';
+                if (data.errors && Array.isArray(data.errors)) {
+                    msg += data.errors.map(e => (e.tc_kimlik_no ? e.tc_kimlik_no + ': ' : '') + (e.message || '')).join('\n');
+                }
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Kısmen Başarılı',
+                    text: msg
+                });
+                fetchBildirimlerForSelected();
             } else {
+                let msg = (data.message || 'Kesinleştirme tamamlanamadı.');
+                if (data.errors && Array.isArray(data.errors)) {
+                    msg += '\n' + data.errors.map(e => (e.tc_kimlik_no ? e.tc_kimlik_no + ': ' : '') + (e.message || '')).join('\n');
+                }
                 Swal.fire({
                     icon: 'error',
                     title: 'Hata!',
-                    text: 'Kesinleştirme tamamlanamadı, Açıklamaları görmek için kaydet butonuna tıklayınız.'
+                    text: msg
                 });
             }
         })
@@ -876,27 +891,20 @@
         .then(data => {
             if (data.status === 'success') {
                 alert('Değişiklikler başarıyla kaydedildi.');
-                 fetchBildirimlerForSelected();
+                fetchBildirimlerForSelected();
+            } else if (data.status === 'partial') {
+                let msg = (data.message || 'Bazı kayıtlar kaydedilemedi.') + '\n';
+                if (data.errors && Array.isArray(data.errors)) {
+                    msg += data.errors.map(e => (e.tc_kimlik_no ? e.tc_kimlik_no + ': ' : '') + (e.message || '')).join('\n');
+                }
+                alert(msg);
+                fetchBildirimlerForSelected();
             } else {
-                 alert('Kayıt sırasında hatalar oluştu: ' + (data.message || 'Bilinmeyen Hata'));
-                 if (data.errors && Array.isArray(data.errors)) {
-                     data.errors.forEach(error => {
-                         const targetRow = Array.from(rows).find(row => {
-                              const idInput = row.querySelector('button[onclick^="kayitSil"]');
-                              const bildirimIdMatch = idInput ? idInput.getAttribute('onclick').match(/kayitSil\('?(\d+)'?\)/) : null;
-                              const rowId = bildirimIdMatch ? bildirimIdMatch[1] : null;
-                              return (rowId && error.id && rowId === error.id.toString()) || 
-                                     (!rowId && !error.id && row.cells[1].textContent === error.tc_kimlik_no); 
-                         });
-                         if (targetRow) {
-                             const durumIcon = targetRow.querySelector('td:nth-child(11) i');
-                             durumIcon.className = 'bi bi-x-circle-fill text-danger';
-                             durumIcon.setAttribute('title', error.message);
-                             durumIcon.setAttribute('data-bs-toggle', 'tooltip');
-                             new bootstrap.Tooltip(durumIcon);
-                         }
-                     });
-                 }
+                let msg = (data.message || 'Kayıt sırasında hatalar oluştu.');
+                if (data.errors && Array.isArray(data.errors)) {
+                    msg += '\n' + data.errors.map(e => (e.tc_kimlik_no ? e.tc_kimlik_no + ': ' : '') + (e.message || '')).join('\n');
+                }
+                alert(msg);
             }
         })
         .catch(error => {

@@ -380,35 +380,30 @@ def bildirimler_kaydet(request):
         alan_kodu = birim.HSAKodu.AlanKodu if birim.HSAKodu else None
         
         errors = []
-        bildirim_nesneleri = [] # Geçerli verileri tutmak için
+        bildirim_nesneleri = []
 
         # 1. Adım: Gelen veriyi doğrula ve nesnelere dönüştür
         for index, b_data in enumerate(bildirimler_data):
             bildirim_id = b_data.get('id')
-            # Bildirim ID'sinin integer olduğundan emin olalım veya None yapalım
             try:
                 bildirim_id = int(bildirim_id) if bildirim_id else None
             except ValueError:
-                 errors.append({'index': index, 'id': b_data.get('id'), 'message': 'Geçersiz Bildirim ID formatı.'})
-                 continue # Bu satırla devam etme
-                 
+                errors.append({'index': index, 'id': b_data.get('id'), 'message': 'Geçersiz Bildirim ID formatı.'})
+                continue
             tc_kimlik_no = b_data.get('tc_kimlik_no', '').strip()
             baslangic_str = b_data.get('baslangic')
             bitis_str = b_data.get('bitis')
             sorumlu = b_data.get('sorumlu', False)
             sertifika = b_data.get('sertifika', False)
-            
             if not (tc_kimlik_no and baslangic_str and bitis_str):
-                 errors.append({'index': index, 'tc_kimlik_no': tc_kimlik_no, 'id': bildirim_id, 'message': 'TC Kimlik No, Başlangıç ve Bitiş tarihleri zorunludur.'})
-                 continue
-
+                errors.append({'index': index, 'tc_kimlik_no': tc_kimlik_no, 'id': bildirim_id, 'message': 'TC Kimlik No, Başlangıç ve Bitiş tarihleri zorunludur.'})
+                continue
             try:
                 baslangic = datetime.strptime(baslangic_str, '%Y-%m-%d').date()
                 bitis = datetime.strptime(bitis_str, '%Y-%m-%d').date()
             except ValueError:
                 errors.append({'index': index, 'tc_kimlik_no': tc_kimlik_no, 'id': bildirim_id, 'message': 'Geçersiz tarih formatı.'})
                 continue
-
             if baslangic > bitis:
                 errors.append({'index': index, 'tc_kimlik_no': tc_kimlik_no, 'id': bildirim_id, 'message': 'Başlangıç tarihi, bitiş tarihinden sonra olamaz.'})
                 continue
@@ -416,9 +411,8 @@ def bildirimler_kaydet(request):
                 errors.append({'index': index, 'tc_kimlik_no': tc_kimlik_no, 'id': bildirim_id, 'message': f'Başlangıç tarihi ({baslangic_str}) seçili dönem ({donem_str}) dışında.'})
                 continue
             if bitis < donem_baslangic or bitis > donem_bitis:
-                 errors.append({'index': index, 'tc_kimlik_no': tc_kimlik_no, 'id': bildirim_id, 'message': f'Bitiş tarihi ({bitis_str}) seçili dönem ({donem_str}) dışında.'})
-                 continue
-                 
+                errors.append({'index': index, 'tc_kimlik_no': tc_kimlik_no, 'id': bildirim_id, 'message': f'Bitiş tarihi ({bitis_str}) seçili dönem ({donem_str}) dışında.'})
+                continue
             bildirim_nesneleri.append({
                 'index': index, 
                 'id': bildirim_id,
@@ -429,23 +423,15 @@ def bildirimler_kaydet(request):
                 'sertifika': sertifika
             })
 
-        # Eğer temel doğrulama hataları varsa, devam etme
-        if errors:
-             return JsonResponse({
-                'status': 'error', 
-                'message': 'Lütfen tablodaki hataları düzeltin.', 
-                'errors': errors
-            }, status=400)
-
         # 2. Adım: Çakışma Kontrolü ve Kayıt
         with transaction.atomic():
             processed_indices = set()
-            final_errors = [] 
+            final_errors = []
+            kaydedilenler = 0
 
-            # --- Çakışma Kontrolleri --- 
             for current_b in bildirim_nesneleri:
-                if current_b['index'] in processed_indices: continue
-
+                if current_b['index'] in processed_indices:
+                    continue
                 personel = Personel.objects.filter(TCKimlikNo=current_b['tc_kimlik_no']).first()
                 if not personel:
                     final_errors.append({'index': current_b['index'], 'tc_kimlik_no': current_b['tc_kimlik_no'], 'id': current_b['id'], 'message': 'Personel bulunamadı.'})
@@ -455,7 +441,8 @@ def bildirimler_kaydet(request):
                 # Kendi içinde çakışma
                 has_internal_conflict = False
                 for other_b in bildirim_nesneleri:
-                    if current_b['index'] == other_b['index'] or other_b['index'] in processed_indices: continue
+                    if current_b['index'] == other_b['index'] or other_b['index'] in processed_indices:
+                        continue
                     if current_b['tc_kimlik_no'] == other_b['tc_kimlik_no'] and max(current_b['baslangic'], other_b['baslangic']) <= min(current_b['bitis'], other_b['bitis']):
                         err_msg_current = f"Girilen listede çakışan tarih: {other_b['baslangic']} - {other_b['bitis']}"
                         err_msg_other = f"Girilen listede çakışan tarih: {current_b['baslangic']} - {current_b['bitis']}"
@@ -466,7 +453,8 @@ def bildirimler_kaydet(request):
                         if other_b['index'] not in processed_indices:
                             final_errors.append({'index': other_b['index'], 'tc_kimlik_no': other_b['tc_kimlik_no'], 'id': other_b['id'], 'message': err_msg_other})
                             processed_indices.add(other_b['index'])
-                if has_internal_conflict: continue
+                if has_internal_conflict:
+                    continue
 
                 # Veritabanı ile çakışma
                 cakisma_sorgusu = Q(
@@ -478,74 +466,63 @@ def bildirimler_kaydet(request):
                     cakisma_sorgusu &= ~Q(CalismaId=current_b['id'])
                 cakisan_kayitlar = HizmetSunumCalismasi.objects.filter(cakisma_sorgusu)
                 if cakisan_kayitlar.exists():
-                    hata_mesaji = "Çakışan kayıtlar: \n".join ([f"{c.CalisilanBirimId.BirimAdi} Biriminde: {c.HizmetBaslangicTarihi.strftime('%d.%m')}-{c.HizmetBitisTarihi.strftime('%d.%m.%Y')}\n" for c in cakisan_kayitlar])
+                    hata_mesaji = "Çakışan kayıtlar: \n" + "; ".join([f"{c.CalisilanBirimId.BirimAdi} Biriminde: {c.HizmetBaslangicTarihi.strftime('%d.%m')}-{c.HizmetBitisTarihi.strftime('%d.%m.%Y')}" for c in cakisan_kayitlar])
                     final_errors.append({'index': current_b['index'], 'tc_kimlik_no': current_b['tc_kimlik_no'], 'id': current_b['id'], 'message': hata_mesaji})
                     processed_indices.add(current_b['index'])
                     continue
-            
-            # Eğer çakışma veya hata varsa işlemi geri al ve bitir
-            if final_errors:
-                 transaction.set_rollback(True) 
-                 return JsonResponse({
-                    'status': 'error', 
-                    'message': 'Çakışan veya hatalı kayıtlar bulundu. Kayıt işlemi geri alındı.', 
-                    'errors': final_errors
-                }, status=400)
 
-            # --- Kayıt/Güncelleme --- 
-            for b_data in bildirim_nesneleri: 
-                 try:
-                     personel = Personel.objects.get(TCKimlikNo=b_data['tc_kimlik_no']) # Get personel again inside loop
-                     if b_data['id']: # ID varsa güncelle
-                         calisma = HizmetSunumCalismasi.objects.get(CalismaId=b_data['id'], CalisilanBirimId=birim) 
-                         calisma.HizmetBaslangicTarihi = b_data['baslangic']
-                         calisma.HizmetBitisTarihi = b_data['bitis']
-                         calisma.Sorumlu = b_data['sorumlu']
-                         calisma.Sertifika = b_data['sertifika']
-                         calisma.LastUpdatedBy = request.user
-                         calisma.LastUpdateDate = timezone.now()
-                         calisma.save()
-                     else: # ID yoksa yeni oluştur
-                          HizmetSunumCalismasi.objects.create(
-                             PersonelId=personel,
-                             CalisilanBirimId=birim,
-                             Donem=donem_baslangic, 
-                             HizmetBaslangicTarihi=b_data['baslangic'],
-                             HizmetBitisTarihi=b_data['bitis'],
-                             Sorumlu=b_data['sorumlu'],
-                             Sertifika=b_data['sertifika'],
-                             CreatedBy=request.user,
-                             OzelAlanKodu=alan_kodu,
-                             Kesinlestirme=False
-                         )
-                 except HizmetSunumCalismasi.DoesNotExist:
-                      final_errors.append({'index': b_data['index'], 'id': b_data['id'], 'message': 'Güncellenmek istenen kayıt bulunamadı.'})
-                      transaction.set_rollback(True) 
-                      return JsonResponse({
-                            'status': 'error', 
-                            'message': 'Kayıt sırasında hata oluştu (kayıt bulunamadı).', 
-                            'errors': final_errors
-                        }, status=400)
-                 except Exception as save_error:
-                      final_errors.append({'index': b_data['index'], 'id': b_data['id'], 'message': f'Kayıt hatası: {str(save_error)}'})
-                      transaction.set_rollback(True) 
-                      return JsonResponse({
-                            'status': 'error', 
-                            'message': 'Kayıt sırasında beklenmedik bir hata oluştu.', 
-                            'errors': final_errors
-                        }, status=500)
+                # Kayıt/Güncelleme
+                try:
+                    if current_b['id']:
+                        calisma = HizmetSunumCalismasi.objects.get(CalismaId=current_b['id'], CalisilanBirimId=birim)
+                        calisma.HizmetBaslangicTarihi = current_b['baslangic']
+                        calisma.HizmetBitisTarihi = current_b['bitis']
+                        calisma.Sorumlu = current_b['sorumlu']
+                        calisma.Sertifika = current_b['sertifika']
+                        calisma.LastUpdatedBy = request.user
+                        calisma.LastUpdateDate = timezone.now()
+                        calisma.save()
+                    else:
+                        HizmetSunumCalismasi.objects.create(
+                            PersonelId=personel,
+                            CalisilanBirimId=birim,
+                            Donem=donem_baslangic, 
+                            HizmetBaslangicTarihi=current_b['baslangic'],
+                            HizmetBitisTarihi=current_b['bitis'],
+                            Sorumlu=current_b['sorumlu'],
+                            Sertifika=current_b['sertifika'],
+                            CreatedBy=request.user,
+                            OzelAlanKodu=alan_kodu,
+                            Kesinlestirme=False
+                        )
+                    kaydedilenler += 1
+                except Exception as save_error:
+                    final_errors.append({'index': current_b['index'], 'id': current_b['id'], 'message': f'Kayıt hatası: {str(save_error)}'})
+                    processed_indices.add(current_b['index'])
 
-        # Hata yoksa işlem başarılıdır
-        return JsonResponse({'status': 'success', 'message': 'Değişiklikler başarıyla kaydedildi.'})
+        # Hata mesajı oluştur
+        all_errors = errors + final_errors
+        if all_errors:
+            msg = f"{kaydedilenler} kayıt kaydedildi. {len(all_errors)} kayıt kaydedilemedi."
+            return JsonResponse({
+                'status': 'partial' if kaydedilenler > 0 else 'error',
+                'message': msg,
+                'errors': all_errors
+            }, status=207 if kaydedilenler > 0 else 400)
+        return JsonResponse({'status': 'success', 'message': f'Tüm kayıtlar başarıyla kaydedildi.'})
 
     except json.JSONDecodeError:
         return JsonResponse({'status': 'error', 'message': 'Geçersiz JSON formatı.'}, status=400)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': f'Genel bir hata oluştu: {str(e)}'}, status=500)
+
 @csrf_exempt
 @login_required
 def bildirimler_kesinlestir(request):
-    """Bildirimleri kesinleştirir"""
+    """
+    Bildirimleri kesinleştirir.
+    Sadece çakışmasız kayıtları kesinleştirir, çakışanları kullanıcıya bildirir.
+    """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -559,34 +536,54 @@ def bildirimler_kesinlestir(request):
                     'message': 'Eksik parametreler.'
                 })
 
-            # Önce bildirimleri kaydet
-            kaydet_sonucu = bildirimler_kaydet(request)
-            if kaydet_sonucu.status_code != 200 or json.loads(kaydet_sonucu.content)['status'] == 'error':
-                # Kaydetme başarısız olursa işlemi durdur
-                return kaydet_sonucu
-
             donem_date = datetime.strptime(donem, '%Y-%m').date()
             birim = get_object_or_404(Birim, BirimId=birim_id)
 
+            # Çakışma kontrolü: sadece çakışmasız kayıtlar kesinleştirilsin
+            kaydedilenler = 0
+            errors = []
             with transaction.atomic():
                 for bildirim_data in bildirimler_data:
                     bildirim_id = bildirim_data.get('id')
                     if not bildirim_id:
                         continue
+                    try:
+                        bildirim = HizmetSunumCalismasi.objects.get(CalismaId=bildirim_id)
+                    except HizmetSunumCalismasi.DoesNotExist:
+                        errors.append({'id': bildirim_id, 'message': 'Kayıt bulunamadı.'})
+                        continue
 
-                    bildirim = get_object_or_404(HizmetSunumCalismasi, CalismaId=bildirim_id)
-                    
-                    # Verileri güncelle
+                    # Çakışma kontrolü
+                    cakisma_sorgusu = Q(
+                        PersonelId=bildirim.PersonelId,
+                        HizmetBaslangicTarihi__lte=datetime.strptime(bildirim_data['bitis'], '%Y-%m-%d').date(),
+                        HizmetBitisTarihi__gte=datetime.strptime(bildirim_data['baslangic'], '%Y-%m-%d').date()
+                    ) & ~Q(CalismaId=bildirim_id)
+                    cakisan_kayitlar = HizmetSunumCalismasi.objects.filter(cakisma_sorgusu)
+                    if cakisan_kayitlar.exists():
+                        hata_mesaji = "Kesinleştirilemedi, çakışan kayıtlar: " + "; ".join([f"{c.CalisilanBirimId.BirimAdi} {c.HizmetBaslangicTarihi.strftime('%d.%m')}-{c.HizmetBitisTarihi.strftime('%d.%m.%Y')}" for c in cakisan_kayitlar])
+                        errors.append({'id': bildirim_id, 'message': hata_mesaji})
+                        continue
+
+                    # Verileri güncelle ve kesinleştir
                     bildirim.HizmetBaslangicTarihi = datetime.strptime(bildirim_data['baslangic'], '%Y-%m-%d').date()
                     bildirim.HizmetBitisTarihi = datetime.strptime(bildirim_data['bitis'], '%Y-%m-%d').date()
                     bildirim.Sorumlu = bildirim_data['sorumlu']
                     bildirim.Sertifika = bildirim_data['sertifika']
                     bildirim.Kesinlestirme = True
                     bildirim.save()
+                    kaydedilenler += 1
 
+            if errors:
+                msg = f"{kaydedilenler} kayıt kesinleştirildi. {len(errors)} kayıt kesinleştirilemedi."
+                return JsonResponse({
+                    'status': 'partial' if kaydedilenler > 0 else 'error',
+                    'message': msg,
+                    'errors': errors
+                }, status=207 if kaydedilenler > 0 else 400)
             return JsonResponse({
                 'status': 'success',
-                'message': 'Bildirimler başarıyla kesinleştirildi.'
+                'message': 'Tüm kayıtlar başarıyla kesinleştirildi.'
             })
 
         except Exception as e:
@@ -599,7 +596,6 @@ def bildirimler_kesinlestir(request):
         'status': 'error',
         'message': 'Geçersiz istek metodu.'
     })
-
 
 @csrf_exempt
 @login_required
@@ -657,6 +653,7 @@ def bildirim_sil(request, bildirim_id):
          return JsonResponse({'status': 'error', 'message': 'Bildirim bulunamadı.'}, status=404)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': f'Bildirim silinirken hata oluştu: {str(e)}'}, status=500)
+
 
 @login_required
 def bildirim_yazdir(request, year=None, month=None, birim_id=None):
@@ -1009,6 +1006,59 @@ def birim_yetki_ekle(request, birim_id):
             return JsonResponse({"status": "error", "message": "Kullanıcı zaten yetkili."})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)})
+
+@csrf_exempt
+@require_POST
+def birim_yetki_sil(request, birim_id):
+    import json
+    try:
+        body = json.loads(request.body)
+        username = body.get('username')
+        user = User.objects.get(Username=username)
+        birim = Birim.objects.get(pk=birim_id)
+        deleted, _ = UserBirim.objects.filter(user=user, birim=birim).delete()
+        if deleted:
+            return JsonResponse({"status": "success"})
+        else:
+            return JsonResponse({"status": "error", "message": "Yetki bulunamadı."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
+
+@login_required
+def birim_yonetim(request):
+    birimler = Birim.objects.select_related('HSAKodu').all()
+    # Modal için değerler
+    kurumlar = Kurum.objects.all()
+    idareler = Idare.objects.all()
+    hsa_listesi = HizmetSunumAlani.objects.all().order_by('AlanAdi')
+
+    birim_list = []
+    for birim in birimler:
+        yetkiler = UserBirim.objects.filter(birim=birim).select_related('user')
+        yetkili_users = [
+            {
+                "username": y.user.Username,
+                "full_name": y.user.FullName,
+            }
+            for y in yetkiler
+        ]
+        birim_list.append({
+            "id": birim.BirimId,
+            "adi": birim.BirimAdi,
+            "kurum": birim.KurumAdi,
+            "idare": birim.IdareAdi,
+            "hsa_kodu": birim.HSAKodu.AlanKodu,
+            "hsa_adi": birim.HSAKodu.AlanAdi,
+            "yetkili_sayisi": len(yetkili_users),
+            "yetkililer": yetkili_users,
+        })
+    context = {
+        "kurumlar": kurumlar,
+        "idareler": idareler,
+        "hsa_listesi": hsa_listesi,
+        "birimler": birim_list
+    }
+    return render(request, "hizmet_sunum_app/birim_yonetim.html", context)
 
 @csrf_exempt
 @require_POST

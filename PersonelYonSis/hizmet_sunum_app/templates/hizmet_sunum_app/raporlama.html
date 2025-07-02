@@ -304,8 +304,18 @@
                         .then(data => {
                             if (data.status === 'success') {
                                 Swal.fire('Başarılı', 'Tüm kayıtlar kesinleştirildi.', 'success').then(() => location.reload());
+                            } else if (data.status === 'partial') {
+                                let msg = (data.message || 'Bazı kayıtlar kesinleştirilemedi.') + '\n';
+                                if (data.errors && Array.isArray(data.errors)) {
+                                    msg += data.errors.map(e => (e.tc_kimlik_no ? e.tc_kimlik_no + ': ' : '') + (e.message || '')).join('\n');
+                                }
+                                Swal.fire('Kısmen Başarılı', msg, 'warning').then(() => location.reload());
                             } else {
-                                Swal.fire('Hata', data.message || 'Kesinleştirme başarısız.', 'error');
+                                let msg = (data.message || 'Kesinleştirme başarısız.');
+                                if (data.errors && Array.isArray(data.errors)) {
+                                    msg += '\n' + data.errors.map(e => (e.tc_kimlik_no ? e.tc_kimlik_no + ': ' : '') + (e.message || '')).join('\n');
+                                }
+                                Swal.fire('Hata', msg, 'error');
                             }
                         })
                         .catch(() => Swal.fire('Hata', 'Kayıtlar alınamadı.', 'error'));

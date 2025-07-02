@@ -109,16 +109,44 @@ def update_user(request, user_id):
     if request.method == 'POST':
         # Kullanıcıyı bul
         user = get_object_or_404(User, UserID=user_id)
-        
+
         # Güncellenebilir alanlar
         fullname = request.POST['fullname']
         roles = request.POST.getlist('roles')  # Çoklu roller alınıyor
-        print(roles)
-        # Eğer boş dönüyorsa formu inceleyin
-        if not roles:
-            print("Roller listesi boş döndü!")
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        tckimlikno = request.POST.get('tckimlikno', '').strip()
+        organisation = request.POST.get('organisation', '').strip()
+
+        # Alan validasyonları ve unique kontrolleri
+        errors = []
+        if username and username != user.Username:
+            if User.objects.filter(Username=username).exclude(UserID=user.UserID).exists():
+                errors.append('Bu kullanıcı adı zaten kullanılıyor.')
+        if email:
+            if User.objects.filter(Email=email).exclude(UserID=user.UserID).exists():
+                errors.append('Bu email adresi zaten kullanılıyor.')
+        if tckimlikno:
+            if User.objects.filter(TCKimlikNo=tckimlikno).exclude(UserID=user.UserID).exists():
+                errors.append('Bu TCKimlikNo zaten kullanılıyor.')
+        if phone:
+            import re
+            if not re.match(r'^5\d{9}$', phone):
+                errors.append('Telefon numarası 5xxxxxxxxx formatında olmalıdır.')
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+            return redirect('kullanici_tanimlari')
+
         # Kullanıcıyı güncelle
         user.FullName = fullname
+        user.Username = username
+        user.Email = email
+        user.Phone = phone
+        user.TCKimlikNo = tckimlikno
+        user.Organisation = organisation
         # Seçilen rollerin ID'lerine göre Role nesnelerini çek
         role_objects = Role.objects.filter(RoleID__in=roles)
         user.roles.set(role_objects)  # Yeni roller atanıyor

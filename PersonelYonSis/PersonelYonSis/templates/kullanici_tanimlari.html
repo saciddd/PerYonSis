@@ -55,9 +55,9 @@
                                 <button class="btn btn-outline-secondary btn-sm" title="Birim Yetkileri" onclick="openBirimYetkileri('{{ user.UserID }}')">
                                     <i class="bi bi-diagram-3"></i>
                                 </button>
-                                <form action="{% url 'reset_password' user.UserID %}" method="post" style="display:inline;">
+                                <form action="{% url 'reset_password' user.UserID %}" method="post" style="display:inline;" class="reset-password-form">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-outline-warning btn-sm" title="Şifre Sıfırla">
+                                    <button type="button" class="btn btn-outline-warning btn-sm reset-password-btn" data-fullname="{{ user.FullName }}" title="Şifre Sıfırla">
                                         <i class="bi bi-key"></i>
                                     </button>
                                 </form>
@@ -135,7 +135,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- Formların yerleştirilmesi için JS -->
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // Sayfa karartma ve form gösterme işlemi
     function showForm(htmlContent) {
@@ -237,8 +238,26 @@
         });
     }
 
-
-
+    document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.reset-password-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            var form = btn.closest('form');
+            var fullname = btn.getAttribute('data-fullname');
+            Swal.fire({
+                title: 'Şifre Sıfırlama',
+                text: `${fullname} isimli kullanıcının şifresi 123 olarak belirlenecek. Onaylıyor musunuz?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Evet, sıfırla',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+});
 </script>
 
 {% endblock %}

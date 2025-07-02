@@ -5,7 +5,23 @@
     {% csrf_token %}
     <div class="form-group">
         <label for="username">Kullanıcı Adı</label>
-        <input type="text" class="form-control" id="username" name="username" value="{{ user.Username }}" disabled>
+        <input type="text" class="form-control" id="username" name="username" value="{{ user.Username }}">
+    </div>
+    <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" class="form-control" id="email" name="email" value="{{ user.Email }}">
+    </div>
+    <div class="form-group">
+        <label for="phone">Telefon</label>
+        <input type="text" class="form-control" id="phone" name="phone" value="{{ user.Phone }}">
+    </div>
+    <div class="form-group">
+        <label for="tckimlikno">TCKimlik No</label>
+        <input type="text" class="form-control" id="tckimlikno" name="tckimlikno" value="{{ user.TCKimlikNo }}">
+    </div>
+    <div class="form-group">
+        <label for="organisation">Birim/Organisation</label>
+        <input type="text" class="form-control" id="organisation" name="organisation" value="{{ user.Organisation }}">
     </div>
     <div class="form-group">
         <label for="fullname">Ad Soyad</label>

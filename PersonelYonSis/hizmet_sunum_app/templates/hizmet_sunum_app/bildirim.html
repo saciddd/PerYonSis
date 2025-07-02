@@ -489,6 +489,12 @@
             allowClear: true,
             dropdownParent: $('#birimSecimi').parent()
         });
+        // Birim seçimi değiştiğinde veri çek
+        $('#birimSecimi').on('change', function() {
+            fetchBildirimlerForSelected();
+        });
+        // Dönem seçimi değiştiğinde veri çek
+        document.getElementById('donemSecimi').addEventListener('change', fetchBildirimlerForSelected);
     });
 </script>
 <script>

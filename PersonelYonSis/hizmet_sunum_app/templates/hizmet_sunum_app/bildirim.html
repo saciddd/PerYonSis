@@ -52,8 +52,12 @@
                 <i class="bi bi-save"></i> Kaydet
             </button>
         </div>
-        <!-- Açıklama Butonu -->
-        <div class="col-md-2 text-end">
+        <!-- Personel Arama ve Açıklama Butonu -->
+        <div class="col-md-2 text-end d-flex align-items-end justify-content-end">
+            <!-- Personel Arama Kutusu (Select2) -->
+            <div class="me-2 w-100" style="max-width:220px;">
+                <select id="personelAramaSelect" name="personel_id" class="form-control" required style="width:100%;"></select>
+            </div>
             <button class="btn btn-secondary ms-2" id="btnAciklama">
                 <i class="bi bi-info-circle"></i> Açıklama
             </button>
@@ -1433,6 +1437,75 @@
                 <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
             </tr>
         `;
+    });
+
+    // Personel Arama Select2 (sendika_takibi.html ile birebir aynı yapı)
+    $('#personelAramaSelect').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'TC Kimlik No veya Ad/Soyad ile arayın...',
+        minimumInputLength: 2,
+        ajax: {
+            url: "{% url 'mutemet_app:personel_ara' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term // Arama terimi
+                };
+            },
+            processResults: function (data) {
+                return {
+                    results: data.results
+                };
+            },
+            cache: true
+        }
+    }).on('select2:select', function (e) {
+        var data = e.params.data;
+        const donem = document.getElementById('donemSecimi').value;
+        const birimId = document.getElementById('birimSecimi').value;
+        if (!donem || !birimId) {
+            alert('Lütfen dönem ve birim seçiniz.');
+            return;
+        }
+        // Ad ve soyadı ayır
+        var ad = '';
+        var soyad = '';
+        if (data.ad_soyad) {
+            var parts = data.ad_soyad.trim().split(' ');
+            if (parts.length > 1) {
+                soyad = parts.pop();
+                ad = parts.join(' ');
+            } else {
+                ad = data.ad_soyad;
+            }
+        }
+        // CSRF token
+        const csrfToken = '{{ csrf_token }}';
+        fetch('/hizmet_sunum/personel/kaydet/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                donem: donem,
+                birim_id: birimId,
+                personeller: [{ tc_kimlik: data.id, adi: ad, soyadi: soyad }]
+            })
+        })
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Personel başarıyla eklendi.');
+                fetchBildirimlerForSelected();
+            } else {
+                alert(data.message || 'Kayıt sırasında hata oluştu.');
+            }
+        })
+        .catch(() => alert('Kayıt sırasında bir hata oluştu.'));
+        // Seçimi temizle
+        $('#personelAramaSelect').val(null).trigger('change');
     });
 </script>
 {% endblock %}

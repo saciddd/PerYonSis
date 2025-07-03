@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, bildirim_views
 
 app_name = 'hizmet_sunum_app'
 
@@ -10,6 +10,8 @@ urlpatterns = [
     path('bildirimler/kaydet/', views.bildirimler_kaydet, name='bildirimler_kaydet'),
     path('bildirimler/kesinlestir/', views.bildirimler_kesinlestir, name='bildirimler_kesinlestir'),
     path('bildirimler/kesinlestirmeyi-kaldir/', views.bildirimler_kesinlestirmeyi_kaldir, name='bildirimler_kesinlestirmeyi_kaldir'),
+    path('bildirim/kesinlestir/', bildirim_views.bildirim_kesinlestir, name='bildirim_kesinlestir'),
+    path('bildirim/kesinlestirmeyi-kaldir/', bildirim_views.bildirim_kesinlestirmeyi_kaldir, name='bildirim_kesinlestirmeyi_kaldir'),
     path('bildirim/<int:bildirim_id>/sil/', views.bildirim_sil, name='bildirim_sil'),
     path('bildirimler/yazdir/', views.bildirim_yazdir, name='bildirim_yazdir'),  # Query string ile (donem, birim_id)
     path('bildirimler/yazdir/<int:year>/<int:month>/<int:birim_id>/', views.bildirim_yazdir, name='bildirim_yazdir_parametreli'),

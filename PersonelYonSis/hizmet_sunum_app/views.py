@@ -66,10 +66,11 @@ def bildirim(request):
 @login_required
 @require_GET
 def birim_detay(request, birim_id):
-    # Kullanıcının bu birime yetkisi var mı kontrol et
-    if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
-        return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
-        
+    # Yetki kontrolü
+    if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
+        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+            return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
+            
     birim = get_object_or_404(Birim.objects.select_related('HSAKodu'), BirimId=birim_id)
     
     # Frontend'in beklediği formatta döndür
@@ -124,9 +125,10 @@ def birim_ekle(request):
 @login_required
 @require_POST
 def birim_guncelle(request, birim_id):
-    # Kullanıcının bu birime yetkisi var mı kontrol et
-    if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
-        return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
+    # Yetki kontrolü
+    if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
+        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+            return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
         
     birim = get_object_or_404(Birim, BirimId=birim_id)
     
@@ -162,10 +164,11 @@ def birim_guncelle(request, birim_id):
 @login_required
 @require_POST
 def birim_sil(request, birim_id):
-    # Kullanıcının bu birime yetkisi var mı kontrol et
-    if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
-        return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
-        
+    # Yetki kontrolü
+    if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
+        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+            return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
+            
     birim = get_object_or_404(Birim, BirimId=birim_id)
     
     try:
@@ -188,10 +191,11 @@ def birim_sil(request, birim_id):
 @require_GET
 def onceki_donem_personel(request, donem, birim_id):
     """Bir önceki döneme ait personelleri getir (Mevcut fonksiyon doğru görünüyor)"""
-    # Yetki kontrolü eklenebilir
-    if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
-        return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
-        
+    # Yetki kontrolü
+    if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
+        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+            return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
+            
     try:
         donem_date = datetime.strptime(donem, '%Y-%m')
         if donem_date.month == 1:
@@ -240,9 +244,11 @@ def personel_kaydet(request):
         if not donem_str or not birim_id:
             return JsonResponse({'status': 'error', 'message': 'Dönem veya Birim ID eksik.'}, status=400)
         
-        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
-            return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
-
+        # Yetki kontrolü
+        if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
+            if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+                return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
+        
         donem = datetime.strptime(donem_str, '%Y-%m')
         baslangic = donem.replace(day=1).date()
         bitis = donem.replace(day=calendar.monthrange(donem.year, donem.month)[1]).date()

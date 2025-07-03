@@ -644,9 +644,10 @@ def bildirim_sil(request, bildirim_id):
              
         bildirim = get_object_or_404(HizmetSunumCalismasi, CalismaId=bildirim_id_int)
         
-        # Kullanıcının bu bildirimin ait olduğu birime yetkisi var mı?
-        if not UserBirim.objects.filter(user=request.user, birim=bildirim.CalisilanBirimId).exists():
-             return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
+        # Yetki kontrolü
+        if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
+            if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+                return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
              
         # Kesinleşmiş kayıt silinemez kontrolü
         if bildirim.Kesinlestirme:

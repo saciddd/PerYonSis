@@ -7,7 +7,7 @@ urlpatterns = [
     # Ana bildirim sayfası
     path('bildirim/', views.bildirim, name='bildirim'),
     path('bildirimler/listele/<int:year>/<int:month>/<int:birim_id>/', views.bildirimler_listele, name='bildirimler_listele'),
-    path('bildirimler/kaydet/', views.bildirimler_kaydet, name='bildirimler_kaydet'),
+    path('bildirimler/kaydet/', bildirim_views.bildirimler_kaydet, name='bildirimler_kaydet'),
     path('bildirimler/kesinlestir/', views.bildirimler_kesinlestir, name='bildirimler_kesinlestir'),
     path('bildirimler/kesinlestirmeyi-kaldir/', views.bildirimler_kesinlestirmeyi_kaldir, name='bildirimler_kesinlestirmeyi_kaldir'),
     path('bildirim/kesinlestir/', bildirim_views.bildirim_kesinlestir, name='bildirim_kesinlestir'),

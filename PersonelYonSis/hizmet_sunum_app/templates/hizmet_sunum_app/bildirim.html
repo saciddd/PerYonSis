@@ -578,7 +578,8 @@
             method: 'POST',
             headers: {
                  'X-CSRFToken': document.getElementById('birimDuzenleForm').querySelector('[name=csrfmiddlewaretoken]').value
-            }
+            },
+            body: JSON.stringify({ birimId: birimId })
         })
         .then(response => response.json())
         .then(data => {
@@ -597,13 +598,30 @@
     // Kayıt silme fonksiyonu
     function kayitSil(bildirimId) {
         if (!bildirimId) return;
+        // birimId'yi doğrudan select'ten al, yoksa fallback olarak row'dan bulmaya çalış
+        let birimId = document.getElementById('birimSecimi') ? document.getElementById('birimSecimi').value : null;
+        if (!birimId) {
+            // Tablo satırından birimId bulmaya çalış (örnek: data-birim-id ile)
+            const btn = document.querySelector(`button[onclick="kayitSil('${bildirimId}')"]`);
+            if (btn) {
+                const row = btn.closest('tr');
+                if (row && row.dataset && row.dataset.birimId) {
+                    birimId = row.dataset.birimId;
+                }
+            }
+        }
+        if (!birimId) {
+            alert('Birim seçili değil. Lütfen birim seçiniz.');
+            return;
+        }
         if (confirm('Bu bildirim kaydını silmek istediğinize emin misiniz?')) {
              const url = `/hizmet_sunum/bildirim/${bildirimId}/sil/`;
              fetch(url, {
                 method: 'POST',
                 headers: {
                      'X-CSRFToken': '{{ csrf_token }}'
-                }
+                },
+                body: JSON.stringify({ birim_id: birimId })
             })
             .then(response => response.json())
             .then(data => {

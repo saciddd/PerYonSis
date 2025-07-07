@@ -68,7 +68,7 @@ def bildirim(request):
 def birim_detay(request, birim_id):
     # Yetki kontrolü
     if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
-        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+        if not UserBirim.objects.filter(user=request.user, birim=birim_id).exists():
             return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
             
     birim = get_object_or_404(Birim.objects.select_related('HSAKodu'), BirimId=birim_id)
@@ -127,7 +127,7 @@ def birim_ekle(request):
 def birim_guncelle(request, birim_id):
     # Yetki kontrolü
     if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
-        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+        if not UserBirim.objects.filter(user=request.user, birim=birim_id).exists():
             return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
         
     birim = get_object_or_404(Birim, BirimId=birim_id)
@@ -166,7 +166,7 @@ def birim_guncelle(request, birim_id):
 def birim_sil(request, birim_id):
     # Yetki kontrolü
     if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
-        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+        if not UserBirim.objects.filter(user=request.user, birim=birim_id).exists():
             return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
             
     birim = get_object_or_404(Birim, BirimId=birim_id)
@@ -193,7 +193,7 @@ def onceki_donem_personel(request, donem, birim_id):
     """Bir önceki döneme ait personelleri getir (Mevcut fonksiyon doğru görünüyor)"""
     # Yetki kontrolü
     if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
-        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+        if not UserBirim.objects.filter(user=request.user, birim=birim_id).exists():
             return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
             
     try:
@@ -246,7 +246,7 @@ def personel_kaydet(request):
         
         # Yetki kontrolü
         if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
-            if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+            if not UserBirim.objects.filter(user=request.user, birim=birim_id).exists():
                 return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
         
         donem = datetime.strptime(donem_str, '%Y-%m')
@@ -315,7 +315,7 @@ def bildirimler_listele(request, year, month, birim_id):
     """
     # Yetki kontrolü
     if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
-        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+        if not UserBirim.objects.filter(user=request.user, birim=birim_id).exists():
             return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
     # Yetkisi varsa veya UserBirim ilişkisi varsa devam et
     try:
@@ -472,28 +472,37 @@ def bildirimler_kesinlestirmeyi_kaldir(request):
 def bildirim_sil(request, bildirim_id):
     """Bildirim kaydını siler"""
     try:
-        # ID integer değilse hata verecektir, kontrol edelim
+        # Her zaman JSON bekle (fetch ile gönderiliyor)
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = {}
+        birim_id = data.get('birim_id')
+        if not birim_id:
+            return JsonResponse({'status': 'error', 'message': 'Birim ID eksik.'}, status=400)
+
+        print(f"Bildirim silme isteği: Bildirim ID: {bildirim_id}, Birim ID: {birim_id}")
+
         try:
             bildirim_id_int = int(bildirim_id)
         except ValueError:
-             return JsonResponse({'status': 'error', 'message': 'Geçersiz Bildirim ID.'}, status=400)
-             
+            return JsonResponse({'status': 'error', 'message': 'Geçersiz Bildirim ID.'}, status=400)
+        
         bildirim = get_object_or_404(HizmetSunumCalismasi, CalismaId=bildirim_id_int)
         
         # Yetki kontrolü
         if not request.user.has_permission('HSA Bildirim Kesinleştirme'):
-            if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+            if not UserBirim.objects.filter(user=request.user, birim=birim_id).exists():
                 return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
-             
+        
         # Kesinleşmiş kayıt silinemez kontrolü
         if bildirim.Kesinlestirme:
             return JsonResponse({'status': 'error', 'message': 'Kesinleşmiş kayıtlar silinemez.'}, status=400)
 
         bildirim.delete()
         return JsonResponse({'status': 'success', 'message': 'Bildirim başarıyla silindi.'})
-        
     except HizmetSunumCalismasi.DoesNotExist:
-         return JsonResponse({'status': 'error', 'message': 'Bildirim bulunamadı.'}, status=404)
+        return JsonResponse({'status': 'error', 'message': 'Bildirim bulunamadı.'}, status=404)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': f'Bildirim silinirken hata oluştu: {str(e)}'}, status=500)
 

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Nöbet Defteri Listesi{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h4>Nöbet Defteri Kayıtları</h4>
+
+    <div class="mb-3 text-end">
+        <a href="{% url 'nobet_defteri:olustur' %}" class="btn btn-primary">Yeni Defter Oluştur</a>
+    </div>
+
+    <table class="table table-bordered table-sm">
+        <thead>
+            <tr>
+                <th>Tarih</th>
+                <th>Tür</th>
+                <th>Vardiya</th>
+                <th>Durum</th>
+                <th>İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for defter in defterler %}
+            <tr>
+                <td>{{ defter.tarih|date:"d.m.Y" }}</td>
+                <td>{{ defter.nobet_turu }}</td>
+                <td>{{ defter.vardiya }}</td>
+                <td>
+                    {% if defter.onayli %}
+                        <span class="badge bg-success">Onaylandı</span>
+                    {% else %}
+                        <span class="badge bg-warning text-dark">Bekliyor</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'nobet_defteri:detay' defter.id %}" class="btn btn-sm btn-info">Detay</a>
+                    {% if not defter.onayli and onay_yetkisi %}
+                        <a href="{% url 'nobet_defteri:onayla' defter.id %}" class="btn btn-sm btn-success">Onayla</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">Henüz kayıt yok.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

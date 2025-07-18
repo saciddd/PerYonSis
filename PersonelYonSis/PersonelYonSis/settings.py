@@ -28,13 +28,19 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize', # Sayı formatlaması için
+    'crispy_forms',
+    'crispy_bootstrap5',
     'mercis657',
     'PersonelYonSis',
     'hekim_cizelge',
     'mutemet_app',
     'hizmet_sunum_app',
     'ik_core',
+    'nobet_defteri',
 ]
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

@@ -31,7 +31,7 @@ class Menu:
             # İzin Modülü ve Alt Menüleri
             MenuItem('İzin Modülü', '#', 'bi bi-calendar-check', 'İzin Modülü', is_parent=True),
             MenuItem('İzin Tanımları', 'kullanici_tanimlari', 'bi bi-octagon', 'İzin Modülü', parent_menu='İzin Modülü'),
-            # Mutemetlik Moddülü ve Alt Menüleri
+            # Mutemetlik Modülü ve Alt Menüleri
             MenuItem('Mutemetlik Modülü', '#', 'bi bi-newspaper', 'Mutemetlik Modülü', is_parent=True),
             MenuItem('Personel Takibi', 'mutemet_app:personel_listesi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             MenuItem('Sendika Takibi', 'mutemet_app:sendika_takibi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
@@ -39,6 +39,9 @@ class Menu:
             MenuItem('Sorgulamalar', 'mutemet_app:sorgulamalar', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             MenuItem('Hizmet Sunum Raporlama', 'hizmet_sunum_app:raporlama', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             MenuItem('Hekim Bildirimleri', 'hekim_cizelge:mutemetlik_islemleri', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
+            # Nöbet Defteri Modülü ve Alt Menüleri
+            MenuItem('Nöbet Defteri Modülü', '#', 'bi bi-journal-check', 'Nöbet Defteri Modülü', is_parent=True),
+            MenuItem('Nöbet Defteri', 'nobet_defteri:liste', 'bi bi-octagon', parent_menu='Nöbet Defteri Modülü'),
             # Çizelge 657 ve Alt Menüleri
             MenuItem('Çizelge Sistemi 657', '#', 'bi bi-calendar3', 'ÇS 657 Çizelge Sayfası', is_parent=True),
             MenuItem('657 Personeller', 'mercis657:personeller', 'bi bi-octagon', 'ÇS 657 Personel Yönetimi', parent_menu='Çizelge Sistemi 657'),

@@ -6,7 +6,25 @@
     <h4>Nöbet Defteri Kayıtları</h4>
 
     <div class="mb-3 text-end">
-        <a href="{% url 'nobet_defteri:olustur' %}" class="btn btn-primary">Yeni Defter Oluştur</a>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#olusturModal" id="olusturBtn">
+            Yeni Defter Oluştur
+        </button>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="olusturModal" tabindex="-1" aria-labelledby="olusturModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="olusturModalLabel">Yeni Defter Oluştur</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+          </div>
+          <div class="modal-body" id="olusturModalBody">
+            <!-- olustur.html içeriği AJAX ile buraya yüklenecek -->
+            <div class="text-center text-muted">Yükleniyor...</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <table class="table table-bordered table-sm">
@@ -16,6 +34,7 @@
                 <th>Tür</th>
                 <th>Vardiya</th>
                 <th>Durum</th>
+                <th>Olaylar</th>
                 <th>İşlemler</th>
             </tr>
         </thead>
@@ -33,18 +52,102 @@
                     {% endif %}
                 </td>
                 <td>
+                    <span class="badge bg-primary pointer" 
+                          onclick="showOlaylarModal({{ defter.id }})">
+                        {{ defter.olaylar.count }}
+                    </span>
+                </td>
+                <td>
                     <a href="{% url 'nobet_defteri:detay' defter.id %}" class="btn btn-sm btn-info">Detay</a>
                     {% if not defter.onayli and onay_yetkisi %}
-                        <a href="{% url 'nobet_defteri:onayla' defter.id %}" class="btn btn-sm btn-success">Onayla</a>
+                        <button type="button"
+                            class="btn btn-sm btn-success"
+                            onclick="onaylaSweetAlert('{{ defter.id }}', '{{ defter.tarih|date:'d.m.Y' }}', '{{ defter.vardiya }}', '{{ defter.nobet_turu }}')">
+                            Onayla
+                        </button>
                     {% endif %}
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5">Henüz kayıt yok.</td>
+                <td colspan="6">Henüz kayıt yok.</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+
+<!-- Olaylar Modal -->
+<div class="modal fade" id="olaylarModal" tabindex="-1" aria-labelledby="olaylarModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="olaylarModalLabel">Olay Kayıtları</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body" id="olaylarModalBody">
+        <div class="text-center text-muted">Yükleniyor...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.pointer { cursor: pointer; }
+</style>
+<script>
+function showOlaylarModal(defterId) {
+    var olaylarModal = new bootstrap.Modal(document.getElementById('olaylarModal'));
+    var olaylarModalBody = document.getElementById('olaylarModalBody');
+    olaylarModalBody.innerHTML = '<div class="text-center text-muted">Yükleniyor...</div>';
+    fetch('/nobet_defteri/' + defterId + '/olaylar/')
+        .then(response => response.text())
+        .then(html => {
+            olaylarModalBody.innerHTML = html;
+        });
+    olaylarModal.show();
+}
+document.getElementById('olaylarModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('olaylarModalBody').innerHTML = '<div class="text-center text-muted">Yükleniyor...</div>';
+});
+document.addEventListener("DOMContentLoaded", function() {
+    var olusturBtn = document.getElementById("olusturBtn");
+    var olusturModal = document.getElementById("olusturModal");
+    var olusturModalBody = document.getElementById("olusturModalBody");
+    olusturBtn.addEventListener("click", function() {
+        fetch("{% url 'nobet_defteri:olustur' %}?modal=1")
+            .then(response => response.text())
+            .then(html => {
+                olusturModalBody.innerHTML = html;
+                // Modal içeriği yüklendikten sonra form JS'ini başlat
+                if (typeof nobetDefteriOlusturFormInit === "function") {
+                    nobetDefteriOlusturFormInit();
+                }
+            });
+    });
+    // Modal kapatıldığında içeriği temizle
+    olusturModal.addEventListener('hidden.bs.modal', function () {
+        olusturModalBody.innerHTML = '<div class="text-center text-muted">Yükleniyor...</div>';
+    });
+});
+</script>
+
+<!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function onaylaSweetAlert(defterId, tarih, vardiya, tur) {
+    Swal.fire({
+        title: 'Onaylamak istiyor musunuz?',
+        html: `<b>${tarih}</b> tarihli <b>${vardiya}</b> vardiyasındaki <b>${tur}</b> defterini onaylamak istiyor musunuz?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, Onayla',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = '/nobet_defteri/' + defterId + '/onayla/';
+        }
+    });
+}
+</script>
 {% endblock %}

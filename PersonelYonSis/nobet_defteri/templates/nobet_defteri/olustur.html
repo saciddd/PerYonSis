@@ -1,17 +1,58 @@
-{% extends "base.html" %}
 {% load crispy_forms_tags %}
-{% block title %}Nöbet Defteri Oluştur{% endblock %}
-
-{% block content %}
-<div class="container mt-4">
+<div class="container mt-2">
     <h4>Yeni Nöbet Defteri Oluştur</h4>
-    <form method="POST" class="mt-3">
+    {% if error_message %}
+        <div class="alert alert-danger py-2">{{ error_message }}</div>
+    {% endif %}
+    {% if form.non_field_errors %}
+        <div class="alert alert-danger py-2">
+            {% for err in form.non_field_errors %}
+                {{ err }}
+            {% endfor %}
+        </div>
+    {% endif %}
+    <form id="olusturForm" method="POST" action="{% url 'nobet_defteri:olustur' %}" class="mt-3">
         {% csrf_token %}
         {{ form|crispy }}
         <div class="mt-3">
             <button type="submit" class="btn btn-primary">Kaydet</button>
-            <a href="{% url 'nobet_defteri:liste' %}" class="btn btn-secondary">İptal</a>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
         </div>
     </form>
+    <div id="olusturFormHata" class="mt-2 text-danger"></div>
 </div>
+
+{% block extra_js %}
+<script>
+function nobetDefteriOlusturFormInit() {
+    var form = document.getElementById("olusturForm");
+    var hataDiv = document.getElementById("olusturFormHata");
+    if (!form) return;
+    form.onsubmit = function(e) {
+        e.preventDefault();
+        var formData = new FormData(form);
+        fetch(form.action, {
+            method: "POST",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                var modal = bootstrap.Modal.getInstance(document.getElementById('olusturModal'));
+                modal.hide();
+                window.location.reload();
+            } else {
+                hataDiv.textContent = data.error || "Kayıt sırasında hata oluştu.";
+            }
+        })
+        .catch(() => {
+            hataDiv.textContent = "Sunucu hatası.";
+        });
+    };
+}
+nobetDefteriOlusturFormInit();
+</script>
 {% endblock %}

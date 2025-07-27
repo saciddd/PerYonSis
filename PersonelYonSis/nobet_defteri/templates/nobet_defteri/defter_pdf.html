@@ -1,0 +1,44 @@
+<div class="antet" style="text-align:center; margin-bottom:20px;">
+    <div>T.C.</div>
+    <div>SAĞLIK BAKANLIĞI</div>
+    <div>Kayseri Devlet Hastanesi</div>
+    <div>Nöbet Defteri Olay Kayıtları</div>
+</div>
+<div class="timestamp" style="text-align:right; font-size:12px; margin-bottom:10px;">
+    Oluşturulma Zamanı: {{ now|date:"d.m.Y H:i" }}
+</div>
+<hr>
+<div>
+    <strong>Tarih:</strong> {{ defter.tarih|date:"d.m.Y" }}<br>
+    <strong>Nöbet Türü:</strong> {{ defter.nobet_turu }}<br>
+    <strong>Açıklama:</strong> {{ defter.aciklama }}
+</div>
+<br>
+<table border="1" cellspacing="0" cellpadding="5" width="100%" style="font-size:13px;">
+    <thead>
+        <tr>
+            <th>Saat</th>
+            <th>Konu</th>
+            <th>Detay</th>
+            <th>Önemli</th>
+            <th>Ekleyen</th>
+            <th>Eklenme Zamanı</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for olay in olaylar %}
+        <tr>
+            <td>{{ olay.saat }}</td>
+            <td>{{ olay.konu }}</td>
+            <td>{{ olay.detay }}</td>
+            <td>{% if olay.onemli %}Evet{% else %}-{% endif %}</td>
+            <td>{{ olay.ekleyen.FullName }}</td>
+            <td>{{ olay.eklenme_zamani|date:"d.m.Y H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" style="text-align:center;">Kayıt bulunamadı.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table> 

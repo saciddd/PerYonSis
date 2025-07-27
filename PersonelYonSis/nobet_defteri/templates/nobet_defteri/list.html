@@ -32,45 +32,68 @@
             <tr>
                 <th>Tarih</th>
                 <th>Tür</th>
-                <th>Vardiya</th>
                 <th>Durum</th>
-                <th>Olaylar</th>
+                <th>Olaylar(Önemli)</th>
                 <th>İşlemler</th>
             </tr>
         </thead>
         <tbody>
-            {% for defter in defterler %}
+            {% for item in defterler_with_onemli %}
             <tr>
-                <td>{{ defter.tarih|date:"d.m.Y" }}</td>
-                <td>{{ defter.nobet_turu }}</td>
-                <td>{{ defter.vardiya }}</td>
+                <td>{{ item.defter.tarih|date:"d.m.Y" }}</td>
+                <td>{{ item.defter.nobet_turu }}</td>
                 <td>
-                    {% if defter.onayli %}
+                    {% if item.defter.onayli %}
                         <span class="badge bg-success">Onaylandı</span>
                     {% else %}
                         <span class="badge bg-warning text-dark">Bekliyor</span>
                     {% endif %}
                 </td>
                 <td>
-                    <span class="badge bg-primary pointer" 
-                          onclick="showOlaylarModal({{ defter.id }})">
-                        {{ defter.olaylar.count }}
-                    </span>
+                    <span class="badge bg-primary pointer" onclick="showOlaylarModal({{ item.defter.id }})">{{ item.defter.olaylar.count }}</span>
+                    {% if item.onemli_sayi > 0 %}
+                        <span class="badge bg-danger pointer" onclick="showOlaylarModal({{ item.defter.id }})">{{ item.onemli_sayi }}</span>
+                    {% endif %}
                 </td>
                 <td>
-                    <a href="{% url 'nobet_defteri:detay' defter.id %}" class="btn btn-sm btn-info">Detay</a>
-                    {% if not defter.onayli and onay_yetkisi %}
-                        <button type="button"
-                            class="btn btn-sm btn-success"
-                            onclick="onaylaSweetAlert('{{ defter.id }}', '{{ defter.tarih|date:'d.m.Y' }}', '{{ defter.vardiya }}', '{{ defter.nobet_turu }}')">
-                            Onayla
-                        </button>
+                    <a href="{% url 'nobet_defteri:detay' item.defter.id %}" class="btn btn-sm btn-info">Detay</a>
+                    {% if not item.defter.onayli and onay_yetkisi %}
+                        <button type='button' class='btn btn-sm btn-success' onclick='onaylaSweetAlert("{{ item.defter.id }}", "{{ item.defter.tarih|date:"d.m.Y" }}", "{{ item.defter.nobet_turu }}")'>Onayla</button>
                     {% endif %}
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#pdfModal{{ item.defter.id }}">Yazdır</button>
+
+                    <!-- Modal -->
+                    <div class="modal fade" id="pdfModal{{ item.defter.id }}" tabindex="-1" aria-labelledby="pdfModalLabel{{ item.defter.id }}" aria-hidden="true">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="pdfModalLabel{{ item.defter.id }}">PDF Yazdır</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                          </div>
+                          <form method="post" action="{% url 'nobet_defteri:pdf_modal' item.defter.id %}" target="_blank">
+                            {% csrf_token %}
+                            <div class="modal-body">
+                              <div class="mb-3">
+                                <label for="aciklama{{ item.defter.id }}" class="form-label">Açıklama</label>
+                                <textarea class="form-control" id="aciklama{{ item.defter.id }}" name="aciklama" rows="3" {% if item.defter.onayli %}readonly{% endif %}>{{ item.defter.aciklama }}</textarea>
+                              </div>
+                              {% if item.defter.onayli %}
+                                <div class="alert alert-info">Defter onaylandığı için açıklama düzenlenemez.</div>
+                              {% endif %}
+                            </div>
+                            <div class="modal-footer">
+                              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                              <button type="submit" class="btn btn-primary">Kaydet ve Yazdır</button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6">Henüz kayıt yok.</td>
+                <td colspan="5">Henüz kayıt yok.</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -135,15 +158,15 @@ document.addEventListener("DOMContentLoaded", function() {
 <!-- SweetAlert2 CDN -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-function onaylaSweetAlert(defterId, tarih, vardiya, tur) {
+function onaylaSweetAlert(defterId, tarih, tur) {
     Swal.fire({
         title: 'Onaylamak istiyor musunuz?',
-        html: `<b>${tarih}</b> tarihli <b>${vardiya}</b> vardiyasındaki <b>${tur}</b> defterini onaylamak istiyor musunuz?`,
+        html: `<b>${tarih}</b> tarihli <b>${tur}</b> defterini onaylamak istiyor musunuz?`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Evet, Onayla',
         cancelButtonText: 'Vazgeç'
-    }).then((result) => {
+    }).then(function(result) {
         if (result.isConfirmed) {
             window.location.href = '/nobet_defteri/' + defterId + '/onayla/';
         }

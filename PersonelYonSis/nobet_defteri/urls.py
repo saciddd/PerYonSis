@@ -10,4 +10,6 @@ urlpatterns = [
     path('<int:defter_id>/', views.nobet_defteri_detay, name='detay'),
     path('<int:defter_id>/onayla/', views.nobet_defteri_onayla, name='onayla'),
     path('<int:defter_id>/olaylar/', views.nobet_defteri_olaylar_modal, name='olaylar_modal'),  # yeni eklenen
+    path('pdf/<int:defter_id>/', views.nobet_defteri_pdf, name='pdf'),
+    path('pdf_modal/<int:defter_id>/', views.nobet_defteri_pdf_modal, name='pdf_modal'),
 ]

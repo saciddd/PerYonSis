@@ -5,11 +5,10 @@ from datetime import date
 class NobetDefteriForm(forms.ModelForm):
     class Meta:
         model = NobetDefteri
-        fields = ['tarih', 'nobet_turu', 'vardiya', 'aciklama']
+        fields = ['tarih', 'nobet_turu', 'aciklama']
         widgets = {
             'tarih': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}, format='%Y-%m-%d'),
             'nobet_turu': forms.Select(attrs={'class': 'form-select'}),
-            'vardiya': forms.Select(attrs={'class': 'form-select'}),
             'aciklama': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
@@ -21,7 +20,7 @@ class NobetDefteriForm(forms.ModelForm):
 class NobetOlayKaydiForm(forms.ModelForm):
     class Meta:
         model = NobetOlayKaydi
-        fields = ['saat', 'konu', 'detay']
+        fields = ['saat', 'konu', 'detay', 'onemli']
         widgets = {
             'saat': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             # Konu alanı için datalist ekleniyor
@@ -31,4 +30,5 @@ class NobetOlayKaydiForm(forms.ModelForm):
                 'autocomplete': 'off'
             }),
             'detay': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'id': 'id_detay'}),
+            'onemli': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

@@ -7,7 +7,7 @@
     <div class="row align-items-center mb-3">
         <div class="col">
             <h4>
-                Nöbet Defteri: {{ defter.tarih|date:"d.m.Y" }} - {{ defter.nobet_turu }} - {{ defter.vardiya }}
+                Nöbet Defteri: {{ defter.tarih|date:"d.m.Y" }} - {{ defter.nobet_turu }}
             </h4>
         </div>
         <div class="col-auto text-end">
@@ -38,6 +38,9 @@
                         <option value="Devriye 3"></option>
                         <option value="Devriye 4"></option>
                     </datalist>
+                </div>
+                <div class="mb-2" style="color: red;">
+                    {{ form.onemli|as_crispy_field }}
                 </div>
                 <div class="mb-2">
                     {{ form.detay|as_crispy_field }}
@@ -75,6 +78,7 @@
                         <th>Saat</th>
                         <th>Konu</th>
                         <th>Detay</th>
+                        <th>Önemli</th>
                         <th>Ekleyen</th>
                         <th>Eklenme Zamanı</th>
                     </tr>
@@ -85,6 +89,7 @@
                         <td>{{ olay.saat }}</td>
                         <td>{{ olay.konu }}</td>
                         <td>{{ olay.detay }}</td>
+                        <td>{% if olay.onemli %}<span class="text-danger fw-bold">Evet</span>{% else %}-{% endif %}</td>
                         <td>{{ olay.ekleyen.FullName }}</td>
                         <td>{{ olay.eklenme_zamani|date:"d.m.Y H:i" }}</td>
                     </tr>

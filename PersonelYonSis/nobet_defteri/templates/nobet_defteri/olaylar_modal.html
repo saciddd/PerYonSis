@@ -5,6 +5,7 @@
             <th>Saat</th>
             <th>Konu</th>
             <th>Detay</th>
+            <th>Önemli</th>
             <th>Ekleyen</th>
             <th>Eklenme Zamanı</th>
         </tr>
@@ -15,6 +16,7 @@
             <td>{{ olay.saat }}</td>
             <td>{{ olay.konu }}</td>
             <td>{{ olay.detay }}</td>
+            <td>{% if olay.onemli %}<span class="text-danger fw-bold">Evet</span>{% else %}-{% endif %}</td>
             <td>{{ olay.ekleyen.FullName }}</td>
             <td>{{ olay.eklenme_zamani|date:"d.m.Y H:i" }}</td>
         </tr>

@@ -6,14 +6,26 @@ from .models import NobetDefteri, NobetTuru, NobetOlayKaydi
 from .forms import NobetDefteriForm, NobetOlayKaydiForm
 from PersonelYonSis.views import get_user_permissions
 from django.contrib.auth import get_user_model
+from django.template.loader import render_to_string
+from django.http import HttpResponse
+import pdfkit
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 User = get_user_model()
 
 # Nöbet defteri listesi
 def nobet_defteri_list(request):
     defterler = NobetDefteri.objects.all().order_by('-tarih', '-created_at')
     onay_yetkisi = 'Nöbet Defteri Onaylayabilir' in get_user_permissions(request.user)
-    # onay_yetkisi = request.user.has_permission('Nöbet Defteri Onaylayabilir')
-    return render(request, 'nobet_defteri/list.html', {'defterler': defterler, 'onay_yetkisi': onay_yetkisi})
+    # Her defter için önemli olay sayısını ekle
+    defterler_with_onemli = []
+    for defter in defterler:
+        onemli_sayi = defter.olaylar.filter(onemli=True).count()
+        defterler_with_onemli.append({
+            'defter': defter,
+            'onemli_sayi': onemli_sayi
+        })
+    return render(request, 'nobet_defteri/list.html', {'defterler_with_onemli': defterler_with_onemli, 'onay_yetkisi': onay_yetkisi})
 
 # Yeni nöbet defteri oluştur
 def nobet_defteri_olustur(request):
@@ -91,14 +103,65 @@ def nobet_defteri_olaylar_modal(request, defter_id):
         "olaylar": olaylar,
         "defter": defter,
     })
-    defter.save()
-    messages.success(request, "Nöbet defteri onaylandı.")
-    return redirect('nobet_defteri:liste')
 
-def nobet_defteri_olaylar_modal(request, defter_id):
+def nobet_defteri_pdf(request, defter_id):
     defter = get_object_or_404(NobetDefteri, id=defter_id)
-    olaylar = defter.olaylar.all().order_by('-eklenme_zamani')
-    return render(request, "nobet_defteri/olaylar_modal.html", {
-        "olaylar": olaylar,
-        "defter": defter,
+    olaylar = defter.olaylar.order_by('saat')
+    now = timezone.now()
+    html = render_to_string('nobet_defteri/defter_pdf.html', {
+        'defter': defter,
+        'olaylar': olaylar,
+        'now': now
     })
+    options = {
+        'page-size': 'A4',
+        'orientation': 'Portrait',
+        'margin-top': '1.5cm',
+        'margin-right': '1.5cm',
+        'margin-bottom': '1.1cm',
+        'margin-left': '1.5cm',
+        'encoding': 'UTF-8',
+        'no-outline': None,
+        'enable-local-file-access': True,
+        'enable-external-links': True,
+        'quiet': ''
+    }
+    config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+    pdf = pdfkit.from_string(html, False, options=options, configuration=config)
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="nobet_defteri_{defter.id}.pdf"'
+    return response
+
+@csrf_exempt
+def nobet_defteri_pdf_modal(request, defter_id):
+    defter = get_object_or_404(NobetDefteri, id=defter_id)
+    if request.method == 'POST' and not defter.onayli:
+        yeni_aciklama = request.POST.get('aciklama', '').strip()
+        if yeni_aciklama != defter.aciklama:
+            defter.aciklama = yeni_aciklama
+            defter.save()
+    olaylar = defter.olaylar.order_by('saat')
+    now = timezone.now()
+    html = render_to_string('nobet_defteri/defter_pdf.html', {
+        'defter': defter,
+        'olaylar': olaylar,
+        'now': now
+    })
+    options = {
+        'page-size': 'A4',
+        'orientation': 'Portrait',
+        'margin-top': '1.5cm',
+        'margin-right': '1.5cm',
+        'margin-bottom': '1.1cm',
+        'margin-left': '1.5cm',
+        'encoding': 'UTF-8',
+        'no-outline': None,
+        'enable-local-file-access': True,
+        'enable-external-links': True,
+        'quiet': ''
+    }
+    config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+    pdf = pdfkit.from_string(html, False, options=options, configuration=config)
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="nobet_defteri_{defter.id}.pdf"'
+    return response

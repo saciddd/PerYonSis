@@ -944,25 +944,37 @@
     function getDosyaDonemler() {
         const today = new Date();
         const months = [];
-        
-        today.setDate(1);
-        
-        today.setMonth(today.getMonth() - 1);
-        
+
+        // Son 6 ayı ekle
+        let refDate = new Date(today.getFullYear(), today.getMonth(), 1);
         for (let i = 0; i < 6; i++) {
-            const year = today.getFullYear();
-            const month = today.getMonth() + 1;
+            const year = refDate.getFullYear();
+            const month = refDate.getMonth() + 1;
             const monthLabel = `${month.toString().padStart(2, '0')}/${year}`;
             const monthValue = `${year}-${month.toString().padStart(2, '0')}`;
-            
             months.push({
                 label: monthLabel,
                 value: monthValue
             });
-            
-            today.setMonth(today.getMonth() - 1);
+            refDate.setMonth(refDate.getMonth() - 1);
         }
-        
+
+        // Eğer bugün ayın son 5 günündeyse, bu ayı da ekle
+        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        if (today.getDate() > lastDayOfMonth - 5) {
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const monthLabel = `${month.toString().padStart(2, '0')}/${year}`;
+            const monthValue = `${year}-${month.toString().padStart(2, '0')}`;
+            // Eğer zaten ekli değilse ekle
+            if (!months.some(m => m.value === monthValue)) {
+                months.unshift({
+                    label: monthLabel,
+                    value: monthValue
+                });
+            }
+        }
+
         return months;
     }
 

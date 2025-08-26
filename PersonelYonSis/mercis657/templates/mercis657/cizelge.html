@@ -80,7 +80,7 @@
     {% if personeller %}
     <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
         <colgroup>
-            <col style="width: 120px;">
+            <col style="width: 12px;">
             <col style="width: 120px;">
             <col style="width: 100px;">
             {% for day in days %}
@@ -89,7 +89,7 @@
         </colgroup>
         <thead class="table-light">
             <tr>
-                <th>T.C.</th>
+                <th>S/N</th>
                 <th>Personel Adı Soyadı</th>
                 <th>Unvanı</th>
                 {% for day in days %}
@@ -100,7 +100,8 @@
         <tbody id="tableBody">
             {% for personel in personeller %}
             <tr>
-                <td>{{ personel.PersonelID }}</td>
+                <!-- Satır Numarası -->
+                <td>{{ forloop.counter }}</td>
                 <td>{{ personel.PersonelName }}</td>
                 <td>{{ personel.PersonelTitle }}</td>
                 {% for mesai in personel.mesai_data %}
@@ -184,6 +185,8 @@
                 cell.setAttribute('data-izin-id', izinVal.replace('izin_', ''));
                 cell.setAttribute('data-mesai-id', "");
             }
+            // Tıklama işleminden sonra imleci gizle
+            cell.blur();
         });
     });
 
@@ -200,9 +203,107 @@
     });
 
     // Kaydet butonu (örnek, backend ile uyarlayın)
+    // Başlangıç durumunu kaydet (sayfa yüklendiğinde)
+    const initialMap = {};
+    document.querySelectorAll('.mesai-cell').forEach(cell => {
+        const pid = cell.dataset.personelId;
+        const date = cell.dataset.date;
+        if (!pid || !date) return;
+        const key = `${pid}_${date}`;
+        const val = cell.dataset.mesaiId || cell.dataset.izinId || null;
+        initialMap[key] = val ? String(val) : null;
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
     document.getElementById('saveButton').addEventListener('click', function () {
-        // ...kaydet işlemleri...
-        alert('Kaydet fonksiyonu ileride tamamlanacak.');
+        const changes = {};
+        document.querySelectorAll('.mesai-cell').forEach(cell => {
+            const pid = cell.dataset.personelId;
+            const date = cell.dataset.date;
+            if (!pid || !date) return;
+            const key = `${pid}_${date}`;
+            const current = cell.dataset.mesaiId || cell.dataset.izinId || null;
+            const curStr = current ? String(current) : null;
+            const orig = initialMap[key] !== undefined ? initialMap[key] : null;
+            if (curStr !== orig) {
+                // gönderilecek değeri number veya null yap
+                changes[key] = curStr ? Number(curStr) : null;
+            }
+        });
+
+        if (Object.keys(changes).length === 0) {
+            if (window.Swal) {
+                Swal.fire({ icon: 'info', title: 'Değişiklik yok', text: 'Kaydetmek için değişiklik bulunamadı.' });
+            } else {
+                alert('Kaydetmek için değişiklik bulunamadı.');
+            }
+            return;
+        }
+
+        const url = "{% url 'mercis657:cizelge_kaydet' %}";
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(changes)
+        })
+        .then(response => response.json().then(data => ({status: response.status, body: data})))
+        .then(({status, body}) => {
+            if (body.status === 'success') {
+                // Başarılıysa başlangıç durumunu güncelle
+                Object.keys(changes).forEach(k => {
+                    initialMap[k] = changes[k] !== null ? String(changes[k]) : null;
+                });
+                if (window.Swal) {
+                    Swal.fire({ icon: 'success', title: 'Kaydedildi', text: 'Çizelge başarıyla kaydedildi.' });
+                } else {
+                    alert('Çizelge başarıyla kaydedildi.');
+                }
+            } else if (body.status === 'partial') {
+                const errors = body.errors || [];
+                if (window.Swal) {
+                    Swal.fire({ icon: 'warning', title: 'Kısmi Başarı', html: errors.join('<br>') });
+                } else {
+                    alert('Kısmi başarı:\n' + errors.join('\n'));
+                }
+                // Başarılı olanları yine güncelle (sunucu kısmi hata döndüğünde detay yok; güvenli tarafsız davranış)
+                Object.keys(changes).forEach(k => {
+                    if (!errors.find(e => e.includes(String(k.split('_')[0])))) {
+                        initialMap[k] = changes[k] !== null ? String(changes[k]) : null;
+                    }
+                });
+            } else {
+                const msg = body.errors ? body.errors.join('\n') : 'Sunucu hatası.';
+                if (window.Swal) {
+                    Swal.fire({ icon: 'error', title: 'Hata', text: msg });
+                } else {
+                    alert('Hata: ' + msg);
+                }
+            }
+        })
+        .catch(err => {
+            if (window.Swal) {
+                Swal.fire({ icon: 'error', title: 'İstek hatası', text: err.toString() });
+            } else {
+                alert('İstek hatası: ' + err);
+            }
+        });
     });
 </script>
 <style>

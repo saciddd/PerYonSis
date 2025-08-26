@@ -8,7 +8,7 @@
     <h3>Birim Yönetimi</h3>
     <div class="row mb-2">
         <div class="col-md-4">
-            <input type="text" id="birimAramaInput" class="form-control form-control-sm" placeholder="Birim, kurum, üst birim veya müdür yrd ile ara...">
+            <input type="text" id="birimAramaInput" class="form-control form-control-sm" placeholder="Birim, kurum, üst birim veya idareci ile ara...">
         </div>
         <div class="col-md-8 text-end">
             <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#birimEkleModal">
@@ -16,7 +16,7 @@
             </button>
             <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#kurumModal">Kurumları Yönet</button>
             <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#ustBirimModal">Üst Birimleri Yönet</button>
-            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#mudurYrdModal">Müdür Yrd. Yönet</button>
+            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#idareciModal">İdareci Yönet</button>
         </div>
     </div>
     <div class="table-responsive">
@@ -197,6 +197,36 @@
                 </ul>
                 <form id="mudurYrdEkleForm" class="input-group">
                     <input type="text" class="form-control" name="mudur_yrd_ad" placeholder="Yeni müdür yrd. adı..." required>
+                    <button class="btn btn-success" type="submit">Ekle</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- İdareci Modal -->
+<div class="modal fade" id="idareciModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">İdareciler</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul id="idareciList" class="list-group mb-3">
+                    {% for idareci in idareciler %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span class="idareci-ad">{{ idareci.ad }}</span>
+                            <span>
+                                <button class="btn btn-sm btn-outline-secondary me-1" onclick="editIdareci({{ idareci.id }}, '{{ idareci.ad }}')"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="toggleIdareciAktif({{ idareci.id }})">
+                                    <i class="bi bi-toggle-{{ idareci.aktif|yesno:'on,off' }}"></i>
+                                </button>
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <form id="idareciEkleForm" class="input-group">
+                    <input type="text" class="form-control" name="idareci_ad" placeholder="Yeni idareci adı..." required>
                     <button class="btn btn-success" type="submit">Ekle</button>
                 </form>
             </div>
@@ -385,11 +415,11 @@ document.getElementById('ustBirimEkleForm').onsubmit = function(e) {
     });
 };
 
-// Müdür yrd ekle
-document.getElementById('mudurYrdEkleForm').onsubmit = function(e) {
+// İdareci ekle
+document.getElementById('idareciEkleForm').onsubmit = function(e) {
     e.preventDefault();
-    const input = this.querySelector('input[name="mudur_yrd_ad"]');
-    fetch("{% url 'mercis657:mudur_yrd_ekle' %}", {
+    const input = this.querySelector('input[name="idareci_ad"]');
+    fetch("{% url 'mercis657:idareci_ekle' %}", {
         method: 'POST',
         headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
         body: JSON.stringify({ad: input.value})
@@ -397,7 +427,7 @@ document.getElementById('mudurYrdEkleForm').onsubmit = function(e) {
     .then(resp => resp.json())
     .then(data => {
         if (data.status === 'success') location.reload();
-        else alert(data.message || 'Müdür yardımcısı eklenemedi.');
+        else alert(data.message || 'İdareci eklenemedi.');
     });
 };
 
@@ -446,29 +476,6 @@ function editUstBirim(id, ad) {
         else alert(data.message || 'Üst birim güncellenemedi.');
     });
 }
-function deleteMudurYrd(id) {
-    if (!confirm('Müdür yardımcısı silinsin mi?')) return;
-    fetch("{% url 'mercis657:mudur_yrd_sil' 0 %}".replace('0', id), {
-        method: 'POST',
-        headers: {'X-CSRFToken': '{{ csrf_token }}'}
-    }).then(resp => resp.json()).then(data => {
-        if (data.status === 'success') location.reload();
-        else alert(data.message || 'Müdür yardımcısı silinemedi.');
-    });
-}
-function editMudurYrd(id, ad) {
-    const yeniAd = prompt('Yeni müdür yardımcısı adı:', ad);
-    if (!yeniAd || yeniAd.trim() === ad) return;
-    fetch("{% url 'mercis657:mudur_yrd_guncelle' 0 %}".replace('0', id), {
-        method: 'POST',
-        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
-        body: JSON.stringify({ad: yeniAd})
-    }).then(resp => resp.json()).then(data => {
-        if (data.status === 'success') location.reload();
-        else alert(data.message || 'Müdür yardımcısı güncellenemedi.');
-    });
-}
-
 // Yetkili Kullanıcılar Modalı
 function openYetkiliKullanicilarModal(birimId) {
     var modal = new bootstrap.Modal(document.getElementById('yetkiliKullanicilarModal'));
@@ -639,6 +646,29 @@ function birimSil() {
     });
 }
 
-// ...existing code...
+// İdareci güncelle
+function editIdareci(id, ad) {
+    const yeniAd = prompt('Yeni idareci adı:', ad);
+    if (!yeniAd || yeniAd.trim() === ad) return;
+    fetch("{% url 'mercis657:idareci_guncelle' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ad: yeniAd})
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'İdareci güncellenemedi.');
+    });
+}
+
+// İdareci aktif/pasif toggle
+function toggleIdareciAktif(id) {
+    fetch("{% url 'mercis657:idareci_toggle_aktif' 0 %}".replace('0', id), {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    }).then(resp => resp.json()).then(data => {
+        if (data.status === 'success') location.reload();
+        else alert(data.message || 'İşlem başarısız.');
+    });
+}
 </script>
 {% endblock %}

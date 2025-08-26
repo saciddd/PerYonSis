@@ -272,44 +272,6 @@ def cizelge(request):
     }
     return render(request, 'mercis657/cizelge.html', context)
 
-@login_required
-def cizelge_yazdir(request):
-    # Şimdilik boş, ileride PDF şablonu ile doldurulacak
-    return HttpResponse("Yazdır PDF fonksiyonu hazırlanacak.", content_type="text/plain")
-
-@login_required
-def cizelge_kaydet(request):
-    if request.method == 'POST':
-        changes = json.loads(request.body)
-        errors = []
-
-        for key, mesai_tanim_id in changes.items():
-            personel_id, mesai_date = key.split('_')
-            mesai_date = datetime.strptime(mesai_date, "%Y-%m-%d").date()
-
-            # Kayıtlı mı kontrol et
-            if not PersonelListesiKayit.objects.filter(
-                personel_id=personel_id,
-                liste__yil=mesai_date.year,
-                liste__ay=mesai_date.month
-            ).exists():
-                errors.append(f"Personel {personel_id} o ay listede değil.")
-                continue
-
-            # Aynı güne birden fazla kaydı zaten engelliyoruz (update_or_create)
-            Mesai.objects.update_or_create(
-                Personel_id=personel_id,
-                MesaiDate=mesai_date,
-                defaults={'MesaiTanim_id': mesai_tanim_id}
-            )
-
-        if errors:
-            return JsonResponse({'status': 'partial', 'errors': errors})
-        return JsonResponse({'status': 'success'})
-
-    return JsonResponse({'status': 'failed'}, status=400)
-
-
 def personeller(request):
     personeller = Personel.objects.all()
     return render(request, 'personeller.html', {"personeller": personeller})
@@ -537,7 +499,7 @@ def personel_cikar(request, liste_id, personel_id):
     return redirect('mercis657:personel_listesi_detay', liste_id=liste.id)
 
 def birim_yonetim(request):
-    birimler = Birim.objects.select_related('Kurum', 'UstBirim', 'idareci').all()
+    birimler = Birim.objects.select_related('Kurum', 'UstBirim', 'Idareci').all()
     birim_list = []
     for birim in birimler:
         yetkiler = UserBirim.objects.filter(birim=birim).select_related('user')
@@ -553,7 +515,7 @@ def birim_yonetim(request):
             "adi": birim.BirimAdi,
             "kurum": birim.Kurum.ad if birim.Kurum else "",
             "ust_birim": birim.UstBirim.ad if birim.UstBirim else "",
-            "idareci": birim.idareci.ad if birim.idareci else "",
+            "idareci": birim.Idareci.ad if birim.Idareci else "",
             "yetkili_sayisi": len(yetkili_users),
             "yetkililer": yetkili_users,
         })
@@ -686,6 +648,18 @@ def kurum_guncelle(request, pk):
     return JsonResponse({'status': 'error'})
 
 @csrf_exempt
+def kurum_sil(request, pk):
+    if request.method == 'POST':
+        try:
+            kurum = Kurum.objects.get(pk=pk)
+            kurum.delete()
+            messages.success(request, f'{kurum.ad} isimli Kurum başarıyla silindi.')
+            return JsonResponse({'status': 'success'})
+        except Kurum.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Kurum bulunamadı.'})
+    return JsonResponse({'status': 'error'})
+
+@csrf_exempt
 def ust_birim_ekle(request):
     if request.method == 'POST':
         data = json.loads(request.body)
@@ -710,6 +684,18 @@ def ust_birim_guncelle(request, pk):
         ust.ad = ad
         ust.save()
         return JsonResponse({'status': 'success'})
+    return JsonResponse({'status': 'error'})
+
+@csrf_exempt
+def ust_birim_sil(request, pk):
+    if request.method == 'POST':
+        try:
+            ust = UstBirim.objects.get(pk=pk)
+            ust.delete()
+            messages.success(request, f'{ust.ad} isimli Üst Birim başarıyla silindi.')
+            return JsonResponse({'status': 'success'})
+        except UstBirim.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Üst birim bulunamadı.'})
     return JsonResponse({'status': 'error'})
 
 @csrf_exempt

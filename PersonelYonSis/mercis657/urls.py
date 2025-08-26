@@ -1,11 +1,11 @@
 from django.urls import path
-from . import views
+from . import views, views_cizelge_edit
 
 app_name = 'mercis657'  # Namespace tanımlaması
 
 urlpatterns = [
     path('cizelge', views.cizelge, name='cizelge'),
-    path('cizelge_kaydet', views.cizelge_kaydet, name='cizelge_kaydet'),
+    path('cizelge_kaydet', views_cizelge_edit.cizelge_kaydet, name='cizelge_kaydet'),
     path('export_excel/', views.excel_export, name='export_excel'),
     path('personeller', views.personeller, name='personeller'),
     path('personel-ekle-form/', views.personel_ekle_form, name='personel_ekle_form'),
@@ -34,14 +34,16 @@ urlpatterns = [
     path('kurum-ekle/', views.kurum_ekle, name='kurum_ekle'),
     path('kurum-guncelle/<int:pk>/', views.kurum_guncelle, name='kurum_guncelle'),
     path('kurum-toggle-aktif/<int:pk>/', views.kurum_toggle_aktif, name='kurum_toggle_aktif'),
+    path('kurum-sil/<int:pk>/', views.kurum_sil, name='kurum_sil'),
 
     path('ust-birim-ekle/', views.ust_birim_ekle, name='ust_birim_ekle'),
     path('ust-birim-guncelle/<int:pk>/', views.ust_birim_guncelle, name='ust_birim_guncelle'),
     path('ust-birim-toggle-aktif/<int:pk>/', views.ust_birim_toggle_aktif, name='ust_birim_toggle_aktif'),
+    path('ust-birim-sil/<int:pk>/', views.ust_birim_sil, name='ust_birim_sil'),
 
     path('onceki-donem-personel/<int:year>/<int:month>/<int:birim_id>/', views.onceki_donem_personel, name='onceki_donem_personel'),
     path('personel/kaydet/', views.personel_kaydet, name='personel_kaydet'),
-    path('cizelge/yazdir/', views.cizelge_yazdir, name='cizelge_yazdir'),
+    path('cizelge/yazdir/', views_cizelge_edit.cizelge_yazdir, name='cizelge_yazdir'),
     path('tanimlamalar/', views.tanimlamalar, name='tanimlamalar'),
 
     path('idareci-toggle-aktif/<int:pk>/', views.idareci_toggle_aktif, name='idareci_toggle_aktif'),

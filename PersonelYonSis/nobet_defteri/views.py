@@ -2,8 +2,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils.timezone import now
 from django.http import HttpResponseForbidden, JsonResponse
-from .models import NobetDefteri, NobetTuru, NobetOlayKaydi
-from .forms import NobetDefteriForm, NobetOlayKaydiForm
+from .models import NobetDefteri, NobetTuru, NobetOlayKaydi, KontrolSoru, KontrolFormu, KontrolCevap
+from .forms import NobetDefteriForm, NobetOlayKaydiForm, KontrolFormuForm, KontrolCevapFormSet, DinamikKontrolForm, KontrolSoruForm
 from PersonelYonSis.views import get_user_permissions
 from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
@@ -11,6 +11,7 @@ from django.http import HttpResponse
 import pdfkit
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.urls import reverse
 User = get_user_model()
 
 # Nöbet defteri listesi
@@ -63,7 +64,8 @@ def nobet_defteri_detay(request, defter_id):
     defter = get_object_or_404(NobetDefteri, id=defter_id)
     olaylar = defter.olaylar.order_by('saat')
 
-    if request.method == 'POST':
+    # --- Olay ekleme işlemi ---
+    if request.method == 'POST' and 'olay_ekle' in request.POST:
         if not request.user.has_permission('Nöbet Olayı Ekleyebilir'):
             return HttpResponseForbidden("Olay ekleme yetkiniz yok.")
         form = NobetOlayKaydiForm(request.POST)
@@ -77,10 +79,74 @@ def nobet_defteri_detay(request, defter_id):
     else:
         form = NobetOlayKaydiForm()
 
+    # --- Kontrol formu verileri ---
+    aktif_sorular = KontrolSoru.objects.filter(aktif=True)
+    kontrol_formu, created = KontrolFormu.objects.get_or_create(nobet_defteri=defter)
+
+    if request.method == 'POST' and 'kontrol_formu_kaydet' in request.POST:
+        # Bound form ile POST verisini işle
+        kontrol_form = DinamikKontrolForm(request.POST, sorular=aktif_sorular)
+        if kontrol_form.is_valid():
+            for soru in aktif_sorular:
+                cevap_raw = kontrol_form.cleaned_data.get(f"soru_{soru.id}_cevap")
+                aciklama = kontrol_form.cleaned_data.get(f"soru_{soru.id}_aciklama")
+                # normalize: boş string veya None -> None, 'True' -> True, 'False' -> False
+                if isinstance(cevap_raw, str):
+                    cr = cevap_raw.strip()
+                    if cr == '':
+                        cevap = None
+                    elif cr.lower() in ('true', '1', 't', 'y', 'yes', 'e'):
+                        cevap = True
+                    else:
+                        cevap = False
+                else:
+                    cevap = bool(cevap_raw) if cevap_raw is not None else None
+                KontrolCevap.objects.update_or_create(
+                    form=kontrol_formu,
+                    soru=soru,
+                    defaults={'cevap': cevap, 'aciklama': aciklama}
+                )
+            messages.success(request, "Kontrol formu kaydedildi.")
+            return redirect('nobet_defteri:detay', defter.id)
+        # eğer geçersizse bound kontrol_form ile devam edecek (hataları göster)
+    else:
+        # GET: mevcut cevapları initial olarak yükle
+        initial = {}
+        mevcut_cevaplar = KontrolCevap.objects.filter(form=kontrol_formu).select_related('soru')
+        for cvp in mevcut_cevaplar:
+            key_cevap = f"soru_{cvp.soru.id}_cevap"
+            key_aciklama = f"soru_{cvp.soru.id}_aciklama"
+            # cvp.cevap None ise initial bırak ('' => hiçbir radio seçili olmaz)
+            if cvp.cevap is True:
+                initial[key_cevap] = 'True'
+            elif cvp.cevap is False:
+                initial[key_cevap] = 'False'
+            else:
+                initial[key_cevap] = ''
+            initial[key_aciklama] = cvp.aciklama or ''
+        kontrol_form = DinamikKontrolForm(initial=initial, sorular=aktif_sorular)
+
+    # Yeni: kontrol_items oluştur (her biri: {'soru': soru, 'cevap_field': BoundField, 'aciklama_field': BoundField})
+    kontrol_items = []
+    for soru in aktif_sorular:
+        cevap_name = f"soru_{soru.id}_cevap"
+        aciklama_name = f"soru_{soru.id}_aciklama"
+        # BoundField elde etmek için form[...] kullanıyoruz; yoksa None olabilir
+        cevap_field = kontrol_form[cevap_name] if cevap_name in kontrol_form.fields else None
+        aciklama_field = kontrol_form[aciklama_name] if aciklama_name in kontrol_form.fields else None
+        kontrol_items.append({
+            'soru': soru,
+            'cevap_field': cevap_field,
+            'aciklama_field': aciklama_field,
+        })
+
     return render(request, 'nobet_defteri/detay.html', {
         'defter': defter,
         'olaylar': olaylar,
-        'form': form
+        'form': form,
+        'kontrol_form': kontrol_form,
+        'aktif_sorular': aktif_sorular,
+        'kontrol_items': kontrol_items,  # eklendi
     })
 
 # Nöbet defteri onayla
@@ -107,10 +173,14 @@ def nobet_defteri_olaylar_modal(request, defter_id):
 def nobet_defteri_pdf(request, defter_id):
     defter = get_object_or_404(NobetDefteri, id=defter_id)
     olaylar = defter.olaylar.order_by('saat')
+    # Yeni: kontrol formu ve cevaplarını al
+    kontrol_formu = KontrolFormu.objects.filter(nobet_defteri=defter).first()
+    kontrol_cevaplar = KontrolCevap.objects.filter(form=kontrol_formu).select_related('soru') if kontrol_formu else []
     now = timezone.now()
     html = render_to_string('nobet_defteri/defter_pdf.html', {
         'defter': defter,
         'olaylar': olaylar,
+        'kontrol_cevaplar': kontrol_cevaplar,
         'now': now
     })
     options = {
@@ -141,10 +211,14 @@ def nobet_defteri_pdf_modal(request, defter_id):
             defter.aciklama = yeni_aciklama
             defter.save()
     olaylar = defter.olaylar.order_by('saat')
+    # Yeni: kontrol formu ve cevaplarını al (modal için de)
+    kontrol_formu = KontrolFormu.objects.filter(nobet_defteri=defter).first()
+    kontrol_cevaplar = KontrolCevap.objects.filter(form=kontrol_formu).select_related('soru') if kontrol_formu else []
     now = timezone.now()
     html = render_to_string('nobet_defteri/defter_pdf.html', {
         'defter': defter,
         'olaylar': olaylar,
+        'kontrol_cevaplar': kontrol_cevaplar,
         'now': now
     })
     options = {
@@ -165,3 +239,48 @@ def nobet_defteri_pdf_modal(request, defter_id):
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="nobet_defteri_{defter.id}.pdf"'
     return response
+
+# KontrolSoru CRUD (liste/ekle/guncelle/sil)
+def kontrol_soru_list(request):
+    if not request.user.has_permission('Kontrol Soru Yönetebilir'):
+        return HttpResponseForbidden("Yetkiniz yok.")
+    sorular = KontrolSoru.objects.all().order_by('id')
+    return render(request, 'nobet_defteri/kontrol_soru_list.html', {'sorular': sorular})
+
+def kontrol_soru_ekle(request):
+    if not request.user.has_permission('Kontrol Soru Yönetebilir'):
+        return HttpResponseForbidden("Yetkiniz yok.")
+    if request.method == 'POST':
+        form = KontrolSoruForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Soru eklendi.")
+            return redirect('nobet_defteri:kontrol_soru_list')
+    else:
+        form = KontrolSoruForm()
+    return render(request, 'nobet_defteri/kontrol_soru_form.html', {'form': form, 'is_update': False})
+
+def kontrol_soru_guncelle(request, pk):
+    if not request.user.has_permission('Kontrol Soru Yönetebilir'):
+        return HttpResponseForbidden("Yetkiniz yok.")
+    soru = get_object_or_404(KontrolSoru, pk=pk)
+    if request.method == 'POST':
+        form = KontrolSoruForm(request.POST, instance=soru)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Soru güncellendi.")
+            return redirect('nobet_defteri:kontrol_soru_list')
+    else:
+        form = KontrolSoruForm(instance=soru)
+    return render(request, 'nobet_defteri/kontrol_soru_form.html', {'form': form, 'is_update': True, 'soru': soru})
+
+def kontrol_soru_sil(request, pk):
+    if not request.user.has_permission('Kontrol Soru Yönetebilir'):
+        return HttpResponseForbidden("Yetkiniz yok.")
+    soru = get_object_or_404(KontrolSoru, pk=pk)
+    if request.method == 'POST':
+        soru.delete()
+        messages.success(request, "Soru silindi.")
+        return redirect('nobet_defteri:kontrol_soru_list')
+    # GET için onay sayfası yerine hızlı redirect (veya isterseniz onay template ekleyin)
+    return redirect('nobet_defteri:kontrol_soru_list')

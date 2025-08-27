@@ -1,5 +1,5 @@
 from django import forms
-from .models import NobetDefteri, NobetOlayKaydi
+from .models import NobetDefteri, NobetOlayKaydi, KontrolSoru, KontrolFormu, KontrolCevap
 from datetime import date
 
 class NobetDefteriForm(forms.ModelForm):
@@ -31,4 +31,57 @@ class NobetOlayKaydiForm(forms.ModelForm):
             }),
             'detay': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'id': 'id_detay'}),
             'onemli': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+class KontrolFormuForm(forms.ModelForm):
+    class Meta:
+        model = KontrolFormu
+        # nobet_defteri alanına NobetDefteri otomatik atanacak
+        fields = []
+
+
+class KontrolCevapForm(forms.ModelForm):
+    class Meta:
+        model = KontrolCevap
+        fields = ['cevap', 'aciklama']
+        widgets = {
+            'cevap': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'aciklama': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+        }
+
+
+# Dinamik form: soruları tek tek formset içine alacağız
+KontrolCevapFormSet = forms.modelformset_factory(
+    KontrolCevap,
+    form=KontrolCevapForm,
+    extra=0,
+    can_delete=False
+)
+
+
+class DinamikKontrolForm(forms.Form):
+    def __init__(self, *args, sorular=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if sorular:
+            for soru in sorular:
+                # Değerleri string olarak kullanıyoruz ('True' / 'False').
+                # required=False olduğunda seçilmemiş (null) durumda hiçbir radio seçili olmaz.
+                self.fields[f"soru_{soru.id}_cevap"] = forms.ChoiceField(
+                    choices=[('True', "E"), ('False', "H")],
+                    widget=forms.RadioSelect,
+                    required=False,
+                    label=soru.soru_metni
+                )
+                self.fields[f"soru_{soru.id}_aciklama"] = forms.CharField(
+                    required=False,
+                    widget=forms.Textarea(attrs={"rows": 1, "class": "form-control"})
+                )
+
+class KontrolSoruForm(forms.ModelForm):
+    class Meta:
+        model = KontrolSoru
+        fields = ['soru_metni', 'aktif']
+        widgets = {
+            'soru_metni': forms.TextInput(attrs={'class': 'form-control'}),
+            'aktif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

@@ -52,7 +52,7 @@
                     </div>
                 </div>
                 <div class="mt-2">
-                    <button type="submit" class="btn btn-success">Olayı Kaydet</button>
+                    <button type="submit" name="olay_ekle" class="btn btn-success">Olayı Kaydet</button>
                 </div>
             </form>
             <style>
@@ -100,6 +100,62 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <br>
+            <h3>Nöbetçi Memur Kontrol Formu</h3>
+            <style>
+                /* Cevap radio'larının yatay (yan yana) görünmesi için */
+                .kontrol-cevap-field { display: flex; gap: 12px; align-items: center; justify-content: center; }
+                /* Eğer widget'lar bootstrap .form-check ile sarılıysa alt boşlukları kaldır */
+                .kontrol-cevap-field .form-check { margin-bottom: 0; }
+                /* Radio inputları ve etiket aralığı */
+                .kontrol-cevap-field input[type="radio"] { margin-right: 4px; }
+            </style>
+            <form method="post">
+            {% csrf_token %}
+            <table class="table table-bordered">
+                <thead>
+                <tr>
+                    <th>SORULAR</th>
+                    <th class="text-center">EVET/HAYIR</th>
+                    <th>AÇIKLAMALAR</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for item in kontrol_items %}
+                <tr>
+                    <td>{{ item.soru.soru_metni }}</td>
+                    <td class="text-center">
+                        <div class="kontrol-cevap-field">
+                            {% if item.cevap_field %}
+                                {% for val,label in item.cevap_field.field.choices %}
+                                    {# radio id: base id + index #}
+                                    {% with id=item.cevap_field.auto_id|default:''|add:'_'|add:forloop.counter|stringformat:"s" %}
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio"
+                                                   name="{{ item.cevap_field.html_name }}"
+                                                   id="{{ id }}"
+                                                   value="{{ val }}"
+                                                   {% if item.cevap_field.value|stringformat:"s" == val|stringformat:"s" %}checked{% endif %}>
+                                            <label class="form-check-label" for="{{ id }}">{{ label }}</label>
+                                        </div>
+                                    {% endwith %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if item.aciklama_field %}
+                            {{ item.aciklama_field }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <button type="submit" name="kontrol_formu_kaydet" class="btn btn-success">
+                Kontrol Formunu Kaydet
+            </button>
+            </form>
         </div>
     </div>
 </div>

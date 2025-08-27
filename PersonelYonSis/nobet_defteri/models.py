@@ -36,3 +36,31 @@ class NobetOlayKaydi(models.Model):
 
     def __str__(self):
         return f"{self.saat} - {self.konu}"
+
+class KontrolSoru(models.Model):
+    soru_metni = models.CharField(max_length=255)
+    aktif = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.soru_metni
+
+
+class KontrolFormu(models.Model):
+    nobet_defteri = models.OneToOneField(
+        NobetDefteri, on_delete=models.CASCADE, related_name="kontrol_formu"
+    )
+    olusturan = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    olusturma_tarihi = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Kontrol Formu - {self.nobet_defteri}"
+
+
+class KontrolCevap(models.Model):
+    form = models.ForeignKey(KontrolFormu, on_delete=models.CASCADE, related_name="cevaplar")
+    soru = models.ForeignKey(KontrolSoru, on_delete=models.PROTECT)
+    cevap = models.BooleanField(null=True, blank=True)  # Evet/Hayır
+    aciklama = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.soru.soru_metni[:30]}... -> {self.cevap}"

@@ -14,7 +14,7 @@
     <strong>Açıklama:</strong> {{ defter.aciklama }}
 </div>
 <br>
-<table border="1" cellspacing="0" cellpadding="5" width="100%" style="font-size:13px;">
+<table border="1" cellspacing="0" cellpadding="5" width="100%" style="font-size:14px;">
     <thead>
         <tr>
             <th>Saat</th>
@@ -41,4 +41,36 @@
         </tr>
         {% endfor %}
     </tbody>
-</table> 
+</table>
+
+{# Yeni: Kontrol formu kayıtları tablosu #}
+<br>
+<h4 style="margin-top:18px;">Nöbetçi Memur Kontrol Formu</h4>
+<table border="1" cellspacing="0" cellpadding="5" width="100%" style="font-size:14px; margin-top:6px;">
+    <thead>
+        <tr>
+            <th style="width:60%;">Soru</th>
+            <th style="width:10%; text-align:center;">Cevap</th>
+            <th style="width:30%;">Açıklama</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if kontrol_cevaplar %}
+            {% for cvp in kontrol_cevaplar %}
+            <tr>
+                <td>{{ cvp.soru.soru_metni }}</td>
+                <td style="text-align:center;">
+                    {% if cvp.cevap is True %}Evet
+                    {% elif cvp.cevap is False %}Hayır
+                    {% else %}-{% endif %}
+                </td>
+                <td>{{ cvp.aciklama }}</td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="3" style="text-align:center;">Kontrol formu kaydı bulunamadı.</td>
+            </tr>
+        {% endif %}
+    </tbody>
+</table>

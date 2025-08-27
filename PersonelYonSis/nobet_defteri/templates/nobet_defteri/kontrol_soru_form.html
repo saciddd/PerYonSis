@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}{% if is_update %}Soru Düzenle{% else %}Yeni Soru{% endif %}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h4>{% if is_update %}Soru Düzenle{% else %}Yeni Soru Ekle{% endif %}</h4>
+    <form method="post" class="mt-3">
+        {% csrf_token %}
+        <div class="mb-3">
+            {{ form.soru_metni|as_crispy_field }}
+        </div>
+        <div class="form-check mb-3">
+            {{ form.aktif }}
+            <label class="form-check-label ms-2" for="{{ form.aktif.id_for_label }}">Aktif</label>
+        </div>
+        <button type="submit" class="btn btn-success">{% if is_update %}Güncelle{% else %}Kaydet{% endif %}</button>
+        <a href="{% url 'nobet_defteri:kontrol_soru_list' %}" class="btn btn-secondary">İptal</a>
+    </form>
+</div>
+{% endblock %}

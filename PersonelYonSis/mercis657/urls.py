@@ -49,4 +49,9 @@ urlpatterns = [
     path('idareci-toggle-aktif/<int:pk>/', views.idareci_toggle_aktif, name='idareci_toggle_aktif'),
     path('idareci-ekle/', views.idareci_ekle, name='idareci_ekle'),
     path('idareci-guncelle/<int:pk>/', views.idareci_guncelle, name='idareci_guncelle'),
+
+    # İzin işlemleri
+    path('izin-ekle/', views.izin_ekle, name='izin_ekle'),
+    path('izin-toggle-aktif/<int:pk>/', views.izin_toggle_aktif, name='izin_toggle_aktif'),
+    path('izin-guncelle/<int:pk>/', views.izin_guncelle, name='izin_guncelle'),
 ]

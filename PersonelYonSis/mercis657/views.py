@@ -565,7 +565,7 @@ def birim_detay(request, birim_id):
             'BirimAdi': birim.BirimAdi,
             'Kurum': birim.Kurum.pk if birim.Kurum else None,
             'UstBirim': birim.UstBirim.pk if birim.UstBirim else None,
-            'idareci': birim.idareci.pk if birim.idareci else None,
+            'idareci': birim.Idareci.pk if birim.Idareci else None,
         }
         return JsonResponse({'status': 'success', 'data': data})
     except Birim.DoesNotExist:
@@ -594,7 +594,7 @@ def birim_guncelle(request, birim_id):
         birim.BirimAdi = ad
         birim.Kurum_id = kurum_id
         birim.UstBirim_id = ust_id
-        birim.idareci_id = mudur_id
+        birim.Idareci_id = mudur_id
         birim.save()
 
         return JsonResponse({'status': 'success', 'message': 'Birim başarıyla güncellendi.'})
@@ -809,3 +809,43 @@ def idareci_toggle_aktif(request, pk):
         except Idareci.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'İdareci bulunamadı.'})
     return JsonResponse({'status': 'error'})
+
+@require_POST
+def izin_ekle(request):
+    # Basit yetki kontrolü; gerekiyorsa değiştirin
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'Yetkisiz'}, status=403)
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+        ad = payload.get('ad', '').strip()
+        if not ad:
+            return JsonResponse({'status': 'error', 'message': 'Ad boş olamaz.'})
+        izin = Izin.objects.create(ad=ad)
+        return JsonResponse({'status': 'success', 'id': izin.id})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+@require_POST
+def izin_toggle_aktif(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'Yetkisiz'}, status=403)
+    izin = get_object_or_404(Izin, pk=pk)
+    izin.aktif = not izin.aktif
+    izin.save()
+    return JsonResponse({'status': 'success', 'aktif': izin.aktif})
+
+@require_POST
+def izin_guncelle(request, pk):
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'Yetkisiz'}, status=403)
+    izin = get_object_or_404(Izin, pk=pk)
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+        ad = payload.get('ad', '').strip()
+        if not ad:
+            return JsonResponse({'status': 'error', 'message': 'Ad boş olamaz.'})
+        izin.ad = ad
+        izin.save()
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})

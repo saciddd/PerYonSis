@@ -172,6 +172,8 @@ def nobet_defteri_olaylar_modal(request, defter_id):
 
 def nobet_defteri_pdf(request, defter_id):
     defter = get_object_or_404(NobetDefteri, id=defter_id)
+    # Giriş yapan kullanıcı bilgisini PDF'e ekle
+    loginuser = request.user if request.user.is_authenticated else None
     olaylar = defter.olaylar.order_by('saat')
     # Yeni: kontrol formu ve cevaplarını al
     kontrol_formu = KontrolFormu.objects.filter(nobet_defteri=defter).first()
@@ -181,7 +183,8 @@ def nobet_defteri_pdf(request, defter_id):
         'defter': defter,
         'olaylar': olaylar,
         'kontrol_cevaplar': kontrol_cevaplar,
-        'now': now
+        'now': now,
+        'user': loginuser,
     })
     options = {
         'page-size': 'A4',
@@ -215,11 +218,13 @@ def nobet_defteri_pdf_modal(request, defter_id):
     kontrol_formu = KontrolFormu.objects.filter(nobet_defteri=defter).first()
     kontrol_cevaplar = KontrolCevap.objects.filter(form=kontrol_formu).select_related('soru') if kontrol_formu else []
     now = timezone.now()
+    loginuser = request.user if request.user.is_authenticated else None
     html = render_to_string('nobet_defteri/defter_pdf.html', {
         'defter': defter,
         'olaylar': olaylar,
         'kontrol_cevaplar': kontrol_cevaplar,
-        'now': now
+        'now': now,
+        'user': loginuser,
     })
     options = {
         'page-size': 'A4',

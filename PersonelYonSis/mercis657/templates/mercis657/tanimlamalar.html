@@ -11,6 +11,9 @@
             <button class="nav-link active" id="mesai-tab" data-bs-toggle="tab" data-bs-target="#mesai" type="button" role="tab">Mesai Tanımları</button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="izin-tab" data-bs-toggle="tab" data-bs-target="#izin" type="button" role="tab">İzin Tanımları</button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="kurum-tab" data-bs-toggle="tab" data-bs-target="#kurum" type="button" role="tab">Kurum Tanımları</button>
         </li>
         <li class="nav-item" role="presentation">
@@ -23,6 +26,9 @@
     <div class="tab-content mt-3" id="tanimTabContent">
         <div class="tab-pane fade show active" id="mesai" role="tabpanel">
             {% include "mercis657/mesai_tanimlari.html" %}
+        </div>
+        <div class="tab-pane fade" id="izin" role="tabpanel">
+            {% include "mercis657/izin_tanimlari.html" %}
         </div>
         <div class="tab-pane fade" id="kurum" role="tabpanel">
             {% include "mercis657/kurum_tanimlari.html" %}

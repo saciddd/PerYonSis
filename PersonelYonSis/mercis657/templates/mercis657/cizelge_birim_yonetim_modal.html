@@ -79,8 +79,8 @@
                                 <label for="idareciSecDuzenle" class="form-label">Müdür Yrd.</label>
                                 <select class="form-select" id="idareciSecDuzenle" name="idareci" required>
                                      <option value="">Seçiniz...</option>
-                                     {% for m in mudur_yrdler %}
-                                        <option value="{{ m.id|default:m.pk }}">{{ m.ad }}</option>
+                                     {% for i in idareciler %}
+                                        <option value="{{ i.id|default:i.pk }}">{{ i.ad }}</option>
                                     {% endfor %}
                                 </select>
                             </div>

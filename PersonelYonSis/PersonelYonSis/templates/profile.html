@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Profilim{% endblock %}
+
+{% block content %}
+<div class="row mt-3">
+	<div class="col-md-8">
+		<div class="card">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<h3 class="card-title mb-0">Profil Bilgilerim</h3>
+				<button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+					<i class="bi bi-key"></i> Şifre Değiştir
+				</button>
+			</div>
+			<div class="card-body">
+				<form method="post" action="{% url 'profile' %}">
+					{% csrf_token %}
+					<div class="mb-3">
+						<label class="form-label">Kullanıcı Adı</label>
+						<input type="text" class="form-control" value="{{ request.user.Username }}" disabled>
+					</div>
+					<div class="row">
+						<div class="col-md-6 mb-3">
+							<label for="id_FullName" class="form-label">Ad Soyad</label>
+							{{ form.FullName }}
+						</div>
+						<div class="col-md-6 mb-3">
+							<label for="id_Email" class="form-label">E-posta</label>
+							{{ form.Email }}
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-6 mb-3">
+							<label for="id_Phone" class="form-label">Telefon</label>
+							{{ form.Phone }}
+						</div>
+						<div class="col-md-6 mb-3">
+							<label for="id_Organisation" class="form-label">Kurum/Organizasyon</label>
+							{{ form.Organisation }}
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Kaydet</button>
+				</form>
+			</div>
+		</div>
+	</div>
+	<div class="col-md-4">
+		<div class="card">
+			<div class="card-body d-flex align-items-center">
+				<img src="{% static 'adminlte/img/user2-160x160.png' %}" class="rounded-circle me-3" width="72" height="72" alt="">
+				<div>
+					<div class="fw-semibold">{{ request.user.FullName }}</div>
+					<div class="text-muted small">{{ request.user.Email }}</div>
+					<div class="text-muted small">{{ request.user.Phone }}</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- Şifre Değiştirme Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">Şifre Değiştir</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form method="post" action="{% url 'profile_change_password' %}">
+				{% csrf_token %}
+				<div class="modal-body">
+					<div class="mb-3">
+						<label for="id_old_password" class="form-label">Mevcut Şifre</label>
+						<input type="password" name="old_password" class="form-control" id="id_old_password" required>
+					</div>
+					<div class="mb-3">
+						<label for="id_new_password" class="form-label">Yeni Şifre</label>
+						<input type="password" name="new_password" class="form-control" id="id_new_password" required>
+					</div>
+					<div class="mb-3">
+						<label for="id_confirm_password" class="form-label">Yeni Şifre (Tekrar)</label>
+						<input type="password" name="confirm_password" class="form-control" id="id_confirm_password" required>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+					<button type="submit" class="btn btn-primary">Şifreyi Güncelle</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+{% endblock %}

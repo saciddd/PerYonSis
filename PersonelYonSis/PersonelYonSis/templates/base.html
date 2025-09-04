@@ -156,7 +156,7 @@
                                 <p>{{ request.user.Username }} - {{ request.user.FullName }}</p>
                             </li>
                             <li class="user-footer">
-                                <a href="#" class="btn btn-default btn-flat">Profil</a>
+                                <a href="{% url 'profile' %}" class="btn btn-default btn-flat">Profil</a>
                                 <a href="{% url 'logout' %}" class="btn btn-default btn-flat float-end">Çıkış Yap</a>
                             </li>
                         </ul>

@@ -52,6 +52,5 @@ urlpatterns = [
 
     # İzin işlemleri
     path('izin-ekle/', views.izin_ekle, name='izin_ekle'),
-    path('izin-toggle-aktif/<int:pk>/', views.izin_toggle_aktif, name='izin_toggle_aktif'),
     path('izin-guncelle/<int:pk>/', views.izin_guncelle, name='izin_guncelle'),
 ]

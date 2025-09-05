@@ -763,11 +763,13 @@ def tanimlamalar(request):
     kurumlar = Kurum.objects.all()
     ust_birimler = UstBirim.objects.all()
     idareciler = Idareci.objects.all()
+    izinler = Izin.objects.all()
     mesai_tanimlari = Mesai_Tanimlari.objects.all()
     return render(request, "mercis657/tanimlamalar.html", {
         "kurumlar": kurumlar,
         "ust_birimler": ust_birimler,
         "idareciler": idareciler,
+        "izinler": izinler,
         "mesai_tanimlari": mesai_tanimlari,
     })
 
@@ -818,21 +820,29 @@ def izin_ekle(request):
     try:
         payload = json.loads(request.body.decode('utf-8'))
         ad = payload.get('ad', '').strip()
+        kod_raw = payload.get('kod', None)
+        # normalize kod: boş -> None, sayısal -> int, değilse string
+        kod = None
+        if kod_raw is not None:
+            kod_s = str(kod_raw).strip()
+            if kod_s != '':
+                try:
+                    kod = int(kod_s)
+                except ValueError:
+                    kod = kod_s
+
         if not ad:
             return JsonResponse({'status': 'error', 'message': 'Ad boş olamaz.'})
-        izin = Izin.objects.create(ad=ad)
-        return JsonResponse({'status': 'success', 'id': izin.id})
+        # benzersizlik kontrolleri
+        if Izin.objects.filter(ad__iexact=ad).exists():
+            return JsonResponse({'status': 'error', 'message': 'Bu ad ile izin zaten mevcut.'})
+        if kod is not None and Izin.objects.filter(kod=kod).exists():
+            return JsonResponse({'status': 'error', 'message': 'Bu kod zaten kullanılmış.'})
+
+        izin = Izin.objects.create(ad=ad, kod=kod, aktif=True)
+        return JsonResponse({'status': 'success', 'id': izin.id, 'kod': izin.kod})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
-
-@require_POST
-def izin_toggle_aktif(request, pk):
-    if not request.user.is_authenticated:
-        return JsonResponse({'status': 'error', 'message': 'Yetkisiz'}, status=403)
-    izin = get_object_or_404(Izin, pk=pk)
-    izin.aktif = not izin.aktif
-    izin.save()
-    return JsonResponse({'status': 'success', 'aktif': izin.aktif})
 
 @require_POST
 def izin_guncelle(request, pk):
@@ -842,10 +852,27 @@ def izin_guncelle(request, pk):
     try:
         payload = json.loads(request.body.decode('utf-8'))
         ad = payload.get('ad', '').strip()
+        kod_raw = payload.get('kod', None)
+        kod = None
+        if kod_raw is not None:
+            kod_s = str(kod_raw).strip()
+            if kod_s != '':
+                try:
+                    kod = int(kod_s)
+                except ValueError:
+                    kod = kod_s
+
         if not ad:
             return JsonResponse({'status': 'error', 'message': 'Ad boş olamaz.'})
+        # çakışma kontrolleri (kendisi hariç)
+        if Izin.objects.filter(ad__iexact=ad).exclude(pk=izin.pk).exists():
+            return JsonResponse({'status': 'error', 'message': 'Bu ad başka bir kayıtta kullanılıyor.'})
+        if kod is not None and Izin.objects.filter(kod=kod).exclude(pk=izin.pk).exists():
+            return JsonResponse({'status': 'error', 'message': 'Bu kod başka bir kayıtta kullanılıyor.'})
+
         izin.ad = ad
+        izin.kod = kod
         izin.save()
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'success', 'id': izin.id, 'kod': izin.kod})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})

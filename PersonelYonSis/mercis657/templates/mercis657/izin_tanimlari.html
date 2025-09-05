@@ -1,31 +1,39 @@
 <div>
     <h5>İzin Tanımları</h5>
     <form id="izinEkleForm" class="mb-3">
-        <div class="input-group">
-            <input type="text" class="form-control" name="ad" placeholder="Yeni izin adı..." required>
-            <button class="btn btn-success" type="submit">Ekle</button>
+        <div class="row g-2">
+            <div class="col">
+                <input type="text" class="form-control" name="ad" placeholder="Yeni izin adı..." required>
+            </div>
+            <div class="col-auto">
+                <select id="izinKodSelect" class="form-select">
+                    <!-- frontend'te kolayca düzenleyebilmeniz için sabit seçenekler -->
+                    <option value="1">Yıllık İzin &raquo; 1</option>
+                    <option value="5">Tek Hekim Raporu &raquo; 5</option>
+                    <option value="2">Diğer &raquo; 2</option>
+                    <option value="7">Kongre İzni &raquo; 7</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-success" type="submit">Ekle</button>
+            </div>
         </div>
     </form>
     <table class="table table-sm table-bordered">
         <thead>
             <tr>
                 <th>İzin Adı</th>
-                <th>Aktif</th>
+                <th>İzin Kodu</th>
                 <th>İşlem</th>
             </tr>
         </thead>
         <tbody>
             {% for izin in izinler %}
-            <tr>
-                <td>{{ izin.ad }}</td>
-                <td>
-                    <input type="checkbox" {% if izin.aktif %}checked{% endif %} disabled>
-                </td>
-                <td>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="editIzin({{ izin.id }}, '{{ izin.ad|escapejs }}')"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn-outline-warning btn-sm" onclick="toggleIzinAktif({{ izin.id }}, this)">
-                        <i class="bi bi-toggle-{% if izin.aktif %}on{% else %}off{% endif %}"></i> {% if izin.aktif %}Pasif Yap{% else %}Aktif Yap{% endif %}
-                    </button>
+            <tr data-izin-id="{{ izin.id }}">
+                <td class="izin-ad">{{ izin.ad }}</td>
+                <td class="izin-kod">{{ izin.kod }}</td>
+                <td class="izin-actions">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="startEditIzin(this, {{ izin.id }}, '{{ izin.ad|escapejs }}', '{{ izin.kod }}')"><i class="bi bi-pencil"></i></button>
                 </td>
             </tr>
             {% endfor %}
@@ -33,39 +41,146 @@
     </table>
 </div>
 <script>
-document.getElementById('izinEkleForm').onsubmit = function(e) {
-    e.preventDefault();
-    const input = this.querySelector('input[name="ad"]');
-    fetch("{% url 'mercis657:izin_ekle' %}", {
-        method: 'POST',
-        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
-        body: JSON.stringify({ad: input.value})
-    })
-    .then(resp => resp.json())
-    .then(data => {
-        if (data.status === 'success') location.reload();
-        else alert(data.message || 'İzin eklenemedi.');
+const KOD_SECENEKLER = [
+    {value: '1', label: 'Yıllık İzin'},
+    {value: '5', label: 'Tek Hekim Raporu'},
+    {value: '2', label: 'Diğer'},
+    {value: '7', label: 'Kongre İzni'}
+];
+
+function buildKodSelect(selected) {
+    const sel = document.createElement('select');
+    sel.className = 'form-select form-select-sm';
+    sel.style.minWidth = '140px';
+    KOD_SECENEKLER.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt.value;
+        o.textContent = opt.label + ' » ' + opt.value;
+        if (String(opt.value) === String(selected)) o.selected = true;
+        sel.appendChild(o);
     });
-};
-function toggleIzinAktif(id, btn) {
-    fetch("{% url 'mercis657:izin_toggle_aktif' 0 %}".replace('0', id), {
-        method: 'POST',
-        headers: {'X-CSRFToken': '{{ csrf_token }}'}
-    }).then(resp => resp.json()).then(data => {
-        if (data.status === 'success') location.reload();
-        else alert(data.message || 'İşlem başarısız.');
+    // allow custom numeric entry
+    const other = document.createElement('option');
+    other.value = '__other__';
+    other.textContent = 'Diğer (Elle gir)';
+    if (!KOD_SECENEKLER.find(o => String(o.value) === String(selected)) && selected !== '' && selected !== 'None') {
+        other.selected = true;
+    }
+    sel.appendChild(other);
+    // If other selected show input
+    sel.addEventListener('change', function() {
+        const parent = sel.parentElement;
+        let otherInput = parent.querySelector('.kod-other-input');
+        if (sel.value === '__other__') {
+            if (!otherInput) {
+                otherInput = document.createElement('input');
+                otherInput.type = 'text';
+                otherInput.className = 'form-control form-control-sm kod-other-input';
+                otherInput.placeholder = 'Kod giriniz';
+                otherInput.value = (String(selected) && sel.querySelector('option[selected]') && sel.querySelector('option[selected]').value==='__other__') ? selected : '';
+                parent.appendChild(otherInput);
+            }
+        } else if (otherInput) {
+            otherInput.remove();
+        }
     });
+    return sel;
 }
-function editIzin(id, ad) {
-    const yeniAd = prompt('Yeni izin adı:', ad);
-    if (!yeniAd || yeniAd.trim() === ad) return;
-    fetch("{% url 'mercis657:izin_guncelle' 0 %}".replace('0', id), {
-        method: 'POST',
-        headers: {'X-CSRFToken': '{{ csrf_token }}', 'Content-Type': 'application/json'},
-        body: JSON.stringify({ad: yeniAd})
-    }).then(resp => resp.json()).then(data => {
-        if (data.status === 'success') location.reload();
-        else alert(data.message || 'İzin güncellenemedi.');
+
+function csrfToken() {
+    return '{{ csrf_token }}';
+}
+
+function startEditIzin(button, id, ad, kod) {
+    const tr = button.closest('tr');
+    // prevent multiple edits
+    if (tr.dataset.editing === '1') return;
+    tr.dataset.editing = '1';
+
+    const tdAd = tr.querySelector('.izin-ad');
+    const tdKod = tr.querySelector('.izin-kod');
+    const tdActions = tr.querySelector('.izin-actions');
+
+    const origAd = tdAd.textContent.trim();
+    const origKod = tdKod.textContent.trim();
+
+    // create inputs
+    const inputAd = document.createElement('input');
+    inputAd.type = 'text';
+    inputAd.className = 'form-control form-control-sm';
+    inputAd.value = ad;
+
+    const kodWrapper = document.createElement('div');
+    kodWrapper.style.display = 'inline-block';
+    kodWrapper.style.minWidth = '160px';
+    const selectKod = buildKodSelect(kod);
+    kodWrapper.appendChild(selectKod);
+    // if initial kod is custom, create other input
+    if (!KOD_SECENEKLER.find(o => String(o.value) === String(kod)) && String(kod) !== '' && String(kod) !== 'None') {
+        const otherInput = document.createElement('input');
+        otherInput.type = 'text';
+        otherInput.className = 'form-control form-control-sm kod-other-input';
+        otherInput.placeholder = 'Kod giriniz';
+        otherInput.value = kod;
+        kodWrapper.appendChild(otherInput);
+    }
+
+    // save / cancel buttons
+    tdActions.innerHTML = '';
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-success btn-sm me-1';
+    saveBtn.textContent = 'Kaydet';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn btn-secondary btn-sm';
+    cancelBtn.textContent = 'İptal';
+
+    tdAd.innerHTML = '';
+    tdAd.appendChild(inputAd);
+    tdKod.innerHTML = '';
+    tdKod.appendChild(kodWrapper);
+    tdActions.appendChild(saveBtn);
+    tdActions.appendChild(cancelBtn);
+
+    cancelBtn.addEventListener('click', function() {
+        tdAd.textContent = origAd;
+        tdKod.textContent = origKod;
+        tdActions.innerHTML = `<button class="btn btn-outline-secondary btn-sm" onclick="startEditIzin(this, ${id}, '${ad.replace(/'/g,"\\'")}', '${kod}')"><i class="bi bi-pencil"></i></button>`;
+        tr.dataset.editing = '0';
+    });
+
+    saveBtn.addEventListener('click', function() {
+        let yeniAd = inputAd.value.trim();
+        // kod: if '__other__' selected, read other input, else selected value
+        let selVal = selectKod.value;
+        let yeniKod = null;
+        if (selVal === '__other__') {
+            const otherInput = kodWrapper.querySelector('.kod-other-input');
+            yeniKod = otherInput ? otherInput.value.trim() : '';
+        } else {
+            yeniKod = selVal;
+        }
+        // validation
+        if (!yeniAd) {
+            alert('İzin adı boş olamaz.');
+            return;
+        }
+        // send update
+        fetch("{% url 'mercis657:izin_guncelle' 0 %}".replace('0', id), {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrfToken(), 'Content-Type': 'application/json'},
+            body: JSON.stringify({ad: yeniAd, kod: yeniKod})
+        }).then(resp => resp.json()).then(data => {
+            if (data.status === 'success') {
+                tdAd.textContent = yeniAd;
+                tdKod.textContent = data.kod !== null && data.kod !== undefined ? data.kod : '';
+                tdActions.innerHTML = `<button class="btn btn-outline-secondary btn-sm" onclick="startEditIzin(this, ${id}, '${yeniAd.replace(/'/g,"\\'")}', '${data.kod !== null && data.kod !== undefined ? data.kod : ''}')"><i class="bi bi-pencil"></i></button>`;
+                tr.dataset.editing = '0';
+            } else {
+                alert(data.message || 'Güncelleme başarısız.');
+            }
+        }).catch(err => {
+            alert('Sunucu hatası: ' + err);
+        });
     });
 }
 </script>

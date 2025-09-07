@@ -68,6 +68,7 @@ class PersonelListesi(models.Model):
 class PersonelListesiKayit(models.Model):
     liste = models.ForeignKey(PersonelListesi, on_delete=models.CASCADE, related_name='kayitlar')
     personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
+    radyasyon_calisani = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('liste', 'personel')
@@ -156,3 +157,37 @@ class Izin(models.Model):
 
     def __str__(self):
         return self.ad
+
+class MazeretKaydi(models.Model):
+    personel = models.ForeignKey('Personel', on_delete=models.CASCADE, related_name='mazeret_kayitlari')
+    baslangic_tarihi = models.DateField()
+    bitis_tarihi = models.DateField()
+    gunluk_azaltim_saat = models.DecimalField(max_digits=4, decimal_places=2, help_text="Günlük azaltım saati (örn: 3.00, 1.50)")
+    aciklama = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Mazeret Kaydı"
+        verbose_name_plural = "Mazeret Kayıtları"
+
+    def __str__(self):
+        return f"{self.personel.PersonelName} - {self.baslangic_tarihi} / {self.bitis_tarihi}"
+
+class ResmiTatil(models.Model):
+    TatilID = models.AutoField(primary_key=True)
+    TatilTarihi = models.DateField()
+    Aciklama = models.CharField(max_length=200)
+    TatilTipi = models.CharField(
+        max_length=10,
+        choices=[('TAM', 'Tam Gün'), ('YARIM', 'Yarım Gün')],
+        default='TAM'
+    )
+    BayramMi = models.BooleanField(default=False)
+    ArefeMi = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['TatilTarihi']
+
+    def __str__(self):
+        return f"{self.TatilTarihi.strftime('%d.%m.%Y')} - {self.Aciklama}"

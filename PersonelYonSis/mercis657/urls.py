@@ -44,6 +44,10 @@ urlpatterns = [
     path('onceki-donem-personel/<int:year>/<int:month>/<int:birim_id>/', views.onceki_donem_personel, name='onceki_donem_personel'),
     path('personel/kaydet/', views.personel_kaydet, name='personel_kaydet'),
     path('cizelge/yazdir/', views.cizelge_yazdir, name='cizelge_yazdir'),
+    path('cizelge-onay/', views.cizelge_onay, name='cizelge_onay'),
+    path('mesai-onayla/<int:mesai_id>/', views.mesai_onayla, name='mesai_onayla'),
+    path('mesai-reddet/<int:mesai_id>/', views.mesai_reddet, name='mesai_reddet'),
+    path('toplu-onay/<int:birim_id>/<int:year>/<int:month>/', views.toplu_onay, name='toplu_onay'),
     path('tanimlamalar/', views.tanimlamalar, name='tanimlamalar'),
 
     path('idareci-toggle-aktif/<int:pk>/', views.idareci_toggle_aktif, name='idareci_toggle_aktif'),
@@ -53,4 +57,17 @@ urlpatterns = [
     # İzin işlemleri
     path('izin-ekle/', views.izin_ekle, name='izin_ekle'),
     path('izin-guncelle/<int:pk>/', views.izin_guncelle, name='izin_guncelle'),
+    
+    # Personel profil ve mazeret işlemleri
+    path('personel-profil/<int:personel_id>/<int:liste_id>/<int:year>/<int:month>/', views.personel_profil, name='personel_profil'),
+    path('mazeret-ekle/', views.mazeret_ekle, name='mazeret_ekle'),
+    path('mazeret-guncelle/<int:mazeret_id>/', views.mazeret_guncelle, name='mazeret_guncelle'),
+    path('mazeret-sil/<int:mazeret_id>/', views.mazeret_sil, name='mazeret_sil'),
+    path('radyasyon-toggle/<int:personel_id>/<int:liste_id>/', views.radyasyon_toggle, name='radyasyon_toggle'),
+    path('hazir-mesai-ata/<int:personel_id>/<int:liste_id>/<int:year>/<int:month>/', views.hazir_mesai_ata, name='hazir_mesai_ata'),
+    
+    # Toplu işlemler
+    path('toplu-islem/<int:liste_id>/<int:year>/<int:month>/', views.toplu_islem, name='toplu_islem'),
+    path('toplu-radyasyon-ata/<int:liste_id>/', views.toplu_radyasyon_ata, name='toplu_radyasyon_ata'),
+    path('toplu-mesai-ata/<int:liste_id>/<int:year>/<int:month>/', views.toplu_mesai_ata, name='toplu_mesai_ata'),
 ]

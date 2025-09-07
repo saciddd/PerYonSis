@@ -155,7 +155,7 @@ def cizelge(request):
         Personel__in=personeller,
         MesaiDate__year=current_year,
         MesaiDate__month=current_month
-    ).select_related('MesaiTanim', 'Izin')
+    ).select_related('MesaiTanim', 'Izin').prefetch_related('yedekler')
 
     # Gün listesi
     days_in_month = calendar.monthrange(current_year, current_month)[1]
@@ -172,12 +172,16 @@ def cizelge(request):
     mesai_map = {}
     for mesai in mesailer:
         key = f"{mesai.Personel.PersonelID}_{mesai.MesaiDate.strftime('%Y-%m-%d')}"
+        last_backup = mesai.yedekler.order_by('-created_at').first()
         mesai_map[key] = {
             "MesaiID": mesai.MesaiID,
             "MesaiTanimID": mesai.MesaiTanim.id if mesai.MesaiTanim else None,
             "IzinID": mesai.Izin.id if mesai.Izin else None,
             "Saat": mesai.MesaiTanim.Saat if mesai.MesaiTanim else "",
-            "IzinAd": mesai.Izin.ad if mesai.Izin else ""
+            "IzinAd": mesai.Izin.ad if mesai.Izin else "",
+            "Degisiklik": mesai.Degisiklik,
+            "PrevSaat": (last_backup.MesaiTanim.Saat if (last_backup and last_backup.MesaiTanim) else ""),
+            "PrevIzinAd": (last_backup.Izin.ad if (last_backup and last_backup.Izin) else "")
         }
 
     # Personel nesnesine mesai bilgisi ekleyelim
@@ -190,7 +194,10 @@ def cizelge(request):
                 "MesaiTanimID": None,
                 "IzinID": None,
                 "Saat": "",
-                "IzinAd": ""
+                "IzinAd": "",
+                "Degisiklik": False,
+                "PrevSaat": "",
+                "PrevIzinAd": ""
             })
             mesai_info["MesaiDate"] = day['full_date']
             p.mesai_data.append(mesai_info)

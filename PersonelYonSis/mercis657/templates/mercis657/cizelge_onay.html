@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Çizelge Onay{% endblock %}
+{% block content %}
+<div class="container mt-3">
+  <h5>Bekleyen Çizelgeler</h5>
+  <form class="row g-2 mb-3" method="get">
+    <div class="col-auto">
+      <label class="form-label small">Yıl</label>
+      <select name="year" class="form-select form-select-sm">
+        {% for y in years %}
+        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <label class="form-label small">Ay</label>
+      <select name="month" class="form-select form-select-sm">
+        {% for m in months %}
+        <option value="{{ m.value }}" {% if m.value == month %}selected{% endif %}>{{ m.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <label class="form-label small">Üst Birim</label>
+      <select name="ust_birim" class="form-select form-select-sm">
+        <option value="">Tümü</option>
+        {% for ub in ust_birimler %}
+        <option value="{{ ub.id }}" {% if ust_birim_id and ub.id == ust_birim_id %}selected{% endif %}>{{ ub.ad }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto align-self-end">
+      <button class="btn btn-primary btn-sm" type="submit">Filtrele</button>
+    </div>
+  </form>
+
+  <div class="row">
+    {% for c in cards %}
+    <div class="col-md-4">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title">{{ c.birim.BirimAdi }}</h6>
+          <p class="card-text">Dönem: {{ c.ay }}/{{ c.yil }}</p>
+          <p class="card-text">Bekleyen Değişiklik: <strong>{{ c.count }}</strong></p>
+          <a class="btn btn-outline-primary btn-sm" href="{% url 'mercis657:cizelge' %}?birim_id={{ c.birim.BirimID }}&donem={{ c.yil }}/{{ c.ay|stringformat:"02d" }}&approval=1">Çizelgeyi Görüntüle</a>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-12"><div class="alert alert-info">Bekleyen çizelge bulunmuyor.</div></div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script></script>
+{% endblock %}
+
+

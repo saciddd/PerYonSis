@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Resmi Tatil Tanımları{% endblock %}
+{% block content %}
+<div class="container mt-3">
+    <h5>Resmi Tatil Tanımları</h5>
+    <form id="resmiTatilForm" method="post" action="{% url 'mercis657:resmi_tatil_ekle' %}">
+        {% csrf_token %}
+        <div class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small">Tarih</label>
+                <input type="date" name="tarih" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-auto">
+                <label class="form-label small">Açıklama</label>
+                <input type="text" name="aciklama" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary btn-sm">Ekle</button>
+            </div>
+        </div>
+    </form>
+
+    <hr>
+
+    <div class="mt-2">
+        <table class="table table-sm table-striped">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tarih</th>
+                    <th>Açıklama</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tatil in tatiller %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ tatil.tarih }}</td>
+                    <td>{{ tatil.aciklama }}</td>
+                    <td>
+                        <form method="post" action="{% url 'mercis657:resmi_tatil_sil' tatil.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger" type="submit">Sil</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-muted">Kayıt yok</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

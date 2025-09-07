@@ -22,6 +22,9 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="mudur-tab" data-bs-toggle="tab" data-bs-target="#mudur" type="button" role="tab">Müdür Yardımcıları</button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="resmi-tatil-tab" data-bs-toggle="tab" data-bs-target="#resmiTatil" type="button" role="tab">Resmi Tatil Tanımları</button>
+        </li>
     </ul>
     <div class="tab-content mt-3" id="tanimTabContent">
         <div class="tab-pane fade show active" id="mesai" role="tabpanel">
@@ -38,6 +41,9 @@
         </div>
         <div class="tab-pane fade" id="mudur" role="tabpanel">
             {% include "mercis657/mudur_tanimlari.html" %}
+        </div>
+        <div class="tab-pane fade" id="resmiTatil" role="tabpanel">
+            {% include "mercis657/resmitatil_tanimlari.html" %}
         </div>
     </div>
 </div>

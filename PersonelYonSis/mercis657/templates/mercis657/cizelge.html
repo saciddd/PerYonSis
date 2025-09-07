@@ -39,7 +39,7 @@
             </div>
     </form>
             <!-- Mesai/İzin Seçimi ve Alanı Boşalt -->
-            <div class="col-md-4">
+            <div class="col-md-4" id="editControls">
                 <div class="row">
                     <div class="col-md-5">
                         <label for="mesaiSelection">Mesai Seçimi</label>
@@ -67,13 +67,18 @@
                     </div>
                 </div>
             </div>
-            <!-- Yazdır ve Kaydet -->
+            <!-- Yazdır ve Kaydet / Tümünü Onayla -->
             <div class="col-md-2 text-end">
                 <br>
                 <button type="button" class="btn btn-outline-primary btn-sm" id="btnYazdir">
                     <i class="bi bi-printer"></i> Yazdır
                 </button>
                 <button type="button" class="btn btn-success btn-sm" id="saveButton">Kaydet</button>
+                <button type="button" class="btn btn-primary btn-sm d-none" id="approveAllButton">Tümünü Onayla</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="topluIslemButton" 
+                        data-bs-toggle="modal" data-bs-target="#topluIslemModal">
+                    <i class="bi bi-gear"></i> Toplu İşlemler
+                </button>
             </div>
         </div>
 
@@ -102,16 +107,29 @@
             <tr>
                 <!-- Satır Numarası -->
                 <td>{{ forloop.counter }}</td>
-                <td>{{ personel.PersonelName }}</td>
+                <td>
+                    {{ personel.PersonelName }}
+                    <i class="bi bi-person-circle text-primary ms-1" 
+                       style="cursor: pointer; font-size: 0.9em;" 
+                       onclick="openPersonelProfil({{ personel.PersonelID }}, {{ liste.id }}, {{ current_year }}, {{ current_month }})"
+                       title="Personel Profili"></i>
+                </td>
                 <td>{{ personel.PersonelTitle }}</td>
                 {% for mesai in personel.mesai_data %}
                 <td contenteditable="true"
                     class="mesai-cell {% if mesai.Saat or mesai.IzinAd %}has-value{% endif %} {% if day.is_weekend %}weekend{% endif %}"
                     data-personel-id="{{ personel.PersonelID }}"
                     data-date="{{ mesai.MesaiDate }}"
+                    data-mesai-pk="{{ mesai.MesaiID|default:'' }}"
                     data-mesai-id="{{ mesai.MesaiTanimID|default:'' }}"
-                    data-izin-id="{{ mesai.IzinID|default:'' }}">
+                    data-izin-id="{{ mesai.IzinID|default:'' }}"
+                    data-degisiklik="{{ mesai.Degisiklik|yesno:'1,0' }}"
+                    data-prev-saat="{{ mesai.PrevSaat }}"
+                    data-prev-izin="{{ mesai.PrevIzinAd }}">
                     {{ mesai.Saat|default:mesai.IzinAd }}
+                    {% if mesai.Degisiklik %}
+                      <i class="bi bi-check-circle text-danger float-end" title="Onay bekleyen mesai. Önceki: {{ mesai.PrevSaat|default:mesai.PrevIzinAd }} | Talep edilen: {{ mesai.Saat|default:mesai.IzinAd }}"></i>
+                    {% endif %}
                 </td>
                 {% endfor %}
             </tr>
@@ -128,6 +146,12 @@
 {% include "mercis657/cizelge_birim_yonetim_modal.html" %}
 {% include "mercis657/cizelge_personel_ekle_modal.html" %}
 
+<!-- Personel Profil Modal -->
+<div id="personelProfilContainer"></div>
+
+<!-- Toplu İşlem Modal -->
+<div id="topluIslemContainer"></div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -139,6 +163,36 @@
     document.getElementById('selectBirim').addEventListener('change', function() {
         document.getElementById('filterForm').submit();
     });
+
+    // Approval mod kontrolü: URL'de approval=1 ise edit kontrolleri gizle, Tümünü Onayla göster
+    const params = new URLSearchParams(window.location.search);
+    const isApproval = params.get('approval') === '1';
+    const editControls = document.getElementById('editControls');
+    const saveButton = document.getElementById('saveButton');
+    const approveAllButton = document.getElementById('approveAllButton');
+    const topluIslemButton = document.getElementById('topluIslemButton');
+    
+    if (isApproval) {
+        editControls.classList.add('d-none');
+        saveButton.classList.add('d-none');
+        topluIslemButton.classList.add('d-none');
+        approveAllButton.classList.remove('d-none');
+        // Yönetim butonlarını gizle
+        const btnYonetim = document.getElementById('btnBirimYonetim');
+        const btnPerEkle = document.getElementById('btnPersonelEkle');
+        if (btnYonetim) btnYonetim.classList.add('d-none');
+        if (btnPerEkle) btnPerEkle.classList.add('d-none');
+
+        // approval parametresini forma ekle ki değişince de kalsın
+        const form = document.getElementById('filterForm');
+        if (form && !form.querySelector('input[name="approval"]')) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'approval';
+            hidden.value = '1';
+            form.appendChild(hidden);
+        }
+    }
 
     // Mesai/İzin/Alanı Boşalt davranışı
     const mesaiSelect = document.getElementById('mesaiSelection');
@@ -163,35 +217,62 @@
         }
     });
 
-    // Hücreye tıklayınca mesai/izin/boşalt işlemi
+    // Hücreye tıklama: approval modda tekil onay/red; normal modda düzenleme
     document.querySelectorAll('.mesai-cell').forEach(function (cell) {
-        cell.addEventListener('click', function () {
+        cell.addEventListener('click', function (e) {
+            if (isApproval) {
+                const deg = cell.dataset.degisiklik === '1';
+                const mesaiPk = cell.dataset.mesaiPk;
+                if (!deg || !mesaiPk) { return; }
+                const prev = (cell.dataset.prevSaat && cell.dataset.prevSaat.trim()!=='') ? cell.dataset.prevSaat : (cell.dataset.prevIzin || '');
+                const curr = (cell.innerText && cell.innerText.trim()!=='') ? cell.innerText.trim() : '';
+                if (window.Swal) {
+                    Swal.fire({
+                        title: 'Mesai Değişikliği',
+                        html: `Önceki: <b>${prev||'-'}</b><br/>Talep edilen: <b>${curr||'-'}</b>`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        showDenyButton: true,
+                        confirmButtonText: 'Onayla',
+                        denyButtonText: 'Reddet',
+                        cancelButtonText: 'Vazgeç'
+                    }).then((res)=>{
+                        if (res.isConfirmed) {
+                            fetch(`{% url 'mercis657:mesai_onayla' 0 %}`.replace('/0/','/'+mesaiPk+'/'), { method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}})
+                              .then(r=>r.json()).then(d=>{ if(d.status==='success'){ location.reload(); } else { Swal.fire('Hata', d.message||'İşlem başarısız', 'error'); }})
+                              .catch(err=>Swal.fire('Hata', err.toString(),'error'));
+                        } else if (res.isDenied) {
+                            fetch(`{% url 'mercis657:mesai_reddet' 0 %}`.replace('/0/','/'+mesaiPk+'/'), { method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}})
+                              .then(r=>r.json()).then(d=>{ if(d.status==='success'){ location.reload(); } else { Swal.fire('Hata', d.message||'İşlem başarısız', 'error'); }})
+                              .catch(err=>Swal.fire('Hata', err.toString(),'error'));
+                        }
+                    });
+                }
+                return;
+            }
+
+            // Normal mod: düzenleme akışı
             let mesaiVal = mesaiSelect.value;
             let izinVal = izinSelect.value;
             let bosalt = alanBosalt.checked;
-            
             if (bosalt) {
-                // Alanı Boşalt: Hem MesaiTanim hem de Izin alanlarını boşalt
                 cell.innerText = "";
                 cell.setAttribute('data-mesai-id', "");
                 cell.setAttribute('data-izin-id', "");
                 cell.classList.remove('has-value');
             } else if (mesaiVal) {
-                // Mesai seçimi: MesaiTanim doldur, Izin boşalt
                 let text = mesaiSelect.options[mesaiSelect.selectedIndex].text;
                 cell.innerText = text;
                 cell.setAttribute('data-mesai-id', mesaiVal.replace('mesai_', ''));
                 cell.setAttribute('data-izin-id', "");
                 cell.classList.add('has-value');
             } else if (izinVal) {
-                // İzin seçimi: Izin doldur, MesaiTanim boşalt
                 let text = izinSelect.options[izinSelect.selectedIndex].text;
                 cell.innerText = text;
                 cell.setAttribute('data-izin-id', izinVal.replace('izin_', ''));
                 cell.setAttribute('data-mesai-id', "");
                 cell.classList.add('has-value');
             }
-            // Tıklama işleminden sonra imleci gizle
             cell.blur();
         });
     });
@@ -206,6 +287,36 @@
         }
         // Şimdilik endpoint boş, ileride PDF şablonu ile doldurulacak
         window.open(`/mercis657/cizelge/yazdir/?donem=${donem}&birim_id=${birimId}`, '_blank');
+    });
+
+    // Tümünü Onayla (approval modu)
+    document.getElementById('approveAllButton').addEventListener('click', function() {
+        const birimId = document.getElementById('selectBirim').value;
+        const donem = document.getElementById('selectDonem').value; // YYYY/MM
+        if (!birimId || !donem) return;
+        const [year, month] = donem.split('/');
+        if (window.Swal) {
+            Swal.fire({
+                title: 'Tümünü onayla?',
+                text: 'Bu dönem için bekleyen tüm değişiklikler onaylanacak.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Evet, onayla',
+                cancelButtonText: 'Vazgeç'
+            }).then((result)=>{
+                if (result.isConfirmed) {
+                    fetch(`{% url 'mercis657:toplu_onay' 0 0 0 %}`.replace('/0/0/0/','/'+birimId+'/'+year+'/'+month+'/'),{
+                        method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}
+                    }).then(r=>r.json()).then(d=>{
+                        if (d.status==='success') {
+                            Swal.fire('Onaylandı','Tüm bekleyenler onaylandı.','success').then(()=>location.reload());
+                        } else {
+                            Swal.fire('Hata', d.message||'İşlem başarısız', 'error');
+                        }
+                    }).catch(e=>Swal.fire('Hata', e.toString(), 'error'));
+                }
+            });
+        }
     });
 
     // Kaydet butonu (örnek, backend ile uyarlayın)
@@ -328,6 +439,38 @@
                 alert('İstek hatası: ' + err);
             }
         });
+    });
+
+    // Personel profil modalını aç
+    function openPersonelProfil(personelId, listeId, year, month) {
+        fetch(`{% url 'mercis657:personel_profil' 0 0 0 0 %}`.replace('/0/0/0/0/', `/${personelId}/${listeId}/${year}/${month}/`))
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('personelProfilContainer').innerHTML = html;
+                const modal = new bootstrap.Modal(document.getElementById('personelProfilModal'));
+                modal.show();
+            })
+            .catch(err => alert('Hata: ' + err));
+    }
+
+    // Toplu işlem modalını aç
+    document.getElementById('topluIslemButton').addEventListener('click', function() {
+        const birimId = document.getElementById('selectBirim').value;
+        const donem = document.getElementById('selectDonem').value;
+        if (!birimId || !donem) {
+            alert('Lütfen birim ve dönem seçiniz.');
+            return;
+        }
+        const [year, month] = donem.split('/');
+        
+        fetch(`{% url 'mercis657:toplu_islem' 0 0 0 %}`.replace('/0/0/0/', `/${birimId}/${year}/${month}/`))
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('topluIslemContainer').innerHTML = html;
+                const modal = new bootstrap.Modal(document.getElementById('topluIslemModal'));
+                modal.show();
+            })
+            .catch(err => alert('Hata: ' + err));
     });
 </script>
 <style>

@@ -4,3 +4,4 @@ from .birim_views import *
 from .personel_views import *
 from .izin_views import *
 from .mesai_views import *
+from .mazeret_views import *

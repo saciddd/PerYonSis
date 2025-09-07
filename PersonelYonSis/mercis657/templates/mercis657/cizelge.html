@@ -106,13 +106,12 @@
                 <td>{{ personel.PersonelTitle }}</td>
                 {% for mesai in personel.mesai_data %}
                 <td contenteditable="true"
-                    class="mesai-cell {% if mesai.Saat %}has-value{% endif %} {% if day.is_weekend %}weekend{% endif %}"
+                    class="mesai-cell {% if mesai.Saat or mesai.IzinAd %}has-value{% endif %} {% if day.is_weekend %}weekend{% endif %}"
                     data-personel-id="{{ personel.PersonelID }}"
                     data-date="{{ mesai.MesaiDate }}"
-                    data-mesai-id="{{ mesai.MesaiID|default:'' }}"
+                    data-mesai-id="{{ mesai.MesaiTanimID|default:'' }}"
                     data-izin-id="{{ mesai.IzinID|default:'' }}">
-                    {{ mesai.Saat }}
-                    <!-- mesai.Saat|default:mesai.IzinAd -->
+                    {{ mesai.Saat|default:mesai.IzinAd }}
                 </td>
                 {% endfor %}
             </tr>
@@ -170,20 +169,27 @@
             let mesaiVal = mesaiSelect.value;
             let izinVal = izinSelect.value;
             let bosalt = alanBosalt.checked;
+            
             if (bosalt) {
+                // Alanı Boşalt: Hem MesaiTanim hem de Izin alanlarını boşalt
                 cell.innerText = "";
                 cell.setAttribute('data-mesai-id', "");
                 cell.setAttribute('data-izin-id', "");
+                cell.classList.remove('has-value');
             } else if (mesaiVal) {
+                // Mesai seçimi: MesaiTanim doldur, Izin boşalt
                 let text = mesaiSelect.options[mesaiSelect.selectedIndex].text;
                 cell.innerText = text;
                 cell.setAttribute('data-mesai-id', mesaiVal.replace('mesai_', ''));
                 cell.setAttribute('data-izin-id', "");
+                cell.classList.add('has-value');
             } else if (izinVal) {
+                // İzin seçimi: Izin doldur, MesaiTanim boşalt
                 let text = izinSelect.options[izinSelect.selectedIndex].text;
                 cell.innerText = text;
                 cell.setAttribute('data-izin-id', izinVal.replace('izin_', ''));
                 cell.setAttribute('data-mesai-id', "");
+                cell.classList.add('has-value');
             }
             // Tıklama işleminden sonra imleci gizle
             cell.blur();
@@ -210,8 +216,12 @@
         const date = cell.dataset.date;
         if (!pid || !date) return;
         const key = `${pid}_${date}`;
-        const val = cell.dataset.mesaiId || cell.dataset.izinId || null;
-        initialMap[key] = val ? String(val) : null;
+        const mesaiId = cell.dataset.mesaiId || null;
+        const izinId = cell.dataset.izinId || null;
+        initialMap[key] = JSON.stringify({
+            mesaiId: mesaiId ? String(mesaiId) : null,
+            izinId: izinId ? String(izinId) : null
+        });
     });
 
     function getCookie(name) {
@@ -236,12 +246,23 @@
             const date = cell.dataset.date;
             if (!pid || !date) return;
             const key = `${pid}_${date}`;
-            const current = cell.dataset.mesaiId || cell.dataset.izinId || null;
-            const curStr = current ? String(current) : null;
-            const orig = initialMap[key] !== undefined ? initialMap[key] : null;
-            if (curStr !== orig) {
-                // gönderilecek değeri number veya null yap
-                changes[key] = curStr ? Number(curStr) : null;
+            
+            // Mevcut değerleri al
+            const currentMesaiId = cell.dataset.mesaiId || null;
+            const currentIzinId = cell.dataset.izinId || null;
+            
+            // Orijinal değerleri al
+            const origData = initialMap[key] ? JSON.parse(initialMap[key]) : {mesaiId: null, izinId: null};
+            
+            // Değişiklik var mı kontrol et
+            const mesaiChanged = currentMesaiId !== origData.mesaiId;
+            const izinChanged = currentIzinId !== origData.izinId;
+            
+            if (mesaiChanged || izinChanged) {
+                changes[key] = {
+                    mesaiId: currentMesaiId ? Number(currentMesaiId) : null,
+                    izinId: currentIzinId ? Number(currentIzinId) : null
+                };
             }
         });
 
@@ -268,7 +289,10 @@
             if (body.status === 'success') {
                 // Başarılıysa başlangıç durumunu güncelle
                 Object.keys(changes).forEach(k => {
-                    initialMap[k] = changes[k] !== null ? String(changes[k]) : null;
+                    initialMap[k] = JSON.stringify({
+                        mesaiId: changes[k].mesaiId ? String(changes[k].mesaiId) : null,
+                        izinId: changes[k].izinId ? String(changes[k].izinId) : null
+                    });
                 });
                 if (window.Swal) {
                     Swal.fire({ icon: 'success', title: 'Kaydedildi', text: 'Çizelge başarıyla kaydedildi.' });

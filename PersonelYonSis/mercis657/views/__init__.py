@@ -1,0 +1,6 @@
+from .main_views import *
+from .cizelge_edit_views import *
+from .birim_views import *
+from .personel_views import *
+from .izin_views import *
+from .mesai_views import *

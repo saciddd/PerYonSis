@@ -1,11 +1,11 @@
 from django.urls import path
-from . import views, views_cizelge_edit
+from . import views
 
 app_name = 'mercis657'  # Namespace tanımlaması
 
 urlpatterns = [
     path('cizelge', views.cizelge, name='cizelge'),
-    path('cizelge_kaydet', views_cizelge_edit.cizelge_kaydet, name='cizelge_kaydet'),
+    path('cizelge_kaydet', views.cizelge_kaydet, name='cizelge_kaydet'),
     path('export_excel/', views.excel_export, name='export_excel'),
     path('personeller', views.personeller, name='personeller'),
     path('personel-ekle-form/', views.personel_ekle_form, name='personel_ekle_form'),
@@ -43,7 +43,7 @@ urlpatterns = [
 
     path('onceki-donem-personel/<int:year>/<int:month>/<int:birim_id>/', views.onceki_donem_personel, name='onceki_donem_personel'),
     path('personel/kaydet/', views.personel_kaydet, name='personel_kaydet'),
-    path('cizelge/yazdir/', views_cizelge_edit.cizelge_yazdir, name='cizelge_yazdir'),
+    path('cizelge/yazdir/', views.cizelge_yazdir, name='cizelge_yazdir'),
     path('tanimlamalar/', views.tanimlamalar, name='tanimlamalar'),
 
     path('idareci-toggle-aktif/<int:pk>/', views.idareci_toggle_aktif, name='idareci_toggle_aktif'),

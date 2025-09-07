@@ -1,6 +1,7 @@
 <div>
     <h5>İzin Tanımları</h5>
     <form id="izinEkleForm" class="mb-3">
+        {% csrf_token %}
         <div class="row g-2">
             <div class="col">
                 <input type="text" class="form-control" name="ad" placeholder="Yeni izin adı..." required>
@@ -41,6 +42,49 @@
     </table>
 </div>
 <script>
+// Form submit işlemi
+document.getElementById('izinEkleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const ad = formData.get('ad').trim();
+    const kod = document.getElementById('izinKodSelect').value;
+    
+    if (!ad) {
+        alert('İzin adı boş olamaz.');
+        return;
+    }
+    
+    // CSRF token al
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // AJAX isteği gönder
+    fetch("{% url 'mercis657:izin_ekle' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            ad: ad,
+            kod: kod === '__other__' ? '' : kod
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Başarılı - sayfayı yenile
+            location.reload();
+        } else {
+            alert(data.message || 'İzin ekleme başarısız.');
+        }
+    })
+    .catch(error => {
+        console.error('Hata:', error);
+        alert('Sunucu hatası: ' + error);
+    });
+});
+
 const KOD_SECENEKLER = [
     {value: '1', label: 'Yıllık İzin'},
     {value: '5', label: 'Tek Hekim Raporu'},

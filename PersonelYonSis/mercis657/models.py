@@ -88,12 +88,32 @@ class Personel(models.Model):
 
 class Mesai(models.Model):
     MesaiID = models.AutoField(primary_key=True)
-    Personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
+    Personel = models.ForeignKey('Personel', on_delete=models.CASCADE, related_name='mercis657_mesai_personel')
     MesaiDate = models.DateField(null=False)
-    MesaiTanim = models.ForeignKey('Mesai_Tanimlari', on_delete=models.CASCADE, null=True)
-
+    MesaiTanim = models.ForeignKey('Mesai_Tanimlari', on_delete=models.CASCADE, null=True, related_name='mercis657_mesai_tanimlari')
+    Izin = models.ForeignKey('Izin', on_delete=models.SET_NULL, null=True, blank=True, related_name='mercis657_mesai_izin')
+    OnayDurumu = models.BooleanField(default=True)
+    OnayTarihi = models.DateTimeField(null=True, blank=True)
+    Onaylayan = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='mercis657_mesai_onaylayan')
+    Degisiklik = models.BooleanField(default=False)  # True: Değişiklik var, False: Değişiklik yok
+    
     def __str__(self):
         return f"{self.Personel.PersonelName} - {self.MesaiDate}"
+
+class MesaiYedek(models.Model):
+    mesai = models.ForeignKey('Mesai', on_delete=models.CASCADE, related_name='yedekler')
+    MesaiTanim = models.ForeignKey('Mesai_Tanimlari', on_delete=models.SET_NULL, null=True, blank=True, related_name='mercis657_mesaiyedek_tanim')
+    Izin = models.ForeignKey('Izin', on_delete=models.SET_NULL, null=True, blank=True, related_name='mercis657_mesaiyedek_izin')
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='mercis657_mesaiyedek_ekleyen')
+
+    class Meta:
+        verbose_name = "Mesai Yedeği"
+        verbose_name_plural = "Mesai Yedekleri"
+
+    def __str__(self):
+        return f"Yedek: {self.mesai.Personel.PersonelName} - {self.mesai.MesaiDate}"
+
 
 class Mesai_Tanimlari(models.Model):
     Saat = models.CharField(max_length=11)

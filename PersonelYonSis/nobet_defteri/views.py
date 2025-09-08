@@ -64,8 +64,14 @@ def nobet_defteri_detay(request, defter_id):
     defter = get_object_or_404(NobetDefteri, id=defter_id)
     olaylar = defter.olaylar.order_by('saat')
 
+    # Determine if current user is the creator
+    is_creator = (hasattr(defter, 'olusturan') and defter.olusturan == request.user)
+
     # --- Olay ekleme işlemi ---
     if request.method == 'POST' and 'olay_ekle' in request.POST:
+        # Only the creator may add events
+        if not is_creator:
+            return HttpResponseForbidden("Sadece defteri oluşturan kullanıcı olay ekleyebilir.")
         if not request.user.has_permission('Nöbet Olayı Ekleyebilir'):
             return HttpResponseForbidden("Olay ekleme yetkiniz yok.")
         form = NobetOlayKaydiForm(request.POST)
@@ -78,12 +84,22 @@ def nobet_defteri_detay(request, defter_id):
             return redirect('nobet_defteri:detay', defter.id)
     else:
         form = NobetOlayKaydiForm()
+        # If not the creator, render the event form as readonly
+        if not is_creator:
+            for f in form.fields.values():
+                f.required = False
+                f.widget.attrs['disabled'] = 'disabled'
 
     # --- Kontrol formu verileri ---
     aktif_sorular = KontrolSoru.objects.filter(aktif=True)
     kontrol_formu, created = KontrolFormu.objects.get_or_create(nobet_defteri=defter)
 
+    # If POST to save kontrol form, ensure only creator and not-onayli can save
     if request.method == 'POST' and 'kontrol_formu_kaydet' in request.POST:
+        if not is_creator or defter.onayli:
+            messages.warning(request, "Kontrol formunu yalnızca defteri oluşturan kullanıcı düzenleyebilir veya defter onaylıysa düzenlenemez.")
+            return redirect('nobet_defteri:detay', defter.id)
+            # --- IGNORE ---
         # Bound form ile POST verisini işle
         kontrol_form = DinamikKontrolForm(request.POST, sorular=aktif_sorular)
         if kontrol_form.is_valid():
@@ -126,6 +142,12 @@ def nobet_defteri_detay(request, defter_id):
             initial[key_aciklama] = cvp.aciklama or ''
         kontrol_form = DinamikKontrolForm(initial=initial, sorular=aktif_sorular)
 
+        # If current user is not the creator OR the defter is approved, make kontrol form readonly
+        if (not is_creator) or defter.onayli:
+            for f in kontrol_form.fields.values():
+                f.required = False
+                f.widget.attrs['disabled'] = 'disabled'
+
     # Yeni: kontrol_items oluştur (her biri: {'soru': soru, 'cevap_field': BoundField, 'aciklama_field': BoundField})
     kontrol_items = []
     for soru in aktif_sorular:
@@ -147,6 +169,7 @@ def nobet_defteri_detay(request, defter_id):
         'kontrol_form': kontrol_form,
         'aktif_sorular': aktif_sorular,
         'kontrol_items': kontrol_items,  # eklendi
+        'is_defter_creator': is_creator,
     })
 
 # Nöbet defteri onayla

@@ -75,8 +75,7 @@
                 </button>
                 <button type="button" class="btn btn-success btn-sm" id="saveButton">Kaydet</button>
                 <button type="button" class="btn btn-primary btn-sm d-none" id="approveAllButton">Tümünü Onayla</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="topluIslemButton" 
-                        data-bs-toggle="modal" data-bs-target="#topluIslemModal">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="topluIslemButton">
                     <i class="bi bi-gear"></i> Toplu İşlemler
                 </button>
             </div>
@@ -109,10 +108,13 @@
                 <td>{{ forloop.counter }}</td>
                 <td>
                     {{ personel.PersonelName }}
-                    <i class="bi bi-person-circle text-primary ms-1" 
+                    <i class="bi bi-person-circle text-primary ms-1 person-profile-btn" 
                        style="cursor: pointer; font-size: 0.9em;" 
-                       onclick="openPersonelProfil({{ personel.PersonelID }}, {{ liste.id }}, {{ current_year }}, {{ current_month }})"
-                       title="Personel Profili"></i>
+                       data-personel-id="{{ personel.PersonelID }}"
+                       data-liste-id="{{ liste.id|default:0 }}"
+                       data-year="{{ current_year }}"
+                       data-month="{{ current_month }}"
+                       title="Personel Profili" role="button"></i>
                 </td>
                 <td>{{ personel.PersonelTitle }}</td>
                 {% for mesai in personel.mesai_data %}
@@ -453,6 +455,18 @@
             .catch(err => alert('Hata: ' + err));
     }
 
+    // Attach click handlers for person profile buttons (use data-attributes to avoid inline JS errors)
+    document.querySelectorAll('.person-profile-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            const pid = this.dataset.personelId;
+            const lid = {{ liste|default:0 }};
+            const y = this.dataset.year;
+            const m = this.dataset.month;
+            if (!pid) return;
+            openPersonelProfil(pid, lid, y, m);
+        });
+    });
+
     // Toplu işlem modalını aç
     document.getElementById('topluIslemButton').addEventListener('click', function() {
         const birimId = document.getElementById('selectBirim').value;
@@ -466,7 +480,22 @@
         fetch(`{% url 'mercis657:toplu_islem' 0 0 0 %}`.replace('/0/0/0/', `/${birimId}/${year}/${month}/`))
             .then(response => response.text())
             .then(html => {
-                document.getElementById('topluIslemContainer').innerHTML = html;
+                const container = document.getElementById('topluIslemContainer');
+                container.innerHTML = html;
+                // Execute any inline scripts that came with the fetched HTML so functions are available globally
+                Array.from(container.querySelectorAll('script')).forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    if (oldScript.src) {
+                        newScript.src = oldScript.src;
+                        newScript.async = false;
+                        document.head.appendChild(newScript);
+                    } else {
+                        newScript.text = oldScript.innerHTML;
+                        document.body.appendChild(newScript);
+                    }
+                    // Remove the old script tag to avoid duplication
+                    oldScript.parentNode.removeChild(oldScript);
+                });
                 const modal = new bootstrap.Modal(document.getElementById('topluIslemModal'));
                 modal.show();
             })

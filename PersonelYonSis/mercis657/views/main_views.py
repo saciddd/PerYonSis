@@ -214,6 +214,7 @@ def cizelge(request):
         "years": [year for year in range(2023, 2027)],
         "user_birimler": user_birimler,
         "selected_birim_id": selected_birim_id,
+        "liste": liste.id if liste else 0,
         "donemler": donemler,
         "selected_donem": selected_donem,
         "kurumlar": kurumlar,

@@ -449,6 +449,21 @@
             .then(response => response.text())
             .then(html => {
                 document.getElementById('personelProfilContainer').innerHTML = html;
+                // Execute any inline scripts that came with the fetched HTML so widgets (mesai_atama_widget) initialize
+                const container = document.getElementById('personelProfilContainer');
+                Array.from(container.querySelectorAll('script')).forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    if (oldScript.src) {
+                        newScript.src = oldScript.src;
+                        newScript.async = false;
+                        document.head.appendChild(newScript);
+                    } else {
+                        newScript.text = oldScript.innerHTML;
+                        document.body.appendChild(newScript);
+                    }
+                    // Remove the old script tag to avoid duplication
+                    oldScript.parentNode.removeChild(oldScript);
+                });
                 const modal = new bootstrap.Modal(document.getElementById('personelProfilModal'));
                 modal.show();
             })

@@ -18,7 +18,8 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="radyasyonDurumu" id="radyasyonEvet" value="true">
+                                    <input class="form-check-input" type="radio" name="radyasyonDurumu"
+                                        id="radyasyonEvet" value="true">
                                     <label class="form-check-label" for="radyasyonEvet">
                                         Tümünü Radyasyon Çalışanı Yap
                                     </label>
@@ -26,7 +27,8 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="radyasyonDurumu" id="radyasyonHayir" value="false">
+                                    <input class="form-check-input" type="radio" name="radyasyonDurumu"
+                                        id="radyasyonHayir" value="false">
                                     <label class="form-check-label" for="radyasyonHayir">
                                         Tümünü Normal Çalışan Yap
                                     </label>
@@ -47,182 +49,66 @@
                         <h6 class="mb-0">Toplu Mesai Atama</h6>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted">Seçilen günlere tüm personele aynı mesaiyi atayın.</p>
-                        
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Mesai Tanımı</label>
-                                <select class="form-select form-select-sm" id="topluMesaiSelect">
-                                    <option value="">Mesai seçin</option>
-                                    {% for mesai in mesai_tanimlari %}
-                                    <option value="{{ mesai.id }}">{{ mesai.Saat }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Dönem</label>
-                                <input type="text" class="form-control form-control-sm" 
-                                       value="{{ month }}/{{ year }}" readonly>
-                            </div>
-                        </div>
-
-                        <!-- Gün Seçimi -->
-                        <div class="mb-3">
-                            <label class="form-label">Atanacak Günler</label>
-                            <div class="row">
-                                {% for day in "1234567890123456789012345678901234567890"|make_list %}
-                                    {% if forloop.counter <= 31 %}
-                                        <div class="col-md-2 mb-1">
-                                            <div class="form-check">
-                                                <input class="form-check-input toplu-gun-checkbox" type="checkbox" 
-                                                       value="{{ forloop.counter }}" id="toplu_gun_{{ forloop.counter }}">
-                                                <label class="form-check-label" for="toplu_gun_{{ forloop.counter }}">
-                                                    {{ forloop.counter }}
-                                                </label>
-                                            </div>
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
-                            <div class="mt-2">
-                                <button class="btn btn-sm btn-outline-secondary" onclick="selectAllDays()">Tümünü Seç</button>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="clearAllDays()">Tümünü Temizle</button>
-                                <button class="btn btn-sm btn-outline-info" onclick="selectWeekdays()">Sadece Hafta İçi</button>
-                            </div>
-                        </div>
-
-                        <div class="alert alert-info">
-                            <small>
-                                <i class="bi bi-info-circle"></i>
-                                <strong>Not:</strong> Sadece mesai verisi olmayan günlere atama yapılacaktır. 
-                                Mevcut mesai verileri korunur.
-                            </small>
-                        </div>
-
-                        <div class="mt-3">
-                            <button class="btn btn-success btn-sm" onclick="topluMesaiAta()">
-                                <i class="bi bi-check-circle"></i> Toplu Mesai Ata
-                            </button>
-                        </div>
+                        {# ... Kart gövdesi içinde: #}
+                        {% include "mercis657/partials/mesai_atama_widget.html" with year=year month=month mesai_tanimlari=mesai_tanimlari resmi_tatil_gunleri=resmi_tatil_gunleri arefe_gunleri=arefe_gunleri disabled_days=mesaisi_olan_gunler submit_url=toplu_mesai_ata_url extra_payload=liste.id submit_button_text="Toplu Mesai Ata" %}
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
         </div>
     </div>
 </div>
+</div>
 
 <script>
-// Toplu radyasyon durumu atama
-function topluRadyasyonAta() {
-    const selectedValue = document.querySelector('input[name="radyasyonDurumu"]:checked');
-    if (!selectedValue) {
-        alert('Lütfen bir seçenek belirleyin.');
-        return;
-    }
-    
-    const radyasyonDurumu = selectedValue.value === 'true';
-    
-    if (confirm(`Tüm personeli ${radyasyonDurumu ? 'radyasyon çalışanı' : 'normal çalışan'} yapmak istediğinizden emin misiniz?`)) {
-        fetch(`{% url 'mercis657:toplu_radyasyon_ata' liste.id %}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                radyasyon_calisani: radyasyonDurumu
+    // Toplu radyasyon durumu atama
+    function topluRadyasyonAta() {
+        const selectedValue = document.querySelector('input[name="radyasyonDurumu"]:checked');
+        if (!selectedValue) {
+            alert('Lütfen bir seçenek belirleyin.');
+            return;
+        }
+
+        const radyasyonDurumu = selectedValue.value === 'true';
+
+        if (confirm(`Tüm personeli ${radyasyonDurumu ? 'radyasyon çalışanı' : 'normal çalışan'} yapmak istediğinizden emin misiniz?`)) {
+            fetch(`{% url 'mercis657:toplu_radyasyon_ata' liste.id %}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    radyasyon_calisani: radyasyonDurumu
+                })
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert(data.message || 'Hata oluştu');
-            }
-        })
-        .catch(err => alert('Hata: ' + err));
-    }
-}
-
-// Toplu mesai atama
-function topluMesaiAta() {
-    const mesaiTanimId = document.getElementById('topluMesaiSelect').value;
-    const secilenGunler = Array.from(document.querySelectorAll('.toplu-gun-checkbox:checked'))
-        .map(cb => parseInt(cb.value));
-    
-    if (!mesaiTanimId) {
-        alert('Lütfen bir mesai tanımı seçin.');
-        return;
-    }
-    
-    if (secilenGunler.length === 0) {
-        alert('Lütfen en az bir gün seçin.');
-        return;
-    }
-    
-    if (confirm(`Seçilen ${secilenGunler.length} güne tüm personele mesai atamak istediğinizden emin misiniz?`)) {
-        fetch(`{% url 'mercis657:toplu_mesai_ata' liste.id year month %}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken'),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                mesai_tanim_id: mesaiTanimId,
-                gunler: secilenGunler
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert(data.message || 'Hata oluştu');
-            }
-        })
-        .catch(err => alert('Hata: ' + err));
-    }
-}
-
-// Gün seçim yardımcı fonksiyonları
-function selectAllDays() {
-    document.querySelectorAll('.toplu-gun-checkbox').forEach(cb => cb.checked = true);
-}
-
-function clearAllDays() {
-    document.querySelectorAll('.toplu-gun-checkbox').forEach(cb => cb.checked = false);
-}
-
-function selectWeekdays() {
-    clearAllDays();
-    // Hafta içi günleri seç (1-31 arası, hafta sonu hariç)
-    for (let i = 1; i <= 31; i++) {
-        const date = new Date({{ year }}, {{ month|add:"-1" }}, i);
-        if (date.getMonth() === {{ month|add:"-1" }} && date.getDay() >= 1 && date.getDay() <= 5) {
-            const checkbox = document.getElementById(`toplu_gun_${i}`);
-            if (checkbox) checkbox.checked = true;
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Hata oluştu');
+                    }
+                })
+                .catch(err => alert('Hata: ' + err));
         }
     }
-}
 
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
             }
         }
+        return cookieValue;
     }
-    return cookieValue;
-}
 </script>

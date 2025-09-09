@@ -172,37 +172,9 @@
                                 <h6 class="mb-0">Seçilen günlere mesai atayın</h6>
                             </div>
                             <div class="card-body">
-                                <div class="row mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label">Mesai Tanımı</label>
-                                        <select class="form-select form-select-sm" id="hazirMesaiSelect">
-                                            <option value="">Mesai seçin</option>
-                                            {% for mesai in mesai_tanimlari %}
-                                            <option value="{{ mesai.id }}">{{ mesai.Saat }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 d-flex align-items-end">
-                                        <button class="btn btn-success btn-sm" onclick="hazirMesaiAta()">
-                                            <i class="bi bi-check-circle"></i> Seçilen Günlere Ata
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div class="row">
-                                    {% for gun in mesai_gunleri %}
-                                    <div class="col-md-2 mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input hazir-gun-checkbox" type="checkbox" 
-                                                   value="{{ gun.gun_no }}" id="gun_{{ gun.gun_no }}"
-                                                   {% if gun.mesai_var %}disabled{% endif %}>
-                                            <label class="form-check-label" for="gun_{{ gun.gun_no }}">
-                                                {{ gun.gun_no }} {{ gun.gun_adi }}
-                                                {% if gun.mesai_var %}<small class="text-muted">(Var)</small>{% endif %}
-                                            </label>
-                                        </div>
-                                    </div>
-                                    {% endfor %}
+                                <div class="card-body">
+                                    {# ... Kart gövdesi içinde: #}
+                        {% include "mercis657/partials/mesai_atama_widget.html" with year=year month=month mesai_tanimlari=mesai_tanimlari resmi_tatil_gunleri=resmi_tatil_gunleri arefe_gunleri=arefe_gunleri disabled_days=mesaisi_olan_gunler submit_url=toplu_mesai_ata_url extra_payload=liste.id submit_button_text="Toplu Mesai Ata" %}
                                 </div>
                             </div>
                         </div>
@@ -269,39 +241,6 @@ document.getElementById('mazeretEkleForm').addEventListener('submit', function(e
     .catch(err => alert('Hata: ' + err));
 });
 
-// Hazır mesai atama
-function hazirMesaiAta() {
-    const mesaiTanimId = document.getElementById('hazirMesaiSelect').value;
-    const secilenGunler = Array.from(document.querySelectorAll('.hazir-gun-checkbox:checked'))
-        .map(cb => parseInt(cb.value));
-    
-    if (!mesaiTanimId || secilenGunler.length === 0) {
-        alert('Mesai tanımı ve en az bir gün seçmelisiniz.');
-        return;
-    }
-    
-    fetch(`{% url 'mercis657:hazir_mesai_ata' personel.PersonelID liste.id year month %}`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            mesai_tanim_id: mesaiTanimId,
-            gunler: secilenGunler
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert(data.message || 'Hata oluştu');
-        }
-    })
-    .catch(err => alert('Hata: ' + err));
-}
 
 // Mazeret düzenleme (basit implementasyon)
 function editMazeret(mazeretId) {

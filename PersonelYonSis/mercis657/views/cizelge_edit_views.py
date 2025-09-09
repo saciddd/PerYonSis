@@ -1,9 +1,12 @@
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from datetime import datetime
 import json
-from django.shortcuts import render
-from ..models import Mesai, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, UstBirim
+from django.shortcuts import get_object_or_404, render
+from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim
 
 @login_required
 def cizelge_yazdir(request):
@@ -188,3 +191,134 @@ def toplu_onay(request, birim_id, year, month):
         m.yedekler.all().delete()
     return JsonResponse({'status': 'success', 'count': count})
 
+@login_required
+def toplu_islem(request, liste_id, year, month):
+    """Toplu işlemler modalını döner"""
+    if not request.user.has_permission('Mesai Onaylayabilir'):
+        return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
+
+    liste = get_object_or_404(PersonelListesi, pk=liste_id)
+    personeller = Personel.objects.filter(
+        personellistesikayit__liste=liste
+    ).distinct()
+    mesai_tanimlari = Mesai_Tanimlari.objects.filter(GecerliMesai=True)
+
+    # resmi tatil ve arefe günleri
+    tatiller = ResmiTatil.objects.filter(
+        TatilTarihi__year=year, TatilTarihi__month=month
+    )
+    resmi_tatil_gunleri = [
+        t.TatilTarihi.day for t in tatiller if t.TatilTipi == 'TAM'
+    ]
+    arefe_gunleri = [
+        t.TatilTarihi.day for t in tatiller if t.ArefeMi
+    ]
+
+    context = {
+        'liste': liste,
+        'personeller': personeller,
+        'mesai_tanimlari': mesai_tanimlari,
+        'year': year,
+        'month': month,
+        'resmi_tatil_gunleri': resmi_tatil_gunleri,
+        'extra_payload': {'liste_id': liste.id},  # her zaman dictionary
+        'arefe_gunleri': arefe_gunleri,
+        'disabled_days': [],  # toplu atamada genelde boş bırakabilirsin
+        'toplu_mesai_ata_url': reverse(
+            'mercis657:toplu_mesai_ata',
+            args=[liste.id, year, month]
+        ),
+    }
+    return render(request, 'mercis657/toplu_islem_modal.html', context)
+
+
+@login_required
+@require_POST
+def toplu_radyasyon_ata(request, liste_id):
+    """Tüm personele radyasyon çalışanı durumu atar"""
+    if not request.user.has_permission('Mesai Onaylayabilir'):
+        return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
+    
+    try:
+        data = json.loads(request.body)
+        radyasyon_calisani = data.get('radyasyon_calisani', False)
+        
+        liste = get_object_or_404(PersonelListesi, pk=liste_id)
+        updated_count = PersonelListesiKayit.objects.filter(
+            liste=liste
+        ).update(radyasyon_calisani=radyasyon_calisani)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'{updated_count} personelin radyasyon durumu güncellendi.',
+            'updated_count': updated_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+@login_required
+@require_POST
+def toplu_mesai_ata(request, liste_id, year, month):
+    """Tüm personele toplu mesai atar (resmi tatiller hariç)"""
+    if not request.user.has_permission('Mesai Onaylayabilir'):
+        return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        mesai_tanim_id = data.get('mesai_tanim_id')
+        gunler = data.get('gunler', [])
+
+        # Null veya geçersiz gün numaralarını ayıkla
+        gunler = [int(g) for g in gunler if isinstance(g, int) and 1 <= g <= 31]
+
+        if not mesai_tanim_id or not gunler:
+            return JsonResponse({'status': 'error', 'message': 'Mesai tanımı ve günler seçilmelidir.'})
+
+        liste = get_object_or_404(PersonelListesi, pk=liste_id)
+        mesai_tanim = get_object_or_404(Mesai_Tanimlari, pk=mesai_tanim_id)
+
+        from datetime import date
+        import calendar
+        from hekim_cizelge.models import ResmiTatil  # kendi projendeki app yolunu kontrol et
+
+        days_in_month = calendar.monthrange(year, month)[1]
+        created_count = 0
+
+        for personel in liste.kayitlar.all():
+            for gun_no in gunler:
+                # Ayın gün sınırını kontrol et
+                if gun_no > days_in_month:
+                    continue
+
+                current_date = date(year, month, gun_no)
+
+                # 📌 Resmi tatil kontrolü
+                if ResmiTatil.objects.filter(TatilTarihi=current_date).exists():
+                    continue  # resmi tatilde mesai yazma
+
+                # Bu güne zaten mesai var mı kontrol et
+                existing = Mesai.objects.filter(
+                    Personel=personel.personel,
+                    MesaiDate=current_date
+                ).exists()
+
+                if not existing:
+                    Mesai.objects.create(
+                        Personel=personel.personel,
+                        MesaiDate=current_date,
+                        MesaiTanim=mesai_tanim,
+                        OnayDurumu=True,
+                        Degisiklik=False
+                    )
+                    created_count += 1
+
+        return JsonResponse({
+            'status': 'success',
+            'message': f'{created_count} mesai kaydı oluşturuldu.',
+            'created_count': created_count
+        })
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})

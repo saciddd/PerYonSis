@@ -1,0 +1,254 @@
+{# GEREKLI CONTEXT #}
+{# year:int, month:int (1-12), mesai_tanimlari:QuerySet #}
+{# resmi_tatil_gunleri:list[int] (opsiyonel), arefe_gunleri:list[int] (opsiyonel) #}
+{# disabled_days:list[int] (opsiyonel) — mesaisi zaten olan günleri pasifleştirmek için #}
+{# submit_url:str — fetch POST url'i #}
+{# extra_payload:dict (opsiyonel) — {personel_id, liste_id vb.} #}
+{# submit_button_text:str (opsiyonel) #}
+
+<div class="mesai-atama-widget"
+     data-year="{{ year }}"
+     data-month="{{ month }}"
+     data-submit-url="{{ submit_url }}"
+     data-extra='{{ extra_payload|default:"{}"|escapejs }}'
+     data-resmi-tatil='{{ resmi_tatil_gunleri|default:"[]"|escapejs }}'
+     data-arefe-gunleri='{{ arefe_gunleri|default:"[]"|escapejs }}'
+     data-disabled-days='{{ disabled_days|default:"[]"|escapejs }}'
+     >
+
+  <div class="row g-3 align-items-end">
+    <div class="col-md-5">
+      <label class="form-label mb-1">Mesai Tanımı</label>
+      <select class="form-select form-select-sm" data-role="mesai-select">
+        <option value="">Mesai seçin</option>
+        {% for m in mesai_tanimlari %}
+          <option value="{{ m.id }}">{{ m.Saat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label mb-1">Dönem</label>
+      <input class="form-control form-control-sm" value="{{ month }}/{{ year }}" readonly>
+    </div>
+
+    <div class="col-md-4 text-md-end">
+      <div class="btn-group btn-group-sm mt-3 mt-md-0" role="group">
+        <button type="button" class="btn btn-outline-secondary" data-action="select-all">Tümünü Seç</button>
+        <button type="button" class="btn btn-outline-secondary" data-action="clear-all">Tümünü Temizle</button>
+        <button type="button" class="btn btn-outline-info" data-action="weekdays-only">Sadece Hafta İçi</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="calendar mt-3 border rounded p-2">
+    <div class="d-flex justify-content-between px-1 small text-muted">
+      <span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span class="text-secondary">Cts</span><span class="text-secondary">Paz</span>
+    </div>
+    <div class="calendar-grid mt-2"></div>
+    <div class="mt-2 small">
+      <span class="legend legend-workday"></span> Hafta içi
+      <span class="legend legend-weekend ms-3"></span> Hafta sonu
+      <span class="legend legend-holiday ms-3"></span> Resmi tatil
+      <span class="legend legend-arife ms-3"></span> Arefe
+      <span class="legend legend-disabled ms-3"></span> Mevcut mesai var
+    </div>
+  </div>
+
+  <div class="alert alert-info mt-3 py-2">
+    <small><i class="bi bi-info-circle"></i>
+      <strong>Not:</strong> “Sadece Hafta İçi” seçimi, resmi tatil ve arefe günlerini hariç tutar.
+      Mevcut mesaili günler seçilemez.
+      Sadece mesai verisi olmayan günlere atama yapılacaktır. Mevcut mesai verileri korunur.
+    </small>
+  </div>
+
+  <div class="mt-3">
+    <button type="button" class="btn btn-success btn-sm" data-action="submit">
+      <i class="bi bi-check-circle"></i>
+      {{ submit_button_text|default:"Seçilen Günlere Ata" }}
+    </button>
+  </div>
+</div>
+
+<style>
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: .25rem;
+  }
+  .day-cell {
+    position: relative;
+    user-select: none;
+    border: 1px solid rgba(0,0,0,.1);
+    border-radius: .5rem;
+    padding: .5rem .4rem;
+    text-align: right;
+    min-height: 42px;
+    cursor: pointer;
+    transition: box-shadow .15s ease, transform .05s ease;
+    font-size: .9rem;
+  }
+  .day-cell:hover { box-shadow: 0 0 0 .2rem rgba(13,110,253,.15); }
+  .day-num { font-weight: 600; }
+  .day-cell.selected { outline: 2px solid rgba(25,135,84,.65); }
+  .day-cell.weekend { background: #f8f9fa; color: #6c757d; }
+  .day-cell.holiday { background: #fff3cd; }     /* sarı */
+  .day-cell.arife  { background: #e7f1ff; }      /* açık mavi */
+  .day-cell.disabled {
+    background: #eee;
+    color: #999;
+    cursor: not-allowed;
+    text-decoration: line-through;
+  }
+  .legend { display:inline-block; width:14px; height:14px; border-radius:3px; margin-right:6px; vertical-align:middle; }
+  .legend-workday { background:#ffffff; border:1px solid #dee2e6; }
+  .legend-weekend { background:#f8f9fa; border:1px solid #dee2e6; }
+  .legend-holiday { background:#fff3cd; border:1px solid #dee2e6; }
+  .legend-arife { background:#e7f1ff; border:1px solid #dee2e6; }
+  .legend-disabled { background:#eee; border:1px solid #dee2e6; }
+</style>
+
+<script>
+(function initMesaiAtamaWidgets(){
+  // çoklu include destekler
+  document.querySelectorAll('.mesai-atama-widget').forEach(function(root){
+    if (root.dataset.bound === '1') return;
+    root.dataset.bound = '1';
+
+    const year  = parseInt(root.dataset.year, 10);
+    const month = parseInt(root.dataset.month, 10); // 1-12
+    const submitUrl = root.dataset.submitUrl;
+
+    // optional JSON extras (provided via data-extra attribute)
+    let extra = {};
+    try { extra = JSON.parse(root.dataset.extra || '{}'); } catch(e) { extra = {}; }
+
+    // Parse arrays provided as JSON in data attributes
+    const resmiTatil = JSON.parse(root.dataset.resmiTatil || '[]');
+    const arifeGun   = JSON.parse(root.dataset.arefeGunleri || '[]');
+    const disabledDays = JSON.parse(root.dataset.disabledDays || '[]');
+
+    const grid = root.querySelector('.calendar-grid');
+    const mesaiSelect = root.querySelector('[data-role="mesai-select"]');
+
+    // ayın ilk günü offseti (Pzt=1 olacak şekilde JS Sunday=0’dan normalize)
+    const firstDay = new Date(year, month-1, 1);
+    const firstDow = (firstDay.getDay() + 6) % 7; // 0=>Pzt, 6=>Paz
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // boş hücreler (ayın başı öncesi)
+    for (let i=0;i<firstDow;i++) {
+      const filler = document.createElement('div');
+      filler.className = 'day-cell border-0';
+      filler.style.visibility = 'hidden';
+      grid.appendChild(filler);
+    }
+
+    // gün hücreleri
+    for (let d=1; d<=daysInMonth; d++){
+      const date = new Date(year, month-1, d);
+      const jsDow = date.getDay(); // 0 Pazar - 6 Cumartesi
+      const isWeekend = (jsDow === 0 || jsDow === 6);
+      const isHoliday = resmiTatil.includes(d);
+      const isArife   = arifeGun.includes(d);
+      const isDisabled = disabledDays.includes(d);
+
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
+      if (isWeekend) cell.classList.add('weekend');
+      if (isHoliday) cell.classList.add('holiday');
+      if (isArife) cell.classList.add('arife');
+      if (isDisabled) cell.classList.add('disabled');
+
+      cell.dataset.day = d;
+      cell.innerHTML = `<span class="day-num">${d}</span>`;
+
+      cell.addEventListener('click', function(){
+        if (cell.classList.contains('disabled')) return;
+        cell.classList.toggle('selected');
+      });
+
+      grid.appendChild(cell);
+    }
+
+    // Action butonları
+    root.querySelector('[data-action="select-all"]').addEventListener('click', function(){
+      grid.querySelectorAll('.day-cell').forEach(c=>{
+        if (!c.classList.contains('disabled')) c.classList.add('selected');
+      });
+    });
+    root.querySelector('[data-action="clear-all"]').addEventListener('click', function(){
+      grid.querySelectorAll('.day-cell.selected').forEach(c=>c.classList.remove('selected'));
+    });
+    root.querySelector('[data-action="weekdays-only"]').addEventListener('click', function(){
+      // önce temizle
+      grid.querySelectorAll('.day-cell.selected').forEach(c=>c.classList.remove('selected'));
+      // hafta içi + tatil/arefe HARİÇ
+      grid.querySelectorAll('.day-cell').forEach(c=>{
+        if (c.classList.contains('disabled')) return;
+        const d = parseInt(c.dataset.day, 10);
+        const dow = (new Date(year, month-1, d).getDay()); // 0 Paz - 6 Cts
+        const isWeekend = (dow === 0 || dow === 6);
+        const isHoliday = resmiTatil.includes(d) || arifeGun.includes(d);
+        if (!isWeekend && !isHoliday) c.classList.add('selected');
+      });
+    });
+
+    // Submit
+    root.querySelector('[data-action="submit"]').addEventListener('click', function(){
+      const mesaiId = mesaiSelect.value;
+      if (!mesaiId){
+        alert('Lütfen bir mesai tanımı seçin.');
+        return;
+      }
+      const selectedDays = Array.from(grid.querySelectorAll('.day-cell.selected'))
+        .map(c => parseInt(c.dataset.day, 10));
+
+      if (selectedDays.length === 0){
+        alert('En az bir gün seçmelisiniz.');
+        return;
+      }
+
+      const payload = Object.assign({}, extra || {}, {
+        mesai_tanim_id: parseInt(mesaiId, 10),
+        gunler: selectedDays,
+        year: year,
+        month: month
+      });
+
+      fetch(submitUrl, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': (function getCookie(name){
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+              const cookies = document.cookie.split(';');
+              for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+                }
+              }
+            }
+            return cookieValue;
+          })('csrftoken'),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(r=>r.json())
+      .then(data=>{
+        if (data.status === 'success'){
+          alert(data.message || 'İşlem başarılı');
+          location.reload();
+        } else {
+          alert(data.message || 'Hata oluştu');
+        }
+      })
+      .catch(err=>alert('Hata: ' + err));
+    });
+  });
+})();
+</script>

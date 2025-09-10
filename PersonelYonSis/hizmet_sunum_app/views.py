@@ -592,7 +592,7 @@ def bildirim_yazdir(request, year=None, month=None, birim_id=None):
     pdf = pdfkit.from_string(html, False, options=options, configuration=config)
 
     response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="hizmet_sunum_bildirim_{year}_{month}.pdf"'
+    response['Content-Disposition'] = f'inline; filename="hizmet_sunum_bildirim_{year}_{month}.pdf"'
     return response
 
 def raporlama(request):

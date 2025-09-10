@@ -56,6 +56,7 @@ class PersonelListesi(models.Model):
     ay = models.PositiveIntegerField()
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    aciklama = models.TextField(blank=True, null=True)
 
     class Meta:
         unique_together = ('birim', 'yil', 'ay')
@@ -191,3 +192,49 @@ class ResmiTatil(models.Model):
 
     def __str__(self):
         return f"{self.TatilTarihi.strftime('%d.%m.%Y')} - {self.Aciklama}"
+    
+class Bildirim(models.Model):
+    BildirimID = models.AutoField(primary_key=True)
+    PersonelListesi = models.ForeignKey(PersonelListesi, on_delete=models.CASCADE, related_name='mercis657_bildirimler')
+    DonemBaslangic = models.DateField()
+    
+    # Mesai süreleri (saat cinsinden)
+    NormalFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    BayramFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    RiskliNormalFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    RiskliBayramFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    
+    # İcap süreleri (saat cinsinden)
+    NormalIcap = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    BayramIcap = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    
+    # Günlük detaylar
+    MesaiDetay = models.JSONField(null=True, blank=True)  # {date: hours}
+    IcapDetay = models.JSONField(null=True, blank=True)   # {date: hours}
+    
+    # İşlem bilgileri
+    OlusturanKullanici = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='mercis657_olusturan_bildirimler')
+    OlusturmaTarihi = models.DateTimeField(auto_now_add=True)
+    OnaylayanKullanici = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='mercis657_onaylayan_bildirimler')
+    OnayTarihi = models.DateTimeField(null=True)
+    OnayDurumu = models.IntegerField(default=0)  # 0: Bekliyor, 1: Onaylandı
+    SilindiMi = models.BooleanField(default=False)
+    MutemetKilit = models.BooleanField(default=False)  # Kilit durumu
+    MutemetKilitUser = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='mercis657_mutemet_kilit_kullanicilar'
+    )  # Kilitleyen kullanıcı
+    MutemetKilitTime = models.DateTimeField(null=True, blank=True)  # Kilitleme zamanı
+
+    class Meta:
+        unique_together = [['PersonelListesi', 'DonemBaslangic']]
+
+    @property
+    def ToplamFazlaMesai(self):
+        """Toplam fazla mesai saati"""
+        return (self.NormalFazlaMesai + self.BayramFazlaMesai + 
+                self.RiskliNormalFazlaMesai + self.RiskliBayramFazlaMesai)
+
+    @property
+    def ToplamIcap(self):
+        """Toplam icap saati"""
+        return self.NormalIcap + self.BayramIcap

@@ -38,28 +38,30 @@
                             <br>Enter veya aşağı ok tuşu ile yeni satır ekleyebilirsiniz.
                         </div>
                         <div class="table-responsive">
-                            <table class="table table-sm" id="yeniPersonelTable">
+                            <table class="table table-sm" id="yeniPersonelTable" style="border:2px solid #80a3d4;">
                                 <thead>
                                     <tr>
-                                        <!-- Sıra no sütunu sabit 20 px genişliğinde -->
-                                        <th style="width: 45px; min-width: 45px; max-width: 45px;">Sıra No</th>
+                                        <th>Sıra No</th>
                                         <th>T.C.</th>
-                                        <th>Adı Soyadı</th>
-                                        <th>Unvanı</th>
+                                        <th>Adı</th>
+                                        <th>Soyadı</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
                                         <td style="width: 45px; min-width: 45px; max-width: 45px;">1</td>
-                                        <td contenteditable="true"></td>
-                                        <td contenteditable="true"></td>
-                                        <td contenteditable="true"></td>
+                                        <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
+                                        <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
+                                        <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                         <button class="btn btn-success" id="btnPersonelKaydet">
                             <i class="bi bi-save"></i> Personelleri Ekle
+                        </button>
+                        <button class="btn btn-outline-danger ms-2" id="btnTabloyuBosalt">
+                            <i class="bi bi-x-circle"></i> Tabloyu Temizle
                         </button>
                     </div>
                 </div>
@@ -135,4 +137,72 @@ document.getElementById('btnPersonelKaydet').addEventListener('click', function(
         alert('Kayıt sırasında bir hata oluştu: ' + error.message);
     });
 });
+
+// Tabloyu boşalt butonu
+document.getElementById('btnTabloyuBosalt').addEventListener('click', function() {
+    const tbody = document.querySelector('#yeniPersonelTable tbody');
+    tbody.innerHTML = `
+        <tr>
+            <td style="width: 45px; min-width: 45px; max-width: 45px;">1</td>
+            <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
+            <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
+            <td contenteditable="true" style="border:1px solid #80a3d4;"></td>
+        </tr>
+    `;
+});
+
+// Tablo işlemleri için fonksiyonlar
+function initYeniPersonelTable() {
+    const table = document.getElementById('yeniPersonelTable');
+    const tbody = table.querySelector('tbody');
+
+    function addRowListeners(row) {
+        row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+            cell.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    addNewRow();
+                }
+            });
+        });
+    }
+
+    function addNewRow() {
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td>${tbody.children.length + 1}</td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+        `;
+        tbody.appendChild(newRow);
+        addRowListeners(newRow);
+        newRow.querySelector('td[contenteditable="true"]').focus();
+    }
+
+    table.addEventListener('paste', function(e) {
+        e.preventDefault();
+        
+        let data = e.clipboardData.getData('text');
+        let rows = data.split('\n').filter(row => row.trim());
+        
+        tbody.innerHTML = '';
+        
+        rows.forEach((row, index) => {
+            const cols = row.split('\t');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td contenteditable="true">${cols[0] || ''}</td>
+                <td contenteditable="true">${cols[1] || ''}</td>
+                <td contenteditable="true">${cols[2] || ''}</td>
+            `;
+            tbody.appendChild(tr);
+            addRowListeners(tr);
+        });
+    });
+
+    addRowListeners(tbody.querySelector('tr'));
+}
+initYeniPersonelTable();
 </script>

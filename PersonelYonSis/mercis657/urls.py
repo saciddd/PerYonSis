@@ -70,4 +70,25 @@ urlpatterns = [
     path('toplu-islem/<int:liste_id>/<int:year>/<int:month>/', views.toplu_islem, name='toplu_islem'),
     path('toplu-radyasyon-ata/<int:liste_id>/', views.toplu_radyasyon_ata, name='toplu_radyasyon_ata'),
     path('toplu-mesai-ata/<int:liste_id>/<int:year>/<int:month>/', views.toplu_mesai_ata, name='toplu_mesai_ata'),
+
+    # Bildirim işlemleri
+    path('bildirim-olustur/', views.bildirim_olustur, name='bildirim_olustur'),
+    path('bildirimler/', views.bildirimler, name='bildirimler'),
+    path('bildirim-onayla/<int:bildirim_id>/', views.bildirim_onayla, name='bildirim_onayla'),
+    path('bildirim-sil/<int:bildirim_id>/', views.bildirim_sil, name='bildirim_sil'),
+    path('bildirim-toplu-olustur/<int:birim_id>/', views.bildirim_toplu_olustur, name='bildirim_toplu_olustur'),
+    path('bildirim-toplu-onay/<int:birim_id>/', views.bildirim_toplu_onay, name='bildirim_toplu_onay'),
+    path('bildirim-tekil-onay/<int:bildirim_id>/', views.bildirim_tekil_onay, name='bildirim_tekil_onay'),
+    path('bildirim-toplu-onay-kaldir/<int:birim_id>/', views.bildirim_toplu_onay_kaldir, name='bildirim_toplu_onay_kaldir'),
+    path('bildirim-form/<int:birim_id>/', views.bildirim_form, name='bildirim_form'),
+    path('bildirim-kilit/<int:bildirim_id>/', views.bildirim_kilit, name='bildirim_kilit'),
+    path('bildirim-kilit-ac/<int:bildirim_id>/', views.bildirim_kilit_ac, name='bildirim_kilit_ac'),
+    
+    path('toplu-kilit/', views.toplu_kilit, name='toplu_kilit'),
+    path('bildirim-excel/', views.bildirim_excel, name='bildirim_excel'),
+    path('resmi-tatiller/', views.resmi_tatiller, name='resmi_tatiller'),
+    path('tatil-ekle/', views.tatil_ekle, name='tatil_ekle'),
+    path('tatil-duzenle/', views.tatil_duzenle, name='tatil_duzenle'),
+    path('tatil-sil/<int:tatil_id>/', views.tatil_sil, name='tatil_sil'),
+    path('cizelge-form/<int:birim_id>/', views.cizelge_form, name='cizelge_form'),
 ]

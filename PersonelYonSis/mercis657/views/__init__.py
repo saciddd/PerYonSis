@@ -6,3 +6,4 @@ from .izin_views import *
 from .mesai_views import *
 from .mazeret_views import *
 from .personel_islem_views import *
+from .bildirim_views import *

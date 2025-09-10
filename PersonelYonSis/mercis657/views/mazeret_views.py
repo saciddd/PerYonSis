@@ -1,6 +1,7 @@
 import calendar
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -28,7 +29,16 @@ def mazeret_ekle(request):
             return JsonResponse({'status': 'error', 'message': 'Tüm alanlar doldurulmalı.'})
         
         personel = get_object_or_404(Personel, pk=personel_id)
-        
+
+        # Aynı tarihlerde çakışan mazeret kontrolü
+        mevcut_mazeretler = MazeretKaydi.objects.filter(
+            personel=personel,
+            baslangic_tarihi__lte=bitis_tarihi,
+            bitis_tarihi__gte=baslangic_tarihi
+        )
+        if mevcut_mazeretler.exists():
+            return JsonResponse({'status': 'error', 'message': 'Bu tarihlerde zaten bir mazeret kaydı mevcut.'})
+                
         mazeret = MazeretKaydi.objects.create(
             personel=personel,
             baslangic_tarihi=baslangic_tarihi,
@@ -37,7 +47,7 @@ def mazeret_ekle(request):
             aciklama=aciklama,
             created_by=request.user
         )
-        
+        messages.success(request, f"{personel.PersonelName} için yeni mazeret kaydı eklendi.")
         return JsonResponse({
             'status': 'success',
             'message': 'Mazeret kaydı eklendi.',

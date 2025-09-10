@@ -14,9 +14,9 @@
     table.grid th, table.grid td { border: 1px solid #bbb; padding: 4px 6px; text-align: center; }
     table.grid th { background: #f3f3f3; font-weight: 600; }
     .name-cell { text-align: left; }
-    .weekend { background: #f8f9fa; }
-    .holiday { background: #fff3cd; }
-    .arife { background: #e7f1ff; }
+    .weekend { background: #cdcdcd; }
+    .holiday { background: #e6d49d; }
+    .arife { background: #abd6f7; }
     .small { font-size: 10px; }
     .footer-note { margin-top: 8px; font-size: 10px; color: #666; }
     @media print { .page-break { page-break-after: always; } }
@@ -73,7 +73,7 @@
           {% endfor %}
           <td>
             {% if person.hesaplama and person.hesaplama.fazla_mesai is not None %}
-              {{ person.hesaplama.fazla_mesai|floatformat:2 }} saat
+              {{ person.hesaplama.fazla_mesai|floatformat:2 }}
             {% else %}
               -
             {% endif %}

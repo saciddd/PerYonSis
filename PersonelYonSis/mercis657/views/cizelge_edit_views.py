@@ -10,6 +10,7 @@ from django.template.loader import get_template
 from django.conf import settings
 from pathlib import Path
 from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim
+from ..utils import hesapla_fazla_mesai
 import pdfkit
 # PDFKit yapılandırması
 config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
@@ -25,7 +26,6 @@ def cizelge_yazdir(request):
     # default header variables
     kurum = "Kayseri Devlet Hastanesi"
     dokuman_kodu = "FR-SA-11"
-    form_adi = "Çalışma Listesi"
 
     # Build an absolute file:// path to the logo if STATIC_ROOT is set
     pdf_logo = None
@@ -114,16 +114,21 @@ def cizelge_yazdir(request):
                         'is_arife': (day_no in arefe_gunleri),
                     }
                     mesai_data.append(md)
+                
+                #  Fazla mesai hesapla
+                hesaplama = hesapla_fazla_mesai(kayit, year, month)
 
                 personeller_for_pdf.append({
                     'PersonelName': p.PersonelName,
                     'PersonelTitle': getattr(p, 'PersonelTitle', ''),
                     'mesai_data': mesai_data,
-                    'hesaplama': {'fazla_mesai': None}
+                    'hesaplama': {'fazla_mesai': hesaplama['fazla_mesai'] if hesaplama else 0}
                 })
     except Exception as e:
         # swallow and render template with whatever we have
         pass
+
+    form_adi = f"{year} Yılı {month}. Dönem {birim.BirimAdi} Çalışma Listesi"
 
     context = {
         'kurum': kurum,
@@ -169,8 +174,6 @@ def cizelge_yazdir(request):
     response = HttpResponse(pdf, content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="Cizelge_{year}_{month}.pdf"'
     return response
-
-
 
 @login_required
 def cizelge_kaydet(request):

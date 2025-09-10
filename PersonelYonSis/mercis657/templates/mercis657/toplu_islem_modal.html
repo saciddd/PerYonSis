@@ -1,5 +1,5 @@
 <div class="modal fade" id="topluIslemModal" tabindex="-1" aria-labelledby="topluIslemModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="topluIslemModalLabel">
@@ -8,49 +8,43 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <!-- Radyasyon Çalışanı Toplu Atama -->
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h6 class="mb-0">Radyasyon Çalışanı Durumu</h6>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted">Tüm personelin radyasyon çalışanı durumunu toplu olarak değiştirin.</p>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="radyasyonDurumu"
-                                        id="radyasyonEvet" value="true">
-                                    <label class="form-check-label" for="radyasyonEvet">
-                                        Tümünü Radyasyon Çalışanı Yap
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="radyasyonDurumu"
-                                        id="radyasyonHayir" value="false">
-                                    <label class="form-check-label" for="radyasyonHayir">
-                                        Tümünü Normal Çalışan Yap
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <button class="btn btn-primary btn-sm" onclick="topluRadyasyonAta()">
-                                <i class="bi bi-check-circle"></i> Uygula
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <div class="card h-100 border-0">
+                            <div class="card-body p-3">
+                                <h6 class="mb-3 text-muted">Radyasyon Çalışanı Durumu</h6>
+                                <p class="small text-muted mb-2">Tüm personelin radyasyon çalışanı durumunu toplu olarak
+                                    değiştirin.</p>
 
-                <!-- Toplu Mesai Atama -->
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="mb-0">Toplu Mesai Atama</h6>
+                                <div class="d-grid gap-2">
+                                    <label class="form-check">
+                                        <input class="form-check-input" type="radio" name="radyasyonDurumu"
+                                            id="radyasyonEvet" value="true">
+                                        <span class="form-check-label">Tümünü Radyasyon Çalışanı Yap</span>
+                                    </label>
+
+                                    <label class="form-check">
+                                        <input class="form-check-input" type="radio" name="radyasyonDurumu"
+                                            id="radyasyonHayir" value="false">
+                                        <span class="form-check-label">Tümünü Normal Çalışan Yap</span>
+                                    </label>
+
+                                    <button class="btn btn-primary btn-sm mt-2" type="button"
+                                        onclick="topluRadyasyonAta()">
+                                        <i class="bi bi-check-circle"></i> Uygula
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        {# ... Kart gövdesi içinde: #}
-                        {% include "mercis657/partials/mesai_atama_widget.html" with year=year month=month mesai_tanimlari=mesai_tanimlari resmi_tatil_gunleri=resmi_tatil_gunleri arefe_gunleri=arefe_gunleri disabled_days=mesaisi_olan_gunler submit_url=toplu_mesai_ata_url extra_payload=liste.id submit_button_text="Toplu Mesai Ata" %}
+
+                    <div class="col-md-7">
+                        <div class="card h-100 border-0">
+                            <div class="card-body p-3">
+                                <h6 class="mb-3 text-muted">Toplu Mesai Atama</h6>
+                                {% include "mercis657/partials/mesai_atama_widget.html" with year=year month=month mesai_tanimlari=mesai_tanimlari resmi_tatil_gunleri=resmi_tatil_gunleri arefe_gunleri=arefe_gunleri disabled_days=mesaisi_olan_gunler submit_url=toplu_mesai_ata_url extra_payload=liste.id submit_button_text="Toplu Mesai Ata" %}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1,5 +1,5 @@
 <div class="modal fade" id="personelProfilModal" tabindex="-1" aria-labelledby="personelProfilModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-dialog-scrollable" style="max-width:calc(100vw - 200px);margin-left:100px;margin-right:100px;">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="personelProfilModalLabel">
@@ -10,176 +10,181 @@
             <div class="modal-body">
                 <!-- Personel Bilgileri -->
                 <div class="row mb-4">
-                    <div class="col-md-6">
+                    <div class="col-md-8">
                         <h6>Kişisel Bilgiler</h6>
                         <table class="table table-sm">
                             <tr><td><strong>Ad Soyad:</strong></td><td>{{ personel.PersonelName }}</td></tr>
                             <tr><td><strong>TC Kimlik:</strong></td><td>{{ personel.PersonelTCKN }}</td></tr>
                             <tr><td><strong>Unvan:</strong></td><td>{{ personel.PersonelTitle|default:"-" }}</td></tr>
+                            <tr><td><strong>Çalışma Durumu:</strong></td><td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="radyasyonSwitch" 
+                                        {% if kayit.radyasyon_calisani %}checked{% endif %}>
+                                    <label class="form-check-label" for="radyasyonSwitch">
+                                        Radyasyon Çalışanı
+                                    </label>
+                                </div>
+                                <small class="text-muted">
+                                    {% if kayit.radyasyon_calisani %}
+                                        Günlük 7 saat çalışma
+                                    {% else %}
+                                        Günlük 8 saat çalışma
+                                    {% endif %}
+                                </small>
+                            </td></tr>
                         </table>
-                    </div>
-                    <div class="col-md-6">
-                        <h6>Çalışma Durumu</h6>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="radyasyonSwitch" 
-                                   {% if kayit.radyasyon_calisani %}checked{% endif %}>
-                            <label class="form-check-label" for="radyasyonSwitch">
-                                Radyasyon Çalışanı
-                            </label>
-                        </div>
-                        <small class="text-muted">
-                            {% if kayit.radyasyon_calisani %}
-                                Günlük 7 saat çalışma
-                            {% else %}
-                                Günlük 8 saat çalışma
-                            {% endif %}
-                        </small>
-                    </div>
-                </div>
-
-                <!-- Fazla Mesai Hesaplama -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <h6>{{ month }}/{{ year }} Aylık Fazla Mesai Hesaplama</h6>
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <div class="text-center">
-                                            <h5 class="text-primary">{{ hesaplama.calisma_gunleri }}</h5>
-                                            <small>Çalışma Günü</small>
+                        <!-- Fazla Mesai Hesaplama -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6>{{ month }}/{{ year }} Aylık Fazla Mesai Hesaplama</h6>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h5 class="text-primary">{{ hesaplama.calisma_gunleri }}</h5>
+                                                    <small>Çalışma Günü</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h5 class="text-info">{{ hesaplama.arefe_gunleri }}</h5>
+                                                    <small>Arefe Günü</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h5 class="text-success">{{ hesaplama.olması_gereken_sure|floatformat:2 }}</h5>
+                                                    <small>Olması Gereken (saat)</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="text-center">
+                                                    <h5 class="{% if hesaplama.fazla_mesai > 0 %}text-danger{% else %}text-success{% endif %}">
+                                                        {{ hesaplama.fazla_mesai|floatformat:2 }}
+                                                    </h5>
+                                                    <small>Fazla Mesai (saat)</small>
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="text-center">
-                                            <h5 class="text-info">{{ hesaplama.arefe_gunleri }}</h5>
-                                            <small>Arefe Günü</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="text-center">
-                                            <h5 class="text-success">{{ hesaplama.olması_gereken_sure|floatformat:2 }}</h5>
-                                            <small>Olması Gereken (saat)</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="text-center">
-                                            <h5 class="{% if hesaplama.fazla_mesai > 0 %}text-danger{% else %}text-success{% endif %}">
-                                                {{ hesaplama.fazla_mesai|floatformat:2 }}
-                                            </h5>
-                                            <small>Fazla Mesai (saat)</small>
+                                        <hr>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <strong>Fiili Çalışma:</strong> {{ hesaplama.fiili_calisma_suresi|floatformat:2 }} saat
+                                            </div>
+                                            <div class="col-md-6">
+                                                <strong>Mazeret Azaltımı:</strong> {{ hesaplama.mazeret_azaltimi|floatformat:2 }} saat
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <hr>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <strong>Fiili Çalışma:</strong> {{ hesaplama.fiili_calisma_suresi|floatformat:2 }} saat
+                            </div>
+                        </div>
+
+                        <!-- Mazeret Kayıtları -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6>Mazeret Kayıtları</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Başlangıç</th>
+                                                <th>Bitiş</th>
+                                                <th>Günlük Azaltım</th>
+                                                <th>Açıklama</th>
+                                                <th>İşlemler</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="mazeretTableBody">
+                                            {% for mazeret in mazeret_kayitlari %}
+                                            <tr data-mazeret-id="{{ mazeret.id }}">
+                                                <td>{{ mazeret.baslangic_tarihi|date:"d.m.Y" }}</td>
+                                                <td>{{ mazeret.bitis_tarihi|date:"d.m.Y" }}</td>
+                                                <td>{{ mazeret.gunluk_azaltim_saat }} saat</td>
+                                                <td>{{ mazeret.aciklama|default:"-" }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="editMazeret({{ mazeret.id }})">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteMazeret({{ mazeret.id }})">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted">Mazeret kaydı bulunmuyor</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Yeni Mazeret Ekleme Formu -->
+                                <div class="card mt-3">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Yeni Mazeret Kaydı Ekle</h6>
                                     </div>
-                                    <div class="col-md-6">
-                                        <strong>Mazeret Azaltımı:</strong> {{ hesaplama.mazeret_azaltimi|floatformat:2 }} saat
+                                    <div class="card-body">
+                                        <form id="mazeretEkleForm">
+                                            <div class="row">
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Başlangıç Tarihi</label>
+                                                    <input type="date" class="form-control form-control-sm" name="baslangic_tarihi" required>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Bitiş Tarihi</label>
+                                                    <input type="date" class="form-control form-control-sm" name="bitis_tarihi" required>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Günlük Azaltım (saat)</label>
+                                                    <input type="number" class="form-control form-control-sm" name="gunluk_azaltim_saat" 
+                                                        step="0.5" min="0" max="8" required>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Açıklama</label>
+                                                    <input type="text" class="form-control form-control-sm" name="aciklama" 
+                                                        placeholder="Örn: Doğum izni sonrası">
+                                                </div>
+                                                <div class="col-md-1 d-flex align-items-end">
+                                                    <button type="submit" class="btn btn-primary btn-sm">
+                                                        <i class="bi bi-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Mazeret Kayıtları -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <h6>Mazeret Kayıtları</h6>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Başlangıç</th>
-                                        <th>Bitiş</th>
-                                        <th>Günlük Azaltım</th>
-                                        <th>Açıklama</th>
-                                        <th>İşlemler</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="mazeretTableBody">
-                                    {% for mazeret in mazeret_kayitlari %}
-                                    <tr data-mazeret-id="{{ mazeret.id }}">
-                                        <td>{{ mazeret.baslangic_tarihi|date:"d.m.Y" }}</td>
-                                        <td>{{ mazeret.bitis_tarihi|date:"d.m.Y" }}</td>
-                                        <td>{{ mazeret.gunluk_azaltim_saat }} saat</td>
-                                        <td>{{ mazeret.aciklama|default:"-" }}</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" onclick="editMazeret({{ mazeret.id }})">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMazeret({{ mazeret.id }})">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted">Mazeret kaydı bulunmuyor</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Yeni Mazeret Ekleme Formu -->
-                        <div class="card mt-3">
-                            <div class="card-header">
-                                <h6 class="mb-0">Yeni Mazeret Kaydı Ekle</h6>
-                            </div>
-                            <div class="card-body">
-                                <form id="mazeretEkleForm">
-                                    <div class="row">
-                                        <div class="col-md-3">
-                                            <label class="form-label">Başlangıç Tarihi</label>
-                                            <input type="date" class="form-control form-control-sm" name="baslangic_tarihi" required>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label">Bitiş Tarihi</label>
-                                            <input type="date" class="form-control form-control-sm" name="bitis_tarihi" required>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label class="form-label">Günlük Azaltım (saat)</label>
-                                            <input type="number" class="form-control form-control-sm" name="gunluk_azaltim_saat" 
-                                                   step="0.5" min="0" max="8" required>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label class="form-label">Açıklama</label>
-                                            <input type="text" class="form-control form-control-sm" name="aciklama" 
-                                                   placeholder="Örn: Doğum izni sonrası">
-                                        </div>
-                                        <div class="col-md-1 d-flex align-items-end">
-                                            <button type="submit" class="btn btn-primary btn-sm">
-                                                <i class="bi bi-plus"></i>
-                                            </button>
+
+                    <!-- Sağ taraf -->
+                    <div class="col-md-4">
+                        <!-- Hazır Mesai Atama -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h6>Hazır Mesai Atama</h6>
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="mb-0">Seçilen günlere mesai atayın</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="card-body">
+                                            {# ... Kart gövdesi içinde: #}
+                                            {% include "mercis657/partials/mesai_atama_widget.html" with year=year month=month mesai_tanimlari=mesai_tanimlari resmi_tatil_gunleri=resmi_tatil_gunleri arefe_gunleri=arefe_gunleri disabled_days=mesaisi_olan_gunler submit_url=hazir_mesai_ata_url extra_payload=liste.id submit_button_text="Toplu Mesai Ata" %}
                                         </div>
                                     </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Hazır Mesai Atama -->
-                <div class="row">
-                    <div class="col-12">
-                        <h6>Hazır Mesai Atama</h6>
-                        <div class="card">
-                            <div class="card-header">
-                                <h6 class="mb-0">Seçilen günlere mesai atayın</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="card-body">
-                                    {# ... Kart gövdesi içinde: #}
-                                    {% include "mercis657/partials/mesai_atama_widget.html" with year=year month=month mesai_tanimlari=mesai_tanimlari resmi_tatil_gunleri=resmi_tatil_gunleri arefe_gunleri=arefe_gunleri disabled_days=mesaisi_olan_gunler submit_url=hazir_mesai_ata_url extra_payload=liste.id submit_button_text="Toplu Mesai Ata" %}
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
+
+                
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>

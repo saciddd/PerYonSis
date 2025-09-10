@@ -17,7 +17,7 @@
      >
 
   <div class="row g-3 align-items-end">
-    <div class="col-md-5">
+    <div class="col-md-6">
       <label class="form-label mb-1">Mesai Tanımı</label>
       <select class="form-select form-select-sm" data-role="mesai-select">
         <option value="">Mesai seçin</option>
@@ -27,17 +27,9 @@
       </select>
     </div>
 
-    <div class="col-md-3">
+    <div class="col-md-6">
       <label class="form-label mb-1">Dönem</label>
       <input class="form-control form-control-sm" value="{{ month }}/{{ year }}" readonly>
-    </div>
-
-    <div class="col-md-4 text-md-end">
-      <div class="btn-group btn-group-sm mt-3 mt-md-0" role="group">
-        <button type="button" class="btn btn-outline-secondary" data-action="select-all">Tümünü Seç</button>
-        <button type="button" class="btn btn-outline-secondary" data-action="clear-all">Tümünü Temizle</button>
-        <button type="button" class="btn btn-outline-info" data-action="weekdays-only">Sadece Hafta İçi</button>
-      </div>
     </div>
   </div>
 
@@ -54,7 +46,12 @@
       <span class="legend legend-disabled ms-3"></span> Mevcut mesai var
     </div>
   </div>
-
+  <br>
+  <div class="btn-group btn-group-sm mt-3 mt-md-0" role="group">
+    <button type="button" class="btn btn-outline-secondary" data-action="select-all">Tümünü Seç</button>
+    <button type="button" class="btn btn-outline-secondary" data-action="clear-all">Tümünü Temizle</button>
+    <button type="button" class="btn btn-outline-info" data-action="weekdays-only">Sadece Hafta İçi</button>
+  </div>
   <div class="alert alert-info mt-3 py-2">
     <small><i class="bi bi-info-circle"></i>
       <strong>Not:</strong> “Sadece Hafta İçi” seçimi, resmi tatil ve arefe günlerini hariç tutar.

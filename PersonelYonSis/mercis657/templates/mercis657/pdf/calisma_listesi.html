@@ -1,0 +1,92 @@
+{% load static %}
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <title>{{ form_adi|default:"Çalışma Listesi" }}</title>
+  <style>
+    body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size: 11px; color: #222; }
+    .header { width: 100%; margin-bottom: 8px; border-bottom: 1px solid #000; padding-bottom: 6px; }
+    .h-left { width: 18%; vertical-align: top; }
+    .h-center { width: 64%; text-align: center; }
+    .h-right { width: 18%; text-align: right; font-size: 10px; }
+    table.grid { border-collapse: collapse; width: 100%; }
+    table.grid th, table.grid td { border: 1px solid #bbb; padding: 4px 6px; text-align: center; }
+    table.grid th { background: #f3f3f3; font-weight: 600; }
+    .name-cell { text-align: left; }
+    .weekend { background: #f8f9fa; }
+    .holiday { background: #fff3cd; }
+    .arife { background: #e7f1ff; }
+    .small { font-size: 10px; }
+    .footer-note { margin-top: 8px; font-size: 10px; color: #666; }
+    @media print { .page-break { page-break-after: always; } }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+{% include "common/pdf_header.html" with kurum=kurum form_adi=form_adi dokuman_kodu=dokuman_kodu yayin_tarihi=yayin_tarihi revizyon_tarihi=revizyon_tarihi revizyon_no=revizyon_no sayfa_no="1 / 1" pdf_logo=pdf_logo %}
+</div>
+
+{% if not personeller or not days %}
+  <p>Bu döneme ait personel veya dönem bilgisi bulunamadı.</p>
+{% else %}
+  <table class="grid">
+    <thead>
+      <tr>
+        <th style="width:40px">Sıra</th>
+        <th style="min-width:160px; text-align:left">Ad Soyad</th>
+        <th style="min-width:120px; text-align:left">Unvan</th>
+        {% for d in days %}
+          {% comment %} Determine header class for weekend/holiday {% endcomment %}
+          {% with c='' %}
+            {% if d.day_num in resmi_tatil_gunleri %}{% with c='holiday' %}{% endwith %}{% endif %}
+            {% if d.day_num in arefe_gunleri %}{% with c='arife' %}{% endwith %}{% endif %}
+            {% if d.is_weekend %}{% with c='weekend' %}{% endwith %}{% endif %}
+          {% endwith %}
+          <th class="{{ c }}">{{ d.day_num }}</th>
+        {% endfor %}
+        <th style="width:90px">Fazla Mesai</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for person in personeller %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td class="name-cell">{{ person.PersonelName }}</td>
+          <td class="name-cell">{{ person.PersonelTitle|default:'-' }}</td>
+          {% comment %} Expect person.mesai_data as list aligned with days; each item can be dict with Saat or IzinAd or empty {% endcomment %}
+          {% for md in person.mesai_data %}
+            {% comment %} md could be string or dict {% endcomment %}
+            <td class="small {% if md.is_weekend %}weekend{% endif %} {% if md.is_holiday %}holiday{% endif %} {% if md.is_arife %}arife{% endif %}">
+              {% if md.MesaiTanimID or md.Saat %}
+                {% if md.IzinAd %}
+                  {{ md.IzinAd }}
+                {% else %}
+                  {{ md.Saat|default:'' }}
+                {% endif %}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          {% endfor %}
+          <td>
+            {% if person.hesaplama and person.hesaplama.fazla_mesai is not None %}
+              {{ person.hesaplama.fazla_mesai|floatformat:2 }} saat
+            {% else %}
+              -
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="footer-note">
+    <small>* Sarı: Resmi tatil, Açık mavi: Arefe, Gri: Hafta sonu</small>
+  </div>
+{% endif %}
+
+</body>
+</html>

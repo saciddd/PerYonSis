@@ -12,6 +12,8 @@ import pdfkit
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse
+from django.conf import settings
+from pathlib import Path
 User = get_user_model()
 
 # Nöbet defteri listesi
@@ -202,12 +204,25 @@ def nobet_defteri_pdf(request, defter_id):
     kontrol_formu = KontrolFormu.objects.filter(nobet_defteri=defter).first()
     kontrol_cevaplar = KontrolCevap.objects.filter(form=kontrol_formu).select_related('soru') if kontrol_formu else []
     now = timezone.now()
+
+    # Build an absolute file:// path to the logo if STATIC_ROOT is set
+    pdf_logo = None
+    try:
+        static_root = getattr(settings, 'STATIC_ROOT', None)
+        if static_root:
+            logo_path = Path(static_root) / 'logo' / 'kdh_logo.png'
+            if logo_path.exists():
+                pdf_logo = f"file://{logo_path.as_posix()}"
+    except Exception:
+        pdf_logo = None
+
     html = render_to_string('nobet_defteri/defter_pdf.html', {
         'defter': defter,
         'olaylar': olaylar,
         'kontrol_cevaplar': kontrol_cevaplar,
         'now': now,
         'user': loginuser,
+        'pdf_logo': pdf_logo,
     })
     options = {
         'page-size': 'A4',
@@ -242,12 +257,25 @@ def nobet_defteri_pdf_modal(request, defter_id):
     kontrol_cevaplar = KontrolCevap.objects.filter(form=kontrol_formu).select_related('soru') if kontrol_formu else []
     now = timezone.now()
     loginuser = request.user if request.user.is_authenticated else None
+
+    # Build pdf_logo as above
+    pdf_logo = None
+    try:
+        static_root = getattr(settings, 'STATIC_ROOT', None)
+        if static_root:
+            logo_path = Path(static_root) / 'logo' / 'kdh_logo.png'
+            if logo_path.exists():
+                pdf_logo = f"file://{logo_path.as_posix()}"
+    except Exception:
+        pdf_logo = None
+
     html = render_to_string('nobet_defteri/defter_pdf.html', {
         'defter': defter,
         'olaylar': olaylar,
         'kontrol_cevaplar': kontrol_cevaplar,
         'now': now,
         'user': loginuser,
+        'pdf_logo': pdf_logo,
     })
     options = {
         'page-size': 'A4',

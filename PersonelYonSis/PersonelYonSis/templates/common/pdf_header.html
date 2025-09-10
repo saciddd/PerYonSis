@@ -1,0 +1,25 @@
+{% load static %}
+<table width="100%" style="border-bottom: 1px solid black; margin-bottom: 10px;">
+  <tr>
+    <td style="width: 20%; text-align: left;">
+      {% if pdf_logo %}
+        <img src="{{ pdf_logo }}" height="50">
+      {% else %}
+        <img src="{% static 'logo/kdh_logo.png' %}" height="50">
+      {% endif %}
+    </td>
+    <td style="width: 60%; text-align: center;">
+      <strong>T.C.</strong><br>
+      <strong>SAĞLIK BAKANLIĞI</strong><br>
+      {{ kurum }}<br>
+      <u>{{ form_adi }}</u>
+    </td>
+    <td style="width: 20%; text-align: right; font-size: 12px;">
+      Döküman Kodu: {{ dokuman_kodu }}<br>
+      Yayın Tarihi: {{ yayin_tarihi }}<br>
+      Revizyon Tarihi: {{ revizyon_tarihi }}<br>
+      Revizyon No: {{ revizyon_no }}<br>
+      Sayfa No: {{ sayfa_no }}
+    </td>
+  </tr>
+</table>

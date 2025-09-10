@@ -6,12 +6,171 @@ from django.views.decorators.http import require_POST
 from datetime import datetime
 import json
 from django.shortcuts import get_object_or_404, render
+from django.template.loader import get_template
+from django.conf import settings
+from pathlib import Path
 from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim
+import pdfkit
+# PDFKit yapılandırması
+config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
 
 @login_required
 def cizelge_yazdir(request):
-    # Şimdilik boş, ileride PDF şablonu ile doldurulacak
-    return HttpResponse("Yazdır PDF fonksiyonu hazırlanacak.", content_type="text/plain")
+    # Çalışma listesi yazdırma sayfası
+
+    # Parse query params: donem=YYYY/MM or year & month; birim_id
+    donem = request.GET.get('donem') or request.GET.get('donem')
+    birim_id = request.GET.get('birim_id') or request.GET.get('birim')
+
+    # default header variables
+    kurum = "Kayseri Devlet Hastanesi"
+    dokuman_kodu = "FR-SA-11"
+    form_adi = "Çalışma Listesi"
+
+    # Build an absolute file:// path to the logo if STATIC_ROOT is set
+    pdf_logo = None
+    try:
+        static_root = getattr(settings, 'STATIC_ROOT', None)
+        if static_root:
+            logo_path = Path(static_root) / 'logo' / 'kdh_logo.png'
+            if logo_path.exists():
+                pdf_logo = f"file://{logo_path.as_posix()}"
+    except Exception:
+        pdf_logo = None
+
+    # Determine year/month
+    year = None
+    month = None
+    if donem:
+        try:
+            parts = donem.split('/')
+            if len(parts) >= 2:
+                year = int(parts[0])
+                month = int(parts[1])
+        except Exception:
+            year = None
+            month = None
+    # fallback to separate params
+    if not year or not month:
+        try:
+            year = int(request.GET.get('year') or datetime.now().year)
+            month = int(request.GET.get('month') or datetime.now().month)
+        except Exception:
+            year = datetime.now().year
+            month = datetime.now().month
+
+    # Prepare default empty context pieces
+    days = []
+    personeller_for_pdf = []
+    resmi_tatil_gunleri = []
+    arefe_gunleri = []
+
+    try:
+        import calendar
+        # Resolve birim: Birim may use BirimID field
+        from ..models import Birim as _Birim
+        birim = None
+        if birim_id:
+            try:
+                birim = _Birim.objects.filter(BirimID=birim_id).first() or _Birim.objects.filter(id=birim_id).first()
+            except Exception:
+                birim = None
+
+        # Find the personel list for that birim and period
+        liste = None
+        if birim:
+            liste = PersonelListesi.objects.filter(birim=birim, yil=year, ay=month).first()
+
+        # Build days for month
+        days_in_month = calendar.monthrange(year, month)[1]
+        for d in range(1, days_in_month + 1):
+            dow = calendar.weekday(year, month, d)  # 0 Mon .. 6 Sun
+            is_weekend = dow >= 5
+            days.append({'day_num': d, 'is_weekend': is_weekend})
+
+        # Load resmi tatil list for month
+        tatiller = ResmiTatil.objects.filter(TatilTarihi__year=year, TatilTarihi__month=month)
+        resmi_tatil_gunleri = [t.TatilTarihi.day for t in tatiller if t.TatilTipi == 'TAM']
+        arefe_gunleri = [t.TatilTarihi.day for t in tatiller if t.ArefeMi]
+
+        # If list exists, build person rows
+        if liste:
+            # iterate over kayitlar to preserve ordering
+            for kayit in liste.kayitlar.select_related('personel').all():
+                p = kayit.personel
+                # build mesai_data aligned with days
+                mesai_data = []
+                for d in days:
+                    day_no = d['day_num']
+                    from datetime import date
+                    current_date = date(year, month, day_no)
+                    mesai = Mesai.objects.filter(Personel=p, MesaiDate=current_date).select_related('MesaiTanim', 'Izin').first()
+                    md = {
+                        'MesaiTanimID': mesai.MesaiTanim_id if mesai else None,
+                        'Saat': (mesai.MesaiTanim.Saat if (mesai and getattr(mesai, 'MesaiTanim', None)) else ''),
+                        'IzinAd': (mesai.Izin.ad if (mesai and getattr(mesai, 'Izin', None)) else ''),
+                        'is_weekend': d['is_weekend'],
+                        'is_holiday': (day_no in resmi_tatil_gunleri),
+                        'is_arife': (day_no in arefe_gunleri),
+                    }
+                    mesai_data.append(md)
+
+                personeller_for_pdf.append({
+                    'PersonelName': p.PersonelName,
+                    'PersonelTitle': getattr(p, 'PersonelTitle', ''),
+                    'mesai_data': mesai_data,
+                    'hesaplama': {'fazla_mesai': None}
+                })
+    except Exception as e:
+        # swallow and render template with whatever we have
+        pass
+
+    context = {
+        'kurum': kurum,
+        'dokuman_kodu': dokuman_kodu,
+        'form_adi': form_adi,
+        'yayin_tarihi': '01.01.2024',
+        'revizyon_tarihi': '01.06.2024',
+        'revizyon_no': '02',
+        'sayfa_no': '1',
+        'pdf_logo': pdf_logo,
+        'personellers': personeller_for_pdf,
+        'personeller': personeller_for_pdf,  # template expects 'personeller'
+        'days': days,
+        'resmi_tatil_gunleri': resmi_tatil_gunleri,
+        'arefe_gunleri': arefe_gunleri,
+        'year': year,
+        'month': month,
+        'liste': liste if 'liste' in locals() else None,
+    }
+
+    # Pdf oluştur
+    template = get_template('mercis657/pdf/calisma_listesi.html')
+    html = template.render({ **context })  # context sözlüğünü açarak gönder
+    # PDF ayarları
+    options = {
+        'page-size': 'A4',
+        'orientation': 'Landscape',
+        'margin-top': '1.5cm',
+        'margin-right': '1.5cm',
+        'margin-bottom': '1.1cm',
+        'margin-left': '1.5cm',
+        'encoding': 'UTF-8',
+        'no-outline': None,
+        'enable-local-file-access': True,
+        'enable-external-links': True,
+        'quiet': ''
+    }
+
+    # PDF oluştur
+    pdf = pdfkit.from_string(html, False, options=options, configuration=config)
+
+    # HTTP response oluştur (open in new tab)
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="Cizelge_{year}_{month}.pdf"'
+    return response
+
+
 
 @login_required
 def cizelge_kaydet(request):

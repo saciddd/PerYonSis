@@ -91,4 +91,11 @@ urlpatterns = [
     path('tatil-duzenle/', views.tatil_duzenle, name='tatil_duzenle'),
     path('tatil-sil/<int:tatil_id>/', views.tatil_sil, name='tatil_sil'),
     path('cizelge-form/<int:birim_id>/', views.cizelge_form, name='cizelge_form'),
+
+    # API Endpoints
+    path('bildirim/listele/<int:year>/<int:month>/<int:birim_id>/', views.bildirim_listele, name='bildirim_listele'),
+    path('bildirim/olustur/', views.api_bildirim_olustur, name='bildirim_olustur'),
+    path('bildirim/toplu-olustur/<int:birim_id>/', views.bildirim_toplu_olustur, name='bildirim_toplu_olustur'),
+    path('bildirim/tekil-onay/<int:bildirim_id>/', views.bildirim_tekil_onay, name='bildirim_tekil_onay'),
+    path('bildirim/toplu-onay/<int:birim_id>/', views.bildirim_toplu_onay, name='bildirim_toplu_onay'),
 ]

@@ -196,6 +196,7 @@ class ResmiTatil(models.Model):
 class Bildirim(models.Model):
     BildirimID = models.AutoField(primary_key=True)
     PersonelListesi = models.ForeignKey(PersonelListesi, on_delete=models.CASCADE, related_name='mercis657_bildirimler')
+    Personel = models.ForeignKey('Personel', on_delete=models.CASCADE, related_name='mercis657_bildirimler')
     DonemBaslangic = models.DateField()
     
     # Mesai süreleri (saat cinsinden)
@@ -209,8 +210,8 @@ class Bildirim(models.Model):
     BayramIcap = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     
     # Günlük detaylar
-    MesaiDetay = models.JSONField(null=True, blank=True)  # {date: hours}
-    IcapDetay = models.JSONField(null=True, blank=True)   # {date: hours}
+    MesaiDetay = models.JSONField(null=True, blank=True)  # {date: MesaiTanim.Saat}
+    IcapDetay = models.JSONField(null=True, blank=True)   # {date: MesaiTanim.Saat}
     
     # İşlem bilgileri
     OlusturanKullanici = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='mercis657_olusturan_bildirimler')
@@ -226,7 +227,8 @@ class Bildirim(models.Model):
     MutemetKilitTime = models.DateTimeField(null=True, blank=True)  # Kilitleme zamanı
 
     class Meta:
-        unique_together = [['PersonelListesi', 'DonemBaslangic']]
+        # Unique per person and period
+        unique_together = [['Personel', 'DonemBaslangic']]
 
     @property
     def ToplamFazlaMesai(self):

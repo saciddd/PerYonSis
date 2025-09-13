@@ -151,41 +151,50 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const urlParams = new URLSearchParams(window.location.search);
-    const year = urlParams.get('year');
-    const month = urlParams.get('month');
+    const donem = urlParams.get('donem');
     const birimId = urlParams.get('birim_id');
 
     // Initial fetch if parameters are present in URL
-    if (year && month && birimId) {
-        fetchBildirimler(year, month, birimId);
+    if (donem && birimId) {
+        fetchBildirimler(donem, birimId);
     }
 
     // --- Event Listeners ---
 
     // Sorgula Butonu
     document.getElementById('queryBtn').addEventListener('click', function() {
-        const selectedBirimId = document.getElementById('selectBirim').value;
-        const selectedYear = document.getElementById('selectYear').value;
-        const selectedMonth = document.getElementById('selectMonth').value;
+        const birim_id = document.getElementById('selectBirim').value;
+        const donem = document.getElementById('selectDonem').value;
         // Redirect to the same page with new query parameters
-        const newUrl = `{% url 'mercis657:bildirimler' %}?year=${selectedYear}&month=${selectedMonth}&birim_id=${selectedBirimId}`;
+        const newUrl = `{% url 'mercis657:bildirimler' %}?birim_id=${birim_id}&donem=${donem}`;
         window.open(newUrl, '_self');
     });
 
     // Tüm Personele Bildirim Butonu
     document.getElementById('createAllBtn').addEventListener('click', function() {
         const selectedBirim = document.getElementById('selectBirim').value;
-        const selectedYear = document.getElementById('selectYear').value;
-        const selectedMonth = document.getElementById('selectMonth').value;
+        const donemValue = document.getElementById('selectDonem').value;
 
         if (!selectedBirim || selectedBirim === "0") {
              Swal.fire('Hata', 'Lütfen bir birim seçin.', 'error');
              return;
         }
 
+        // parse year/month from donemValue
+        let yearNum, monthNum;
+        try {
+            let parts = donemValue.includes('/') ? donemValue.split('/') : donemValue.split('-');
+            yearNum = parseInt(parts[0], 10);
+            monthNum = parseInt(parts[1], 10);
+            if (!yearNum || !monthNum) throw new Error('Invalid donem');
+        } catch (e) {
+            Swal.fire('Hata', 'Geçersiz dönem seçimi.', 'error');
+            return;
+        }
+
         Swal.fire({
             title: 'Emin misiniz?',
-            text: `Seçili birimdeki tüm personel için ${selectedYear}-${selectedMonth} dönemi bildirimleri (yeniden) oluşturulacak. Mevcut onaylanmamış bildirimler güncellenecektir.`,
+            text: `Seçili birimdeki tüm personel için ${donemValue} dönemi bildirimleri (yeniden) oluşturulacak. Mevcut onaylanmamış bildirimler güncellenecektir.`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Evet, oluştur!',
@@ -199,8 +208,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         'X-CSRFToken': '{{ csrf_token }}'
                     },
                     body: JSON.stringify({
-                        year: selectedYear,
-                        month: selectedMonth
+                        year: yearNum,
+                        month: monthNum
                     })
                 })
                 .then(response => response.json())
@@ -208,7 +217,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (data.status === 'success') {
                         Swal.fire('Başarılı!', `Bildirimler oluşturuldu/güncellendi. Etkilenen personel sayısı: ${data.count}`, 'success');
                         // Refresh data after creation
-                        fetchBildirimler(selectedYear, selectedMonth, selectedBirim);
+                        fetchBildirimler(donemValue, selectedBirim);
                     } else {
                         Swal.fire('Hata', 'Bir hata oluştu: ' + data.message, 'error');
                     }
@@ -224,15 +233,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Bildirim Formu İndirme Butonu
     document.getElementById('downloadFormBtn').addEventListener('click', function() {
         const selectedBirim = document.getElementById('selectBirim').value;
-        const selectedYear = document.getElementById('selectYear').value;
-        const selectedMonth = document.getElementById('selectMonth').value;
+        const donemValue = document.getElementById('selectDonem').value;
 
         if (!selectedBirim || selectedBirim === "0") {
              Swal.fire('Hata', 'Lütfen bir birim seçin.', 'error');
              return;
         }
+        // parse
+        let y,m;
+        try {
+            let parts = donemValue.includes('/') ? donemValue.split('/') : donemValue.split('-');
+            y = parseInt(parts[0],10); m = parseInt(parts[1],10);
+        } catch(e){ y=null; m=null }
+        if (!y || !m) { Swal.fire('Hata','Geçersiz dönem.','error'); return; }
         window.location.href = `{% url 'mercis657:bildirim_form' 999 %}`.replace('999', selectedBirim) +
-            `?year=${selectedYear}&month=${selectedMonth}`;
+            `?year=${y}&month=${m}`;
     });
 
     // Toplu Onay Butonu (Check if exists first)
@@ -268,14 +283,34 @@ document.addEventListener('DOMContentLoaded', function() {
 // --- Core Functions ---
 
 // Fetches notification data for the specified period and unit
-async function fetchBildirimler(year, month, birimId) {
-    console.log(`Fetching bildirimler for: Year=${year}, Month=${month}, BirimID=${birimId}`); // Debug
-    if (!year || !month || !birimId || birimId === "0") {
+async function fetchBildirimler(donem, birimId) {
+    console.log(`Fetching bildirimler for: Dönem=${donem}, BirimID=${birimId}`); // Debug
+    if (!donem || !birimId || birimId === "0") {
         console.log("Invalid parameters for fetchBildirimler. Aborting.");
         // Clear table or show message if needed
         document.getElementById('bildirimTable').querySelector('tbody').innerHTML = '<tr><td colspan="20" class="text-center">Lütfen geçerli Yıl, Ay ve Birim seçip Sorgula butonuna basın.</td></tr>';
         return;
     }
+
+    // Parse year and month from donem (supports 'YYYY/MM' or 'YYYY-MM')
+    let year, month;
+    try {
+        if (donem.includes('/')) {
+            [year, month] = donem.split('/');
+        } else if (donem.includes('-')) {
+            [year, month] = donem.split('-');
+        } else {
+            throw new Error('Unknown donem separator');
+        }
+        year = parseInt(year, 10);
+        month = parseInt(month, 10);
+        if (isNaN(year) || isNaN(month)) throw new Error('Parsed year/month are not numbers');
+    } catch (err) {
+        console.error('Invalid donem format for fetchBildirimler:', donem, err);
+        document.getElementById('bildirimTable').querySelector('tbody').innerHTML = '<tr><td colspan="20" class="text-center">Geçersiz dönem formatı.</td></tr>';
+        return;
+    }
+
     try {
         const response = await fetch(`/mercis657/bildirim/listele/${year}/${month}/${birimId}/`);
         if (!response.ok) {
@@ -289,8 +324,6 @@ async function fetchBildirimler(year, month, birimId) {
              // Handle cases where backend returns success: false or no data
              console.error('API returned error or no data:', data.message || 'No data found');
              document.getElementById('bildirimTable').querySelector('tbody').innerHTML = `<tr><td colspan="20" class="text-center">${data.message || 'Bu dönem için bildirim bulunamadı.'}</td></tr>`;
-             // Optionally show a Swal message
-             // Swal.fire('Bilgi', data.message || 'Bu dönem için bildirim bulunamadı.', 'info');
         }
     } catch (error) {
         console.error('Bildirim getirme hatası:', error);
@@ -337,10 +370,11 @@ function updateBildirimTable(bildirimler) {
 
     // Populate rows with data
     bildirimler.forEach(bildirim => {
-        const row = tbody.querySelector(`tr[data-personel-id="${bildirim.personel_id}"]`);
+        let row = tbody.querySelector(`tr[data-personel-id="${bildirim.personel_id}"]`);
         if (!row) {
-            console.warn(`Row not found for personel_id: ${bildirim.personel_id}`);
-            return; // Skip if row doesn't exist for this personel
+            // create row dynamically when initial table does not contain this person
+            row = createRowForPersonel(bildirim);
+            tbody.appendChild(row);
         }
 
         // --- Populate Data Cells (Adapted from _old's updateBildirimRow) ---
@@ -454,15 +488,14 @@ function updateBildirimTable(bildirimler) {
 function handleCreateButtonClick() {
     const personelId = this.dataset.personelId;
     const birimId = document.getElementById('selectBirim').value;
-    const year = document.getElementById('selectYear').value;
-    const month = document.getElementById('selectMonth').value;
+    const donemValue = document.getElementById('selectDonem').value;
 
-    if (!personelId || !birimId || birimId === "0" || !year || !month) {
-        Swal.fire('Hata', 'Bildirim oluşturmak/güncellemek için geçerli Birim, Yıl ve Ay seçilmelidir.', 'error');
+    if (!personelId || !birimId || birimId === "0" || !donemValue) {
+        Swal.fire('Hata', 'Bildirim oluşturmak/güncellemek için geçerli Birim ve Dönem seçilmelidir.', 'error');
         return;
     }
 
-    console.log(`Creating/Updating bildirim for Personel: ${personelId}, Dönem: ${year}-${month}`);
+    console.log(`Creating/Updating bildirim for Personel: ${personelId}, Dönem: ${donemValue}`);
 
     // Use the combined endpoint for creation/update
     fetch("{% url 'mercis657:bildirim_olustur' %}", {
@@ -474,25 +507,20 @@ function handleCreateButtonClick() {
         body: JSON.stringify({
             personel_id: personelId,
             birim_id: birimId,
-            donem: `${year}-${month}` // Backend expects YYYY-MM format
+            donem: donemValue // Backend accepts 'YYYY/MM' or 'YYYY-MM'
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success' && data.bildirim_data) {
             console.log('Bildirim oluşturma/güncelleme başarılı:', data.bildirim_data);
-            // Update only the specific row after successful creation/update
-            // Instead of full refresh, find the row and call a function to update it
             const row = document.querySelector(`tr[data-personel-id="${personelId}"]`);
             if(row) {
-                 // Re-use parts of updateBildirimTable logic for a single row
                  updateSingleBildirimRow(row, data.bildirim_data);
                  Swal.fire('Başarılı', 'Bildirim başarıyla oluşturuldu/güncellendi.', 'success');
-                  // If row somehow doesn't exist, do a full refresh
-                  fetchBildirimler(year, month, birimId);
+                 fetchBildirimler(donemValue, birimId);
             } else {
-                 // If row somehow doesn't exist, do a full refresh
-                 fetchBildirimler(year, month, birimId);
+                 fetchBildirimler(donemValue, birimId);
             }
         } else {
             console.error('Bildirim oluşturma/güncelleme hatası:', data.message);
@@ -515,8 +543,7 @@ async function handleActionButtonClick() {
 
     // Get current context for potential refresh
     const birimId = document.getElementById('selectBirim').value;
-    const year = document.getElementById('selectYear').value;
-    const month = document.getElementById('selectMonth').value;
+    const donemValue = document.getElementById('selectDonem').value;
 
     if (!bildirimId) {
         console.error('Bildirim ID not found for action button.');
@@ -556,17 +583,12 @@ async function handleActionButtonClick() {
         console.log('Tekil Onay/Kaldırma Sonucu:', data);
 
         if (data.status === 'success' && data.bildirim_data) {
-             // Update the specific row instead of full refresh
              updateSingleBildirimRow(row, data.bildirim_data);
              Swal.fire('Başarılı!', data.message || 'İşlem başarıyla tamamlandı.', 'success');
         } else {
-            // Handle specific errors like 'locked' or general failures
             Swal.fire('Hata', data.message || 'İşlem sırasında bir hata oluştu.', 'error');
-             // Optional: Refresh the row to show the locked status if applicable
              if (data.message && data.message.includes('kilitli')) {
-                 // We might need a way to get the latest data for just this row
-                 // For now, a full refresh might be simpler if backend doesn't return updated data on error
-                 fetchBildirimler(year, month, birimId);
+                 fetchBildirimler(donemValue, birimId);
              }
         }
     } catch (error) {
@@ -578,13 +600,17 @@ async function handleActionButtonClick() {
 // Handles Bulk Approve/Reject Actions
 function handleBulkAction(onayDurumu) {
     const birimId = document.getElementById('selectBirim').value;
-    const year = document.getElementById('selectYear').value;
-    const month = document.getElementById('selectMonth').value;
+    const donemValue = document.getElementById('selectDonem').value;
 
-    if (!birimId || birimId === "0" || !year || !month) {
-        Swal.fire('Hata', 'Toplu işlem için geçerli Birim, Yıl ve Ay seçilmelidir.', 'error');
+    if (!birimId || birimId === "0" || !donemValue) {
+        Swal.fire('Hata', 'Toplu işlem için geçerli Birim ve Dönem seçilmelidir.', 'error');
         return;
     }
+
+    // parse
+    let yearNum, monthNum;
+    try { let parts = donemValue.includes('/') ? donemValue.split('/') : donemValue.split('-'); yearNum = parseInt(parts[0],10); monthNum = parseInt(parts[1],10); } catch(e){ yearNum=null; monthNum=null }
+    if (!yearNum || !monthNum) { Swal.fire('Hata','Geçersiz dönem.','error'); return; }
 
     const actionText = onayDurumu === 1 ? 'onaylamak' : 'onayını kaldırmak';
     const confirmButtonText = onayDurumu === 1 ? 'Evet, tümünü onayla!' : 'Evet, onayları kaldır!';
@@ -599,7 +625,6 @@ function handleBulkAction(onayDurumu) {
          return;
     }
 
-
     Swal.fire({
         title: `${titleText} - Emin misiniz?`,
         text: `Seçili dönemdeki tüm *uygun* bildirimleri ${actionText} istediğinize emin misiniz? (Kilitli olanlar etkilenmeyecektir)`,
@@ -611,7 +636,7 @@ function handleBulkAction(onayDurumu) {
         cancelButtonText: 'İptal'
     }).then((result) => {
         if (result.isConfirmed) {
-            console.log(`Performing bulk action: ${actionText} for Birim: ${birimId}, Dönem: ${year}-${month}`);
+            console.log(`Performing bulk action: ${actionText} for Birim: ${birimId}, Dönem: ${yearNum}-${monthNum}`);
             fetch("{% url 'mercis657:bildirim_toplu_onay' 999 %}".replace('999', birimId), {
                 method: 'POST',
                 headers: {
@@ -619,8 +644,8 @@ function handleBulkAction(onayDurumu) {
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
                 body: JSON.stringify({
-                    year: year,
-                    month: month,
+                    year: yearNum,
+                    month: monthNum,
                     onay_durumu: onayDurumu
                 })
             })
@@ -633,7 +658,7 @@ function handleBulkAction(onayDurumu) {
                         'success'
                     );
                     // Refresh the table data
-                    fetchBildirimler(year, month, birimId);
+                    fetchBildirimler(donemValue, birimId);
                 } else {
                     Swal.fire(
                         'Hata!',
@@ -749,6 +774,53 @@ function updateSingleBildirimRow(row, bildirim) {
      }
 }
 
+// Helper to create a table row element for a person when not present in the DOM
+function createRowForPersonel(bildirim) {
+    const tbody = document.getElementById('bildirimTable').querySelector('tbody');
+    const daysCount = document.querySelectorAll('#bildirimTable thead tr:nth-child(1) th').length - 11; // approximate day columns
+
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-personel-id', bildirim.personel_id);
+
+    // Sıra
+    const tdIndex = document.createElement('td'); tdIndex.textContent = tbody.querySelectorAll('tr[data-personel-id]').length + 1; tr.appendChild(tdIndex);
+    // Personel
+    const tdName = document.createElement('td'); tdName.textContent = bildirim.personel_name || ('#' + bildirim.personel_id); tr.appendChild(tdName);
+
+    // Mesai summary cells (5)
+    const classesMesai = ['normal-mesai','bayram-mesai','riskli-normal','riskli-bayram','toplam-mesai'];
+    classesMesai.forEach(c => { const td = document.createElement('td'); td.className = c; td.textContent = '-'; tr.appendChild(td); });
+
+    // İcap summary cells (3)
+    const classesIcap = ['normal-icap','bayram-icap','toplam-icap'];
+    classesIcap.forEach(c => { const td = document.createElement('td'); td.className = c; td.textContent = '-'; tr.appendChild(td); });
+
+    // Day cells: try to copy structure from an existing header days count
+    // Safest: read number of day headers by counting th in the first header row and subtract fixed columns
+    const dayHeaders = document.querySelectorAll('#bildirimTable thead tr:nth-child(1) th');
+    let dayCount = 0;
+    dayHeaders.forEach(h => { if (h.textContent.trim() && !isNaN(parseInt(h.textContent.trim()))) dayCount++; });
+    for (let i = 1; i <= dayCount; i++) {
+        const td = document.createElement('td'); td.className = `gun-${i}`;
+        const container = document.createElement('div'); container.className = 'sure-container';
+        const m = document.createElement('div'); m.className = 'mesai-sure'; m.textContent = '-';
+        const ic = document.createElement('div'); ic.className = 'icap-sure'; ic.textContent = '-';
+        container.appendChild(m); container.appendChild(ic); td.appendChild(container);
+        tr.appendChild(td);
+    }
+
+    // Onay cell
+    const tdOnay = document.createElement('td'); tdOnay.className = 'onay-durumu'; tdOnay.innerHTML = '<i class="bi bi-check-circle-fill text-success" style="display:none"></i>'; tr.appendChild(tdOnay);
+
+    // İşlem cell with create button and action-buttons
+    const tdIslem = document.createElement('td'); tdIslem.setAttribute('data-field','islemler');
+    const btn = document.createElement('button'); btn.className = 'btn btn-sm btn-primary create-btn'; btn.setAttribute('data-personel-id', bildirim.personel_id); btn.innerHTML = '<i class="bi bi-plus"></i>';
+    tdIslem.appendChild(btn);
+    const actionDiv = document.createElement('div'); actionDiv.className = 'action-buttons'; actionDiv.setAttribute('data-bildirim-id',''); tdIslem.appendChild(actionDiv);
+
+    tr.appendChild(tdIslem);
+    return tr;
+}
 </script>
 {% endblock %}
 

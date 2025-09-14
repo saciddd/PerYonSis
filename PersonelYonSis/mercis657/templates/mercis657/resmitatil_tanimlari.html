@@ -1,10 +1,9 @@
-{% extends "base.html" %}
-{% load static %}
+
 {% block title %}Resmi Tatil Tanımları{% endblock %}
 {% block content %}
 <div class="container mt-3">
     <h5>Resmi Tatil Tanımları</h5>
-    <form id="resmiTatilForm" method="post" action="{% url 'mercis657:resmi_tatil_ekle' %}">
+    <form id="resmiTatilForm" method="post" action="{% url 'mercis657:tatil_ekle' %}">
         {% csrf_token %}
         <div class="row g-2 align-items-end">
             <div class="col-auto">
@@ -40,7 +39,7 @@
                     <td>{{ tatil.tarih }}</td>
                     <td>{{ tatil.aciklama }}</td>
                     <td>
-                        <form method="post" action="{% url 'mercis657:resmi_tatil_sil' tatil.id %}" style="display:inline;">
+                        <form method="post" action="{% url 'mercis657:tatil_sil' tatil.id %}" style="display:inline;">
                             {% csrf_token %}
                             <button class="btn btn-sm btn-outline-danger" type="submit">Sil</button>
                         </form>

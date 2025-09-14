@@ -1,0 +1,232 @@
+<!-- Riskli Bildirim Yönetimi Modal -->
+<div class="modal fade" id="riskliBildirimModal" tabindex="-1" aria-labelledby="riskliBildirimModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="riskliBildirimModalLabel">Riskli Çalışma Bildirimleri Yönetimi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Kontrol Butonları -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <button class="btn btn-warning" id="convertAllToRiskyBtn">
+                            <i class="bi bi-exclamation-triangle"></i> Tüm Bildirimleri Riskli Hale Çevir
+                        </button>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button class="btn btn-success" id="saveRiskyChangesBtn">
+                            <i class="bi bi-check-circle"></i> Değişiklikleri Kaydet
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Riskli Bildirimler Tablosu -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered table-hover" id="riskliBildirimTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Sıra No</th>
+                                <th>Personel</th>
+                                <th>Normal</th>
+                                <th>Bayram</th>
+                                <th>Riskli Normal</th>
+                                <th>Riskli Bayram</th>
+                            </tr>
+                        </thead>
+                        <tbody id="riskliBildirimTableBody">
+                            <!-- Veriler JavaScript ile doldurulacak -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let riskliBildirimData = [];
+    let originalData = [];
+
+    // Modal açıldığında verileri yükle
+    document.getElementById('riskliBildirimModal').addEventListener('show.bs.modal', function() {
+        loadRiskliBildirimData();
+    });
+
+    // Riskli bildirim verilerini yükle
+    function loadRiskliBildirimData() {
+        const donem = document.getElementById('selectDonem').value;
+        const birimId = document.getElementById('selectBirim').value;
+        
+        if (!birimId) {
+            alert('Lütfen bir birim seçin.');
+            return;
+        }
+
+        fetch(`/mercis657/bildirimler/${birimId}/riskli-data/?donem=${donem}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    riskliBildirimData = data.bildirimler;
+                    originalData = JSON.parse(JSON.stringify(data.bildirimler)); // Deep copy
+                    renderRiskliBildirimTable();
+                } else {
+                    alert('Veri yüklenirken hata oluştu: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Veri yüklenirken hata oluştu.');
+            });
+    }
+
+    // Riskli bildirim tablosunu render et
+    function renderRiskliBildirimTable() {
+        const tbody = document.getElementById('riskliBildirimTableBody');
+        tbody.innerHTML = '';
+
+        riskliBildirimData.forEach((bildirim, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${bildirim.personel_adi}</td>
+                <td>${bildirim.normal_mesai}</td>
+                <td>${bildirim.bayram_mesai}</td>
+                <td>
+                    <input type="number" 
+                           class="form-control form-control-sm riskli-normal-input" 
+                           value="${bildirim.riskli_normal}" 
+                           min="0" 
+                           max="${bildirim.normal_mesai}"
+                           data-bildirim-id="${bildirim.bildirim_id}"
+                           data-original-normal="${bildirim.normal_mesai}"
+                           data-original-bayram="${bildirim.bayram_mesai}">
+                </td>
+                <td>
+                    <input type="number" 
+                           class="form-control form-control-sm riskli-bayram-input" 
+                           value="${bildirim.riskli_bayram}" 
+                           min="0" 
+                           max="${bildirim.bayram_mesai}"
+                           data-bildirim-id="${bildirim.bildirim_id}"
+                           data-original-normal="${bildirim.normal_mesai}"
+                           data-original-bayram="${bildirim.bayram_mesai}">
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        // Input event listener'ları ekle
+        addInputEventListeners();
+    }
+
+    // Input event listener'larını ekle
+    function addInputEventListeners() {
+        document.querySelectorAll('.riskli-normal-input, .riskli-bayram-input').forEach(input => {
+            input.addEventListener('input', function() {
+                updateNormalValues(this);
+            });
+        });
+    }
+
+    // Normal değerleri güncelle
+    function updateNormalValues(input) {
+        const bildirimId = input.dataset.bildirimId;
+        const originalNormal = parseFloat(input.dataset.originalNormal);
+        const originalBayram = parseFloat(input.dataset.originalBayram);
+        const riskliValue = parseFloat(input.value) || 0;
+
+        // Maksimum değer kontrolü
+        const maxValue = input.classList.contains('riskli-normal-input') ? originalNormal : originalBayram;
+        if (riskliValue > maxValue) {
+            input.value = maxValue;
+            return;
+        }
+
+        // Bildirim verisini güncelle
+        const bildirim = riskliBildirimData.find(b => b.bildirim_id == bildirimId);
+        if (bildirim) {
+            if (input.classList.contains('riskli-normal-input')) {
+                bildirim.riskli_normal = riskliValue;
+                bildirim.normal_mesai = originalNormal - riskliValue;
+            } else {
+                bildirim.riskli_bayram = riskliValue;
+                bildirim.bayram_mesai = originalBayram - riskliValue;
+            }
+
+            // Tablodaki normal değerleri güncelle
+            const row = input.closest('tr');
+            const normalCell = row.children[2];
+            const bayramCell = row.children[3];
+            
+            if (input.classList.contains('riskli-normal-input')) {
+                normalCell.textContent = bildirim.normal_mesai.toFixed(1);
+            } else {
+                bayramCell.textContent = bildirim.bayram_mesai.toFixed(1);
+            }
+        }
+    }
+
+    // Tüm bildirimleri riskli hale çevir
+    document.getElementById('convertAllToRiskyBtn').addEventListener('click', function() {
+        if (confirm('Tüm bildirimleri riskli hale çevirmek istediğinizden emin misiniz?')) {
+            riskliBildirimData.forEach(bildirim => {
+                bildirim.riskli_normal = bildirim.normal_mesai;
+                bildirim.riskli_bayram = bildirim.bayram_mesai;
+                bildirim.normal_mesai = 0;
+                bildirim.bayram_mesai = 0;
+            });
+            renderRiskliBildirimTable();
+        }
+    });
+
+    // Değişiklikleri kaydet
+    document.getElementById('saveRiskyChangesBtn').addEventListener('click', function() {
+        const donem = document.getElementById('selectDonem').value;
+        const birimId = document.getElementById('selectBirim').value;
+
+        const changes = riskliBildirimData.map(bildirim => ({
+            bildirim_id: bildirim.bildirim_id,
+            riskli_normal: bildirim.riskli_normal,
+            riskli_bayram: bildirim.riskli_bayram,
+            normal_mesai: bildirim.normal_mesai,
+            bayram_mesai: bildirim.bayram_mesai
+        }));
+
+        // CSRF token'ı al
+        const csrfToken = '{{ csrf_token }}';
+
+        fetch(`/mercis657/bildirimler/${birimId}/update-risky/?donem=${donem}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ changes: changes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Değişiklikler başarıyla kaydedildi.');
+                // Ana tabloyu yenile
+                if (typeof loadBildirimData === 'function') {
+                    loadBildirimData();
+                }
+                // Modal'ı kapat
+                const modal = bootstrap.Modal.getInstance(document.getElementById('riskliBildirimModal'));
+                modal.hide();
+            } else {
+                alert('Kaydetme sırasında hata oluştu: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Kaydetme sırasında hata oluştu.');
+        });
+    });
+});
+</script>

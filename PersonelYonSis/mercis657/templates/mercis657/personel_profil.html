@@ -63,7 +63,12 @@
                                                     <h5 class="{% if hesaplama.fazla_mesai > 0 %}text-danger{% else %}text-success{% endif %}">
                                                         {{ hesaplama.fazla_mesai|floatformat:2 }}
                                                     </h5>
-                                                    <small>Fazla Mesai (saat)</small>
+                                                    <small>
+                                                        Fazla Mesai (saat)
+                                                        <span class="text-muted d-block">
+                                                            (Bayram: {{ hesaplama.bayram_fazla_mesai|default:0.0|floatformat:2 }} , Normal: {{ hesaplama.normal_fazla_mesai|default:0.0|floatformat:2 }})
+                                                        </span>
+                                                    </small>
                                                 </div>
                                             </div>
                                         </div>
@@ -263,7 +268,7 @@ function deleteMazeret(mazeretId) {
             }
         })
         .then(response => response.json())
-        .then(data => {
+        .then data => {
             if (data.status === 'success') {
                 location.reload();
             } else {

@@ -12,6 +12,8 @@ import json
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db import transaction
+from decimal import Decimal
+from mercis657.utils import hesapla_fazla_mesai
 
 
 def get_donemler():
@@ -155,68 +157,6 @@ def bildirimler(request):
     }
     return render(request, "mercis657/bildirimler.html", context)
 
-
-@login_required
-def bildirim_olustur(request, liste_id, donem):
-    """Yeni bildirim oluştur"""
-    if not request.user.has_permission("mercis657.add_bildirim"):
-        return HttpResponseForbidden("Yetkiniz yok.")
-
-    liste = get_object_or_404(PersonelListesi, pk=liste_id)
-    year, month = map(int, donem.split("/"))
-    donem_baslangic = date(year, month, 1)
-
-    # Eğer bu personel listesi ve dönem için zaten bir bildirim varsa
-    existing_bildirim = Bildirim.objects.filter(
-        PersonelListesi=liste,
-        DonemBaslangic=donem_baslangic,
-        SilindiMi=False
-    ).first()
-
-    if existing_bildirim:
-        if existing_bildirim.OnayDurumu == 1: # Onaylanmışsa hata ver
-            messages.error(request, f"Bu dönem için zaten onaylanmış bir bildirim mevcut ve güncellenemez.")
-        else: # Onaylanmamışsa güncelle
-            # Burada fazla mesai ve icap detaylarını yeniden hesaplayıp güncelleyebilirsiniz.
-            # Şimdilik varsayılan değerleri bırakıyorum ya da boş JSON ile güncelliyorum.
-            existing_bildirim.OlusturanKullanici = request.user
-            existing_bildirim.OnayDurumu = 0
-            existing_bildirim.OnaylayanKullanici = None
-            existing_bildirim.OnayTarihi = None
-            existing_bildirim.MesaiDetay = {}
-            existing_bildirim.IcapDetay = {}
-            # Diğer fazla mesai/icap alanları sıfırlanabilir veya yeniden hesaplanabilir
-            existing_bildirim.NormalFazlaMesai = 0
-            existing_bildirim.BayramFazlaMesai = 0
-            existing_bildirim.RiskliNormalFazlaMesai = 0
-            existing_bildirim.RiskliBayramFazlaMesai = 0
-            existing_bildirim.NormalIcap = 0
-            existing_bildirim.BayramIcap = 0
-
-            existing_bildirim.save()
-            messages.info(request, f"Mevcut onaylanmamış bildirim güncellendi.")
-        return redirect(reverse("mercis657:bildirimler") + f"?donem={donem}&birim_id={liste.birim.BirimID}")
-
-    # Yeni bildirim oluştur
-    bildirim = Bildirim.objects.create(
-        PersonelListesi=liste,
-        DonemBaslangic=donem_baslangic,
-        OlusturanKullanici=request.user,
-        OnayDurumu=0,  # Oluşturulduğunda beklemede
-        SilindiMi=False,
-        MesaiDetay={},
-        IcapDetay={},
-        NormalFazlaMesai=0,
-        BayramFazlaMesai=0,
-        RiskliNormalFazlaMesai=0,
-        RiskliBayramFazlaMesai=0,
-        NormalIcap=0,
-        BayramIcap=0,
-    )
-    messages.success(request, f"Bildirim başarıyla oluşturuldu.")
-    return redirect(reverse("mercis657:bildirimler") + f"?donem={donem}&birim_id={liste.birim.BirimID}")
-
-
 @login_required
 def bildirim_onayla(request, bildirim_id):
     """Bildirimi onayla"""
@@ -253,62 +193,6 @@ def bildirim_sil(request, bildirim_id):
     bildirim.save()
     messages.success(request, "Bildirim başarıyla silindi.")
     return redirect(reverse("mercis657:bildirimler") + f"?donem={bildirim.DonemBaslangic.year}/{bildirim.DonemBaslangic.month:02d}&birim_id={bildirim.PersonelListesi.birim.BirimID}")
-
-@login_required
-def bildirim_toplu_olustur(request, birim_id):
-    pass
-
-@login_required
-def bildirim_toplu_onay(request, birim_id):
-    pass
-
-@login_required
-def bildirim_tekil_onay(request, bildirim_id):
-    pass
-
-@login_required
-def bildirim_toplu_onay_kaldir(request, birim_id):
-    pass
-
-@login_required
-def bildirim_form(request, birim_id):
-    pass
-
-@login_required
-def bildirim_kilit(request, bildirim_id):
-    pass
-
-@login_required
-def bildirim_kilit_ac(request, bildirim_id):
-    pass
-
-@login_required
-def toplu_kilit(request):
-    pass
-
-@login_required
-def resmi_tatiller(request):
-    pass
-
-@login_required
-def bildirim_excel(request):
-    pass
-
-@login_required
-def tatil_ekle(request):
-    pass
-
-@login_required
-def tatil_duzenle(request):
-    pass
-
-@login_required
-def tatil_sil(request, tatil_id):
-    pass
-
-@login_required
-def cizelge_form(request, birim_id):
-    pass
 
 @login_required
 def bildirim_listele(request, year, month, birim_id):
@@ -385,7 +269,7 @@ def bildirim_listele(request, year, month, birim_id):
 
 @login_required
 @require_POST
-def api_bildirim_olustur(request):
+def bildirim_olustur(request):
     """Create or update a single bildirim for a person (expects JSON).
     Body: { personel_id, birim_id, donem: 'YYYY/MM' }
     Returns bildirim_data suitable for JS updateSingleBildirimRow
@@ -423,42 +307,32 @@ def api_bildirim_olustur(request):
         mesai_qs = Mesai.objects.filter(Personel=personel, MesaiDate__year=year, MesaiDate__month=month).select_related('MesaiTanim', 'Izin')
         mesai_detay = {}
         icap_detay = {}
-        normal = bayram = rnormal = rbayram = nicap = bicap = 0
+        
+        # PersonelListesiKayit'ı bul
+        personel_listesi_kayit = liste.kayitlar.filter(personel=personel).first()
+        if not personel_listesi_kayit:
+            return JsonResponse({'status': 'error', 'message': 'Personel listesi kaydı bulunamadı.'}, status=404)
 
+        # Hesaplama fonksiyonunu çağır
+        fazla_mesai_sonuclari = hesapla_fazla_mesai(personel_listesi_kayit, year, month)
+
+        normal = fazla_mesai_sonuclari.get('normal_fazla_mesai', Decimal('0.0'))
+        bayram = fazla_mesai_sonuclari.get('bayram_fazla_mesai', Decimal('0.0'))
+        rnormal = Decimal('0.0') # Riskli normal mesai hesaplaması şimdilik yok
+        rbayram = Decimal('0.0') # Riskli bayram mesaisi hesaplaması şimdilik yok
+        nicap = Decimal('0.0') # İcap hesaplaması şimdilik yok
+        bicap = Decimal('0.0') # İcap hesaplaması şimdilik yok
+        
         # load resmi tatiller
         tatiller = ResmiTatil.objects.filter(TatilTarihi__year=year, TatilTarihi__month=month)
-        tatil_days = [t.TatilTarihi for t in tatiller if t.TatilTipi == 'TAM']
+        # tatil_days = [t.TatilTarihi for t in tatiller if t.TatilTipi == 'TAM'] # Artık buna gerek yok
 
         for m in mesai_qs:
             key = m.MesaiDate.strftime('%Y-%m-%d')
             if m.Izin:
                 mesai_detay[key] = {'izin': m.Izin.ad}
             elif m.MesaiTanim:
-                # ensure Mesai_Tanimlari has Sure calculated (could be duration)
-                sure_val = 0
-                try:
-                    sure_val = float(getattr(m.MesaiTanim, 'Sure', 0) or 0)
-                except Exception:
-                    sure_val = 0
-                mesai_detay[key] = {'sure': sure_val, 'saat': m.MesaiTanim.Saat}
-
-            # classify into normal/bayram/risky etc. (basic heuristics)
-            is_bayram = m.MesaiDate in tatil_days
-            is_risky = bool(getattr(m.MesaiTanim, 'GeceMesaisi', False)) if m.MesaiTanim else False
-            sure_hours = 0
-            try:
-                sure_hours = float(getattr(m.MesaiTanim, 'Sure', 0) or 0)
-            except Exception:
-                sure_hours = 0
-
-            if is_bayram and is_risky:
-                rbayram += sure_hours
-            elif is_bayram:
-                bayram += sure_hours
-            elif is_risky:
-                rnormal += sure_hours
-            else:
-                normal += sure_hours
+                mesai_detay[key] = {'saat': m.MesaiTanim.Saat}
 
         # Create or update Bildirim
         with transaction.atomic():
@@ -500,7 +374,7 @@ def api_bildirim_olustur(request):
             'bayram_mesai': float(bildirim.BayramFazlaMesai),
             'riskli_normal': float(bildirim.RiskliNormalFazlaMesai),
             'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai),
-            'toplam_mesai': float(bildirim.ToplamFazlaMesai),
+            'toplam_mesai': float(bildirim.NormalFazlaMesai + bildirim.BayramFazlaMesai + bildirim.RiskliNormalFazlaMesai + bildirim.RiskliBayramFazlaMesai), # Toplam fazla mesaiyi yeni hesaplanan değerlerle güncelle
             'normal_icap': float(bildirim.NormalIcap),
             'bayram_icap': float(bildirim.BayramIcap),
             'toplam_icap': float(bildirim.ToplamIcap),
@@ -541,12 +415,12 @@ def bildirim_toplu_olustur(request, birim_id):
     count = 0
     for kayit in liste.kayitlar.select_related('personel'):
         personel = kayit.personel
-        # reuse api_bildirim_olustur logic by constructing a fake request body
+        # reuse bildirim_olustur logic by constructing a fake request body
         fake_body = json.dumps({'personel_id': personel.PersonelID, 'birim_id': birim.BirimID, 'donem': f'{year}/{month:02d}'})
         subreq = request
         subreq._body = fake_body.encode('utf-8')
         # call internal function
-        resp = api_bildirim_olustur(subreq)
+        resp = bildirim_olustur(subreq)
         try:
             rdata = json.loads(resp.content)
             if rdata.get('status') == 'success':
@@ -642,3 +516,127 @@ def bildirim_toplu_onay(request, birim_id):
         count += 1
 
     return JsonResponse({'status': 'success', 'message': f'{count} bildirim güncellendi.', 'count': count})
+
+@login_required
+def bildirim_form():
+    """ İlgili dönem ve birim için fazla mesai ve icap bildirim formu PDF çıktısı """
+    # Şimdi boş bir fonksiyon, ileride eklenebilir
+    pass
+
+
+@login_required
+def riskli_bildirim_data(request, birim_id):
+    """Riskli bildirim yönetimi için veri sağlar"""
+    try:
+        if not request.user.has_permission("mercis657.change_bildirim"):
+            return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
+
+        donem = request.GET.get('donem')
+        if not donem:
+            return JsonResponse({'status': 'error', 'message': 'Dönem parametresi gerekli.'}, status=400)
+
+        year, month = map(int, donem.split('/') if '/' in donem else donem.split('-'))
+
+        birim = Birim.objects.filter(BirimID=birim_id).first()
+        if not birim:
+            return JsonResponse({'status': 'error', 'message': 'Birim bulunamadı.'}, status=404)
+
+        liste = PersonelListesi.objects.filter(birim=birim, yil=year, ay=month).first()
+        if not liste:
+            return JsonResponse({'status': 'error', 'message': 'Personel listesi bulunamadı.'}, status=404)
+
+        bildirimler = []
+        for kayit in liste.kayitlar.select_related('personel'):
+            bildirim = Bildirim.objects.filter(
+                Personel=kayit.personel,
+                DonemBaslangic=date(year, month, 1)
+            ).first()
+
+            if bildirim:
+                bildirimler.append({
+                    'bildirim_id': bildirim.BildirimID,
+                    'personel_adi': f"{kayit.personel.PersonelName}",
+                    'normal_mesai': float(bildirim.NormalFazlaMesai or 0),
+                    'bayram_mesai': float(bildirim.BayramFazlaMesai or 0),
+                    'riskli_normal': float(bildirim.RiskliNormalFazlaMesai or 0),
+                    'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai or 0),
+                })
+
+        return JsonResponse({'status': 'success', 'bildirimler': bildirimler})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+@login_required
+@require_POST
+def update_risky_bildirim(request, birim_id):
+    """Riskli bildirim değerlerini günceller"""
+    try:
+        if not request.user.has_permission("mercis657.change_bildirim"):
+            return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
+
+        data = json.loads(request.body)
+        changes = data.get('changes', [])
+
+        if not changes:
+            return JsonResponse({'status': 'error', 'message': 'Güncellenecek veri bulunamadı.'}, status=400)
+
+        with transaction.atomic():
+            for change in changes:
+                bildirim = Bildirim.objects.filter(BildirimID=change['bildirim_id']).first()
+                if bildirim and bildirim.OnayDurumu != 1:  # Onaylanmamış bildirimler
+                    bildirim.RiskliNormalFazlaMesai = Decimal(str(change['riskli_normal']))
+                    bildirim.RiskliBayramFazlaMesai = Decimal(str(change['riskli_bayram']))
+                    bildirim.NormalFazlaMesai = Decimal(str(change['normal_mesai']))
+                    bildirim.BayramFazlaMesai = Decimal(str(change['bayram_mesai']))
+                    bildirim.save()
+
+        return JsonResponse({'status': 'success', 'message': 'Değişiklikler başarıyla kaydedildi.'})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+@login_required
+@require_POST
+def convert_all_to_risky(request, birim_id):
+    """Tüm bildirimleri riskli hale çevirir"""
+    try:
+        if not request.user.has_permission("mercis657.change_bildirim"):
+            return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
+
+        data = json.loads(request.body)
+        donem = data.get('donem')
+
+        if not donem:
+            return JsonResponse({'status': 'error', 'message': 'Dönem parametresi gerekli.'}, status=400)
+
+        year, month = map(int, donem.split('/') if '/' in donem else donem.split('-'))
+
+        birim = Birim.objects.filter(BirimID=birim_id).first()
+        if not birim:
+            return JsonResponse({'status': 'error', 'message': 'Birim bulunamadı.'}, status=404)
+
+        liste = PersonelListesi.objects.filter(birim=birim, yil=year, ay=month).first()
+        if not liste:
+            return JsonResponse({'status': 'error', 'message': 'Personel listesi bulunamadı.'}, status=404)
+
+        with transaction.atomic():
+            for kayit in liste.kayitlar.select_related('personel'):
+                bildirim = Bildirim.objects.filter(
+                    Personel=kayit.personel,
+                    DonemBaslangic=date(year, month, 1)
+                ).first()
+
+                if bildirim and bildirim.OnayDurumu != 1:  # Onaylanmamış bildirimler
+                    bildirim.RiskliNormalFazlaMesai = bildirim.NormalFazlaMesai
+                    bildirim.RiskliBayramFazlaMesai = bildirim.BayramFazlaMesai
+                    bildirim.NormalFazlaMesai = Decimal('0.0')
+                    bildirim.BayramFazlaMesai = Decimal('0.0')
+                    bildirim.save()
+
+        return JsonResponse({'status': 'success', 'message': 'Tüm bildirimler riskli hale çevrildi.'})
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})

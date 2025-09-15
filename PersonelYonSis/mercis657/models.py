@@ -128,6 +128,12 @@ class Mesai_Tanimlari(models.Model):
     GecerliMesai = models.BooleanField(default=True)
     CKYS_BTF_Karsiligi = models.CharField(max_length=100, null=True, blank=True)
     Sure = models.DurationField(null=True, blank=True)
+    # Yeni alan
+    Renk = models.CharField(
+        max_length=7,  # "#RRGGBB"
+        null=True,
+        help_text="Çizelgede görünecek yazı rengi"
+    )
 
     def calculate_sure(self):
         """Mesai süresini (Sure) hesaplayan yöntem."""

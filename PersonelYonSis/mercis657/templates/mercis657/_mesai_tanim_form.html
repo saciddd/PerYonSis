@@ -1,0 +1,51 @@
+<form id="mesaiTanimEditForm" method="post" action="{% url 'mercis657:mesai_tanim_update' %}">
+    {% csrf_token %}
+    <input type="hidden" name="mesai_id" value="{{ mesai.id }}">
+    {{ form.non_field_errors }}
+    <div class="row g-2">
+        <div class="col-md-6">
+            <label class="form-label">Saat</label>
+            {{ form.Saat }}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">CKYS/BTF Karşılığı</label>
+            {{ form.CKYS_BTF_Karsiligi }}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Ara Dinlenme</label>
+            {{ form.AraDinlenme }}
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Renk</label>
+            {{ form.Renk }}
+            <div class="form-text">Siyah (#000000) ya da boş bırakılırsa kayıtta None olur.</div>
+        </div>
+        <div class="col-12">
+            <div class="d-flex flex-wrap gap-3 mt-2">
+                <label class="form-check">
+                    {{ form.GunduzMesaisi }} Gündüz Mesaisi
+                </label>
+                <label class="form-check">
+                    {{ form.AksamMesaisi }} Akşam Mesaisi
+                </label>
+                <label class="form-check">
+                    {{ form.GeceMesaisi }} Gece Mesaisi
+                </label>
+                <label class="form-check">
+                    {{ form.IseGeldi }} İşe Geldi
+                </label>
+                <label class="form-check">
+                    {{ form.SonrakiGuneSarkiyor }} Sonraki Güne Sarkıyor
+                </label>
+                <label class="form-check">
+                    {{ form.GecerliMesai }} Geçerli Mesai
+                </label>
+            </div>
+        </div>
+    </div>
+    <div class="mt-3 text-end">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Vazgeç</button>
+        <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+    </div>
+</form>
+

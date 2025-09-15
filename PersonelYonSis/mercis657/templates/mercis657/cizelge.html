@@ -127,7 +127,8 @@
                     data-izin-id="{{ mesai.IzinID|default:'' }}"
                     data-degisiklik="{{ mesai.Degisiklik|yesno:'1,0' }}"
                     data-prev-saat="{{ mesai.PrevSaat }}"
-                    data-prev-izin="{{ mesai.PrevIzinAd }}">
+                    data-prev-izin="{{ mesai.PrevIzinAd }}"
+                    {% if mesai.MesaiTanimRenk %} style="color: {{ mesai.MesaiTanimRenk }}; font-weight: bold;"{% endif %}>
                     {{ mesai.Saat|default:mesai.IzinAd }}
                     {% if mesai.Degisiklik %}
                       <i class="bi bi-check-circle text-danger float-end" title="Onay bekleyen mesai. Önceki: {{ mesai.PrevSaat|default:mesai.PrevIzinAd }} | Talep edilen: {{ mesai.Saat|default:mesai.IzinAd }}"></i>

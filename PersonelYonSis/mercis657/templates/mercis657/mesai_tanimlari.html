@@ -1,205 +1,197 @@
-<div class="container-fluid">
-    <div class="row">
-        <!-- Sol taraf: Yeni Mesai Tanımlama Formu -->
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Yeni Mesai Tanımlama</h3>
+{% load static %}
+<div class="container-fluid py-2">
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Yeni Mesai Tanımı</h5>
                 </div>
                 <div class="card-body">
-                    <form action="{% url 'mercis657:add_mesai_tanim' %}" method="post">
+                    <form action="{% url 'mercis657:add_mesai_tanim' %}" method="post" id="mesaiCreateForm">
                         {% csrf_token %}
-                        <div class="form-group">
-                            <label for="Saat">Saat</label>
-                            <input type="text" class="form-control" id="Saat" name="Saat" placeholder="Mesai saatini girin" required>
+                        {{ form.non_field_errors }}
+                        <div class="mb-2">
+                            <label class="form-label">Saat</label>
+                            {{ form.Saat }}
                         </div>
-                        <div class="form-group">
-                            <label for="GunduzMesaisi">Gündüz Mesaisi</label>
-                            <input type="checkbox" id="GunduzMesaisi" name="GunduzMesaisi">
+                        <div class="mb-2">
+                            <label class="form-label">CKYS/BTF Karşılığı</label>
+                            {{ form.CKYS_BTF_Karsiligi }}
                         </div>
-                        <div class="form-group">
-                            <label for="AksamMesaisi">Akşam Mesaisi</label>
-                            <input type="checkbox" id="AksamMesaisi" name="AksamMesaisi">
+                        <div class="mb-2">
+                            <label class="form-label">Ara Dinlenme</label>
+                            {{ form.AraDinlenme }}
                         </div>
-                        <div class="form-group">
-                            <label for="GeceMesaisi">Gece Mesaisi</label>
-                            <input type="checkbox" id="GeceMesaisi" name="GeceMesaisi">
+                        <div class="mb-2">
+                            <label class="form-label">Renk</label>
+                            {{ form.Renk }}
+                            <div class="form-text">Siyah (#000000) ya da boş ise None kaydedilir.</div>
                         </div>
-                        <div class="form-group">
-                            <label for="IseGeldi">İşe Geldi</label>
-                            <input type="checkbox" id="IseGeldi" name="IseGeldi">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="form-check">{{ form.GunduzMesaisi }} Gündüz</label>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-check">{{ form.AksamMesaisi }} Akşam</label>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-check">{{ form.GeceMesaisi }} Gece</label>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-check">{{ form.IseGeldi }} İşe Geldi</label>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-check">{{ form.SonrakiGuneSarkiyor }} Sonraki Güne</label>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-check">{{ form.GecerliMesai }} Geçerli</label>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="SonrakiGuneSarkiyor">Sonraki Güne Sarkıyor</label>
-                            <input type="checkbox" id="SonrakiGuneSarkiyor" name="SonrakiGuneSarkiyor">
+                        <div class="text-end mt-3">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-plus-circle"></i> Ekle
+                            </button>
                         </div>
-                        <div class="form-group">
-                            <label for="AraDinlenme">Ara Dinlenme</label>
-                            <input type="time" class="form-control" id="AraDinlenme" name="AraDinlenme">
-                        </div>
-                        <div class="form-group">
-                            <label for="GecerliMesai">Geçerli Mesai</label>
-                            <input type="checkbox" id="GecerliMesai" name="GecerliMesai">
-                        </div>
-                        <div class="form-group">
-                            <label for="CKYS_BTF_Karsiligi">CKYS/BTF Karşılığı</label>
-                            <select class="form-control" id="CKYS_BTF_Karsiligi" name="CKYS_BTF_Karsiligi">
-                                <option value="">Seçiniz</option>
-                                {% for value in ckys_btf_values %}
-                                    <option value="{{ value }}">{{ value }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-primary mt-3">Mesai Tanımı Ekle</button>
                     </form>
                 </div>
             </div>
         </div>
 
-        <!-- Sağ taraf: Mesai Tanımları Listesi -->
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">Kayıtlı Mesai Tanımları</h3>
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Kayıtlı Mesai Tanımları</h5>
                 </div>
                 <div class="card-body">
-                    <table id="mesaiTanimlariTable" class="table table-bordered-sm">
-                        <thead>
-                            <tr>
-                                <th>Düzenle</th> <!-- Düzenleme iconu için -->
-                                <th scope="col">Saat</th>
-                                <th scope="col">Gündüz Mesaisi</th>
-                                <th scope="col">Akşam Mesaisi</th>
-                                <th scope="col">Gece Mesaisi</th>
-                                <th scope="col">Geçerli Mesai</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for mesai_tanim in mesai_tanimlari %}
-                            <tr data-id="{{ mesai_tanim.id }}"> <!-- ID'yi satıra ekleyin -->
-                                <td>
-                                    <!-- Düzenleme simgesi -->
-                                    <button class="edit-btn btn btn-sm btn-outline-primary" onclick="enableEdit(this)">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <!-- Kaydet/Vazgeç simgeleri başlangıçta gizli -->
-                                    <button class="save-btn btn btn-sm btn-outline-success d-none" onclick="saveEdit(this)">
-                                        <i class="bi bi-check-lg"></i>
-                                    </button>
-                                    <button class="cancel-btn btn btn-sm btn-outline-danger d-none" onclick="cancelEdit(this)">
-                                        <i class="bi bi-x-lg"></i>
-                                    </button>
-                                    <!-- Silme simgesi - `data-id` olarak Mesai ID'sini doğrudan butona ekleyin -->
-                                    <button class="delete-btn btn btn-sm btn-outline-danger" onclick="deleteMesaiTanim(this)" data-id="{{ mesai_tanim.id }}">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </td>
-                                <td contenteditable="false">{{ mesai_tanim.Saat }}</td>
-                                <td>{{ mesai_tanim.GunduzMesaisi|yesno:"Evet,Hayır" }}</td>
-                                <td>{{ mesai_tanim.AksamMesaisi|yesno:"Evet,Hayır" }}</td>
-                                <td>{{ mesai_tanim.GeceMesaisi|yesno:"Evet,Hayır" }}</td>
-                                <td>{{ mesai_tanim.GecerliMesai|yesno:"Evet,Hayır" }}</td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="6">Kayıtlı mesai tanımı bulunmamaktadır.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                        
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 70px;">İşlem</th>
+                                    <th>Saat</th>
+                                    <th>Gündüz</th>
+                                    <th>Akşam</th>
+                                    <th>Gece</th>
+                                    <th>Süre</th>
+                                    <th>Renk</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in mesai_tanimlari %}
+                                <tr data-id="{{ item.id }}">
+                                    <td>
+                                        <button class="btn btn-outline-primary btn-xs me-1 js-edit" data-id="{{ item.id }}">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-xs js-delete" data-id="{{ item.id }}">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                    <td>{{ item.Saat }}</td>
+                                    <td>{{ item.GunduzMesaisi|yesno:"Evet,Hayır" }}</td>
+                                    <td>{{ item.AksamMesaisi|yesno:"Evet,Hayır" }}</td>
+                                    <td>{{ item.GeceMesaisi|yesno:"Evet,Hayır" }}</td>
+                                    <td>{{ item.Sure }}</td>
+                                    <td>
+                                        {% if item.Renk %}
+                                            <span class="color-swatch" data-color="{{ item.Renk }}">&nbsp;</span>
+                                            <span class="text-muted ms-1">{{ item.Renk }}</span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">Kayıt bulunamadı.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Edit Modal -->
+<div class="modal fade" id="mesaiEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Mesai Tanımı Düzenle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="mesaiEditModalBody">
+        <div class="text-center text-muted">Yükleniyor...</div>
+      </div>
+    </div>
+  </div>
+ </div>
+
 <script>
-    function deleteMesaiTanim(button) {
-    if (!confirm("Bu kaydı silmek istediğinizden emin misiniz?")) return;
-
-    let row = $(button).closest('tr');
-    let mesaiID = $(button).data('id'); // Butondaki `data-id` özelliğinden Mesai ID'yi al
-
-    $.ajax({
-        url: '{% url "mercis657:delete_mesai_tanim" %}',  // Silme URL'si
-        method: 'POST',
-        data: {
-            mesai_id: mesaiID,  // Mesai ID'yi gönder
-            csrfmiddlewaretoken: '{{ csrf_token }}'
-        },
-        success: function(response) {
-            if (response.status === 'success') {
-                alert('Kayıt başarıyla silindi.');
-                row.remove(); // Satırı sayfadan kaldır
-            } else {
-                alert('Silme sırasında bir hata oluştu.');
-            }
-        },
-        error: function(xhr) {
-            alert('Bir hata oluştu.');
-        }
-    });
-}
-
-
-    function enableEdit(button) {
-        let row = $(button).closest('tr');
-        row.find('td[contenteditable="false"]').attr('contenteditable', 'true').addClass('editable');
-        
-        row.find('.edit-btn').addClass('d-none');
-        row.find('.save-btn, .cancel-btn').removeClass('d-none');
+    function getCookie(name){
+        const m = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return m ? m.pop() : '';
     }
 
-    function saveEdit(button) {
-        let row = $(button).closest('tr');
-        let mesaiID = row.data('id'); // Mesai ID'yi alıyoruz
-        let saat = row.find('td.saat').text().trim(); // Saat hücresi
-
-        $.ajax({
-            url: `{% url 'mercis657:mesai_tanim_update' %}`,
-            method: 'POST',
-            data: {
-                mesai_id: mesaiID,
-                saat: saat,
-                csrfmiddlewaretoken: '{{ csrf_token }}'
-            },
-            success: function(response) {
-                if (response.status === 'success') {
-                    alert('Kayıt başarıyla güncellendi.');
-                    location.reload(); // Güncelleme sonrası sayfayı yeniden yükle
-                } else {
-                    alert('Güncelleme sırasında hata oluştu.');
-                }
-            },
-            error: function(xhr) {
-                alert('Bir hata oluştu.');
-            }
+    document.querySelectorAll('.js-edit').forEach(btn=>{
+        btn.addEventListener('click', function(){
+            const id = this.dataset.id;
+            fetch(`{% url 'mercis657:mesai_tanim_form' 0 %}`.replace('/0/','/'+id+'/'))
+              .then(r=>r.text())
+              .then(html=>{
+                  document.getElementById('mesaiEditModalBody').innerHTML = html;
+                  const modal = new bootstrap.Modal(document.getElementById('mesaiEditModal'));
+                  modal.show();
+                  const form = document.getElementById('mesaiTanimEditForm');
+                  if (form){
+                      form.addEventListener('submit', function(e){
+                          e.preventDefault();
+                          const fd = new FormData(form);
+                          fetch(form.action, { method:'POST', headers:{'X-CSRFToken': getCookie('csrftoken')}, body: fd })
+                            .then(r=>r.json())
+                            .then(d=>{
+                                if (d.status==='success'){
+                                    location.reload();
+                                } else {
+                                    alert('Hata: ' + (d.message || JSON.stringify(d.errors)));
+                                }
+                            }).catch(err=>alert('Hata: '+err));
+                      });
+                  }
+              }).catch(err=>alert('Hata: '+err));
         });
+    });
 
-        row.find('td[contenteditable="true"]').attr('contenteditable', 'false').removeClass('editable');
-        row.find('.save-btn, .cancel-btn').addClass('d-none');
-        row.find('.edit-btn').removeClass('d-none');
-    }
-
-    function cancelEdit(button) {
-        let row = $(button).closest('tr');
-        row.find('td[contenteditable="true"]').attr('contenteditable', 'false').removeClass('editable');
-        row.find('.save-btn, .cancel-btn').addClass('d-none');
-        row.find('.edit-btn').removeClass('d-none');
-    }
+    document.querySelectorAll('.js-delete').forEach(btn=>{
+        btn.addEventListener('click', function(){
+            if(!confirm('Silmek istediğinize emin misiniz?')) return;
+            const id = this.dataset.id;
+            const fd = new FormData();
+            fd.append('mesai_id', id);
+            fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            fetch('{% url "mercis657:delete_mesai_tanim" %}', { method:'POST', body: fd })
+              .then(r=>r.json())
+              .then(d=>{
+                  if(d.status==='success') location.reload();
+                  else alert('Hata: ' + (d.message||'Silinemedi'));
+              }).catch(err=>alert('Hata: '+err));
+        });
+    });
 </script>
 
-
 <style>
-    /* Düzenleme sırasında sarı arkaplan ve border */
-    .editable {
-        background-color: #f9f9c5;
-        border: 1px solid #ffc107;
-    }
-
-    /* Normal durumda hücre */
-    table td {
-        cursor: default;
-    }
+    .btn-xs { padding: 2px 6px; font-size: .75rem; }
+    .color-swatch { display: inline-block; width: 16px; height: 16px; border: 1px solid #ddd; vertical-align: middle; }
 </style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('.color-swatch').forEach(function(el){
+            const c = el.getAttribute('data-color');
+            if (c) { el.style.backgroundColor = c; }
+        });
+    });
+</script>

@@ -19,6 +19,7 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 from dateutil.relativedelta import relativedelta
 from ..valuelists import CKYS_BTF_VALUES
+from ..forms import MesaiTanimForm
 User = get_user_model()
 try:
     # Windows için
@@ -176,6 +177,7 @@ def cizelge(request):
         mesai_map[key] = {
             "MesaiID": mesai.MesaiID,
             "MesaiTanimID": mesai.MesaiTanim.id if mesai.MesaiTanim else None,
+            "MesaiTanimRenk": mesai.MesaiTanim.Renk if mesai.MesaiTanim else None,
             "IzinID": mesai.Izin.id if mesai.Izin else None,
             "Saat": mesai.MesaiTanim.Saat if mesai.MesaiTanim else "",
             "IzinAd": mesai.Izin.ad if mesai.Izin else "",
@@ -346,17 +348,20 @@ def birim_yetki_ekle(request, birim_id):
             return JsonResponse({"status": "error", "message": str(e)})
     return JsonResponse({"status": "error", "message": "Geçersiz istek."})
 
+
 @login_required
 def tanimlamalar(request):
     kurumlar = Kurum.objects.all()
     ust_birimler = UstBirim.objects.all()
     idareciler = Idareci.objects.all()
     izinler = Izin.objects.all()
-    mesai_tanimlari = Mesai_Tanimlari.objects.all()
+    mesai_tanimlari = Mesai_Tanimlari.objects.all().order_by('Saat')
+    mesai_form = MesaiTanimForm()
     return render(request, "mercis657/tanimlamalar.html", {
         "kurumlar": kurumlar,
         "ust_birimler": ust_birimler,
         "idareciler": idareciler,
         "izinler": izinler,
         "mesai_tanimlari": mesai_tanimlari,
+        "form": mesai_form,
     })

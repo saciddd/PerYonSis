@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from datetime import date, timedelta
 from django.contrib.auth import get_user_model
@@ -127,7 +128,10 @@ class Mesai_Tanimlari(models.Model):
     AraDinlenme = models.DurationField(null=True, blank=True)
     GecerliMesai = models.BooleanField(default=True)
     CKYS_BTF_Karsiligi = models.CharField(max_length=100, null=True, blank=True)
-    Sure = models.DurationField(null=True, blank=True)
+    Sure = models.DecimalField(
+        max_digits=4, decimal_places=2, null=True, blank=True,
+        help_text="Mesai süresi saat cinsinden (örn: 9.5)"
+    )
     # Yeni alan
     Renk = models.CharField(
         max_length=7,  # "#RRGGBB"
@@ -136,7 +140,9 @@ class Mesai_Tanimlari(models.Model):
     )
 
     def calculate_sure(self):
-        """Mesai süresini (Sure) hesaplayan yöntem."""
+        """Mesai süresini saat cinsinden (ondalıklı) hesapla."""
+        from datetime import timedelta
+
         start, end = self.Saat.split(' ')
         start_time = self._parse_time(start)
         end_time = self._parse_time(end)
@@ -145,9 +151,17 @@ class Mesai_Tanimlari(models.Model):
             end_time += timedelta(hours=24)
 
         total_time = end_time - start_time
-        total_time -= self.AraDinlenme if self.AraDinlenme else timedelta(0)
+        total_seconds = total_time.total_seconds()
 
-        self.Sure = total_time
+        # Ara dinlenme çıkar
+        if self.AraDinlenme:
+            total_seconds -= self.AraDinlenme.total_seconds()
+
+        # Saate çevir
+        hours = Decimal(total_seconds / 3600).quantize(Decimal("0.01"))
+
+        self.Sure = hours
+        return hours
 
 
     def _parse_time(self, time_str):

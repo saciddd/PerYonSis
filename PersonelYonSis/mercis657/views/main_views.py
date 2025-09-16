@@ -9,7 +9,7 @@ import json
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from PersonelYonSis import settings
-from ..models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, Idareci, Izin
+from ..models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, Idareci, Izin, ResmiTatil
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 import locale
@@ -19,7 +19,7 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 from dateutil.relativedelta import relativedelta
 from ..valuelists import CKYS_BTF_VALUES
-from ..forms import MesaiTanimForm
+from ..forms import MesaiTanimForm, ResmiTatilForm
 User = get_user_model()
 try:
     # Windows için
@@ -158,13 +158,20 @@ def cizelge(request):
         MesaiDate__month=current_month
     ).select_related('MesaiTanim', 'Izin').prefetch_related('yedekler')
 
+    # Resmi tatilleri al
+    resmi_tatiller = ResmiTatil.objects.filter(
+        TatilTarihi__year=current_year,
+        TatilTarihi__month=current_month
+    ).values_list('TatilTarihi', flat=True)
+    
     # Gün listesi
     days_in_month = calendar.monthrange(current_year, current_month)[1]
     days = [
         {
             'full_date': f"{current_year}-{current_month:02}-{day:02}",
             'day_num': day,
-            'is_weekend': calendar.weekday(current_year, current_month, day) >= 5
+            'is_weekend': calendar.weekday(current_year, current_month, day) >= 5,
+            'is_resmi_tatil': f"{current_year}-{current_month:02}-{day:02}" in [t.strftime('%Y-%m-%d') for t in resmi_tatiller]
         }
         for day in range(1, days_in_month + 1)
     ]
@@ -202,6 +209,8 @@ def cizelge(request):
                 "PrevIzinAd": ""
             })
             mesai_info["MesaiDate"] = day['full_date']
+            mesai_info["is_weekend"] = day['is_weekend']
+            mesai_info["is_resmi_tatil"] = day['is_resmi_tatil']
             p.mesai_data.append(mesai_info)
 
     context = {
@@ -225,7 +234,6 @@ def cizelge(request):
     }
     return render(request, 'mercis657/cizelge.html', context)
 
-
 @login_required
 def personel_listeleri(request):
     user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim_id', flat=True)
@@ -235,7 +243,6 @@ def personel_listeleri(request):
         'birimler': birimler,
         'listeler': listeler
     })
-
 
 @login_required
 def personel_listesi_olustur(request):
@@ -260,7 +267,6 @@ def personel_listesi_olustur(request):
 
         return redirect('mercis657:personel_listeleri')
 
-
 @login_required
 def personel_listesi_detay(request, liste_id):
     liste = get_object_or_404(PersonelListesi, id=liste_id)
@@ -276,7 +282,6 @@ def personel_listesi_detay(request, liste_id):
         'mevcut_personeller': mevcut_personeller,
         'tum_personeller': tum_personeller
     })
-
 
 @login_required
 def personel_ekle_listeye(request, liste_id):
@@ -300,7 +305,6 @@ def personel_ekle_listeye(request, liste_id):
             messages.warning(request, 'Bu personel zaten listede.')
 
         return redirect('mercis657:personel_listesi_detay', liste_id=liste.id)
-
 
 @login_required
 def personel_kaldir_liste(request, liste_id, kayit_id):
@@ -326,7 +330,6 @@ def personel_cikar(request, liste_id, personel_id):
     messages.success(request, 'Personel listeden çıkarıldı.')
     return redirect('mercis657:personel_listesi_detay', liste_id=liste.id)
 
-
 @csrf_exempt
 def birim_yetki_ekle(request, birim_id):
     if request.method == 'POST':
@@ -348,7 +351,6 @@ def birim_yetki_ekle(request, birim_id):
             return JsonResponse({"status": "error", "message": str(e)})
     return JsonResponse({"status": "error", "message": "Geçersiz istek."})
 
-
 @login_required
 def tanimlamalar(request):
     kurumlar = Kurum.objects.all()
@@ -357,6 +359,7 @@ def tanimlamalar(request):
     izinler = Izin.objects.all()
     mesai_tanimlari = Mesai_Tanimlari.objects.all().order_by('Saat')
     mesai_form = MesaiTanimForm()
+    resmi_tatil_form = ResmiTatilForm()
     return render(request, "mercis657/tanimlamalar.html", {
         "kurumlar": kurumlar,
         "ust_birimler": ust_birimler,
@@ -364,4 +367,5 @@ def tanimlamalar(request):
         "izinler": izinler,
         "mesai_tanimlari": mesai_tanimlari,
         "form": mesai_form,
+        "rt_form": resmi_tatil_form,
     })

@@ -97,7 +97,7 @@
                 <th>Personel Adı Soyadı</th>
                 <th>Unvanı</th>
                 {% for day in days %}
-                <th class="{% if day.is_weekend %}weekend{% endif %}">{{ day.day_num }}</th>
+                <th class="{% if day.is_weekend %}weekend{% elif day.is_resmi_tatil %}resmi-tatil{% endif %}">{{ day.day_num }}</th>
                 {% endfor %}
             </tr>
         </thead>
@@ -119,7 +119,7 @@
                 <td>{{ personel.PersonelTitle }}</td>
                 {% for mesai in personel.mesai_data %}
                 <td contenteditable="true"
-                    class="mesai-cell {% if mesai.Saat or mesai.IzinAd %}has-value{% endif %} {% if day.is_weekend %}weekend{% endif %}"
+                    class="mesai-cell {% if mesai.Saat or mesai.IzinAd %}has-value{% endif %} {% if mesai.is_weekend %}weekend{% elif mesai.is_resmi_tatil %}resmi-tatil{% endif %}"
                     data-personel-id="{{ personel.PersonelID }}"
                     data-date="{{ mesai.MesaiDate }}"
                     data-mesai-pk="{{ mesai.MesaiID|default:'' }}"
@@ -258,6 +258,10 @@
             let mesaiVal = mesaiSelect.value;
             let izinVal = izinSelect.value;
             let bosalt = alanBosalt.checked;
+            
+            // Hücreyi değiştirildi olarak işaretle (açık mavi renk)
+            cell.classList.add('modified');
+            
             if (bosalt) {
                 cell.innerText = "";
                 cell.setAttribute('data-mesai-id', "");
@@ -408,6 +412,10 @@
                         izinId: changes[k].izinId ? String(changes[k].izinId) : null
                     });
                 });
+                // Modified sınıfını temizle
+                document.querySelectorAll('.mesai-cell.modified').forEach(cell => {
+                    cell.classList.remove('modified');
+                });
                 if (window.Swal) {
                     Swal.fire({ icon: 'success', title: 'Kaydedildi', text: 'Çizelge başarıyla kaydedildi.' });
                 } else {
@@ -523,9 +531,11 @@
     .form-label, label { font-size: 0.95rem; }
     .form-select-sm, .form-control-sm { font-size: 0.95rem; }
     #cizelgeTable .weekend { background-color: #f5d2d2; color: #222; }
+    #cizelgeTable .resmi-tatil { background-color: #ffe6cc; color: #222; }
     #cizelgeTable td, #cizelgeTable th { padding: 2px 4px; }
     #cizelgeTable td.mesai-cell:hover { background-color: #bbe9f7; cursor: pointer; }
     #cizelgeTable tbody tr:hover { background-color: #f0f8ff; }
+    #cizelgeTable td.mesai-cell.modified { background-color: #b3d9ff !important; }
     .input-group > .form-select, .input-group > .btn { margin-right: 4px; }
 </style>
 {% endblock %}

@@ -6,15 +6,35 @@
     <form id="resmiTatilForm" method="post" action="{% url 'mercis657:tatil_ekle' %}">
         {% csrf_token %}
         <div class="row g-2 align-items-end">
-            <div class="col-auto">
-                <label class="form-label small">Tarih</label>
-                <input type="date" name="tarih" class="form-control form-control-sm" required>
+            <div class="col-md-2">
+                <label class="form-label small">{{ rt_form.TatilTarihi.label }}</label>
+                {{ rt_form.TatilTarihi }}
             </div>
-            <div class="col-auto">
-                <label class="form-label small">Açıklama</label>
-                <input type="text" name="aciklama" class="form-control form-control-sm" required>
+            <div class="col-md-3">
+                <label class="form-label small">{{ rt_form.Aciklama.label }}</label>
+                {{ rt_form.Aciklama }}
             </div>
-            <div class="col-auto">
+            <div class="col-md-2">
+                <label class="form-label small">{{ rt_form.TatilTipi.label }}</label>
+                {{ rt_form.TatilTipi }}
+            </div>
+            <div class="col-md-2">
+                <div class="form-check">
+                    {{ rt_form.BayramMi }}
+                    <label class="form-check-label small" for="{{ rt_form.BayramMi.id_for_label }}">
+                        {{ rt_form.BayramMi.label }}
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-check">
+                    {{ rt_form.ArefeMi }}
+                    <label class="form-check-label small" for="{{ rt_form.ArefeMi.id_for_label }}">
+                        {{ rt_form.ArefeMi.label }}
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-1">
                 <button type="submit" class="btn btn-primary btn-sm">Ekle</button>
             </div>
         </div>
@@ -29,6 +49,9 @@
                     <th>#</th>
                     <th>Tarih</th>
                     <th>Açıklama</th>
+                    <th>Tatil Tipi</th>
+                    <th>Bayram</th>
+                    <th>Arefe</th>
                     <th>İşlemler</th>
                 </tr>
             </thead>
@@ -36,17 +59,32 @@
                 {% for tatil in tatiller %}
                 <tr>
                     <td>{{ forloop.counter }}</td>
-                    <td>{{ tatil.tarih }}</td>
-                    <td>{{ tatil.aciklama }}</td>
+                    <td>{{ tatil.TatilTarihi }}</td>
+                    <td>{{ tatil.Aciklama }}</td>
+                    <td>{{ tatil.get_TatilTipi_display }}</td>
                     <td>
-                        <form method="post" action="{% url 'mercis657:tatil_sil' tatil.id %}" style="display:inline;">
+                        {% if tatil.BayramMi %}
+                            <span class="badge bg-success">Evet</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Hayır</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if tatil.ArefeMi %}
+                            <span class="badge bg-warning">Evet</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Hayır</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="post" action="{% url 'mercis657:tatil_sil' tatil.TatilID %}" style="display:inline;">
                             {% csrf_token %}
                             <button class="btn btn-sm btn-outline-danger" type="submit">Sil</button>
                         </form>
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="4" class="text-muted">Kayıt yok</td></tr>
+                <tr><td colspan="7" class="text-muted">Kayıt yok</td></tr>
                 {% endfor %}
             </tbody>
         </table>

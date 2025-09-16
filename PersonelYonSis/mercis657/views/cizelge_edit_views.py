@@ -253,7 +253,6 @@ def cizelge_kaydet(request):
 
     return JsonResponse({'status': 'failed'}, status=400)
 
-
 @login_required
 def cizelge_onay(request):
     from datetime import date
@@ -298,7 +297,6 @@ def cizelge_onay(request):
         'ust_birimler': ust_birimler,
     })
 
-
 @login_required
 def mesai_onayla(request, mesai_id):
     if not request.user.has_permission('Mesai Onaylayabilir'):
@@ -311,7 +309,6 @@ def mesai_onayla(request, mesai_id):
     mesai.save()
     mesai.yedekler.all().delete()
     return JsonResponse({'status': 'success'})
-
 
 @login_required
 def mesai_reddet(request, mesai_id):
@@ -330,7 +327,6 @@ def mesai_reddet(request, mesai_id):
     mesai.save()
     mesai.yedekler.all().delete()
     return JsonResponse({'status': 'success'})
-
 
 @login_required
 def toplu_onay(request, birim_id, year, month):
@@ -393,7 +389,6 @@ def toplu_islem(request, liste_id, year, month):
     }
     return render(request, 'mercis657/toplu_islem_modal.html', context)
 
-
 @login_required
 @require_POST
 def toplu_radyasyon_ata(request, liste_id):
@@ -418,7 +413,6 @@ def toplu_radyasyon_ata(request, liste_id):
         
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
-
 
 @login_required
 @require_POST

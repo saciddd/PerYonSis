@@ -75,8 +75,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     mesailer = Mesai.objects.filter(
         Personel=personel,
         MesaiDate__year=year,
-        MesaiDate__month=month,
-        OnayDurumu=True  # Sadece onaylı mesailer
+        MesaiDate__month=month
     ).select_related('MesaiTanim')
 
     # izin kaynaklı azaltım (Mesai.Izin) için toplanacak
@@ -96,10 +95,10 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             return None
 
     for mesai in mesailer:
-        # Fiili çalışma süresine ekleme (DurationField üzerinden)
+        # Fiili çalışma süresine ekleme (Decimal üzerinden)
         if mesai.MesaiTanim and getattr(mesai.MesaiTanim, 'Sure', None):
-            total_seconds = mesai.MesaiTanim.Sure.total_seconds()
-            hours = Decimal(str(total_seconds / 3600))
+            total_seconds = mesai.MesaiTanim.Sure # saat cinsinden
+            hours = Decimal(str(total_seconds))
             fiili_calisma_suresi += hours
         else:
             hours = Decimal('0.0')

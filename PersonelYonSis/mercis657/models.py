@@ -118,6 +118,9 @@ class MesaiYedek(models.Model):
         return f"Yedek: {self.mesai.Personel.PersonelName} - {self.mesai.MesaiDate}"
 
 
+from decimal import Decimal
+from datetime import timedelta
+
 class Mesai_Tanimlari(models.Model):
     Saat = models.CharField(max_length=11)
     GunduzMesaisi = models.BooleanField(default=False)
@@ -125,24 +128,20 @@ class Mesai_Tanimlari(models.Model):
     GeceMesaisi = models.BooleanField(default=False)
     IseGeldi = models.BooleanField(default=False)
     SonrakiGuneSarkiyor = models.BooleanField(default=False)
-    AraDinlenme = models.DurationField(null=True, blank=True)
+    AraDinlenme = models.DecimalField(
+        max_digits=4, decimal_places=2, null=True, blank=True,
+        help_text="Mesai ara dinlenmesi saat cinsinden (örn: 1.5)"
+    )
     GecerliMesai = models.BooleanField(default=True)
     CKYS_BTF_Karsiligi = models.CharField(max_length=100, null=True, blank=True)
     Sure = models.DecimalField(
         max_digits=4, decimal_places=2, null=True, blank=True,
         help_text="Mesai süresi saat cinsinden (örn: 9.5)"
     )
-    # Yeni alan
-    Renk = models.CharField(
-        max_length=7,  # "#RRGGBB"
-        null=True,
-        help_text="Çizelgede görünecek yazı rengi"
-    )
+    Renk = models.CharField(max_length=7, null=True)
 
     def calculate_sure(self):
         """Mesai süresini saat cinsinden (ondalıklı) hesapla."""
-        from datetime import timedelta
-
         start, end = self.Saat.split(' ')
         start_time = self._parse_time(start)
         end_time = self._parse_time(end)
@@ -150,27 +149,26 @@ class Mesai_Tanimlari(models.Model):
         if self.SonrakiGuneSarkiyor:
             end_time += timedelta(hours=24)
 
-        total_time = end_time - start_time
-        total_seconds = total_time.total_seconds()
+        total_seconds = (end_time - start_time).total_seconds()
+        hours = Decimal(total_seconds / 3600).quantize(Decimal("0.01"))
 
         # Ara dinlenme çıkar
         if self.AraDinlenme:
-            total_seconds -= self.AraDinlenme.total_seconds()
+            hours -= self.AraDinlenme
 
-        # Saate çevir
-        hours = Decimal(total_seconds / 3600).quantize(Decimal("0.01"))
+        if hours < 0:
+            hours = Decimal("0.00")
 
         self.Sure = hours
         return hours
 
-
     def _parse_time(self, time_str):
-        """'HH:MM' formatında bir saat dilimini datetime.time olarak döndürür."""
+        """'HH:MM' formatında bir saat dilimini timedelta olarak döndürür."""
         hours, minutes = map(int, time_str.split(':'))
         return timedelta(hours=hours, minutes=minutes)
 
     def __str__(self):
-        return self.Saat
+        return f"{self.Saat} ({self.Sure} saat)"
 
 class Izin(models.Model):
     ad = models.CharField(max_length=100, unique=True)

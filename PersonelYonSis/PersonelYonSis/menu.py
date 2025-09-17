@@ -45,7 +45,6 @@ class Menu:
             MenuItem('Kontrol Formu Soruları', 'nobet_defteri:kontrol_soru_list', 'bi bi-octagon', 'Nöbet Defteri Soruları Düzenleme', parent_menu='Nöbet Defteri Modülü'),
             # Çizelge 657 ve Alt Menüleri
             MenuItem('Çizelge Sistemi 657', '#', 'bi bi-calendar3', 'ÇS 657 Çizelge Sayfası', is_parent=True),
-            MenuItem('657 Personeller', 'mercis657:personeller', 'bi bi-octagon', 'ÇS 657 Personel Yönetimi', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Çizelge', 'mercis657:cizelge', 'bi bi-octagon', 'ÇS 657 Çizelge Sayfası', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Çizelge Onay', 'mercis657:cizelge_onay', 'bi bi-octagon', 'ÇS 657 Çizelge Onay', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Bildirim İşlemleri', 'mercis657:bildirimler', 'bi bi-octagon', 'ÇS 657 Bildirim İşlemleri', parent_menu='Çizelge Sistemi 657'),

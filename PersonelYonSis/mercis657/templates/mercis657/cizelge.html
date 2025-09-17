@@ -494,6 +494,7 @@
     // Toplu işlem modalını aç
     document.getElementById('topluIslemButton').addEventListener('click', function() {
         const birimId = document.getElementById('selectBirim').value;
+        const listeId = {{ liste|default:0 }};
         const donem = document.getElementById('selectDonem').value;
         if (!birimId || !donem) {
             alert('Lütfen birim ve dönem seçiniz.');
@@ -501,7 +502,7 @@
         }
         const [year, month] = donem.split('/');
         
-        fetch(`{% url 'mercis657:toplu_islem' 0 0 0 %}`.replace('/0/0/0/', `/${birimId}/${year}/${month}/`))
+        fetch(`{% url 'mercis657:toplu_islem' 0 0 0 %}`.replace('/0/0/0/', `/${listeId}/${year}/${month}/`))
             .then(response => response.text())
             .then(html => {
                 const container = document.getElementById('topluIslemContainer');

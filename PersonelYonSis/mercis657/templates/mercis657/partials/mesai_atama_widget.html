@@ -119,7 +119,16 @@
 
     // optional JSON extras (provided via data-extra attribute)
     let extra = {};
-    try { extra = JSON.parse(root.dataset.extra || '{}'); } catch(e) { extra = {}; }
+    try {
+      const rawExtra = root.dataset.extra || '{}';
+      const parsed = JSON.parse(rawExtra);
+      // Eğer sayı geldiyse personel_id anahtarına sar
+      if (typeof parsed === 'number') {
+        extra = { personel_id: parsed };
+      } else {
+        extra = parsed || {};
+      }
+    } catch(e) { extra = {}; }
 
     // Parse arrays provided as JSON in data attributes
     const resmiTatil = JSON.parse(root.dataset.resmiTatil || '[]');
@@ -172,6 +181,8 @@
     // Action butonları
     root.querySelector('[data-action="select-all"]').addEventListener('click', function(){
       grid.querySelectorAll('.day-cell').forEach(c=>{
+        // sadece gerçek gün hücrelerini seç (filler'larda data-day yok)
+        if (!c.dataset.day) return;
         if (!c.classList.contains('disabled')) c.classList.add('selected');
       });
     });
@@ -183,6 +194,7 @@
       grid.querySelectorAll('.day-cell.selected').forEach(c=>c.classList.remove('selected'));
       // hafta içi + tatil/arefe HARİÇ
       grid.querySelectorAll('.day-cell').forEach(c=>{
+        if (!c.dataset.day) return; // filler'ları atla
         if (c.classList.contains('disabled')) return;
         const d = parseInt(c.dataset.day, 10);
         const dow = (new Date(year, month-1, d).getDay()); // 0 Paz - 6 Cts
@@ -194,18 +206,30 @@
 
     // Submit
     root.querySelector('[data-action="submit"]').addEventListener('click', function(){
+      const submitBtn = this;
+      
+      // Çoklu tıklama koruması
+      if (submitBtn.disabled) return;
+      
       const mesaiId = mesaiSelect.value;
       if (!mesaiId){
         alert('Lütfen bir mesai tanımı seçin.');
         return;
       }
       const selectedDays = Array.from(grid.querySelectorAll('.day-cell.selected'))
-        .map(c => parseInt(c.dataset.day, 10));
+        .map(c => parseInt(c.dataset.day, 10))
+        // NaN/null değerleri ele (filler seçilmişse)
+        .filter(d => Number.isFinite(d));
 
       if (selectedDays.length === 0){
         alert('En az bir gün seçmelisiniz.');
         return;
       }
+
+      // Butonu devre dışı bırak ve yükleme animasyonu
+      submitBtn.disabled = true;
+      const originalText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>İşleniyor...';
 
       const payload = Object.assign({}, extra || {}, {
         mesai_tanim_id: parseInt(mesaiId, 10),
@@ -242,9 +266,17 @@
           location.reload();
         } else {
           alert(data.message || 'Hata oluştu');
+          // Hata durumunda butonu tekrar aktif et
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
         }
       })
-      .catch(err=>alert('Hata: ' + err));
+      .catch(err=>{
+        alert('Hata: ' + err);
+        // Hata durumunda butonu tekrar aktif et
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      });
     });
   });
 })();

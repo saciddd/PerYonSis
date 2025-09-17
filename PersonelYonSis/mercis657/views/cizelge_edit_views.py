@@ -3,7 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from datetime import datetime
+from datetime import datetime, date
+import calendar
 import json
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import get_template
@@ -434,10 +435,6 @@ def toplu_mesai_ata(request, liste_id, year, month):
 
         liste = get_object_or_404(PersonelListesi, pk=liste_id)
         mesai_tanim = get_object_or_404(Mesai_Tanimlari, pk=mesai_tanim_id)
-
-        from datetime import date
-        import calendar
-        from hekim_cizelge.models import ResmiTatil  # kendi projendeki app yolunu kontrol et
 
         days_in_month = calendar.monthrange(year, month)[1]
         created_count = 0

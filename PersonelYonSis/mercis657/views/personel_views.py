@@ -73,13 +73,6 @@ def personel_kaydet(request):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
 
-def personeller(request):
-    personeller = Personel.objects.all()
-    return render(request, 'personeller.html', {"personeller": personeller})
-# Personel Ekleme Formunu Geri Döndür
-def personel_ekle_form(request):
-    return render(request, 'personel_ekle_form.html')
-
 # Yeni Personel Ekleme İşlemi
 def personel_ekle(request):
     if request.method == 'POST':

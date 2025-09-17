@@ -179,7 +179,7 @@
                                     <div class="card-body">
                                         <div class="card-body">
                                             {# ... Kart gövdesi içinde: #}
-                                            {% include "mercis657/partials/mesai_atama_widget.html" with year=year month=month mesai_tanimlari=mesai_tanimlari resmi_tatil_gunleri=resmi_tatil_gunleri arefe_gunleri=arefe_gunleri disabled_days=mesaisi_olan_gunler submit_url=hazir_mesai_ata_url extra_payload=liste.id submit_button_text="Toplu Mesai Ata" %}
+                                            {% include "mercis657/partials/mesai_atama_widget.html" with year=year month=month mesai_tanimlari=mesai_tanimlari resmi_tatil_gunleri=resmi_tatil_gunleri arefe_gunleri=arefe_gunleri disabled_days=mesaisi_olan_gunler submit_url=hazir_mesai_ata_url extra_payload=personel.id submit_button_text="Toplu Mesai Ata" %}
                                         </div>
                                     </div>
                                 </div>
@@ -268,7 +268,7 @@ function deleteMazeret(mazeretId) {
             }
         })
         .then(response => response.json())
-        .then data => {
+        .then(data => {
             if (data.status === 'success') {
                 location.reload();
             } else {

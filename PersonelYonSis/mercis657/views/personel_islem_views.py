@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
-from datetime import datetime
+from datetime import datetime, date
 import json
 from ..models import Personel, PersonelListesi, PersonelListesiKayit, Mesai, Mesai_Tanimlari, ResmiTatil, MazeretKaydi
 from ..utils import hesapla_fazla_mesai
@@ -26,8 +26,7 @@ def hazir_mesai_ata(request, personel_id, liste_id, year, month):
         
         personel = get_object_or_404(Personel, pk=personel_id)
         mesai_tanim = get_object_or_404(Mesai_Tanimlari, pk=mesai_tanim_id)
-        
-        from datetime import date
+                
         created_count = 0
         
         for gun_no in gunler:

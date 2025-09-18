@@ -360,6 +360,7 @@ def tanimlamalar(request):
     mesai_tanimlari = Mesai_Tanimlari.objects.all().order_by('Saat')
     mesai_form = MesaiTanimForm()
     resmi_tatil_form = ResmiTatilForm()
+    tatiller = ResmiTatil.objects.all().order_by('TatilTarihi')
     return render(request, "mercis657/tanimlamalar.html", {
         "kurumlar": kurumlar,
         "ust_birimler": ust_birimler,
@@ -368,4 +369,5 @@ def tanimlamalar(request):
         "mesai_tanimlari": mesai_tanimlari,
         "form": mesai_form,
         "rt_form": resmi_tatil_form,
+        "tatiller": tatiller
     })

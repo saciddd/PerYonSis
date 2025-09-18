@@ -29,6 +29,10 @@ class Idareci(models.Model):
 class Birim(models.Model):
     BirimID = models.AutoField(primary_key=True)
     BirimAdi = models.CharField(max_length=100, unique=True)
+    NormalNobetKodu = models.PositiveIntegerField(null=True, blank=True, default=1)
+    BayramNobetKodu = models.PositiveIntegerField(null=True, blank=True)
+    RiskliNormalNobetKodu = models.PositiveIntegerField(null=True, blank=True)
+    RiskliBayramNobetKodu = models.PositiveIntegerField(null=True, blank=True)
 
     Kurum = models.ForeignKey(Kurum, on_delete=models.SET_NULL, null=True, blank=True)
     UstBirim = models.ForeignKey(UstBirim, on_delete=models.SET_NULL, null=True, blank=True)

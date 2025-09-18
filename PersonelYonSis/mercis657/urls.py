@@ -92,4 +92,8 @@ urlpatterns = [
     path('bildirimler/<int:birim_id>/riskli-data/', views.riskli_bildirim_data, name='riskli_bildirim_data'),
     path('bildirimler/<int:birim_id>/update-risky/', views.update_risky_bildirim, name='update_risky_bildirim'),
     path('bildirimler/<int:birim_id>/convert-all-risky/', views.convert_all_to_risky, name='convert_all_to_risky'),
+
+    # Raporlama
+    path('raporlama/', views.raporlama, name='raporlama'),
+    path('raporlama/excel/', views.export_raporlama_excel, name='export_raporlama_excel'),
 ]

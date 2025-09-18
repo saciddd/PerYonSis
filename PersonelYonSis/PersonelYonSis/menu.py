@@ -38,6 +38,7 @@ class Menu:
             MenuItem('İcra Takibi', 'mutemet_app:icra_takibi', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             MenuItem('Sorgulamalar', 'mutemet_app:sorgulamalar', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             MenuItem('Hizmet Sunum Raporlama', 'hizmet_sunum_app:raporlama', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
+            MenuItem('Mercis 657 Raporlama', 'mercis657:raporlama', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             MenuItem('Hekim Bildirimleri', 'hekim_cizelge:mutemetlik_islemleri', 'bi bi-octagon', parent_menu='Mutemetlik Modülü'),
             # Nöbet Defteri Modülü ve Alt Menüleri
             MenuItem('Nöbet Defteri Modülü', '#', 'bi bi-journal-check', 'Nöbet Defteri Modülü', is_parent=True),

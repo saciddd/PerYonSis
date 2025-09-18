@@ -1,0 +1,487 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<br>
+<div class="container-fluid">
+    <h3>Mercis 657 Fazla Mesai & İcap Bildirimi Raporlama</h3>
+
+    <form method="get" class="mb-2">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-2">
+                <label for="id_donem" class="form-label">Dönem Seçin:</label>
+                <select class="form-select" id="id_donem" name="donem">
+                     <option value="">Dönem Seçiniz</option>
+                     <!-- Dönemler JS ile doldurulacak -->
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="id_kurum" class="form-label">Kurum Seçin:</label>
+                 <select name="kurum" id="id_kurum" class="form-select">
+                    <option value="">Tüm Kurumlar</option>
+                    {% for kurum_adi in kurumlar %}
+                        <option value="{{ kurum_adi }}" {% if selected_kurum == kurum_adi %}selected{% endif %}>{{ kurum_adi }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="id_idare" class="form-label">Üst Birim Seçin:</label>
+                 <select name="idare" id="id_idare" class="form-select">
+                    <option value="">Tüm Birimler</option>
+                    {% for idare_adi in idareler %}
+                        <option value="{{ idare_adi }}" {% if selected_idare == idare_adi %}selected{% endif %}>{{ idare_adi }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label for="id_durum" class="form-label">Durum:</label>
+                <select name="durum" id="id_durum" class="form-select">
+                    <option value="" {% if not selected_durum %}selected{% endif %}>Tümü</option>
+                    <option value="1" {% if selected_durum == "1" %}selected{% endif %}>Kesinleşti</option>
+                    <option value="0" {% if selected_durum == "0" %}selected{% endif %}>Beklemede</option>
+                </select>
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary mt-4">Raporla</button>
+            {% if excel_url %}
+                <a href="{{ excel_url }}" class="btn btn-success mt-4">Excel'e Aktar</a>
+                <button type="button" class="btn btn-secondary mt-4" id="yazdirBtn" data-birimler="{{ bildirimler_by_birim|safe }}" data-donem="{{ selected_donem|default_if_none:'' }}"> <i class="bi bi-printer"></i>Yazdır</button>
+            {% endif %}
+            </div>
+        </div>
+    </form>
+
+    {# Hata ve Bilgi Mesajları #}
+    {% if error_message %}
+        <div class="alert alert-danger" role="alert">
+            {{ error_message }}
+        </div>
+    {% endif %}
+
+    {% if info_message %}
+        <div class="alert alert-info" role="alert">
+            {{ info_message }}
+        </div>
+    {% endif %}
+
+    {% if bildirimler_by_birim %}
+        <div class="mb-2">
+            <span class="badge bg-primary">Toplam Kayıt: {{ toplam_kayit }}</span>
+        </div>
+        <div class="accordion" id="birimAccordion">
+            {% for birim_data in bildirimler_by_birim %}
+            <div class="accordion-item">
+                <h4 class="accordion-header" id="heading{{ forloop.counter }}">
+                    <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% endif %}" aria-controls="collapse{{ forloop.counter }}">
+                        {{ birim_data.birim.Kurum }} - {{ birim_data.birim.BirimAdi }} - {{ birim_data.birim.UstBirim }} (Personel Sayısı: {{ birim_data.personel_sayisi }})
+                        <span class="badge bg-success ms-2{% if birim_data.kesinlesmis_sayisi == 0 %} bg-white text-black border border-success{% endif %}">Kesinleşmiş: {{ birim_data.kesinlesmis_sayisi }}</span>
+                        <span class="badge bg-warning text-dark ms-1{% if birim_data.beklemede_sayisi == 0 %} bg-white text-black border border-warning{% endif %}">Beklemede: {{ birim_data.beklemede_sayisi }}</span>
+                    </button>
+                </h4>
+                <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#birimAccordion">
+                    {% if 'HSA Bildirim Kesinleştirme' in user_permissions %}
+                    <div class="row mt-2 me-2">
+                        <div class="col text-end">
+                            <div class="d-inline-flex align-items-end">
+                                <button class="btn btn-outline-success btn-sm me-1" onclick="kesinlestirBirim('{{ birim_data.birim.BirimID }}')" title="Tümünü Kesinleştir"><i class="bi bi-lock"></i>Kesinleştir</button>
+                                <button class="btn btn-outline-danger btn-sm" onclick="kesinlestirmeyiKaldirBirim('{{ birim_data.birim.BirimID }}')" title="Kesinleştirmeyi Kaldır"><i class="bi bi-unlock"></i>Onay Kaldır</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="accordion-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Sıra No</th>
+                                        <th>Personel Adı</th>
+                                        <th>Unvanı</th>
+                                        <th>NormalFazlaMesai</th>
+                                        <th>BayramFazlaMesai</th>
+                                        <th>RiskliNormalFazlaMesai</th>
+                                        <th>RiskliBayramFazlaMesai</th>
+                                        <th>Normalİcap</th>
+                                        <th>Bayramİcap</th>
+                                        <th>OnayDurumu</th>
+                                        <th>MutemetKilit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for calisma in birim_data.bildirimler %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>
+                                            {{ calisma.Personel.PersonelName }}
+                                        </td>
+                                        <td>
+                                            {% if calisma.Personel.PersonelTitle %}
+                                                {{ calisma.Personel.PersonelTitle }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ calisma.NormalFazlaMesai|default:"0" }}</td>
+                                        <td>{{ calisma.BayramFazlaMesai|default:"0" }}</td>
+                                        <td>{{ calisma.RiskliNormalFazlaMesai|default:"0" }}</td>
+                                        <td>{{ calisma.RiskliBayramFazlaMesai|default:"0" }}</td>
+                                        <td>{{ calisma.NormalIcap|default:"0" }}</td>
+                                        <td>{{ calisma.BayramIcap|default:"0" }}</td>
+                                        <td>
+                                            {% if calisma.OnayDurumu == 1 %}
+                                                Kesinleşti
+                                            {% else %}
+                                                Beklemede
+                                            {% endif %}
+                                        </td>
+                                        <td>{% if calisma.MutemetKilit %}Evet{% else %}Hayır{% endif %}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+
+<!-- Ortak Yazdırma Seçenekleri Modalı -->
+<div class="modal fade" id="yazdirmaSecenekleriModal" tabindex="-1" aria-labelledby="yazdirmaSecenekleriModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="yazdirmaSecenekleriModalLabel">Yazdırma Seçenekleri</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+        </div>
+        <div class="modal-body">
+          <div id="yazdirmaSecenekleriAlert" style="display:none;" class="alert alert-warning"></div>
+          <form id="yazdirmaSecenekleriForm">
+            <input type="hidden" id="modalDonem" name="donem" />
+            <table class="table table-bordered align-middle">
+              <thead>
+                <tr>
+                  <th style="width:40px"><input type="checkbox" id="tumBirimleriSec" /></th>
+                  <th>Birim Adı</th>
+                </tr>
+              </thead>
+              <tbody id="modalBirimlerBody">
+                <!-- Dinamik olarak doldurulacak -->
+              </tbody>
+            </table>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+          <button type="button" class="btn btn-primary" id="modalYazdirBtn">Yazdır</button>
+        </div>
+      </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    
+    // Son 6 dönemi oluşturan fonksiyon (bildirim.html'den alındı)
+    function getDosyaDonemler() {
+        const today = new Date();
+        const months = [];
+
+        // Başlangıç ayını bu ay olarak ayarla
+        today.setDate(1);
+
+        // 6 ay geriye git
+        for (let i = 0; i < 6; i++) {
+            const year = today.getFullYear();
+            const month = today.getMonth() + 1;
+            const monthLabel = `${month.toString().padStart(2, '0')}/${year}`;
+            const monthValue = `${year}-${month.toString().padStart(2, '0')}`;
+
+            months.push({
+                label: monthLabel,
+                value: monthValue
+            });
+
+            // Bir önceki aya git
+            today.setMonth(today.getMonth() - 1);
+        }
+
+        return months.reverse(); // En yakın dönemin üstte olması için ters çevir
+    }
+
+    // Sayfa yüklendiğinde dönem selectbox'ını doldur ve event listener'ları ekle
+    document.addEventListener('DOMContentLoaded', function() {
+        // Dönem selectbox'ını doldur
+        const donemler = getDosyaDonemler();
+        const donemSelect = document.getElementById('id_donem');
+        // selectedDonem artık context'ten string olarak geliyor
+        const selectedDonem = '{{ selected_donem|default_if_none:"" }}';
+
+        donemSelect.innerHTML = '<option value="">Dönem Seçiniz</option>'; // Default option
+        donemler.forEach(donem => {
+             const option = document.createElement('option');
+             option.value = donem.value;
+             option.textContent = donem.label;
+             if (donem.value === selectedDonem) {
+                 option.selected = true;
+             }
+             donemSelect.appendChild(option);
+        });
+        // Durum alanı zaten template ile seçili kalıyor
+        
+        // Yazdır butonuna event listener ekle
+        const yazdirBtn = document.getElementById('yazdirBtn');
+        if (yazdirBtn) {
+            yazdirBtn.addEventListener('click', function() {
+                const donem = document.getElementById('id_donem').value;
+                showYazdirmaSecenekleriModal(donem);
+            });
+        }
+        
+        // Tümünü seç fonksiyonu
+        const tumBirimleriSec = document.getElementById('tumBirimleriSec');
+        if (tumBirimleriSec) {
+            tumBirimleriSec.addEventListener('change', function() {
+                document.querySelectorAll('.birim-checkbox').forEach(cb => cb.checked = this.checked);
+            });
+        }
+        
+        // Yazdır butonu fonksiyonu
+        const modalYazdirBtn = document.getElementById('modalYazdirBtn');
+        if (modalYazdirBtn) {
+            modalYazdirBtn.addEventListener('click', function() {
+                const donem = document.getElementById('modalDonem').value;
+                const seciliBirimler = Array.from(document.querySelectorAll('.birim-checkbox:checked')).map(cb => cb.value);
+                if (seciliBirimler.length === 0) {
+                    document.getElementById('yazdirmaSecenekleriAlert').style.display = 'block';
+                    document.getElementById('yazdirmaSecenekleriAlert').innerText = 'Lütfen en az bir birim seçiniz.';
+                    return;
+                }
+                // PDF endpointine yönlendir
+                const url = `/hizmet_sunum/bildirimler/yazdir/?donem=${encodeURIComponent(donem)}&birim_id=${seciliBirimler.join(',')}`;
+                window.open(url, '_blank');
+                // Modalı kapat
+                var modal = bootstrap.Modal.getInstance(document.getElementById('yazdirmaSecenekleriModal'));
+                if (modal) modal.hide();
+            });
+        }
+    });
+
+    // Birim bazlı kesinleştir
+    function kesinlestirBirim(BirimID) {
+        const donem = document.getElementById('id_donem').value;
+        if (!donem) {
+            Swal.fire('Uyarı', 'Lütfen önce bir dönem seçin.', 'warning');
+            return;
+        }
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: 'Bu birime ait tüm kayıtlar kesinleştirilecek. Onaylıyor musunuz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Evet, kesinleştir!',
+            cancelButtonText: 'İptal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('/hizmet_sunum/bildirimler/listele/' + donem.split('-')[0] + '/' + parseInt(donem.split('-')[1]) + '/' + BirimID + '/', {
+                    method: 'GET',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.status === 'success' && Array.isArray(data.data)) {
+                        const bildirimler = data.data.map(b => ({
+                            id: b.id,
+                            tc_kimlik_no: b.tc_kimlik_no,
+                            baslangic: b.baslangic,
+                            bitis: b.bitis,
+                            sorumlu: b.sorumlu,
+                            sertifika: b.sertifika
+                        }));
+                        fetch('/hizmet_sunum/bildirimler/kesinlestir/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({
+                                donem: donem,
+                                birim_id: BirimID,
+                                bildirimler: bildirimler
+                            })
+                        })
+                        .then(resp => resp.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                Swal.fire('Başarılı', 'Tüm kayıtlar kesinleştirildi.', 'success').then(() => location.reload());
+                            } else if (data.status === 'partial') {
+                                let msg = (data.message || 'Bazı kayıtlar kesinleştirilemedi.') + '\n';
+                                if (data.errors && Array.isArray(data.errors)) {
+                                    msg += data.errors.map(e => (e.tc_kimlik_no ? e.tc_kimlik_no + ': ' : '') + (e.message || '')).join('\n');
+                                }
+                                Swal.fire('Kısmen Başarılı', msg, 'warning').then(() => location.reload());
+                            } else {
+                                let msg = (data.message || 'Kesinleştirme başarısız.');
+                                if (data.errors && Array.isArray(data.errors)) {
+                                    msg += '\n' + data.errors.map(e => (e.tc_kimlik_no ? e.tc_kimlik_no + ': ' : '') + (e.message || '')).join('\n');
+                                }
+                                Swal.fire('Hata', msg, 'error');
+                            }
+                        })
+                        .catch(() => Swal.fire('Hata', 'Kayıtlar alınamadı.', 'error'));
+                    } else {
+                        Swal.fire('Hata', 'Kayıtlar alınamadı.', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Hata', 'Kayıtlar alınamadı.', 'error'));
+            }
+        });
+    }
+
+    // Birim bazlı kesinleştirme kaldır
+    function kesinlestirmeyiKaldirBirim(BirimID) {
+        const donem = document.getElementById('id_donem').value;
+        if (!donem) {
+            Swal.fire('Uyarı', 'Lütfen önce bir dönem seçin.', 'warning');
+            return;
+        }
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: 'Bu birime ait tüm kayıtların kesinleştirmesi kaldırılacak. Onaylıyor musunuz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Evet, kaldır!',
+            cancelButtonText: 'İptal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('/hizmet_sunum/bildirimler/kesinlestirmeyi-kaldir/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        donem: donem,
+                        birim_id: BirimID
+                    })
+                })
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire('Başarılı', data.message || 'Kesinleştirme kaldırıldı.', 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Hata', data.message || 'İşlem başarısız.', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Hata', 'Sunucu hatası.', 'error'));
+            }
+        });
+    }
+
+    // Ortak modalı açan fonksiyon
+    function showYazdirmaSecenekleriModal(donem) {
+        const tbody = document.getElementById('modalBirimlerBody');
+        birimler = JSON.parse('{{ birimler_json|escapejs }}');
+        tbody.innerHTML = '';
+        if (!birimler || birimler.length === 0) {
+            document.getElementById('yazdirmaSecenekleriAlert').style.display = 'block';
+            document.getElementById('yazdirmaSecenekleriAlert').innerText = 'Listelenecek birim yok.';
+            document.getElementById('modalYazdirBtn').disabled = true;
+            return;
+        } else {
+            document.getElementById('yazdirmaSecenekleriAlert').style.display = 'none';
+            document.getElementById('modalYazdirBtn').disabled = false;
+        }
+        document.getElementById('modalDonem').value = donem;
+        birimler.forEach(birim => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td><input type="checkbox" class="birim-checkbox" value="${birim.BirimID}" /></td><td>${birim.BirimAdi}</td>`;
+            tbody.appendChild(tr);
+        });
+        document.getElementById('tumBirimleriSec').checked = false;
+        var modal = new bootstrap.Modal(document.getElementById('yazdirmaSecenekleriModal'));
+        modal.show();
+    }
+
+    // Tekil kesinleştirme fonksiyonu (sadece bildirim_id ile)
+    function tekilKesinlestir(bildirimId) {
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: 'Bu kaydı kesinleştirmek istiyor musunuz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Evet, kesinleştir!',
+            cancelButtonText: 'İptal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('/hizmet_sunum/bildirim/kesinlestir/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        bildirim_id: bildirimId
+                    })
+                })
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire('Başarılı', 'Kayıt kesinleştirildi.', 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Hata', data.message || 'Kesinleştirme başarısız.', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Hata', 'Sunucu hatası.', 'error'));
+            }
+        });
+    }
+
+    // Tekil onay kaldırma fonksiyonu (sadece bildirim_id ile)
+    function tekilOnayKaldir(bildirimId) {
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: 'Bu kaydın kesinleştirmesini kaldırmak istiyor musunuz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Evet, kaldır!',
+            cancelButtonText: 'İptal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('/hizmet_sunum/bildirim/kesinlestirmeyi-kaldir/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        bildirim_id: bildirimId
+                    })
+                })
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire('Başarılı', data.message || 'Kesinleştirme kaldırıldı.', 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Hata', data.message || 'İşlem başarısız.', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Hata', 'Sunucu hatası.', 'error'));
+            }
+        });
+    }
+
+</script>
+{% endblock %}

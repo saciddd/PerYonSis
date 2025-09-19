@@ -96,4 +96,8 @@ urlpatterns = [
     # Raporlama
     path('raporlama/', views.raporlama, name='raporlama'),
     path('raporlama/excel/', views.export_raporlama_excel, name='export_raporlama_excel'),
+    # Raporlama API endpoints
+    path('raporlama/update-birim-kodlari/', views.update_birim_kodlari, name='update_birim_kodlari'),
+    path('raporlama/kilit-tekil/', views.kilit_tekil, name='kilit_tekil'),
+    path('raporlama/kilit-toplu/', views.kilit_toplu, name='kilit_toplu'),
 ]

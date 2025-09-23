@@ -12,7 +12,14 @@ from django.conf import settings
 from pathlib import Path
 from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim
 from ..utils import hesapla_fazla_mesai
+from PersonelYonSis.FMConnection.KDHIzin import IzinSorgula
 import pdfkit
+from django.conf import settings
+from django.templatetags.static import static
+from django.contrib.staticfiles.storage import staticfiles_storage
+
+file_url = f"file:///{staticfiles_storage.path('logo/kdh_logo.png')}"
+
 # PDFKit yapılandırması
 config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
 
@@ -29,15 +36,15 @@ def cizelge_yazdir(request):
     dokuman_kodu = "FR-SA-11"
 
     # Build an absolute file:// path to the logo if STATIC_ROOT is set
-    pdf_logo = None
-    try:
-        static_root = getattr(settings, 'STATIC_ROOT', None)
-        if static_root:
-            logo_path = Path(static_root) / 'logo' / 'kdh_logo.png'
-            if logo_path.exists():
-                pdf_logo = f"file://{logo_path.as_posix()}"
-    except Exception:
-        pdf_logo = None
+    pdf_logo = file_url
+    # try:
+    #     static_root = getattr(settings, 'STATIC_ROOT', None)
+    #     if static_root:
+    #         logo_path = Path(static_root) / 'logo' / 'kdh_logo.png'
+    #         if logo_path.exists():
+    #             pdf_logo = f"file://{logo_path.as_posix()}"
+    # except Exception:
+    #     pdf_logo = None
 
     # Determine year/month
     year = None
@@ -123,7 +130,7 @@ def cizelge_yazdir(request):
                     'PersonelName': p.PersonelName,
                     'PersonelTitle': getattr(p, 'PersonelTitle', ''),
                     'mesai_data': mesai_data,
-                    'hesaplama': {'fazla_mesai': hesaplama['fazla_mesai'] if hesaplama else 0}
+                    'hesaplama': {'fazla_mesai': hesaplama['fazla_mesai'] if hesaplama else 0 }
                 })
     except Exception as e:
         # swallow and render template with whatever we have
@@ -163,7 +170,7 @@ def cizelge_yazdir(request):
         'margin-left': '1.5cm',
         'encoding': 'UTF-8',
         'no-outline': None,
-        'enable-local-file-access': True,
+        'enable-local-file-access': '',
         'enable-external-links': True,
         'quiet': ''
     }
@@ -475,3 +482,61 @@ def toplu_mesai_ata(request, liste_id, year, month):
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
+
+
+def get_or_create_izin_turu(izin_adi):
+    izin_obj, created = Izin.objects.get_or_create(ad=izin_adi)
+    return izin_obj
+
+@login_required
+@require_POST
+def izinleri_mesailere_isle(request, liste_id):
+    """
+    liste_id ile ilişikli mesai kayıtları için izin kaydının olup olmadığını kontrol eder, varsa işler
+    """
+    try:
+        liste = get_object_or_404(PersonelListesi, pk=liste_id)
+        yil = liste.yil
+        ay = liste.ay
+        baslangic = date(yil, ay, 1)
+        gun_sayisi = calendar.monthrange(yil, ay)[1]
+        bitis = date(yil, ay, gun_sayisi)
+        # baslangic ve bitis'i "YYYY-MM-DD" formatına çevirerek gönder
+        izinler = IzinSorgula(
+            baslangic=baslangic.strftime("%Y-%m-%d"),
+            bitis=bitis.strftime("%Y-%m-%d")
+        )
+        updated_count = 0
+
+        for row in izinler:
+            tckn, baslangic_tarihi, bitis_tarihi, izin_turu = row
+            izin_obj = get_or_create_izin_turu(izin_turu)
+
+            try:
+                personel = Personel.objects.get(TCKimlikNo=tckn)
+            except Personel.DoesNotExist:
+                continue  # Django’da personeli yoksa atla
+
+            start_date = datetime.strptime(str(baslangic_tarihi), "%Y-%m-%d").date()
+            end_date = datetime.strptime(str(bitis_tarihi), "%Y-%m-%d").date()
+
+            # Tarih aralığındaki mesaileri bul
+            mesailer = Mesai.objects.filter(
+                Personel=personel,
+                MesaiDate__range=(start_date, end_date)
+            )
+
+            for mesai in mesailer:
+                if mesai.Izin != izin_obj:
+                    mesai.Izin = izin_obj
+                    mesai.MesaiTanim = None  # izinli günlerde mesai olmaz
+                    mesai.save(update_fields=["Izin", "MesaiTanim"])
+                    updated_count += 1
+
+        return JsonResponse({
+            "status": "success",
+            "message": f"{updated_count} mesai kaydı güncellendi.",
+            "updated_count": updated_count
+        })
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)

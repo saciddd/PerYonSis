@@ -67,6 +67,9 @@ urlpatterns = [
     path('toplu-radyasyon-ata/<int:liste_id>/', views.toplu_radyasyon_ata, name='toplu_radyasyon_ata'),
     path('toplu-mesai-ata/<int:liste_id>/<int:year>/<int:month>/', views.toplu_mesai_ata, name='toplu_mesai_ata'),
 
+    # İzin çek
+    path('izinleri-mesailere-isle/<int:liste_id>/', views.izinleri_mesailere_isle, name='izinleri_mesailere_isle'),
+
     # Bildirim işlemleri
     path('bildirimler/', views.bildirimler, name='bildirimler'),
     path('bildirim-onayla/<int:bildirim_id>/', views.bildirim_onayla, name='bildirim_onayla'),
@@ -97,7 +100,7 @@ urlpatterns = [
     path('raporlama/', views.raporlama, name='raporlama'),
     path('raporlama/excel/', views.export_raporlama_excel, name='export_raporlama_excel'),
     # Raporlama API endpoints
-    path('raporlama/update-birim-kodlari/', views.update_birim_kodlari, name='update_birim_kodlari'),
+    path('raporlama/update-birim-kodlari-toplu/', views.update_birim_kodlari_toplu, name='update_birim_kodlari_toplu'),
     path('raporlama/kilit-tekil/', views.kilit_tekil, name='kilit_tekil'),
     path('raporlama/kilit-toplu/', views.kilit_toplu, name='kilit_toplu'),
 ]

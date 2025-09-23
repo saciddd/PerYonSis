@@ -46,7 +46,7 @@ def excel_export(request):
     for personel in personeller:
         personel.mesai_data = mesailer.filter(Personel=personel)
         row = {
-            "Personel Adı": personel.PersonelName,
+            "Personel Adı": f"{personel.PersonelName} {personel.PersonelSurname}",
             "Personel Unvanı": personel.PersonelTitle
         }
         for mesai in personel.mesai_data:

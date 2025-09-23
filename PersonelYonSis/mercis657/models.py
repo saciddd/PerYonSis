@@ -88,6 +88,7 @@ class Personel(models.Model):
     PersonelID = models.AutoField(primary_key=True)
     PersonelTCKN = models.BigIntegerField(unique=True)
     PersonelName = models.CharField(max_length=100, null=False)
+    PersonelSurname = models.CharField(max_length=100, null=False)
     PersonelTitle = models.CharField(max_length=100, null=True)
 
     def __str__(self):

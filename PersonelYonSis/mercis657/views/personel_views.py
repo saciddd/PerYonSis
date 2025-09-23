@@ -31,7 +31,7 @@ def onceki_donem_personel(request, year, month, birim_id):
         p = kayit.personel
         data.append({
             "PersonelTCKN": p.PersonelTCKN,
-            "PersonelName": p.PersonelName,
+            "PersonelName": f"{p.PersonelName} {p.PersonelSurname}",
             "PersonelTitle": p.PersonelTitle,
         })
     return JsonResponse({'status': 'success', 'data': data})
@@ -56,14 +56,16 @@ def personel_kaydet(request):
             for p in personeller:
                 pid = p.get('PersonelTCKN')
                 pname = p.get('PersonelName')
+                psurname = p.get('PersonelSurname')
                 ptitle = p.get('PersonelTitle')
                 personel, _ = Personel.objects.get_or_create(
                     PersonelTCKN=pid,
-                    defaults={'PersonelName': pname, 'PersonelTitle': ptitle}
+                    defaults={'PersonelName': pname, 'PersonelSurname': psurname, 'PersonelTitle': ptitle}
                 )
                 # Eğer personel varsa, ad/ünvan güncelle
-                if personel.PersonelName != pname or personel.PersonelTitle != ptitle:
+                if personel.PersonelName != pname or personel.PersonelSurname != psurname or personel.PersonelTitle != ptitle:
                     personel.PersonelName = pname
+                    personel.PersonelSurname = psurname
                     personel.PersonelTitle = ptitle
                     personel.save()
                 # Listeye ekle
@@ -79,12 +81,14 @@ def personel_ekle(request):
         # Form verilerini al
         personel_tc = request.POST['PersonelTCKN']
         personel_name = request.POST['PersonelName']
+        personel_surname = request.POST['PersonelSurname']
         personel_title = request.POST['PersonelTitle']
         
         # Yeni personel kaydet
         personel = Personel(
             PersonelTCKN=personel_tc,
             PersonelName=personel_name,
+            PersonelSurname=personel_surname,
             PersonelTitle=personel_title
         )
         personel.save()
@@ -96,6 +100,7 @@ def personel_update(request):
     if request.method == 'POST':
         personel_tc = request.POST.get('tckn')
         personel_name = request.POST.get('name')
+        personel_surname = request.POST.get('surname')
         personel_title = request.POST.get('title')
 
         # Personeli bul
@@ -103,6 +108,7 @@ def personel_update(request):
         
         # Güncellenen alanlar
         personel.PersonelName = personel_name
+        personel.PersonelSurname = personel_surname
         personel.PersonelTitle = personel_title
         personel.save()  # Değişiklikleri kaydet
         

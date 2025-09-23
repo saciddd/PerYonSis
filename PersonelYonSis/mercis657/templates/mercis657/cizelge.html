@@ -107,7 +107,7 @@
                 <!-- Satır Numarası -->
                 <td>{{ forloop.counter }}</td>
                 <td>
-                    {{ personel.PersonelName }}
+                    {{ personel.PersonelName }} {{ personel.PersonelSurname }}
                     <i class="bi bi-person-circle text-primary ms-1 person-profile-btn" 
                        style="cursor: pointer; font-size: 0.9em;" 
                        data-personel-id="{{ personel.PersonelID }}"
@@ -417,9 +417,17 @@
                     cell.classList.remove('modified');
                 });
                 if (window.Swal) {
-                    Swal.fire({ icon: 'success', title: 'Kaydedildi', text: 'Çizelge başarıyla kaydedildi.' });
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: 'Kaydedildi', 
+                        text: 'Çizelge başarıyla kaydedildi.' 
+                    }).then(() => {
+                        window.location.reload();
+                    });
                 } else {
-                    alert('Çizelge başarıyla kaydedildi.');
+                    alert('Çizelge başarıyla kaydedildi.').then(() => {
+                        window.location.reload();
+                    });
                 }
             } else if (body.status === 'partial') {
                 const errors = body.errors || [];

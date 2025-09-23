@@ -64,8 +64,16 @@
     {% endif %}
 
     {% if bildirimler_by_birim %}
-        <div class="mb-2">
-            <span class="badge bg-primary">Toplam Kayıt: {{ toplam_kayit }}</span>
+        <div class="mb-2 d-flex justify-content-between align-items-center">
+            <div>
+                <span class="badge bg-primary">Toplam Kayıt: {{ toplam_kayit }}</span>
+                <span class="badge bg-danger ms-2" id="tanimsiz-alan-sayisi">Tanımsız Alanlar: 0</span>
+            </div>
+            <div>
+                <button id="topluKilitBtn" class="btn btn-sm btn-outline-danger me-2">Tümünü Kilitle</button>
+                <button id="topluKilitAcBtn" class="btn btn-sm btn-outline-secondary me-2">Tümünün Kilidini Aç</button>
+                <button id="topluKaydetBtn" class="btn btn-sm btn-primary">Değişiklikleri Kaydet</button>
+            </div>
         </div>
 
         <!-- Yeni: Birim bazlı tablo -->
@@ -78,12 +86,12 @@
                         <th>Üst Birim</th>
                         <th>Birim Adı</th>
                         <th>Personel Sayısı</th>
-                        <th>Onaylanmış</th>
-                        <th>Beklemede</th>
-                        <th>NormalNobetKodu</th>
-                        <th>BayramNobetKodu</th>
-                        <th>RiskliNormalNobetKodu</th>
-                        <th>RiskliBayramNobetKodu</th>
+                        <th>Onaylı</th>
+                        <th>Bekleyen</th>
+                        <th>Normal Nobet Kodu</th>
+                        <th>Bayram Nobet Kodu</th>
+                        <th>Riskli Normal Nobet Kodu</th>
+                        <th>Riskli Bayram Nobet Kodu</th>
                         <th>İşlemler</th>
                     </tr>
                 </thead>
@@ -127,10 +135,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div class="btn-group" role="group">
-                                <button class="btn btn-sm btn-outline-primary save-birim-btn" type="button">Değişiklikleri Kaydet</button>
-                                <button class="btn btn-sm btn-outline-warning kilit-toggle-btn" type="button">Kilitle / Kilit Aç</button>
-                            </div>
+                            <button class="btn btn-sm btn-outline-secondary kilit-toggle-btn" type="button">Kilitle / Kilit Aç</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -138,14 +143,28 @@
             </table>
         </div>
 
-        <!-- Top butonlar: tümünü kilitle / tümünün kilidini aç -->
-        <div class="mt-3 d-flex gap-2">
-            <button id="topluKilitBtn" class="btn btn-danger">Tümünü Kilitle</button>
-            <button id="topluKilitAcBtn" class="btn btn-secondary">Tümünün Kilidini Aç</button>
-        </div>
     {% endif %}
 </div>
 
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Sadece null değerler için kırmızı kenarlık - CSS ile değil JavaScript ile kontrol edilecek */
+.kod-cell.null-value input,
+.kod-cell.null-value .kod-readonly {
+    border: 2px solid #dc3545 !important;
+    background-color: #fff5f5 !important;
+}
+
+/* Readonly span'ler için özel stil */
+.kod-cell .kod-readonly.text-danger {
+    padding: 6px 12px;
+    display: inline-block;
+    min-width: 100px;
+    border-radius: 4px;
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}
@@ -178,6 +197,43 @@
         return months.reverse(); // En yakın dönemin üstte olması için ters çevir
     };
 
+    // Kod hücrelerini kontrol eden ve stil uygulayan fonksiyon
+    function updateKodCellStyles() {
+        let tanimsizAlanSayisi = 0;
+        
+        document.querySelectorAll('.kod-cell').forEach(cell => {
+            const input = cell.querySelector('.kod-input');
+            const span = cell.querySelector('.kod-readonly');
+            let isNull = false;
+            
+            if (input) {
+                // Input alanı için kontrol - sadece gerçekten boş ise
+                if (!input.value || input.value.trim() === '') {
+                    isNull = true;
+                }
+            } else if (span) {
+                // Readonly span için kontrol - sadece text-danger class'ı varsa
+                if (span.classList.contains('text-danger')) {
+                    isNull = true;
+                }
+            }
+            
+            // null-value class'ını ekle/çıkar
+            if (isNull) {
+                cell.classList.add('null-value');
+                tanimsizAlanSayisi++;
+            } else {
+                cell.classList.remove('null-value');
+            }
+        });
+        
+        // Tanımsız alan sayısını güncelle
+        const tanimsizAlanSpan = document.getElementById('tanimsiz-alan-sayisi');
+        if (tanimsizAlanSpan) {
+            tanimsizAlanSpan.textContent = `Tanımsız Alanlar: ${tanimsizAlanSayisi}`;
+        }
+    }
+
     // Sayfa yüklendiğinde dönem selectbox'ını doldur ve event listener'ları ekle
     document.addEventListener('DOMContentLoaded', function() {
         // Dönem selectbox'ını doldur
@@ -197,6 +253,14 @@
              donemSelect.appendChild(option);
         });
         // Durum alanı zaten template ile seçili kalıyor
+        
+        // Kod hücrelerinin stillerini güncelle
+        updateKodCellStyles();
+        
+        // Input değişikliklerini dinle
+        document.querySelectorAll('.kod-input').forEach(input => {
+            input.addEventListener('input', updateKodCellStyles);
+        });
         
         // Tümünü seç fonksiyonu
         const tumBirimleriSec = document.getElementById('tumBirimleriSec');
@@ -396,33 +460,53 @@
 <!-- Ek script: birim kodlarını güncelleme, kilit toggle, toplu kilit -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Save butonları
-    document.querySelectorAll('.save-birim-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const tr = this.closest('tr');
-            const birimId = tr.dataset.birimId;
-            const payload = { birim_id: birimId };
-            // Collect kod inputs
-            tr.querySelectorAll('.kod-input').forEach(input => {
-                payload[input.name] = input.value === '' ? null : input.value;
+    // Toplu kaydet butonu
+    const topluKaydetBtn = document.getElementById('topluKaydetBtn');
+    if (topluKaydetBtn) {
+        topluKaydetBtn.addEventListener('click', function() {
+            const allChanges = [];
+            
+            // Tüm satırlardaki değişiklikleri topla
+            document.querySelectorAll('tr[data-birim-id]').forEach(tr => {
+                const birimId = tr.dataset.birimId;
+                const payload = { birim_id: birimId };
+                let hasChanges = false;
+                
+                // Collect kod inputs
+                tr.querySelectorAll('.kod-input').forEach(input => {
+                    const value = input.value === '' ? null : input.value;
+                    payload[input.name] = value;
+                    if (value !== null) hasChanges = true;
+                });
+                
+                if (hasChanges) {
+                    allChanges.push(payload);
+                }
             });
-
-            fetch('{% url "mercis657:update_birim_kodlari" %}', {
+            
+            if (allChanges.length === 0) {
+                Swal.fire('Bilgi', 'Kaydedilecek değişiklik bulunamadı', 'info');
+                return;
+            }
+            
+            // Tüm değişiklikleri tek seferde gönder
+            fetch('{% url "mercis657:update_birim_kodlari_toplu" %}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ changes: allChanges })
             }).then(r => r.json()).then(data => {
                 if (data.status === 'success') {
-                    Swal.fire('Başarılı', data.message || 'Birim güncellendi', 'success').then(() => location.reload());
+                    updateKodCellStyles();
+                    Swal.fire('Başarılı', data.message || 'Tüm değişiklikler kaydedildi', 'success').then(() => location.reload());
                 } else {
                     Swal.fire('Hata', data.message || 'Güncelleme başarısız', 'error');
                 }
             }).catch(() => Swal.fire('Hata', 'Sunucu hatası', 'error'));
         });
-    });
+    }
 
     // Kilit toggle tekil
     document.querySelectorAll('.kilit-toggle-btn').forEach(btn => {

@@ -114,7 +114,7 @@ def raporlama(request):
 
             # Excel indirme linki oluştur
             if bildirimler_by_birim:
-                 excel_url = reverse('hizmet_sunum_app:export_raporlama_excel')
+                 excel_url = reverse('mercis657:export_raporlama_excel')
                  excel_url += f'?donem={donem.strftime("%Y-%m")}'
 
                  if kurum:
@@ -159,10 +159,13 @@ def raporlama(request):
     return render(request, 'mercis657/raporlama.html', context)
 
 def export_raporlama_excel(request):
-    # New implementation using mercis657.Bildirim model and openpyxl
+    """
+    Bildirimler bildirim koduna göre gruplandırılır ve her fazla mesai türü için ayrı satır oluşturulur.
+    """
     donem_str = request.GET.get('donem')
     kurum = request.GET.get('kurum')
     idare = request.GET.get('idare')
+    durum = request.GET.get('durum')
 
     if not donem_str:
         messages.error(request, "Lütfen bir dönem seçin.")
@@ -180,112 +183,159 @@ def export_raporlama_excel(request):
         bildirimler_qs = bildirimler_qs.filter(PersonelListesi__birim__Kurum__ad=kurum)
     if idare:
         bildirimler_qs = bildirimler_qs.filter(PersonelListesi__birim__UstBirim__ad=idare)
+    if durum == "1":
+        bildirimler_qs = bildirimler_qs.filter(OnayDurumu=1)
+    elif durum == "0":
+        bildirimler_qs = bildirimler_qs.filter(OnayDurumu=0)
 
     if not bildirimler_qs.exists():
         messages.warning(request, "Seçilen filtreye uygun veri bulunamadı.")
         return redirect('mercis657:raporlama')
 
-    # Openpyxl workbook creation using a basic template or new workbook
-    template_path = os.path.join(settings.BASE_DIR, 'static', 'excels', 'FazlaMesaiSablon.xlsx')
-    if os.path.exists(template_path):
-        wb = openpyxl.load_workbook(template_path)
-        ws = wb.active
-    else:
-        # Create a minimal workbook if template not found
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = 'FazlaMesai'
+    # Şablon dosyasını yükle
+    template_path = os.path.join(settings.STATIC_ROOT, 'excels', 'FazlaMesaiSablon.xlsx')
+    if not os.path.exists(template_path):
+        template_path = os.path.join(settings.BASE_DIR, 'static', 'excels', 'FazlaMesaiSablon.xlsx')
+    
+    try:
+        workbook = openpyxl.load_workbook(template_path)
+        worksheet = workbook.active
+    except FileNotFoundError:
+        messages.error(request, f"Şablon dosyası bulunamadı: {template_path}")
+        return redirect('mercis657:raporlama')
 
-    # Write header row according to FazlaMesaiSablon expectations
-    headers = ["PersonelTCKN", "PersonelAd", "PersonelUnvan", "Kurum", "UstBirim", "BirimAdi",
-               "NormalFazlaMesai","BayramFazlaMesai","RiskliNormalFazlaMesai","RiskliBayramFazlaMesai",
-               "NormalIcap","BayramIcap"]
-    for col, h in enumerate(headers, start=1):
-        ws.cell(row=1, column=col, value=h)
+    # Stil tanımlamaları
+    from openpyxl.styles import Border, Side, PatternFill
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    green_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')
 
-    row = 2
-    # Group by bildirim kod if such field exists; assumption: Bildirim has no explicit 'kod' field, so group by PersonelListesi
-    for b in bildirimler_qs.order_by('PersonelListesi__birim__BirimAdi', 'Personel__PersonelName'):
-        # Skip null/zero values as requested
-        values = {
-            'PersonelTCKN': getattr(b.Personel, 'PersonelTCKN', None),
-            'PersonelAd': getattr(b.Personel, 'PersonelName', None),
-            'PersonelUnvan': getattr(b.Personel, 'PersonelTitle', None),
-            'Kurum': getattr(getattr(b.PersonelListesi, 'birim', None), 'Kurum', None),
-            'UstBirim': getattr(getattr(b.PersonelListesi, 'birim', None), 'UstBirim', None),
-            'BirimAdi': getattr(getattr(b.PersonelListesi, 'birim', None), 'BirimAdi', None),
-            'NormalFazlaMesai': float(b.NormalFazlaMesai) if b.NormalFazlaMesai else None,
-            'BayramFazlaMesai': float(b.BayramFazlaMesai) if b.BayramFazlaMesai else None,
-            'RiskliNormalFazlaMesai': float(b.RiskliNormalFazlaMesai) if b.RiskliNormalFazlaMesai else None,
-            'RiskliBayramFazlaMesai': float(b.RiskliBayramFazlaMesai) if b.RiskliBayramFazlaMesai else None,
-            'NormalIcap': float(b.NormalIcap) if b.NormalIcap else None,
-            'BayramIcap': float(b.BayramIcap) if b.BayramIcap else None,
-        }
+    current_row = 2  # Veri yazmaya 2. satırdan başla (başlık satırını atla)
 
-        # Determine row color for KadroDurumu == 'Geçici Gelen'
-        kadro = None
+    # Bildirimleri personel bazında grupla
+    for bildirim in bildirimler_qs.order_by('PersonelListesi__birim__BirimAdi', 'Personel__PersonelName'):
         try:
-            # Assumption: Personel model may have 'KadroDurumu' attribute; otherwise skip coloring
-            kadro = getattr(b.Personel, 'KadroDurumu', None)
-        except Exception:
-            kadro = None
+            # Personel ve birim bilgilerini al
+            personel = bildirim.Personel
+            birim = bildirim.PersonelListesi.birim
+            
+            personel_tckn = getattr(personel, 'PersonelTCKN', '')
+            personel_ad = getattr(personel, 'PersonelName', '')
+            personel_soyisim = getattr(personel, 'PersonelSurname', '')
+            birim_adi = getattr(birim, 'BirimAdi', '')
+            kadro_durumu = getattr(personel, 'KadroDurumu', '')
+            
+            # Birim kodlarını al
+            normal_nobet_kodu = getattr(birim, 'NormalNobetKodu', '1')
+            bayram_nobet_kodu = getattr(birim, 'BayramNobetKodu', '')
+            riskli_normal_nobet_kodu = getattr(birim, 'RiskliNormalNobetKodu', '')
+            riskli_bayram_nobet_kodu = getattr(birim, 'RiskliBayramNobetKodu', '')
+            
+            # Her bir fazla mesai/icap türü için kontrol yap ve ayrı satır oluştur
+            fazla_mesai_list = [
+                ('NormalFazlaMesai', normal_nobet_kodu, bildirim.NormalFazlaMesai),
+                ('BayramFazlaMesai', bayram_nobet_kodu, bildirim.BayramFazlaMesai),
+                ('RiskliNormalFazlaMesai', riskli_normal_nobet_kodu, bildirim.RiskliNormalFazlaMesai),
+                ('RiskliBayramFazlaMesai', riskli_bayram_nobet_kodu, bildirim.RiskliBayramFazlaMesai),
+                ('NormalIcap', normal_nobet_kodu, bildirim.NormalIcap),
+                ('BayramIcap', bayram_nobet_kodu, bildirim.BayramIcap),
+            ]
 
-        # Write only non-null values; map to columns
-        col = 1
-        for key in ['PersonelTCKN','PersonelAd','PersonelUnvan','Kurum','UstBirim','BirimAdi',
-                    'NormalFazlaMesai','BayramFazlaMesai','RiskliNormalFazlaMesai','RiskliBayramFazlaMesai',
-                    'NormalIcap','BayramIcap']:
-            val = values.get(key)
-            if val is None or (isinstance(val, (int, float)) and val == 0):
-                # leave cell blank
-                ws.cell(row=row, column=col, value=None)
-            else:
-                ws.cell(row=row, column=col, value=val)
-            col += 1
+            for fm_type, birim_kodu, value in fazla_mesai_list:
+                # Değerin boş veya 0'dan büyük olup olmadığını kontrol et
+                try:
+                    numeric_value = float(value) if value is not None else 0
+                except (TypeError, ValueError):
+                    numeric_value = 0
+                
+                # Sadece geçerli değerler ve 0'dan büyük değerler için satır oluştur
+                if value is not None and value != '' and numeric_value > 0 and birim_kodu:
+                    # Yeni satır için hücrelere verileri yaz
+                    worksheet.cell(row=current_row, column=1, value=personel_tckn)
+                    worksheet.cell(row=current_row, column=2, value=personel_ad)
+                    worksheet.cell(row=current_row, column=3, value=personel_soyisim)
+                    worksheet.cell(row=current_row, column=4, value=birim_kodu)  # İlgili birim kodunu 5. sütuna yaz
+                    worksheet.cell(row=current_row, column=5, value=numeric_value)  # Değeri 6. sütuna yaz
+                    worksheet.cell(row=current_row, column=7, value=birim_adi)  # Birim adını 7. sütuna yaz
+                    worksheet.cell(row=current_row, column=8, value=fm_type)  # Fazla mesai türünü 8. sütuna yaz
 
-        # Apply green fill if KadroDurumu == 'Geçici Gelen'
-        if kadro == 'Geçici Gelen':
-            from openpyxl.styles import PatternFill
-            fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')
-            for c in range(1, col):
-                ws.cell(row=row, column=c).fill = fill
+                    # Sınır ve dolgu uygula
+                    for col in range(1, 9):
+                        worksheet.cell(row=current_row, column=col).border = thin_border
+                        if kadro_durumu == "Geçici Gelen":
+                            worksheet.cell(row=current_row, column=col).fill = green_fill
 
-        row += 1
+                    current_row += 1  # Bir sonraki satıra geç
 
+        except Exception as e:
+            print(f"Bildirim işlenirken hata: {e}")
+            continue
+
+    # Excel dosyasını kaydet
     output = BytesIO()
-    wb.save(output)
+    workbook.save(output)
     output.seek(0)
 
     response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    file_name = f"FazlaMesaiSablon_{donem_str}.xlsx"
+    file_name = f"FazlaMesaiBildirimleri_{donem_str}.xlsx"
     response['Content-Disposition'] = f'attachment; filename="{file_name}"'
     return response
 
 
 @require_POST
 @login_required
-def update_birim_kodlari(request):
-    """Endpoint: Güncellenen birim kodlarını alır ve kaydeder.
-    Beklenen payload: {'birim_id': id, 'NormalNobetKodu': val, 'BayramNobetKodu': val,...}
+def update_birim_kodlari_toplu(request):
+    """Endpoint: Toplu birim kodlarını günceller.
+    Beklenen payload: {'changes': [{'birim_id': id, 'NormalNobetKodu': val, 'BayramNobetKodu': val,...}, ...]}
     """
     try:
         data = json.loads(request.body.decode('utf-8'))
-        birim_id = data.get('birim_id')
-        birim = Birim.objects.get(BirimID=birim_id)
+        changes = data.get('changes', [])
+        
+        if not changes:
+            return JsonResponse({'status':'error','message':'Güncellenecek veri bulunamadı'}, status=400)
 
         # Permission check: kullanıcı birim bilgilerini düzenleyebilmeli
         if not request.user.has_perm('mercis657.birim_bilgilerini_duzenleyebilir'):
             return JsonResponse({'status':'error','message':'Yetkiniz yok'}, status=403)
 
-        # Update allowed fields
-        for field in ['NormalNobetKodu','BayramNobetKodu','RiskliNormalNobetKodu','RiskliBayramNobetKodu']:
-            if field in data:
-                val = data[field]
-                setattr(birim, field, val)
-        birim.save()
-        return JsonResponse({'status':'success','message':'Birim bilgileri güncellendi'})
-    except Birim.DoesNotExist:
-        return JsonResponse({'status':'error','message':'Birim bulunamadı'}, status=404)
+        updated_count = 0
+        errors = []
+        
+        with transaction.atomic():
+            for change in changes:
+                try:
+                    birim_id = change.get('birim_id')
+                    if not birim_id:
+                        errors.append(f"Birim ID bulunamadı: {change}")
+                        continue
+                        
+                    birim = Birim.objects.get(BirimID=birim_id)
+                    
+                    # Update allowed fields
+                    for field in ['NormalNobetKodu','BayramNobetKodu','RiskliNormalNobetKodu','RiskliBayramNobetKodu']:
+                        if field in change:
+                            val = change[field]
+                            setattr(birim, field, val)
+                    
+                    birim.save()
+                    updated_count += 1
+                    
+                except Birim.DoesNotExist:
+                    errors.append(f"Birim bulunamadı: {birim_id}")
+                except Exception as e:
+                    errors.append(f"Birim {birim_id} güncellenirken hata: {str(e)}")
+        
+        if errors:
+            message = f"{updated_count} birim güncellendi. Hatalar: {'; '.join(errors)}"
+            return JsonResponse({'status':'partial','message':message, 'errors':errors})
+        else:
+            return JsonResponse({'status':'success','message':f'{updated_count} birim başarıyla güncellendi'})
+            
     except Exception as e:
         return JsonResponse({'status':'error','message':str(e)}, status=500)
 

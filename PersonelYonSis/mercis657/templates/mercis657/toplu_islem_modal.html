@@ -35,6 +35,14 @@
                                     </button>
                                 </div>
                             </div>
+                            <br>
+                            <div class="card-body p-3">
+                                <h6 class="mb-3 text-muted">Personel İzinlerini Çek</h6>
+                                <p class="small text-muted mb-2">Listedeki tüm personelin onaylanmış izinlerini İzin İşleri Sisteminden çekin.</p>
+                                <button class="btn btn-warning btn-sm" type="button" onclick="izinleriCek()">
+                                    <i class="bi bi-arrow-repeat"></i> İzinleri Çek
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -104,5 +112,33 @@
             }
         }
         return cookieValue;
+    }
+
+    function izinleriCek() {
+        if (!confirm("Tüm personelin izinlerini İzin İşleri Sisteminden çekmek istediğinize emin misiniz?")) {
+            return;
+        }
+        fetch("{% url 'mercis657:izinleri_mesailere_isle' liste.id %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCookie('csrftoken'),
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                liste_id: {{ liste.id }}
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert("Hata: " + data.message);
+            }
+        })
+        .catch(err => {
+            alert("Bir hata oluştu: " + err);
+        });
     }
 </script>

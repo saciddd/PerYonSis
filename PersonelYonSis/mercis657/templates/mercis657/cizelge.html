@@ -119,7 +119,7 @@
                 <td>{{ personel.PersonelTitle }}</td>
                 {% for mesai in personel.mesai_data %}
                 <td contenteditable="true"
-                    class="mesai-cell {% if mesai.Saat or mesai.IzinAd %}has-value{% endif %} {% if mesai.is_weekend %}weekend{% elif mesai.is_resmi_tatil %}resmi-tatil{% endif %}"
+                    class="mesai-cell {% if mesai.Saat or mesai.IzinAd %}has-value{% endif %} {% if mesai.is_weekend %}weekend{% elif mesai.is_resmi_tatil %}resmi-tatil{% endif %} {% if mesai.SistemdekiIzin %}sistemdeki-izin{% endif %}"
                     data-personel-id="{{ personel.PersonelID }}"
                     data-date="{{ mesai.MesaiDate }}"
                     data-mesai-pk="{{ mesai.MesaiID|default:'' }}"
@@ -128,8 +128,7 @@
                     data-degisiklik="{{ mesai.Degisiklik|yesno:'1,0' }}"
                     data-prev-saat="{{ mesai.PrevSaat }}"
                     data-prev-izin="{{ mesai.PrevIzinAd }}"
-                    {% if mesai.MesaiTanimRenk %} style="color: {{ mesai.MesaiTanimRenk }}; font-weight: bold;"{% endif %}
-                    {% if mesai.SistemdekiIzin %} style="background-color: #c8f5e1;"{% endif %}>
+                    {% if mesai.MesaiTanimRenk %} style="color: {{ mesai.MesaiTanimRenk }}; font-weight: bold;"{% endif %}>
                     {{ mesai.Saat|default:mesai.IzinAd }}
                     {% if mesai.Degisiklik %}
                       <i class="bi bi-check-circle text-danger float-end" title="Onay bekleyen mesai. Önceki: {{ mesai.PrevSaat|default:mesai.PrevIzinAd }} | Talep edilen: {{ mesai.Saat|default:mesai.IzinAd }}"></i>
@@ -546,6 +545,8 @@
     #cizelgeTable td.mesai-cell:hover { background-color: #bbe9f7; cursor: pointer; }
     #cizelgeTable tbody tr:hover { background-color: #f0f8ff; }
     #cizelgeTable td.mesai-cell.modified { background-color: #b3d9ff !important; }
+    /* Green background for system-registered leaves/permissions */
+    #cizelgeTable td.sistemdeki-izin { background-color: #c8f5e1 !important; }
     .input-group > .form-select, .input-group > .btn { margin-right: 4px; }
 </style>
 {% endblock %}

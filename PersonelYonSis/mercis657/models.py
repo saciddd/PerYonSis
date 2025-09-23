@@ -104,6 +104,7 @@ class Mesai(models.Model):
     OnayTarihi = models.DateTimeField(null=True, blank=True)
     Onaylayan = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='mercis657_mesai_onaylayan')
     Degisiklik = models.BooleanField(default=False)  # True: Değişiklik var, False: Değişiklik yok
+    SistemdekiIzin = models.BooleanField(default=False)  # True: İzin var, False: İzin yok
     
     def __str__(self):
         return f"{self.Personel.PersonelName} - {self.MesaiDate}"

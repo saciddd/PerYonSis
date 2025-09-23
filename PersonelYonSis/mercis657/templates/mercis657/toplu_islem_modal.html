@@ -64,6 +64,9 @@
 </div>
 </div>
 
+<!-- SweetAlert2 CDN ekle (head veya scriptlerin üstüne ekleyebilirsiniz) -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
     // Toplu radyasyon durumu atama
     function topluRadyasyonAta() {
@@ -115,30 +118,47 @@
     }
 
     function izinleriCek() {
-        if (!confirm("Tüm personelin izinlerini İzin İşleri Sisteminden çekmek istediğinize emin misiniz?")) {
-            return;
-        }
-        fetch("{% url 'mercis657:izinleri_mesailere_isle' liste.id %}", {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": getCookie('csrftoken'),
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                liste_id: {{ liste.id }}
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === "success") {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert("Hata: " + data.message);
+        const btn = document.querySelector('button[onclick="izinleriCek()"]');
+        Swal.fire({
+            title: 'İzinleri Çek',
+            text: 'Tüm personelin izinlerini İzin İşleri Sisteminden çekmek istediğinize emin misiniz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, çek!',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Butonu pasifleştir ve yükleniyor ikonu ekle
+                btn.disabled = true;
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Çekiliyor...';
+
+                fetch("{% url 'mercis657:izinleri_mesailere_isle' liste.id %}", {
+                    method: "POST",
+                    headers: {
+                        "X-CSRFToken": getCookie('csrftoken'),
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        liste_id: {{ liste.id }}
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    if (data.status === "success") {
+                        Swal.fire('Başarılı!', data.message, 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Hata!', data.message, 'error');
+                    }
+                })
+                .catch(err => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    Swal.fire('Hata!', 'Bir hata oluştu: ' + err, 'error');
+                });
             }
-        })
-        .catch(err => {
-            alert("Bir hata oluştu: " + err);
         });
     }
 </script>

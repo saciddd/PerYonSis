@@ -529,6 +529,7 @@ def izinleri_mesailere_isle(request, liste_id):
             for mesai in mesailer:
                 if mesai.Izin != izin_obj:
                     mesai.Izin = izin_obj
+                    mesai.SistemdekiIzin = True  # sistemden gelen izin
                     mesai.MesaiTanim = None  # izinli günlerde mesai olmaz
                     mesai.save(update_fields=["Izin", "MesaiTanim"])
                     updated_count += 1

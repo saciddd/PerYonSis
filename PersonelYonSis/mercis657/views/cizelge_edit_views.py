@@ -513,7 +513,7 @@ def izinleri_mesailere_isle(request, liste_id):
             izin_obj = get_or_create_izin_turu(izin_turu)
 
             try:
-                personel = Personel.objects.get(TCKimlikNo=tckn)
+                personel = Personel.objects.get(PersonelTCKN=tckn)
             except Personel.DoesNotExist:
                 continue  # Django’da personeli yoksa atla
 

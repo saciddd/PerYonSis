@@ -194,6 +194,7 @@ def cizelge_kaydet(request):
             mesai_date = datetime.strptime(mesai_date, "%Y-%m-%d").date()
             mesai_tanim_id = data.get('mesaiId')
             izin_id = data.get('izinId')
+            mesai_notu = data.get('mesaiNotu')  # yeni alan
 
             # Kayıtlı mı kontrol et
             if not PersonelListesiKayit.objects.filter(
@@ -213,16 +214,19 @@ def cizelge_kaydet(request):
 
                 mesai_changed = existing_mesai.MesaiTanim_id != mesai_tanim_id
                 izin_changed = existing_mesai.Izin_id != izin_id
+                not_changed = (getattr(existing_mesai, 'MesaiNotu', None) or None) != (mesai_notu or None)
 
-                if not (mesai_changed or izin_changed):
+                if not (mesai_changed or izin_changed or not_changed):
                     continue
 
                 # Eğer zaten bekleyen değişiklik varken, gelen değer yedekle aynı ise vazgeçilmiş say
                 last_backup = existing_mesai.yedekler.order_by('-created_at').first()
                 if existing_mesai.Degisiklik and last_backup and \
-                   last_backup.MesaiTanim_id == mesai_tanim_id and last_backup.Izin_id == izin_id:
+                   last_backup.MesaiTanim_id == mesai_tanim_id and last_backup.Izin_id == izin_id and \
+                   (getattr(existing_mesai, 'MesaiNotu', None) or None) == (mesai_notu or None):
                     existing_mesai.MesaiTanim_id = mesai_tanim_id
                     existing_mesai.Izin_id = izin_id
+                    existing_mesai.MesaiNotu = mesai_notu
                     existing_mesai.OnayDurumu = True
                     existing_mesai.Degisiklik = False
                     existing_mesai.save()
@@ -240,6 +244,7 @@ def cizelge_kaydet(request):
 
                 existing_mesai.MesaiTanim_id = mesai_tanim_id
                 existing_mesai.Izin_id = izin_id
+                existing_mesai.MesaiNotu = mesai_notu
                 existing_mesai.OnayDurumu = False
                 existing_mesai.Degisiklik = True
                 existing_mesai.save()
@@ -251,6 +256,7 @@ def cizelge_kaydet(request):
                     MesaiDate=mesai_date,
                     MesaiTanim_id=mesai_tanim_id,
                     Izin_id=izin_id,
+                    MesaiNotu=mesai_notu,
                     OnayDurumu=True,
                     Degisiklik=False
                 )

@@ -6,7 +6,7 @@
     <form id="filterForm" method="get">
         <div class="row align-items-end mb-3">
             <!-- Dönem Seçimi -->
-            <div class="col-md-2">
+            <div class="col-md-1">
                 <label for="selectDonem">Dönem</label>
                 <select name="donem" id="selectDonem" class="form-select form-select-sm" required>
                     <option value="">Dönem Seçiniz</option>
@@ -18,7 +18,7 @@
                 </select>
             </div>
             <!-- Birim Seçimi ve Yönetimi -->
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="input-group">
                     <label for="selectBirim" class="w-100">Birim</label>
                     <select name="birim_id" id="selectBirim" class="form-select form-select-sm" required>
@@ -39,9 +39,9 @@
             </div>
     </form>
             <!-- Mesai/İzin Seçimi ve Alanı Boşalt -->
-            <div class="col-md-4" id="editControls">
+            <div class="col-md-5" id="editControls">
                 <div class="row">
-                    <div class="col-md-5">
+                    <div class="col-md-3">
                         <label for="mesaiSelection">Mesai Seçimi</label>
                         <select id="mesaiSelection" class="form-select form-select-sm">
                             <option value="">Mesai Seçin</option>
@@ -50,13 +50,23 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <label for="izinSelection">İzin Seçimi</label>
                         <select id="izinSelection" class="form-select form-select-sm">
                             <option value="">İzin Seçin</option>
                             {% for izin in izinler %}
                             <option value="izin_{{ izin.id }}">{{ izin.ad }}</option>
                             {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="mesaiNotuSelection">Mesai Notu</label>
+                        <select id="mesaiNotuSelection" class="form-select form-select-sm">
+                            <option value="">Not Seçin</option>
+                            <option value="★">★</option>
+                            <option value="★★">★★</option>
+                            <option value="TAK">TAK</option>
+                            <option value="TEMIZLE">Temizle</option>
                         </select>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
@@ -68,7 +78,7 @@
                 </div>
             </div>
             <!-- Yazdır ve Kaydet / Tümünü Onayla -->
-            <div class="col-md-2 text-end">
+            <div class="col-md-3 text-end">
                 <br>
                 <button type="button" class="btn btn-outline-primary btn-sm" id="btnYazdir">
                     <i class="bi bi-printer"></i> Yazdır
@@ -125,11 +135,15 @@
                     data-mesai-pk="{{ mesai.MesaiID|default:'' }}"
                     data-mesai-id="{{ mesai.MesaiTanimID|default:'' }}"
                     data-izin-id="{{ mesai.IzinID|default:'' }}"
+                    data-mesai-notu="{{ mesai.MesaiNotu|default:'' }}"
                     data-degisiklik="{{ mesai.Degisiklik|yesno:'1,0' }}"
                     data-prev-saat="{{ mesai.PrevSaat }}"
                     data-prev-izin="{{ mesai.PrevIzinAd }}"
                     {% if mesai.MesaiTanimRenk %} style="color: {{ mesai.MesaiTanimRenk }}; font-weight: bold;"{% endif %}>
-                    {{ mesai.Saat|default:mesai.IzinAd }}
+                    <span class="mesai-notu-badge" {% if not mesai.MesaiNotu %}style="display:none"{% endif %}>{{ mesai.MesaiNotu }}</span>
+                    <span class="mesai-main-value">
+                        {{ mesai.Saat|default:mesai.IzinAd }}
+                    </span>
                     {% if mesai.Degisiklik %}
                       <i class="bi bi-check-circle text-danger float-end" title="Onay bekleyen mesai. Önceki: {{ mesai.PrevSaat|default:mesai.PrevIzinAd }} | Talep edilen: {{ mesai.Saat|default:mesai.IzinAd }}"></i>
                     {% endif %}
@@ -201,15 +215,27 @@
     const mesaiSelect = document.getElementById('mesaiSelection');
     const izinSelect = document.getElementById('izinSelection');
     const alanBosalt = document.getElementById('alanBosaltSwitch');
+    const mesaiNotuSelect = document.getElementById('mesaiNotuSelection');
+
+    // Alanlar arası ilişki: biri seçilince diğerleri temizlenir
     mesaiSelect.addEventListener('change', function() {
         if (mesaiSelect.value) {
             izinSelect.value = "";
+            mesaiNotuSelect.value = "";
             alanBosalt.checked = false;
         }
     });
     izinSelect.addEventListener('change', function() {
         if (izinSelect.value) {
             mesaiSelect.value = "";
+            mesaiNotuSelect.value = "";
+            alanBosalt.checked = false;
+        }
+    });
+    mesaiNotuSelect.addEventListener('change', function() {
+        if (mesaiNotuSelect.value) {
+            mesaiSelect.value = "";
+            izinSelect.value = "";
             alanBosalt.checked = false;
         }
     });
@@ -217,10 +243,11 @@
         if (alanBosalt.checked) {
             mesaiSelect.value = "";
             izinSelect.value = "";
+            mesaiNotuSelect.value = "";
         }
     });
 
-    // Hücreye tıklama: approval modda tekil onay/red; normal modda düzenleme
+    // Hücreye tıklama: Mesai Notu seçiliyse notu ata, diğerlerinde eski davranış
     document.querySelectorAll('.mesai-cell').forEach(function (cell) {
         cell.addEventListener('click', function (e) {
             if (isApproval) {
@@ -254,30 +281,46 @@
                 return;
             }
 
-            // Normal mod: düzenleme akışı
             let mesaiVal = mesaiSelect.value;
             let izinVal = izinSelect.value;
             let bosalt = alanBosalt.checked;
-            
-            // Hücreyi değiştirildi olarak işaretle (açık mavi renk)
+            let notVal = mesaiNotuSelect.value;
+
             cell.classList.add('modified');
-            
+
             if (bosalt) {
-                cell.innerText = "";
+                cell.querySelector('.mesai-main-value').innerText = "";
                 cell.setAttribute('data-mesai-id', "");
                 cell.setAttribute('data-izin-id', "");
+                cell.setAttribute('data-mesai-notu', "");
+                cell.querySelector('.mesai-notu-badge').style.display = "none";
                 cell.classList.remove('has-value');
+            } else if (notVal) {
+                if (notVal === "TEMIZLE") {
+                    cell.setAttribute('data-mesai-notu', "");
+                    cell.querySelector('.mesai-notu-badge').style.display = "none";
+                } else {
+                    cell.setAttribute('data-mesai-notu', notVal);
+                    cell.querySelector('.mesai-notu-badge').innerText = notVal;
+                    cell.querySelector('.mesai-notu-badge').style.display = "";
+                }
+                // Mesai/İzin verilerini değiştirme!
+                cell.classList.add('has-value');
             } else if (mesaiVal) {
                 let text = mesaiSelect.options[mesaiSelect.selectedIndex].text;
-                cell.innerText = text;
+                cell.querySelector('.mesai-main-value').innerText = text;
                 cell.setAttribute('data-mesai-id', mesaiVal.replace('mesai_', ''));
                 cell.setAttribute('data-izin-id', "");
+                cell.setAttribute('data-mesai-notu', "");
+                cell.querySelector('.mesai-notu-badge').style.display = "none";
                 cell.classList.add('has-value');
             } else if (izinVal) {
                 let text = izinSelect.options[izinSelect.selectedIndex].text;
-                cell.innerText = text;
+                cell.querySelector('.mesai-main-value').innerText = text;
                 cell.setAttribute('data-izin-id', izinVal.replace('izin_', ''));
                 cell.setAttribute('data-mesai-id', "");
+                cell.setAttribute('data-mesai-notu', "");
+                cell.querySelector('.mesai-notu-badge').style.display = "none";
                 cell.classList.add('has-value');
             }
             cell.blur();
@@ -336,9 +379,11 @@
         const key = `${pid}_${date}`;
         const mesaiId = cell.dataset.mesaiId || null;
         const izinId = cell.dataset.izinId || null;
+        const mesaiNotu = cell.dataset.mesaiNotu || null;
         initialMap[key] = JSON.stringify({
             mesaiId: mesaiId ? String(mesaiId) : null,
-            izinId: izinId ? String(izinId) : null
+            izinId: izinId ? String(izinId) : null,
+            mesaiNotu: mesaiNotu ? String(mesaiNotu) : null
         });
     });
 
@@ -364,22 +409,18 @@
             const date = cell.dataset.date;
             if (!pid || !date) return;
             const key = `${pid}_${date}`;
-            
-            // Mevcut değerleri al
             const currentMesaiId = cell.dataset.mesaiId || null;
             const currentIzinId = cell.dataset.izinId || null;
-            
-            // Orijinal değerleri al
-            const origData = initialMap[key] ? JSON.parse(initialMap[key]) : {mesaiId: null, izinId: null};
-            
-            // Değişiklik var mı kontrol et
+            const currentMesaiNotu = cell.dataset.mesaiNotu || null;
+            const origData = initialMap[key] ? JSON.parse(initialMap[key]) : {mesaiId: null, izinId: null, mesaiNotu: null};
             const mesaiChanged = currentMesaiId !== origData.mesaiId;
             const izinChanged = currentIzinId !== origData.izinId;
-            
-            if (mesaiChanged || izinChanged) {
+            const notChanged = currentMesaiNotu !== origData.mesaiNotu;
+            if (mesaiChanged || izinChanged || notChanged) {
                 changes[key] = {
                     mesaiId: currentMesaiId ? Number(currentMesaiId) : null,
-                    izinId: currentIzinId ? Number(currentIzinId) : null
+                    izinId: currentIzinId ? Number(currentIzinId) : null,
+                    mesaiNotu: currentMesaiNotu ? currentMesaiNotu : null
                 };
             }
         });
@@ -548,5 +589,24 @@
     /* Green background for system-registered leaves/permissions */
     #cizelgeTable td.sistemdeki-izin { background-color: #c8f5e1 !important; }
     .input-group > .form-select, .input-group > .btn { margin-right: 4px; }
+    .mesai-notu-badge {
+        position: absolute;
+        top: 2px;
+        right: 4px;
+        font-size: 0.75em;
+        font-weight: bold;
+        background: rgba(180,180,180,0.35);
+        color: #000000;
+        padding: 1px 5px;
+        border-radius: 6px;
+        z-index: 1;
+        pointer-events: none;
+    }
+    .mesai-cell {
+        position: relative;
+    }
+    .mesai-main-value {
+        display: inline;
+    }
 </style>
 {% endblock %}

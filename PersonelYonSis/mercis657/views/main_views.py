@@ -186,6 +186,8 @@ def cizelge(request):
             "MesaiTanimID": mesai.MesaiTanim.id if mesai.MesaiTanim else None,
             "MesaiTanimRenk": mesai.MesaiTanim.Renk if mesai.MesaiTanim else None,
             "IzinID": mesai.Izin.id if mesai.Izin else None,
+            "SistemdekiIzin": mesai.SistemdekiIzin,
+            "MesaiNotu": mesai.MesaiNotu,
             "Saat": mesai.MesaiTanim.Saat if mesai.MesaiTanim else "",
             "IzinAd": mesai.Izin.ad if mesai.Izin else "",
             "Degisiklik": mesai.Degisiklik,

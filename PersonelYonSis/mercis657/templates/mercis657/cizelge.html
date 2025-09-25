@@ -3,93 +3,99 @@
 {% block title %}657 Çizelge İşlemleri{% endblock %}
 {% block content %}
 <div class="container-fluid mt-3">
-    <form id="filterForm" method="get">
-        <div class="row align-items-end mb-3">
-            <!-- Dönem Seçimi -->
-            <div class="col-md-1">
-                <label for="selectDonem">Dönem</label>
-                <select name="donem" id="selectDonem" class="form-select form-select-sm" required>
-                    <option value="">Dönem Seçiniz</option>
-                    {% for donem in donemler %}
-                        <option value="{{ donem.value }}" {% if donem.value == selected_donem %}selected{% endif %}>
-                            {{ donem.label }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <!-- Birim Seçimi ve Yönetimi -->
-            <div class="col-md-3">
-                <div class="input-group">
-                    <label for="selectBirim" class="w-100">Birim</label>
-                    <select name="birim_id" id="selectBirim" class="form-select form-select-sm" required>
-                        <option value="">Birim Seçiniz</option>
-                        {% for user_birim in user_birimler %}
-                            <option value="{{ user_birim.birim.BirimID }}" {% if user_birim.birim.BirimID|stringformat:"s" == selected_birim_id|stringformat:"s" %}selected{% endif %}>
-                                {{ user_birim.birim.BirimAdi }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    <button class="btn btn-outline-secondary btn-sm" type="button" id="btnBirimYonetim" data-bs-toggle="modal" data-bs-target="#birimYonetimModal">
-                        <i class="bi bi-gear"></i>
-                    </button>
-                    <button class="btn btn-success btn-sm" type="button" id="btnPersonelEkle" data-bs-toggle="modal" data-bs-target="#personelEkleModal">
-                        <i class="bi bi-person-plus"></i> Personel Ekle
-                    </button>
-                </div>
-            </div>
-    </form>
-            <!-- Mesai/İzin Seçimi ve Alanı Boşalt -->
-            <div class="col-md-5" id="editControls">
-                <div class="row">
-                    <div class="col-md-3">
-                        <label for="mesaiSelection">Mesai Seçimi</label>
-                        <select id="mesaiSelection" class="form-select form-select-sm">
-                            <option value="">Mesai Seçin</option>
-                            {% for mesai in mesai_options %}
-                            <option value="mesai_{{ mesai.id }}">{{ mesai.Saat }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="izinSelection">İzin Seçimi</label>
-                        <select id="izinSelection" class="form-select form-select-sm">
-                            <option value="">İzin Seçin</option>
-                            {% for izin in izinler %}
-                            <option value="izin_{{ izin.id }}">{{ izin.ad }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="mesaiNotuSelection">Mesai Notu</label>
-                        <select id="mesaiNotuSelection" class="form-select form-select-sm">
-                            <option value="">Not Seçin</option>
-                            <option value="★">★</option>
-                            <option value="★★">★★</option>
-                            <option value="TAK">TAK</option>
-                            <option value="TEMIZLE">Temizle</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2 d-flex align-items-end">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="alanBosaltSwitch">
-                            <label class="form-check-label small" for="alanBosaltSwitch">Alanı Boşalt</label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- Yazdır ve Kaydet / Tümünü Onayla -->
-            <div class="col-md-3 text-end">
-                <br>
-                <button type="button" class="btn btn-outline-primary btn-sm" id="btnYazdir">
-                    <i class="bi bi-printer"></i> Yazdır
-                </button>
-                <button type="button" class="btn btn-success btn-sm" id="saveButton">Kaydet</button>
-                <button type="button" class="btn btn-primary btn-sm d-none" id="approveAllButton">Tümünü Onayla</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" id="topluIslemButton">
-                    <i class="bi bi-gear"></i> Toplu İşlemler
-                </button>
-            </div>
+<form id="filterForm" method="get" class="row g-2 align-items-end mb-3">
+    <!-- Dönem Seçimi -->
+    <div class="col-auto">
+        <label for="selectDonem" class="form-label small fw-bold">Dönem</label>
+        <select name="donem" id="selectDonem" class="form-select form-select-sm" style="width: 120px;" required>
+            <option value="">Seçiniz</option>
+            {% for donem in donemler %}
+                <option value="{{ donem.value }}" {% if donem.value == selected_donem %}selected{% endif %}>
+                    {{ donem.label }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Birim ve Personel Seçimi -->
+    <div class="col-auto">
+        <label for="selectBirim" class="form-label small fw-bold">Birim</label>
+        <div class="input-group input-group-sm">
+            <select name="birim_id" id="selectBirim" class="form-select" style="width: 180px;" required>
+                <option value="">Seçiniz</option>
+                {% for user_birim in user_birimler %}
+                    <option value="{{ user_birim.birim.BirimID }}" {% if user_birim.birim.BirimID|stringformat:"s" == selected_birim_id|stringformat:"s" %}selected{% endif %}>
+                        {{ user_birim.birim.BirimAdi }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-outline-secondary" type="button" title="Birim Yönetimi" data-bs-toggle="modal" data-bs-target="#birimYonetimModal">
+                <i class="bi bi-gear"></i>
+            </button>
+            <button class="btn btn-success" type="button" id="btnPersonelEkle" title="Personel Ekle">
+                <i class="bi bi-person-plus"></i> Personel Ekle
+            </button>
         </div>
+    </div>
+
+    <!-- Personel Arama -->
+    <div class="col-auto">
+        <label for="personelAramaSelect" class="form-label small fw-bold">Personel Ara</label>
+        <div>
+        <select id="personelAramaSelect" name="personel_id" class="form-select" style="width: 200px;" required>
+            <option value="">Ara...</option>
+        </select>
+        </div>
+    </div>
+
+    <!-- Mesai/İzin Kontrolleri -->
+    <div class="col-auto">
+        <label class="form-label small fw-bold">İşlemler</label>
+        <div class="input-group input-group-sm">
+            <select id="mesaiSelection" class="form-select" style="width: 110px;">
+                <option value="">Mesai</option>
+                {% for mesai in mesai_options %}
+                <option value="mesai_{{ mesai.id }}">{{ mesai.Saat }}</option>
+                {% endfor %}
+            </select>
+            <select id="izinSelection" class="form-select" style="width: 100px;">
+                <option value="">İzin</option>
+                {% for izin in izinler %}
+                <option value="izin_{{ izin.id }}">{{ izin.ad }}</option>
+                {% endfor %}
+            </select>
+            <select id="mesaiNotuSelection" class="form-select" style="width: 90px;">
+                <option value="">Not</option>
+                <option value="★">★</option>
+                <option value="★★">★★</option>
+                <option value="TAK">TAK</option>
+                <option value="TEMIZLE">Temizle</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Alan Boşalt Switch -->
+    <div class="col-auto">
+        <div class="form-check form-switch mt-3">
+            <input class="form-check-input" type="checkbox" id="alanBosaltSwitch">
+            <label class="form-check-label small" for="alanBosaltSwitch">Alanı Boşalt</label>
+        </div>
+    </div>
+
+    <!-- Aksiyon Butonları -->
+    <div class="col-auto ms-auto">
+        <div class="btn-group btn-group-sm mt-3">
+            <button type="button" class="btn btn-outline-primary" id="btnYazdir" title="Yazdır">
+                <i class="bi bi-printer"></i>
+            </button>
+            <button type="button" class="btn btn-success" id="saveButton" title="Kaydet">Kaydet</button>
+            <button type="button" class="btn btn-outline-secondary" id="topluIslemButton" title="Toplu İşlemler">
+                <i class="bi bi-gear"></i>
+            </button>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm d-none mt-3" id="approveAllButton">Tümünü Onayla</button>
+    </div>
+</form>
 
     {% if personeller %}
     <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
@@ -168,6 +174,26 @@
 
 <!-- Toplu İşlem Modal -->
 <div id="topluIslemContainer"></div>
+
+<!-- Yazdır Modal -->
+<div class="modal fade" id="yazdirModal" tabindex="-1" aria-labelledby="yazdirModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="yazdirModalLabel">Çalışma Listesi Yazdır</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+      </div>
+      <div class="modal-body">
+        <label for="yazdirAciklama" class="form-label">Açıklama</label>
+        <textarea id="yazdirAciklama" class="form-control" rows="4">{{ aciklama|escapejs }}</textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="yazdirModalBtn">Yazdır</button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
 
@@ -327,16 +353,48 @@
         });
     });
 
-    // Yazdır butonu
+    // Yazdır butonu: modal aç
     document.getElementById('btnYazdir').addEventListener('click', function() {
+        var aciklama = document.getElementById('yazdirAciklama');
+        // aciklama.value = "{{ aciklama|escapejs }}";
+        var yazdirModal = new bootstrap.Modal(document.getElementById('yazdirModal'));
+        yazdirModal.show();
+    });
+
+
+    // Yazdır modalındaki Yazdır butonu
+    document.getElementById('yazdirModalBtn').addEventListener('click', function() {
         const donem = document.getElementById('selectDonem').value;
         const birimId = document.getElementById('selectBirim').value;
+        const aciklama = document.getElementById('yazdirAciklama').value;
         if (!donem || !birimId) {
             alert('Lütfen dönem ve birim seçiniz.');
             return;
         }
-        // Şimdilik endpoint boş, ileride PDF şablonu ile doldurulacak
-        window.open(`/mercis657/cizelge/yazdir/?donem=${donem}&birim_id=${birimId}`, '_blank');
+        // PersonelListesi.aciklama güncelle
+        fetch('/mercis657/liste_aciklama_kaydet/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                donem: donem,
+                birim_id: birimId,
+                aciklama: aciklama
+            })
+        })
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Yazdırma sayfasını aç
+                window.open(`/mercis657/cizelge/yazdir/?donem=${donem}&birim_id=${birimId}&aciklama=${encodeURIComponent(aciklama)}`, '_blank');
+                bootstrap.Modal.getInstance(document.getElementById('yazdirModal')).hide();
+            } else {
+                alert(data.message || 'Açıklama kaydedilemedi.');
+            }
+        })
+        .catch(() => alert('Açıklama kaydedilirken bir hata oluştu.'));
     });
 
     // Tümünü Onayla (approval modu)
@@ -575,6 +633,158 @@
             })
             .catch(err => alert('Hata: ' + err));
     });
+
+    // Personel Ekle butonu: modalı aç ve önceki dönem personellerini getir
+    document.getElementById('btnPersonelEkle').addEventListener('click', function() {
+        let donem = document.getElementById('selectDonem').value;
+        const birimId = document.getElementById('selectBirim').value;
+        if (!donem || !birimId) {
+            alert('Lütfen dönem ve birim seçiniz.');
+            return;
+        }
+        // Dönem formatını "YYYY-MM" yap
+        donem = donem.replace('/', '-');
+        // Doğrudan parametre olarak gönder (args), kwargs değil!
+        fetch(`/mercis657/onceki-donem-personel/${donem}/${birimId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'error') {
+                    alert(data.message || 'Veriler alınırken bir hata oluştu');
+                    return;
+                }
+                const personeller = Array.isArray(data) ? data : (data.data || []);
+                const tbody = document.querySelector('#oncekiDonemTable tbody');
+                tbody.innerHTML = personeller.map(p => `
+                    <tr>
+                        <td><input type="checkbox" value="${p.personel_id}"></td>
+                        <td>${p.tc_kimlik || ''}</td>
+                        <td>${p.adi || ''}</td>
+                        <td>${p.soyadi || ''}</td>
+                        <td>${p.unvan || ''}</td>
+                    </tr>
+                `).join('');
+            })
+            .catch(error => {
+                console.error('Veri getirme hatası:', error);
+                alert('Veriler alınırken bir hata oluştu');
+            });
+        new bootstrap.Modal(document.getElementById('personelEkleModal')).show();
+    });
+
+    // Personel aktarma işlemleri
+    document.getElementById('btnPersonelAktar').addEventListener('click', function() {
+        const checkedRows = document.querySelectorAll('#oncekiDonemTable tbody input[type="checkbox"]:checked');
+        const personelTable = document.getElementById('yeniPersonelTable').querySelector('tbody');
+
+        checkedRows.forEach(checkbox => {
+            const row = checkbox.closest('tr');
+            // İlk satır boşsa onu doldur, değilse yeni satır ekle
+            let firstRow = personelTable.children[0];
+            if (firstRow && Array.from(firstRow.cells).every(cell => cell.textContent.trim() === "")) {
+                firstRow.innerHTML = `
+                    <td>1</td>
+                    <td contenteditable="true">${row.cells[1].textContent}</td>
+                    <td contenteditable="true">${row.cells[2].textContent}</td>
+                    <td contenteditable="true">${row.cells[3].textContent}</td>
+                    <td contenteditable="true">${row.cells[4].textContent}</td>
+                `;
+            } else {
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>${personelTable.children.length + 1}</td>
+                    <td contenteditable="true">${row.cells[1].textContent}</td>
+                    <td contenteditable="true">${row.cells[2].textContent}</td>
+                    <td contenteditable="true">${row.cells[3].textContent}</td>
+                    <td contenteditable="true">${row.cells[4].textContent}</td>
+                `;
+                personelTable.appendChild(newRow);
+            }
+        });
+    });
+
+    // Personel Arama Select2
+    $('#personelAramaSelect').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'TC Kimlik No veya Ad/Soyad ile arayın...',
+        minimumInputLength: 2,
+        ajax: {
+            url: "{% url 'mutemet_app:personel_ara' %}",
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term // Arama terimi
+                };
+            },
+            processResults: function (data) {
+                return {
+                    results: data.results
+                };
+            },
+            cache: true
+        }
+    }).on('select2:select', function (e) {
+        var data = e.params.data;
+        const donem = document.getElementById('selectDonem').value;
+        const birimId = document.getElementById('selectBirim').value;
+        if (!donem || !birimId) {
+            Swal.fire('Uyarı', 'Lütfen dönem ve birim seçiniz.', 'warning');
+            return;
+        }
+        // Ad ve soyadı ayır
+        var ad = '';
+        var soyad = '';
+        if (data.ad_soyad) {
+            var parts = data.ad_soyad.trim().split(' ');
+            if (parts.length > 1) {
+                soyad = parts.pop();
+                ad = parts.join(' ');
+            } else {
+                ad = data.ad_soyad;
+            }
+        }
+        var unvan = data.unvan || '';
+        const csrfToken = getCookie('csrftoken');
+        Swal.fire({
+            title: 'Personel Ekle',
+            text: ad + ' ' + soyad + ' isimli personeli listeye eklemek istiyor musunuz?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, ekle',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch('/mercis657/personel/kaydet/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        donem: donem,
+                        birim_id: birimId,
+                        personeller: [{
+                            PersonelTCKN: data.id,
+                            PersonelName: ad,
+                            PersonelSurname: soyad,
+                            PersonelTitle: unvan
+                        }]
+                    })
+                })
+                .then(resp => resp.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire('Başarılı', 'Personel başarıyla eklendi.', 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Hata', data.message || 'Kayıt sırasında hata oluştu.', 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Hata', 'Kayıt sırasında bir hata oluştu.', 'error'));
+            }
+            // Seçimi temizle
+            $('#personelAramaSelect').val(null).trigger('change');
+        });
+    });
 </script>
 <style>
     body, .container-fluid { font-size: 0.95rem; }
@@ -587,7 +797,7 @@
     #cizelgeTable tbody tr:hover { background-color: #f0f8ff; }
     #cizelgeTable td.mesai-cell.modified { background-color: #b3d9ff !important; }
     /* Green background for system-registered leaves/permissions */
-    #cizelgeTable td.sistemdeki-izin { background-color: #c8f5e1 !important; }
+    #cizelgeTable td.sistemdeki-izin { background-color: #aeefb3 !important; }
     .input-group > .form-select, .input-group > .btn { margin-right: 4px; }
     .mesai-notu-badge {
         position: absolute;

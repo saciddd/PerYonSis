@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import main_views, cizelge_edit_views
 
 app_name = 'mercis657'  # Namespace tanımlaması
 
@@ -37,7 +38,7 @@ urlpatterns = [
     path('ust-birim-toggle-aktif/<int:pk>/', views.ust_birim_toggle_aktif, name='ust_birim_toggle_aktif'),
     path('ust-birim-sil/<int:pk>/', views.ust_birim_sil, name='ust_birim_sil'),
 
-    path('onceki-donem-personel/<int:year>/<int:month>/<int:birim_id>/', views.onceki_donem_personel, name='onceki_donem_personel'),
+    path('onceki-donem-personel/<str:donem>/<int:birim_id>/', views.onceki_donem_personel, name='onceki_donem_personel'),
     path('personel/kaydet/', views.personel_kaydet, name='personel_kaydet'),
     path('cizelge/yazdir/', views.cizelge_yazdir, name='cizelge_yazdir'),
     path('cizelge-onay/', views.cizelge_onay, name='cizelge_onay'),
@@ -103,4 +104,6 @@ urlpatterns = [
     path('raporlama/update-birim-kodlari-toplu/', views.update_birim_kodlari_toplu, name='update_birim_kodlari_toplu'),
     path('raporlama/kilit-tekil/', views.kilit_tekil, name='kilit_tekil'),
     path('raporlama/kilit-toplu/', views.kilit_toplu, name='kilit_toplu'),
+    path('personel-cikar/<int:liste_id>/<int:personel_id>/', views.personel_cikar, name='personel_cikar'),
+    path('liste_aciklama_kaydet/', main_views.liste_aciklama_kaydet, name='liste_aciklama_kaydet'),
 ]

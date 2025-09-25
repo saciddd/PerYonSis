@@ -18,7 +18,8 @@
                                     <tr>
                                         <th><input type="checkbox" id="selectAllOnceki"></th>
                                         <th>T.C.</th>
-                                        <th>Adı Soyadı</th>
+                                        <th>Adı</th>
+                                        <th>Soyadı</th>
                                         <th>Unvanı</th>
                                     </tr>
                                 </thead>
@@ -211,4 +212,12 @@ function initYeniPersonelTable() {
     addRowListeners(tbody.querySelector('tr'));
 }
 initYeniPersonelTable();
+
+// Tümünü seç/deselect fonksiyonu
+document.getElementById('selectAllOnceki').addEventListener('change', function() {
+    const checked = this.checked;
+    document.querySelectorAll('#oncekiDonemTable tbody input[type="checkbox"]').forEach(function(cb) {
+        cb.checked = checked;
+    });
+});
 </script>

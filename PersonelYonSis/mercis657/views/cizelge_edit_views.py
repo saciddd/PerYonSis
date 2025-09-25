@@ -37,14 +37,6 @@ def cizelge_yazdir(request):
 
     # Build an absolute file:// path to the logo if STATIC_ROOT is set
     pdf_logo = file_url
-    # try:
-    #     static_root = getattr(settings, 'STATIC_ROOT', None)
-    #     if static_root:
-    #         logo_path = Path(static_root) / 'logo' / 'kdh_logo.png'
-    #         if logo_path.exists():
-    #             pdf_logo = f"file://{logo_path.as_posix()}"
-    # except Exception:
-    #     pdf_logo = None
 
     # Determine year/month
     year = None
@@ -117,6 +109,7 @@ def cizelge_yazdir(request):
                         'MesaiTanimID': mesai.MesaiTanim_id if mesai else None,
                         'Saat': (mesai.MesaiTanim.Saat if (mesai and getattr(mesai, 'MesaiTanim', None)) else ''),
                         'IzinAd': (mesai.Izin.ad if (mesai and getattr(mesai, 'Izin', None)) else ''),
+                        'MesaiNotu': getattr(mesai, 'MesaiNotu', '') if mesai else '',
                         'is_weekend': d['is_weekend'],
                         'is_holiday': (day_no in resmi_tatil_gunleri),
                         'is_arife': (day_no in arefe_gunleri),
@@ -135,6 +128,15 @@ def cizelge_yazdir(request):
     except Exception as e:
         # swallow and render template with whatever we have
         pass
+
+    # Açıklama: GET parametresi öncelikli, yoksa PersonelListesi.aciklama
+    aciklama_param = request.GET.get('aciklama', None)
+    if aciklama_param is not None:
+        aciklama = aciklama_param
+    elif liste and hasattr(liste, 'aciklama'):
+        aciklama = liste.aciklama or ""
+    else:
+        aciklama = ""
 
     form_adi = f"{year} Yılı {month}. Dönem {birim.BirimAdi} Çalışma Listesi"
 
@@ -155,6 +157,7 @@ def cizelge_yazdir(request):
         'year': year,
         'month': month,
         'liste': liste if 'liste' in locals() else None,
+        'aciklama': aciklama,
     }
 
     # Pdf oluştur

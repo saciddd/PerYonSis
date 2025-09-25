@@ -192,12 +192,16 @@
                 
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="btnPersonelCikar">
+                    <i class="bi bi-person-x"></i> Personeli Listeden Çıkar
+                </button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 // Radyasyon durumu değiştirme
 document.getElementById('radyasyonSwitch').addEventListener('change', function() {
@@ -278,6 +282,40 @@ function deleteMazeret(mazeretId) {
         .catch(err => alert('Hata: ' + err));
     }
 }
+
+document.getElementById('btnPersonelCikar').addEventListener('click', function() {
+    Swal.fire({
+        title: 'Personeli Listeden Çıkar',
+        text: 'Bu personeli listeden çıkarmak istediğinize emin misiniz?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, çıkar',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch("{% url 'mercis657:personel_cikar' liste.id personel.PersonelID %}", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie('csrftoken'),
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    Swal.fire('Başarılı!', data.message, 'success').then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire('Hata!', data.message || 'İşlem başarısız.', 'error');
+                }
+            })
+            .catch(err => {
+                Swal.fire('Hata!', 'Bir hata oluştu: ' + err, 'error');
+            });
+        }
+    });
+});
 
 function getCookie(name) {
     let cookieValue = null;

@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 import locale
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from dateutil.relativedelta import relativedelta
@@ -233,6 +233,7 @@ def cizelge(request):
         "kurumlar": kurumlar,
         "ust_birimler": ust_birimler,
         "idareciler": idareciler,
+        "aciklama": liste.aciklama if liste else "",
     }
     return render(request, 'mercis657/cizelge.html', context)
 
@@ -285,52 +286,6 @@ def personel_listesi_detay(request, liste_id):
         'tum_personeller': tum_personeller
     })
 
-@login_required
-def personel_ekle_listeye(request, liste_id):
-    if request.method == 'POST':
-        liste = get_object_or_404(PersonelListesi, id=liste_id)
-
-        if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
-            return HttpResponseForbidden('Bu listeye erişim yetkiniz yok.')
-
-        personel_id = request.POST.get('personel_id')
-        personel = get_object_or_404(Personel, PersonelID=personel_id)
-
-        kayit, created = PersonelListesiKayit.objects.get_or_create(
-            personel_listesi=liste,
-            personel=personel
-        )
-
-        if created:
-            messages.success(request, 'Personel listeye eklendi.')
-        else:
-            messages.warning(request, 'Bu personel zaten listede.')
-
-        return redirect('mercis657:personel_listesi_detay', liste_id=liste.id)
-
-@login_required
-def personel_kaldir_liste(request, liste_id, kayit_id):
-    liste = get_object_or_404(PersonelListesi, id=liste_id)
-    kayit = get_object_or_404(PersonelListesiKayit, id=kayit_id, personel_listesi=liste)
-
-    if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
-        return HttpResponseForbidden('Bu listeye erişim yetkiniz yok.')
-
-    kayit.delete()
-    messages.success(request, 'Personel listeden kaldırıldı.')
-    return redirect('mercis657:personel_listesi_detay', liste_id=liste.id)
-
-@login_required
-def personel_cikar(request, liste_id, personel_id):
-    liste = get_object_or_404(PersonelListesi, id=liste_id)
-    if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
-        messages.warning(request, 'Yetkisiz işlem.')
-        return redirect('mercis657:personel_listeleri')
-
-    kayit = get_object_or_404(PersonelListesiKayit, liste=liste, personel_id=personel_id)
-    kayit.delete()
-    messages.success(request, 'Personel listeden çıkarıldı.')
-    return redirect('mercis657:personel_listesi_detay', liste_id=liste.id)
 
 @csrf_exempt
 def birim_yetki_ekle(request, birim_id):
@@ -373,3 +328,79 @@ def tanimlamalar(request):
         "rt_form": resmi_tatil_form,
         "tatiller": tatiller
     })
+
+@require_POST
+@login_required
+def personel_cikar(request, liste_id, personel_id):
+    liste = get_object_or_404(PersonelListesi, id=liste_id)
+    if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
+        return JsonResponse({'status': 'error', 'message': 'Yetkisiz işlem.'}, status=403)
+
+    try:
+        kayit = get_object_or_404(PersonelListesiKayit, liste=liste, personel_id=personel_id)
+        kayit.delete()
+        return JsonResponse({'status': 'success', 'message': 'Personel listeden çıkarıldı.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def onceki_donem_personel(request, donem, birim_id):
+    """
+    Bir önceki döneme ait personelleri getir (PersonelListesi ve PersonelListesiKayit üzerinden)
+    """
+    # Yetki kontrolü
+    if not UserBirim.objects.filter(user=request.user, birim__BirimID=birim_id).exists():
+        return JsonResponse({'status': 'error', 'message': 'Yetkisiz erişim'}, status=403)
+    try:
+        # donem: "YYYY-MM" veya "YYYY/MM"
+        if '-' in donem:
+            year, month = map(int, donem.split('-'))
+        elif '/' in donem:
+            year, month = map(int, donem.split('/'))
+        else:
+            raise Exception("Dönem formatı hatalı")
+        if month == 1:
+            prev_year = year - 1
+            prev_month = 12
+        else:
+            prev_year = year
+            prev_month = month - 1
+
+        # Önceki dönem personel listesi
+        liste = PersonelListesi.objects.filter(birim__BirimID=birim_id, yil=prev_year, ay=prev_month).first()
+        if not liste:
+            return JsonResponse([], safe=False)
+
+        kayitlar = PersonelListesiKayit.objects.filter(liste=liste).select_related('personel')
+        data = [{
+            'personel_id': k.personel.PersonelID,
+            'tc_kimlik': getattr(k.personel, 'PersonelTCKN', ''),
+            'adi': getattr(k.personel, 'PersonelName', ''),
+            'soyadi': getattr(k.personel, 'PersonelSurname', ''),
+            'unvan': getattr(k.personel, 'PersonelTitle', '')
+        } for k in kayitlar]
+
+        return JsonResponse(data, safe=False)
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@require_POST
+@login_required
+def liste_aciklama_kaydet(request):
+    try:
+        data = json.loads(request.body)
+        donem = data.get('donem')
+        birim_id = data.get('birim_id')
+        aciklama = data.get('aciklama', '')
+        if not (donem and birim_id):
+            return JsonResponse({'status': 'error', 'message': 'Eksik veri.'})
+        year, month = map(int, donem.replace('-', '/').split('/'))
+        liste = PersonelListesi.objects.filter(birim__BirimID=birim_id, yil=year, ay=month).first()
+        if not liste:
+            return JsonResponse({'status': 'error', 'message': 'Liste bulunamadı.'})
+        liste.aciklama = aciklama
+        liste.save(update_fields=['aciklama'])
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+

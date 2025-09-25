@@ -6,36 +6,6 @@ from django.views.decorators.http import require_POST
 from ..models import Birim, PersonelListesi, PersonelListesiKayit, Personel
 from django.db import transaction
 
-@login_required
-def onceki_donem_personel(request, year, month, birim_id):
-    # year: int, month: int, birim_id: int
-    # Bir önceki ayı bul
-    if month == 1:
-        prev_year = year - 1
-        prev_month = 12
-    else:
-        prev_year = year
-        prev_month = month - 1
-    try:
-        birim = Birim.objects.get(BirimID=birim_id)
-    except Birim.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Birim bulunamadı.'})
-    try:
-        liste = PersonelListesi.objects.get(birim=birim, yil=prev_year, ay=prev_month)
-    except PersonelListesi.DoesNotExist:
-        # Önceki dönem yoksa boş liste dön
-        return JsonResponse({'status': 'success', 'data': []})
-    kayitlar = PersonelListesiKayit.objects.filter(liste=liste).select_related('personel')
-    data = []
-    for kayit in kayitlar:
-        p = kayit.personel
-        data.append({
-            "PersonelTCKN": p.PersonelTCKN,
-            "PersonelName": f"{p.PersonelName} {p.PersonelSurname}",
-            "PersonelTitle": p.PersonelTitle,
-        })
-    return JsonResponse({'status': 'success', 'data': data})
-
 @csrf_exempt
 @require_POST
 @login_required

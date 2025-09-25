@@ -6,7 +6,7 @@
   <title>{{ form_adi|default:"Çalışma Listesi" }}</title>
   <style>
     body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size: 11px; color: #222; }
-    .header { width: 100%; margin-bottom: 8px; border-bottom: 1px solid #000; padding-bottom: 6px; }
+    .header { width: 100%; margin-bottom: 8px; padding-bottom: 6px; }
     .h-left { width: 18%; vertical-align: top; }
     .h-center { width: 64%; text-align: center; }
     .h-right { width: 18%; text-align: right; font-size: 10px; }
@@ -20,10 +20,25 @@
     .small { font-size: 10px; }
     .footer-note { margin-top: 8px; font-size: 10px; color: #666; }
     @media print { .page-break { page-break-after: always; } }
+    .mesai-notu-badge {
+        position: absolute;
+        top: 2px;
+        right: 4px;
+        font-size: 0.75em;
+        font-weight: bold;
+        background: rgba(180,180,180,0.35);
+        color: #000000;
+        padding: 1px 5px;
+        border-radius: 6px;
+        z-index: 1;
+        pointer-events: none;
+    }
+    .mesai-cell-pdf {
+        position: relative;
+    }
   </style>
 </head>
 <body>
-
 <!-- Header -->
 <div class="header">
 {% include "common/pdf_header.html" with kurum=kurum form_adi=form_adi dokuman_kodu=dokuman_kodu yayin_tarihi=yayin_tarihi revizyon_tarihi=revizyon_tarihi revizyon_no=revizyon_no sayfa_no="1 / 1" pdf_logo=pdf_logo %}
@@ -58,17 +73,19 @@
           <td class="name-cell">{{ person.PersonelTitle|default:'-' }}</td>
           {% comment %} Expect person.mesai_data as list aligned with days; each item can be dict with Saat or IzinAd or empty {% endcomment %}
           {% for md in person.mesai_data %}
-            {% comment %} md could be string or dict {% endcomment %}
-            <td class="small {% if md.is_weekend %}weekend{% endif %} {% if md.is_holiday %}holiday{% endif %} {% if md.is_arife %}arife{% endif %}">
-              {% if md.MesaiTanimID or md.Saat %}
-                {% if md.IzinAd %}
-                  {{ md.IzinAd }}
+            <td class="small mesai-cell-pdf {% if md.is_weekend %}weekend{% endif %} {% if md.is_holiday %}holiday{% endif %} {% if md.is_arife %}arife{% endif %}">
+              <span class="mesai-notu-badge" {% if not md.MesaiNotu %}style="display:none"{% endif %}>{{ md.MesaiNotu }}</span>
+              <span>
+                {% if md.MesaiTanimID or md.Saat %}
+                  {% if md.IzinAd %}
+                    {{ md.IzinAd }}
+                  {% else %}
+                    {{ md.Saat|default:'' }}
+                  {% endif %}
                 {% else %}
-                  {{ md.Saat|default:'' }}
+                  -
                 {% endif %}
-              {% else %}
-                -
-              {% endif %}
+              </span>
             </td>
           {% endfor %}
           <td>
@@ -86,6 +103,12 @@
   <div class="footer-note">
     <small>* Sarı: Resmi tatil, Açık mavi: Arefe, Gri: Hafta sonu</small>
   </div>
+  
+  {% if aciklama %}
+    <div style="margin-bottom:8px; font-size:11px; color:#444;">
+      <strong>Açıklama:</strong> {{ aciklama|linebreaksbr }}
+    </div>
+  {% endif %}
 {% endif %}
 
 </body>

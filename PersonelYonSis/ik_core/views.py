@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q, Value as V
-from django.db.models.functions import Concat, Lower
+from django.db.models.functions import Concat
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse, reverse_lazy
@@ -15,8 +15,8 @@ from .models.valuelists import (
     AYRILMA_NEDENI_DEGERLERI, ENGEL_DERECESI_DEGERLERI # Add necessary value lists
 )
 from .forms import PersonelForm, KurumForm, UnvanForm, BransForm, GeciciGorevForm
-from django.db import connection
 
+@login_required
 def personel_list(request):
     query = Q()
     tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
@@ -25,32 +25,23 @@ def personel_list(request):
     unvan = request.GET.get('unvan', '')
     durum = request.GET.get('durum', '')
 
-    # Veritabanı backend kontrolü
-    db_engine = connection.vendor  # 'postgresql', 'sqlite', vs.
-
+    # TC Kimlik no
     if tc_kimlik_no:
         query &= Q(tc_kimlik_no__icontains=tc_kimlik_no)
+
+    # Ad-soyad
     if ad_soyad:
-        ad_soyad_normalized = ad_soyad.lower()
-        ad_soyad_parts = ad_soyad_normalized.split()
-        ad_part = ad_soyad_parts[0] if ad_soyad_parts else ''
-        soyad_part = ad_soyad_parts[-1] if ad_soyad_parts else ''
-        if db_engine == 'postgresql':
-            query &= (
-                Q(ad__unaccent__icontains=ad_soyad_normalized) |
-                Q(soyad__unaccent__icontains=ad_soyad_normalized) |
-                Q(ad__unaccent__icontains=ad_part) |
-                Q(soyad__unaccent__icontains=soyad_part)
-            )
+        parts = ad_soyad.split()
+        if len(parts) == 1:
+            query &= (Q(ad__icontains=parts[0]) | Q(soyad__icontains=parts[0]))
         else:
-            query &= (
-                Q(ad__icontains=ad_soyad_normalized) |
-                Q(soyad__icontains=ad_soyad_normalized) |
-                Q(ad__icontains=ad_part) |
-                Q(soyad__icontains=soyad_part)
-            )
+            query &= (Q(ad__icontains=parts[0]) & Q(soyad__icontains=parts[-1]))
+
+    # Telefon
     if telefon:
         query &= Q(telefon__icontains=telefon)
+
+    # Unvan
     if unvan:
         query &= Q(unvan_id=unvan)
 
@@ -58,15 +49,7 @@ def personel_list(request):
     if not any([tc_kimlik_no, ad_soyad, telefon, unvan, durum]):
         personeller = Personel.objects.none()
     else:
-        queryset = Personel.objects.all()
-        if db_engine == 'postgresql':
-            from django.db.models.functions import Lower
-            from django.contrib.postgres.search import Unaccent
-            queryset = queryset.annotate(
-                ad_unaccent=Unaccent(Lower('ad')),
-                soyad_unaccent=Unaccent(Lower('soyad'))
-            )
-        queryset = queryset.filter(query).select_related('unvan', 'brans', 'kurum')
+        queryset = Personel.objects.filter(query).select_related('unvan', 'brans', 'kurum')
         if durum:
             personeller = [p for p in queryset if p.durum == durum]
         else:

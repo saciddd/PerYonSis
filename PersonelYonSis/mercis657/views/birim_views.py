@@ -132,6 +132,75 @@ def birim_sil(request, birim_id):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 @csrf_exempt
+def birim_yetki_ekle(request, birim_id):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            username = data.get('username')
+            user = User.objects.get(Username=username)
+            birim = Birim.objects.get(pk=birim_id)
+            obj, created = UserBirim.objects.get_or_create(user=user, birim=birim)
+            if created:
+                messages.success(request, f"{user.FullName} kullanıcısına {birim.BirimAdi} birimi yetkisi verildi.")
+                return JsonResponse({"status": "success"})
+            else:
+                return JsonResponse({"status": "error", "message": "Kullanıcı zaten yetkili."})
+        except User.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Kullanıcı bulunamadı."})
+        except Birim.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Birim bulunamadı."})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)})
+    return JsonResponse({"status": "error", "message": "Geçersiz istek."})
+
+@csrf_exempt
+@require_POST
+def birim_yetki_sil(request, birim_id):
+    # Yetki kontrolü
+    if not request.user.has_permission("ÇS 657 Birim Yönetimi Sayfası"):
+        if not UserBirim.objects.filter(user=request.user, birim_id=birim_id).exists():
+            return JsonResponse({"status": "error", "message": "Bu birim için yetkiniz yok."}, status=403)
+    
+    try:
+        body = json.loads(request.body)
+        username = body.get('username')
+        user = User.objects.get(Username=username)
+        birim = Birim.objects.get(pk=birim_id)
+        deleted, _ = UserBirim.objects.filter(user=user, birim=birim).delete()
+        if deleted:
+            messages.success(request, f"{user.FullName} kullanıcısının {birim.BirimAdi} birimi yetkisi kaldırıldı.")
+            return JsonResponse({"status": "success"})
+        else:
+            return JsonResponse({"status": "error", "message": "Yetki bulunamadı."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
+    
+def birim_yetkililer(request, birim_id):
+    # Birime atanmış kullanıcıları getir
+    yetkiler = UserBirim.objects.filter(birim_id=birim_id).select_related('user')
+    data = [
+        {
+            "username": y.user.Username,
+            "full_name": y.user.FullName,
+        }
+        for y in yetkiler
+    ]
+    return JsonResponse({"status": "success", "data": data})
+
+def kullanici_ara(request):
+    username = request.GET.get('username', '').strip()
+    try:
+        user = User.objects.get(Username=username)
+        data = {
+            "username": user.Username,
+            "full_name": user.FullName
+        }
+        return JsonResponse({"status": "success", "data": data})
+    except User.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Kullanıcı bulunamadı."})
+
+
+@csrf_exempt
 def kurum_ekle(request):
     if request.method == 'POST':
         data = json.loads(request.body)

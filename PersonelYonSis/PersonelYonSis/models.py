@@ -98,3 +98,39 @@ class Notification(models.Model):
     message = models.TextField()
     is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class AuditLog(models.Model):
+    ACTION_CHOICES = [
+        ("CREATE", "Create"),
+        ("UPDATE", "Update"),
+        ("DELETE", "Delete"),
+        ("LOGIN", "Login"),
+        ("LOGOUT", "Logout"),
+    ]
+
+    timestamp = models.DateTimeField(auto_now_add=True)
+    user = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+
+    # Nerede yapıldı?
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    request_path = models.CharField(max_length=200, null=True, blank=True)
+    request_method = models.CharField(max_length=10, null=True, blank=True)
+
+    # Hangi model/nesne?
+    app_label = models.CharField(max_length=100)
+    model_name = models.CharField(max_length=100)
+    object_id = models.CharField(max_length=50, null=True, blank=True)
+
+    # Ne yapıldı?
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    changes = models.JSONField(null=True, blank=True)  # önce/sonra değişiklikler
+
+    class Meta:
+        verbose_name = "Audit Log"
+        verbose_name_plural = "Audit Logs"
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        user_str = str(self.user) if self.user else "Anonim"
+        return f"[{self.timestamp:%Y-%m-%d %H:%M:%S}] {user_str} {self.action} {self.model_name}({self.object_id})"

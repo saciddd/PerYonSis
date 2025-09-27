@@ -38,6 +38,8 @@ urlpatterns = [
 	path('notifications/unread/', views.unread_notifications, name='unread_notifications'),
 	path('notifications/read/', views.read_notifications, name='read_notifications'),
 	path('notifications/read/<int:notif_id>/', views.read_notification, name='read_notification'),
+	# Audit Log
+	path('log/', views.audit_log_list, name='audit_log_list'),
 
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 if settings.DEBUG:

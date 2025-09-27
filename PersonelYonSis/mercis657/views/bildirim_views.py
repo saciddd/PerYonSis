@@ -31,7 +31,7 @@ def get_donemler():
 @login_required
 def bildirimler(request):
     """Mesai ve İcap bildirimlerini birleşik görüntüler"""
-    if not request.user.has_permission("mercis657.view_bildirim"):
+    if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
         return HttpResponseForbidden("Yetkiniz yok.")
 
     selected_donem = request.GET.get("donem")
@@ -139,10 +139,9 @@ def bildirimler(request):
             'is_weekend': is_weekend,
             'is_holiday': is_holiday,
         })
-
-    print(personel_data_for_template)
+    
     # Yetki kontrolünü context'e ekle
-    can_approve_notifications = request.user.has_permission("mercis657.change_bildirim")
+    can_approve_notifications = request.user.has_permission("ÇS 657 Bildirim Onaylama")
 
     context = {
         "donemler": get_donemler(),
@@ -161,7 +160,7 @@ def bildirimler(request):
 def bildirim_onayla(request, bildirim_id):
     """Bildirimi onayla"""
     bildirim = get_object_or_404(Bildirim, pk=bildirim_id, SilindiMi=False)
-    if not request.user.has_permission("mercis657.change_bildirim"):
+    if not request.user.has_permission("ÇS 657 Bildirim Onaylama"):
         return HttpResponseForbidden("Yetkiniz yok.")
 
     if bildirim.OnayDurumu == 1:
@@ -181,7 +180,7 @@ def bildirim_onayla(request, bildirim_id):
 def bildirim_sil(request, bildirim_id):
     """Bildirimi soft delete yap"""
     bildirim = get_object_or_404(Bildirim, pk=bildirim_id, SilindiMi=False)
-    if not request.user.has_permission("mercis657.delete_bildirim"):
+    if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
         return HttpResponseForbidden("Yetkiniz yok.")
 
     if bildirim.OnayDurumu == 1:
@@ -197,7 +196,7 @@ def bildirim_sil(request, bildirim_id):
 @login_required
 def bildirim_listele(request, year, month, birim_id):
     """Return JSON list of bildirim data for given year, month and birim."""
-    if not request.user.has_permission("mercis657.view_bildirim"):
+    if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     try:
         year = int(year); month = int(month)
@@ -275,7 +274,7 @@ def bildirim_olustur(request):
     Returns bildirim_data suitable for JS updateSingleBildirimRow
     """
     try:
-        if not request.user.has_permission("mercis657.add_bildirim"):
+        if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
             return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
 
         try:
@@ -394,7 +393,7 @@ def bildirim_olustur(request):
 @login_required
 @require_POST
 def bildirim_toplu_olustur(request, birim_id):
-    if not request.user.has_permission('mercis657.add_bildirim'):
+    if not request.user.has_permission('ÇS 657 Bildirim İşlemleri'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     try:
         data = json.loads(request.body)
@@ -434,7 +433,7 @@ def bildirim_toplu_olustur(request, birim_id):
 @login_required
 @require_POST
 def bildirim_tekil_onay(request, bildirim_id):
-    if not request.user.has_permission('mercis657.change_bildirim'):
+    if not request.user.has_permission('ÇS 657 Bildirim Onaylama'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     try:
         data = json.loads(request.body)
@@ -482,7 +481,7 @@ def bildirim_tekil_onay(request, bildirim_id):
 @login_required
 @require_POST
 def bildirim_toplu_onay(request, birim_id):
-    if not request.user.has_permission('mercis657.change_bildirim'):
+    if not request.user.has_permission('ÇS 657 Bildirim Onaylama'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     try:
         data = json.loads(request.body)
@@ -528,7 +527,7 @@ def bildirim_form():
 def riskli_bildirim_data(request, birim_id):
     """Riskli bildirim yönetimi için veri sağlar"""
     try:
-        if not request.user.has_permission("mercis657.change_bildirim"):
+        if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
             return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
 
         donem = request.GET.get('donem')
@@ -573,7 +572,7 @@ def riskli_bildirim_data(request, birim_id):
 def update_risky_bildirim(request, birim_id):
     """Riskli bildirim değerlerini günceller"""
     try:
-        if not request.user.has_permission("mercis657.change_bildirim"):
+        if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
             return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
 
         data = json.loads(request.body)
@@ -603,7 +602,7 @@ def update_risky_bildirim(request, birim_id):
 def convert_all_to_risky(request, birim_id):
     """Tüm bildirimleri riskli hale çevirir"""
     try:
-        if not request.user.has_permission("mercis657.change_bildirim"):
+        if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
             return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
 
         data = json.loads(request.body)

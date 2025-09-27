@@ -9,3 +9,4 @@ from .personel_islem_views import *
 from .bildirim_views import *
 from .tanimlamalar_views import *
 from .raporlama_views import *
+from .yonetici_views import *

@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import main_views, cizelge_edit_views
+# from .views import main_views
 
 app_name = 'mercis657'  # Namespace tanımlaması
 
@@ -20,6 +20,8 @@ urlpatterns = [
     path('birim-yonetim/', views.birim_yonetim, name='birim_yonetim'),
     path('birim-ekle/', views.birim_ekle, name='birim_ekle'),
     path('birim/<int:birim_id>/yetki-ekle/', views.birim_yetki_ekle, name='birim_yetki_ekle'),
+    path('birim/<int:birim_id>/yetki-sil/', views.birim_yetki_sil, name='birim_yetki_sil'),
+    path('birim/<int:birim_id>/yetkililer/', views.birim_yetkililer, name='birim_yetkililer'),
 
     # Kullanıcı işlemleri
     path('kullanici/ara/', views.kullanici_ara, name='kullanici_ara'),
@@ -105,5 +107,8 @@ urlpatterns = [
     path('raporlama/kilit-tekil/', views.kilit_tekil, name='kilit_tekil'),
     path('raporlama/kilit-toplu/', views.kilit_toplu, name='kilit_toplu'),
     path('personel-cikar/<int:liste_id>/<int:personel_id>/', views.personel_cikar, name='personel_cikar'),
-    path('liste_aciklama_kaydet/', main_views.liste_aciklama_kaydet, name='liste_aciklama_kaydet'),
+    path('liste_aciklama_kaydet/', views.liste_aciklama_kaydet, name='liste_aciklama_kaydet'),
+    
+    # Yönetici Görünümleri
+    path('yonetici/birim-listeleri/', views.birim_listeleri, name='birim_listeleri'),
 ]

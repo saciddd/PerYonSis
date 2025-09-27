@@ -354,7 +354,10 @@ function updateBildirimTable(bildirimler) {
     // Reset all rows to default state first
     tbody.querySelectorAll('tr[data-personel-id]').forEach(row => {
         // Reset data cells
-        row.querySelectorAll('.normal-mesai, .bayram-mesai, .riskli-normal, .riskli-bayram, .toplam-mesai, .normal-icap, .bayram-icap, .toplam-icap').forEach(cell => cell.textContent = '-');
+        row.querySelectorAll('.normal-mesai, .bayram-mesai, .riskli-normal, .riskli-bayram, .toplam-mesai, .normal-icap, .bayram-icap, .toplam-icap').forEach(cell => {
+            cell.textContent = '-';
+            cell.classList.remove('has-value');
+        });
         row.querySelectorAll('.mesai-sure, .icap-sure').forEach(cell => cell.textContent = '-');
         // Reset onay icon (hide it initially)
         const onayIcon = row.querySelector('.onay-durumu i');
@@ -376,20 +379,30 @@ function updateBildirimTable(bildirimler) {
     bildirimler.forEach(bildirim => {
         let row = tbody.querySelector(`tr[data-personel-id="${bildirim.personel_id}"]`);
         if (!row) {
-            // create row dynamically when initial table does not contain this person
             row = createRowForPersonel(bildirim);
             tbody.appendChild(row);
         }
 
         // --- Populate Data Cells (Adapted from _old's updateBildirimRow) ---
-        row.querySelector('.normal-mesai').textContent = Math.round(bildirim.normal_mesai);
-        row.querySelector('.bayram-mesai').textContent = Math.round(bildirim.bayram_mesai);
-        row.querySelector('.riskli-normal').textContent = Math.round(bildirim.riskli_normal);
-        row.querySelector('.riskli-bayram').textContent = Math.round(bildirim.riskli_bayram);
-        row.querySelector('.toplam-mesai').textContent = Math.round(bildirim.toplam_mesai);
-        row.querySelector('.normal-icap').textContent = Math.round(bildirim.normal_icap);
-        row.querySelector('.bayram-icap').textContent = Math.round(bildirim.bayram_icap);
-        row.querySelector('.toplam-icap').textContent = Math.round(bildirim.toplam_icap);
+        function setCellValue(cls, val) {
+            const cell = row.querySelector('.' + cls);
+            if (cell) {
+                cell.textContent = Math.round(val);
+                if (val && Number(val) !== 0) {
+                    cell.classList.add('has-value');
+                } else {
+                    cell.classList.remove('has-value');
+                }
+            }
+        }
+        setCellValue('normal-mesai', bildirim.normal_mesai);
+        setCellValue('bayram-mesai', bildirim.bayram_mesai);
+        setCellValue('riskli-normal', bildirim.riskli_normal);
+        setCellValue('riskli-bayram', bildirim.riskli_bayram);
+        setCellValue('toplam-mesai', bildirim.toplam_mesai);
+        setCellValue('normal-icap', bildirim.normal_icap);
+        setCellValue('bayram-icap', bildirim.bayram_icap);
+        setCellValue('toplam-icap', bildirim.toplam_icap);
 
         // Clear previous daily details first
         row.querySelectorAll('.mesai-sure').forEach(cell => cell.textContent = '-');
@@ -690,14 +703,25 @@ function updateSingleBildirimRow(row, bildirim) {
      console.log("Updating single row for personel:", bildirim.personel_id, "with data:", bildirim);
 
      // Populate Data Cells
-     row.querySelector('.normal-mesai').textContent = Math.round(bildirim.normal_mesai);
-     row.querySelector('.bayram-mesai').textContent = Math.round(bildirim.bayram_mesai);
-     row.querySelector('.riskli-normal').textContent = Math.round(bildirim.riskli_normal);
-     row.querySelector('.riskli-bayram').textContent = Math.round(bildirim.riskli_bayram);
-     row.querySelector('.toplam-mesai').textContent = Math.round(bildirim.toplam_mesai);
-     row.querySelector('.normal-icap').textContent = Math.round(bildirim.normal_icap);
-     row.querySelector('.bayram-icap').textContent = Math.round(bildirim.bayram_icap);
-     row.querySelector('.toplam-icap').textContent = Math.round(bildirim.toplam_icap);
+     function setCellValue(cls, val) {
+        const cell = row.querySelector('.' + cls);
+        if (cell) {
+            cell.textContent = Math.round(val);
+            if (val && Number(val) !== 0) {
+                cell.classList.add('has-value');
+            } else {
+                cell.classList.remove('has-value');
+            }
+        }
+    }
+    setCellValue('normal-mesai', bildirim.normal_mesai);
+    setCellValue('bayram-mesai', bildirim.bayram_mesai);
+    setCellValue('riskli-normal', bildirim.riskli_normal);
+    setCellValue('riskli-bayram', bildirim.riskli_bayram);
+    setCellValue('toplam-mesai', bildirim.toplam_mesai);
+    setCellValue('normal-icap', bildirim.normal_icap);
+    setCellValue('bayram-icap', bildirim.bayram_icap);
+    setCellValue('toplam-icap', bildirim.toplam_icap);
 
      // Clear previous daily details
      row.querySelectorAll('.mesai-sure').forEach(cell => cell.textContent = '-');
@@ -897,6 +921,24 @@ td[class*="gun-"].bg-light-blue {
 .toplam-mesai, .toplam-icap {
     font-weight: bold;
     background-color: #f8f9fa;
+}
+
+/* Mesai ve İcap değerleri 0'dan farklıysa renkli gösterim */
+td.normal-mesai.has-value,
+td.bayram-mesai.has-value,
+td.riskli-normal.has-value,
+td.riskli-bayram.has-value,
+td.toplam-mesai.has-value {
+    background-color: #fadbdb !important;
+    font-weight: bold;
+    color: #5c0b0b;
+}
+td.normal-icap.has-value,
+td.bayram-icap.has-value,
+td.toplam-icap.has-value {
+    background-color: #e3f1fa !important;
+    font-weight: bold;
+    color: #0d47a1;
 }
 </style>
 

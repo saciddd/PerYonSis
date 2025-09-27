@@ -1,4 +1,4 @@
-<div class="modal fade" id="birimYonetimModal" tabindex="-1">
+<div class="modal fade" id="birimYonetimModal" tabindex="-2">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -49,7 +49,18 @@
 
                     <!-- Birim Düzenleme Formu -->
                     <div class="col-md-6">
-                        <h6>Seçili Birimi Düzenle</h6>
+                        <div class="row">
+                            <div class="col-md-6 d-flex align-items-center">
+                                <h6>Seçili Birimi Düzenle</h6>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                                {% if selected_birim_id %}
+                                <button class="btn btn-sm btn-outline-primary me-3" data-bs-dismiss="modal" onclick="openYetkiliKullanicilarModal({{ selected_birim_id }})">
+                                    <i class="bi bi-people-fill"></i> Yetkili Kullanıcılar
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
                         <form id="birimDuzenleForm">
                              {% csrf_token %}
                             <input type="hidden" id="birimIdDuzenle" name="birimId">

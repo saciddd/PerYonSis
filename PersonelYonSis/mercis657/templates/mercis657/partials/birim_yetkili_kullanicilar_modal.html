@@ -1,0 +1,27 @@
+<!-- Yetkili Kullanıcılar Modal -->
+<div class="modal fade" id="yetkiliKullanicilarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-people-fill me-2"></i>
+                    Yetkili Kullanıcılar
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="yetkiliKullaniciEkleForm" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="kullaniciAraInput" placeholder="Kullanıcı adı ile ara...">
+                        <button class="btn btn-success" type="submit">
+                            <i class="bi bi-person-plus"></i> Ekle
+                        </button>
+                    </div>
+                    <div id="kullaniciAraSonuc" class="mt-2"></div>
+                </form>
+                <h6>Yetkili Kullanıcılar</h6>
+                <ul class="list-group" id="yetkiliKullanicilarListesi"></ul>
+            </div>
+        </div>
+    </div>
+</div>

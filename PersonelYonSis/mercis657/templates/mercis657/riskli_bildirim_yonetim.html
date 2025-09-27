@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 // Modal'ı kapat
                 const modal = bootstrap.Modal.getInstance(document.getElementById('riskliBildirimModal'));
-                modal.hide();
+                window.location.reload();
             } else {
                 alert('Kaydetme sırasında hata oluştu: ' + data.message);
             }

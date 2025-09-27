@@ -168,6 +168,7 @@
 <!-- Personel Ekleme Modal ve Birim Yönetimi Modal -->
 {% include "mercis657/cizelge_birim_yonetim_modal.html" %}
 {% include "mercis657/cizelge_personel_ekle_modal.html" %}
+{% include 'mercis657/partials/birim_yetkili_kullanicilar_modal.html' %}
 
 <!-- Personel Profil Modal -->
 <div id="personelProfilContainer"></div>
@@ -198,6 +199,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'mercis657/js/birim_kullanici_yetkileri.js' %}"></script>
 <script>
     // Dönem veya birim değiştiğinde sorgula (sayfayı yenile)
     document.getElementById('selectDonem').addEventListener('change', function() {

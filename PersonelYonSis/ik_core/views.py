@@ -1,6 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Q, Value as V
-from django.db.models.functions import Concat
+from django.db.models.functions import Lower, Concat
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse, reverse_lazy
@@ -16,6 +16,20 @@ from .models.valuelists import (
 )
 from .forms import PersonelForm, KurumForm, UnvanForm, BransForm, GeciciGorevForm
 
+# Türkçe lower/upper normalize edici yardımcı
+def lower_tr(text: str) -> str:
+    """
+    Türkçe küçük harf dönüşümü.
+    Normal .lower() "I/İ/ı/i" harflerinde sorun çıkarabilir.
+    """
+    if not text:
+        return text
+    return (text
+        .replace("I", "ı")
+        .replace("İ", "i")
+        .lower()
+    )
+
 @login_required
 def personel_list(request):
     query = Q()
@@ -25,31 +39,30 @@ def personel_list(request):
     unvan = request.GET.get('unvan', '')
     durum = request.GET.get('durum', '')
 
-    # TC Kimlik no
     if tc_kimlik_no:
         query &= Q(tc_kimlik_no__icontains=tc_kimlik_no)
 
-    # Ad-soyad
     if ad_soyad:
-        parts = ad_soyad.split()
-        if len(parts) == 1:
-            query &= (Q(ad__icontains=parts[0]) | Q(soyad__icontains=parts[0]))
-        else:
-            query &= (Q(ad__icontains=parts[0]) & Q(soyad__icontains=parts[-1]))
+        ad_soyad_norm = lower_tr(ad_soyad)
+        # Lower fonksiyonuyla veritabanı tarafında normalize et
+        query &= (
+            Q(ad__isnull=False) & Q(ad__icontains=ad_soyad_norm) |
+            Q(soyad__isnull=False) & Q(soyad__icontains=ad_soyad_norm)
+        )
 
-    # Telefon
     if telefon:
         query &= Q(telefon__icontains=telefon)
-
-    # Unvan
     if unvan:
         query &= Q(unvan_id=unvan)
 
-    # Eğer hiç arama kriteri yoksa boş queryset döndür
     if not any([tc_kimlik_no, ad_soyad, telefon, unvan, durum]):
         personeller = Personel.objects.none()
     else:
-        queryset = Personel.objects.filter(query).select_related('unvan', 'brans', 'kurum')
+        queryset = Personel.objects.annotate(
+            ad_lower=Lower('ad'),
+            soyad_lower=Lower('soyad')
+        ).filter(query).select_related('unvan', 'brans', 'kurum')
+
         if durum:
             personeller = [p for p in queryset if p.durum == durum]
         else:

@@ -286,28 +286,6 @@ def personel_listesi_detay(request, liste_id):
         'tum_personeller': tum_personeller
     })
 
-
-@csrf_exempt
-def birim_yetki_ekle(request, birim_id):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            username = data.get('username')
-            user = User.objects.get(Username=username)
-            birim = Birim.objects.get(pk=birim_id)
-            obj, created = UserBirim.objects.get_or_create(user=user, birim=birim)
-            if created:
-                return JsonResponse({"status": "success"})
-            else:
-                return JsonResponse({"status": "error", "message": "Kullanıcı zaten yetkili."})
-        except User.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "Kullanıcı bulunamadı."})
-        except Birim.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "Birim bulunamadı."})
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)})
-    return JsonResponse({"status": "error", "message": "Geçersiz istek."})
-
 @login_required
 def tanimlamalar(request):
     kurumlar = Kurum.objects.all()

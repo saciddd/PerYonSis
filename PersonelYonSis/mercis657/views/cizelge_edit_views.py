@@ -369,7 +369,7 @@ def toplu_onay(request, birim_id, year, month):
 @login_required
 def toplu_islem(request, liste_id, year, month):
     """Toplu işlemler modalını döner"""
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Sayfası'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
 
     liste = get_object_or_404(PersonelListesi, pk=liste_id)
@@ -410,7 +410,7 @@ def toplu_islem(request, liste_id, year, month):
 @require_POST
 def toplu_radyasyon_ata(request, liste_id):
     """Tüm personele radyasyon çalışanı durumu atar"""
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Sayfası'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     
     try:
@@ -435,7 +435,7 @@ def toplu_radyasyon_ata(request, liste_id):
 @require_POST
 def toplu_mesai_ata(request, liste_id, year, month):
     """Tüm personele toplu mesai atar (resmi tatiller hariç)"""
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Sayfası'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
 
     try:

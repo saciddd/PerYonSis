@@ -234,33 +234,7 @@
     </div>
 </div>
 
-<!-- Yetkili Kullanıcılar Modal -->
-<div class="modal fade" id="yetkiliKullanicilarModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-people-fill me-2"></i>
-                    Yetkili Kullanıcılar
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="yetkiliKullaniciEkleForm" class="mb-3">
-                    <div class="input-group">
-                        <input type="text" class="form-control" id="kullaniciAraInput" placeholder="Kullanıcı adı ile ara...">
-                        <button class="btn btn-success" type="submit">
-                            <i class="bi bi-person-plus"></i> Ekle
-                        </button>
-                    </div>
-                    <div id="kullaniciAraSonuc" class="mt-2"></div>
-                </form>
-                <h6>Yetkili Kullanıcılar</h6>
-                <ul class="list-group" id="yetkiliKullanicilarListesi"></ul>
-            </div>
-        </div>
-    </div>
-</div>
+{% include 'mercis657/partials/birim_yetkili_kullanicilar_modal.html' %}
 
 <!-- Birim Düzenleme Modal -->
 <div class="modal fade" id="birimDuzenleModal" tabindex="-1">
@@ -317,6 +291,9 @@
 {% endblock %}
 
 {% block extra_js %}
+
+<script src="{% static 'mercis657/js/birim_kullanici_yetkileri.js' %}"></script>
+
 <script>
 // Arama ve sayfalama için temel JS (hizmet_sunum_app ile aynı yapı)
 const pageSize = 10;
@@ -474,97 +451,6 @@ function editUstBirim(id, ad) {
     }).then(resp => resp.json()).then(data => {
         if (data.status === 'success') location.reload();
         else alert(data.message || 'Üst birim güncellenemedi.');
-    });
-}
-// Yetkili Kullanıcılar Modalı
-function openYetkiliKullanicilarModal(birimId) {
-    var modal = new bootstrap.Modal(document.getElementById('yetkiliKullanicilarModal'));
-    modal.show();
-    fetch(`/mercis657/birim/${birimId}/yetkililer/`)
-        .then(resp => resp.json())
-        .then(data => {
-            const ul = document.getElementById('yetkiliKullanicilarListesi');
-            ul.innerHTML = '';
-            if (data.status === 'success' && Array.isArray(data.data)) {
-                data.data.forEach(user => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item d-flex justify-content-between align-items-center';
-                    li.innerHTML = `
-                        <span>${user.username} - ${user.full_name}</span>
-                        <button class="btn btn-danger btn-sm" onclick="kullaniciYetkiSil(${birimId},'${user.username}', this)">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    `;
-                    ul.appendChild(li);
-                });
-            } else {
-                ul.innerHTML = '<li class="list-group-item text-muted">Yetkili kullanıcı yok.</li>';
-            }
-        });
-    document.getElementById('kullaniciAraInput').value = '';
-    document.getElementById('kullaniciAraSonuc').innerHTML = '';
-    const form = document.getElementById('yetkiliKullaniciEkleForm');
-    form.onsubmit = function(e) {
-        e.preventDefault();
-        const username = document.getElementById('kullaniciAraInput').value.trim();
-        if (!username) return;
-        fetch(`/mercis657/kullanici/ara/?username=${encodeURIComponent(username)}`)
-            .then(resp => resp.json())
-            .then(data => {
-                const sonucDiv = document.getElementById('kullaniciAraSonuc');
-                if (data.status === 'success' && data.data) {
-                    const user = data.data;
-                    sonucDiv.innerHTML = `
-                        <div class="alert alert-success d-flex justify-content-between align-items-center mb-2">
-                            <span>${user.username} - ${user.full_name}</span>
-                            <button class="btn btn-primary btn-sm" id="btnYetkiVer">
-                                <i class="bi bi-person-plus"></i> Yetki Ver
-                            </button>
-                        </div>
-                    `;
-                    document.getElementById('btnYetkiVer').onclick = function() {
-                        fetch(`/mercis657/birim/${birimId}/yetki-ekle/`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': '{{ csrf_token }}'
-                            },
-                            body: JSON.stringify({ username: user.username })
-                        })
-                        .then(resp => resp.json())
-                        .then(res => {
-                            if (res.status === 'success') {
-                                sonucDiv.innerHTML = '<div class="alert alert-success">Yetki verildi.</div>';
-                                openYetkiliKullanicilarModal(birimId);
-                            } else {
-                                sonucDiv.innerHTML = `<div class="alert alert-danger">${res.message || 'Yetki verilemedi.'}</div>`;
-                            }
-                        });
-                    };
-                } else {
-                    sonucDiv.innerHTML = `<div class="alert alert-danger">Kullanıcı bulunamadı.</div>`;
-                }
-            });
-    };
-}
-
-function kullaniciYetkiSil(birimId, username, btn) {
-    if (!confirm('Bu kullanıcının yetkisini kaldırmak istiyor musunuz?')) return;
-    fetch(`/mercis657/birim/${birimId}/yetki-sil/`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: JSON.stringify({ username: username })
-    })
-    .then(resp => resp.json())
-    .then(res => {
-        if (res.status === 'success') {
-            btn.closest('li').remove();
-        } else {
-            alert(res.message || 'Yetki silinemedi.');
-        }
     });
 }
 

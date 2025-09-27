@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h4>Birim Listeleri</h4>
+
+    <!-- 🔹 Arama Formu -->
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-md-2">
+            <label class="form-label">Dönem</label>
+            <select name="donem" class="form-select">
+                <option value="">Seçiniz</option>
+                {% for donem in donemler %}
+                    <option value="{{ donem.value }}" {% if donem.value == selected_donem %}selected{% endif %}>
+                        {{ donem.label }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Birim Adı</label>
+            <input type="text" name="birim_adi" value="{{ selected_birim_adi }}" class="form-control">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Kurum</label>
+            <select name="kurum" class="form-select">
+                <option value="">Seçiniz</option>
+                {% for kurum in kurumlar %}
+                    <option value="{{ kurum.id }}" {% if kurum.id|stringformat:"s" == selected_kurum %}selected{% endif %}>{{ kurum }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Üst Birim</label>
+            <select name="ust_birim" class="form-select">
+                <option value="">Seçiniz</option>
+                {% for ub in ust_birimler %}
+                    <option value="{{ ub.id }}" {% if ub.id|stringformat:"s" == selected_ust_birim %}selected{% endif %}>{{ ub }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">İdareci</label>
+            <select name="idareci" class="form-select">
+                <option value="">Seçiniz</option>
+                {% for idareci in idareciler %}
+                    <option value="{{ idareci.id }}" {% if idareci.id|stringformat:"s" == selected_idareci %}selected{% endif %}>{{ idareci }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Ara</button>
+        </div>
+    </form>
+
+    <!-- 🔹 Sonuç Tablosu -->
+    <table class="table table-bordered table-sm align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>#</th>
+                <th>Üst Birim</th>
+                <th>Birim Adı</th>
+                <th>Liste Oluşturuldu</th>
+                <th>Personel Sayısı</th>
+                <th>Listeyi Oluşturan</th>
+                <th>İşlem</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in birimler_data %}
+            <tr>
+                <td>{{ row.sira }}</td>
+                <td>{{ row.birim.UstBirim|default:"-" }}</td>
+                <td>{{ row.birim.BirimAdi }}</td>
+                <td class="{% if not row.liste %}table-danger{% endif %}">
+                    {% if row.liste %}✔{% else %}✖{% endif %}
+                </td>
+                <td>{{ row.personel_sayisi }}</td>
+                <td>{{ row.created_by|default:"-" }}</td>
+                <td>
+                    {% if row.liste %}
+                        <a href="{% url 'mercis657:cizelge' %}?donem={{ selected_donem }}&birim_id={{ row.birim.BirimID }}" 
+                           class="btn btn-sm btn-primary">Listeyi Düzenle</a>
+                    {% else %}
+                        <button class="btn btn-sm btn-secondary" disabled>Liste Yok</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center">Sonuç bulunamadı.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -5,19 +5,48 @@ from django.contrib.auth import authenticate, login, logout as auth_logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from .forms import LoginForm
-from .models import Role, Permission, RolePermission, User, Notification
+from .models import Role, Permission, RolePermission, User, Notification, AuditLog
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from notifications.services import notify_role_users, notify_user
 from django.core.paginator import Paginator
 from django.db.models import Q
-
 # Yeni eklenen importlar
 from django.views.decorators.http import require_POST
 from .forms import ProfileForm, PasswordChangeForm
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from .middleware import get_current_request, get_current_user
 
+@login_required
+def audit_log_list(request):
+    logs = AuditLog.objects.select_related("user").all()
+
+    # Filtreler
+    date_start = request.GET.get("date_start")
+    date_end = request.GET.get("date_end")
+    user = request.GET.get("user")
+    app_label = request.GET.get("app_label")
+    model_name = request.GET.get("model_name")
+
+    if date_start:
+        logs = logs.filter(timestamp__date__gte=date_start)
+    if date_end:
+        logs = logs.filter(timestamp__date__lte=date_end)
+    if user:
+        logs = logs.filter(user__Username__icontains=user)
+    if app_label:
+        logs = logs.filter(app_label__icontains=app_label)
+    if model_name:
+        logs = logs.filter(model_name__icontains=model_name)
+
+    paginator = Paginator(logs, 25)  # sayfa başı 25 kayıt
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, "auditlog/audit_log_list.html", {
+        "page_obj": page_obj
+    })
 
 def get_user_permissions(user):
 	if user.is_authenticated:
@@ -261,22 +290,18 @@ def rol_tanimlari(request):
 	})
 
 def add_role(request):
-	if request.method == 'POST':
-		role_name = request.POST.get('role_name')
-		
-		# Eğer rol adı mevcutsa, yeni rol oluştur
-		if role_name:
-			new_role, created = Role.objects.get_or_create(RoleName=role_name)
-			
-			if created:
-				messages.success(request, 'Yeni rol başarıyla eklendi.')
-			else:
-				messages.warning(request, 'Bu rol zaten mevcut.')
+    if request.method == "POST":
+        role_name = request.POST.get("role_name")
+        if role_name:
+            role = Role(RoleName=role_name)
+            role.save()
+            messages.success(request, 'Yeni rol başarıyla eklendi.')
+        else:
+            messages.warning(request, 'Rol adı boş olamaz.')
+        return redirect('rol_tanimlari')
 
-		return redirect('rol_tanimlari')
-
-	# Eğer POST değilse, bu fonksiyon direk rol_tanimlari sayfasına yönlendirir
-	return redirect('rol_tanimlari')
+    # Eğer POST değilse, bu fonksiyon direk rol_tanimlari sayfasına yönlendirir
+    return redirect('rol_tanimlari')
 
 # Yetki ekleme ve silme fonksiyonları
 def add_permission_to_role(request, role_id, permission_id):

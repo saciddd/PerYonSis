@@ -108,26 +108,20 @@
             </div>
         </div>
 
-        <!-- Tüm Yetkiler Tablosu (Paginated ve Aramalı) -->
+        <!-- Tüm Yetkiler Tablosu (Filtrelenebilir) -->
         <div class="col-md-4">
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">Tüm Yetkiler</h3>
                     <div class="card-tools">
-                        <form method="get" action="">
-                            <div class="input-group input-group-sm" style="width: 150px;">
-                                <input type="text" name="search" class="form-control float-right" placeholder="Ara">
-                                <div class="input-group-append">
-                                    <button type="submit" class="btn btn-default">
-                                        <i class="bi bi-search"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
+                        <!-- Form kaldırıldı, input alanı bırakıldı -->
+                        <div class="input-group input-group-sm" style="width: 150px;">
+                            <input type="text" id="permissionSearch" class="form-control float-right" placeholder="Ara">
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
-                    <table class="table table-striped">
+                    <table class="table table-striped" id="permissionsTable">
                         {% if selected_role %}
                         <thead>
                             <tr>
@@ -182,4 +176,25 @@
         </div>
     </div>
 </div>
+
+<!-- JS ile tablo filtreleme -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var input = document.getElementById('permissionSearch');
+    var table = document.getElementById('permissionsTable');
+    if (input && table) {
+        input.addEventListener('keyup', function() {
+            var filter = input.value.toLowerCase();
+            var rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            for (var i = 0; i < rows.length; i++) {
+                var td = rows[i].getElementsByTagName('td')[0];
+                if (td) {
+                    var txtValue = td.textContent || td.innerText;
+                    rows[i].style.display = txtValue.toLowerCase().indexOf(filter) > -1 ? '' : 'none';
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

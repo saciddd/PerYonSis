@@ -98,6 +98,12 @@
 </form>
 
     {% if personeller %}
+    <!-- Personel Sıralama Butonu -->
+    <div class="mb-2">
+        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#personelSiralaModal">
+            <i class="bi bi-list-ul"></i> Personelleri Sırala
+        </button>
+    </div>
     <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
         <colgroup>
             <col style="width: 12px;">
@@ -164,10 +170,14 @@
     {% endif %}
 </div>
 
-
+<script>
+    window.saveUrl = "{% url 'mercis657:personel_listesi_sira_kaydet' liste %}";
+</script>
+<script src="{% static 'mercis657/js/personel_sirala.js' %}"></script>
 <!-- Personel Ekleme Modal ve Birim Yönetimi Modal -->
 {% include "mercis657/cizelge_birim_yonetim_modal.html" %}
 {% include "mercis657/cizelge_personel_ekle_modal.html" %}
+{% include "mercis657/personel_sirala_modal.html" %}
 {% include 'mercis657/partials/birim_yetkili_kullanicilar_modal.html' %}
 
 <!-- Personel Profil Modal -->

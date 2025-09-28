@@ -12,9 +12,9 @@ import datetime
 User = get_user_model()
 
 def serialize_for_json(data):
-    """Dict içindeki date/datetime objelerini stringe çevirir."""
+    """Dict içindeki date/datetime/time objelerini stringe çevirir."""
     def convert(val):
-        if isinstance(val, (datetime.datetime, datetime.date)):
+        if isinstance(val, (datetime.datetime, datetime.date, datetime.time)):
             return val.isoformat()
         if isinstance(val, dict):
             return {k: convert(v) for k, v in val.items()}

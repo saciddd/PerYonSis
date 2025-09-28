@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Tekniker Ziyaretleri{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>Tekniker Ziyaretleri</h3>
+    <form method="get" class="row g-2 align-items-end mb-3">
+        <div class="col-auto">
+            <label for="id_baslangic" class="form-label">Başlangıç Tarihi</label>
+            <input type="date" id="id_baslangic" name="baslangic" class="form-control" value="{{ baslangic }}">
+        </div>
+        <div class="col-auto">
+            <label for="id_bitis" class="form-label">Bitiş Tarihi</label>
+            <input type="date" id="id_bitis" name="bitis" class="form-control" value="{{ bitis }}">
+        </div>
+        <div class="col-auto">
+            <label for="id_tekniker_adi" class="form-label">Tekniker Adı</label>
+            <input type="text" id="id_tekniker_adi" name="tekniker_adi" class="form-control" value="{{ tekniker_adi_arama }}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Arama</button>
+            <button type="button" class="btn btn-secondary" onclick="printTable()">Yazdır</button>
+        </div>
+    </form>
+    <hr>
+    <div id="print-area">
+        {% for z in ziyaretler %}
+        <div class="mb-4">
+            <h5>
+                {{ z.tekniker_adi }}
+                <span class="badge bg-info text-dark ms-2">Toplam: {{ z.toplam_sure_str }}</span>
+            </h5>
+            <table class="table table-bordered table-sm">
+                <thead>
+                    <tr>
+                        <th>Geldiği Gün</th>
+                        <th>Geliş Saati</th>
+                        <th>Ayrılış Saati</th>
+                        <th>Süre</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for kayit in z.kayitlar %}
+                    <tr>
+                        <td>{{ kayit.gun|date:"d.m.Y" }}</td>
+                        <td>{{ kayit.gelis_saati|time:"H:i" }}</td>
+                        <td>{{ kayit.ayrilis_saati|time:"H:i" }}</td>
+                        <td>
+                            {{ kayit.sure_str }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% empty %}
+        <div class="alert alert-warning">Kayıt bulunamadı.</div>
+        {% endfor %}
+    </div>
+</div>
+<script>
+function printTable() {
+    var printContents = document.getElementById('print-area').innerHTML;
+    var originalContents = document.body.innerHTML;
+    document.body.innerHTML = printContents;
+    window.print();
+    document.body.innerHTML = originalContents;
+    window.location.reload();
+}
+</script>
+{% endblock %}

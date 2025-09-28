@@ -150,7 +150,9 @@ def cizelge(request):
         messages.warning(request, f"{current_month}/{current_year} için personel listesi oluşturulmamış.")
         return render(request, 'mercis657/cizelge.html', pastcontext)
 
-    personeller = Personel.objects.filter(personellistesikayit__liste=liste).distinct()
+    # Sıralı personel listesi
+    kayitlar = PersonelListesiKayit.objects.filter(liste=liste).select_related('personel').order_by('sira_no', 'personel__PersonelName', 'personel__PersonelSurname')
+    personeller = [k.personel for k in kayitlar]
     mesai_tanimlari = Mesai_Tanimlari.objects.all()
     mesailer = Mesai.objects.filter(
         Personel__in=personeller,
@@ -196,7 +198,7 @@ def cizelge(request):
         }
 
     # Personel nesnesine mesai bilgisi ekleyelim
-    for p in personeller:
+    for idx, p in enumerate(personeller):
         p.mesai_data = []
         for day in days:
             key = f"{p.PersonelID}_{day['full_date']}"
@@ -234,6 +236,7 @@ def cizelge(request):
         "ust_birimler": ust_birimler,
         "idareciler": idareciler,
         "aciklama": liste.aciklama if liste else "",
+        "mevcut_personeller": kayitlar,  # Modal için ekledik
     }
     return render(request, 'mercis657/cizelge.html', context)
 
@@ -273,11 +276,10 @@ def personel_listesi_olustur(request):
 @login_required
 def personel_listesi_detay(request, liste_id):
     liste = get_object_or_404(PersonelListesi, id=liste_id)
-
     if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
         return HttpResponseForbidden('Bu listeye erişim yetkiniz yok.')
 
-    mevcut_personeller = PersonelListesiKayit.objects.filter(personel_listesi=liste).select_related('personel')
+    mevcut_personeller = PersonelListesiKayit.objects.filter(personel_listesi=liste).select_related('personel').order_by('sira_no', 'personel__FirstName', 'personel__LastName')
     tum_personeller = Personel.objects.all().order_by('FirstName', 'LastName')
 
     return render(request, 'mercis657/personel_listesi_detay.html', {
@@ -381,4 +383,58 @@ def liste_aciklama_kaydet(request):
         return JsonResponse({'status': 'success'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
+
+@require_POST
+@login_required
+def personel_listesi_sira_kaydet(request, liste_id):
+    """
+    PersonelListesiKayit sıralamasını kaydeder.
+    Test için örnek:
+    curl -X POST -H "Content-Type: application/json" -H "X-CSRFToken: <token>" \
+      -d '{"order":[{"id":123,"sira_no":1},{"id":456,"sira_no":2}]}' \
+      http://localhost:8000/mercis657/personel-listesi/1/sira-kaydet/
+    """
+    liste = get_object_or_404(PersonelListesi, id=liste_id)
+    if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
+        return HttpResponseForbidden('Yetkisiz işlem.')
+
+    try:
+        data = json.loads(request.body)
+        order = data.get('order', [])
+        if not isinstance(order, list):
+            return JsonResponse({'status': 'error', 'message': 'Geçersiz veri.'}, status=400)
+        # id'leri int'e çevir
+        id_list = []
+        id_to_sira = {}
+        for item in order:
+            if not isinstance(item, dict) or 'id' not in item or 'sira_no' not in item:
+                return JsonResponse({'status': 'error', 'message': 'Her eleman id ve sira_no içermeli.'}, status=400)
+            try:
+                int_id = int(item['id'])
+            except Exception:
+                return JsonResponse({'status': 'error', 'message': 'ID değeri sayı olmalı.'}, status=400)
+            id_list.append(int_id)
+            id_to_sira[int_id] = int(item['sira_no'])
+
+        kayit_objs = list(PersonelListesiKayit.objects.filter(id__in=id_list, liste=liste))
+        if len(kayit_objs) != len(order):
+            return JsonResponse({'status': 'error', 'message': 'Bazı kayıtlar bulunamadı veya yetkisiz.'}, status=400)
+        # id->obj map
+        id_to_obj = {k.id: k for k in kayit_objs}
+        # Sıra numaralarını güncelle
+        for int_id in id_list:
+            obj = id_to_obj.get(int_id)
+            if obj:
+                obj.sira_no = id_to_sira[int_id]
+        # Bulk update
+        with transaction.atomic():
+            PersonelListesiKayit.objects.bulk_update(kayit_objs, ['sira_no'])
+            # Normalize: Sıra numaralarını 1..N olarak düzelt (opsiyonel)
+            all_kayitlar = list(PersonelListesiKayit.objects.filter(liste=liste).order_by('sira_no', 'id'))
+            for idx, k in enumerate(all_kayitlar, start=1):
+                k.sira_no = idx
+            PersonelListesiKayit.objects.bulk_update(all_kayitlar, ['sira_no'])
+        return JsonResponse({'status': 'success', 'updated': len(kayit_objs)})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 

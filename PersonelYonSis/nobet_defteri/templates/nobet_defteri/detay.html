@@ -69,6 +69,47 @@
             {% else %}
             <div class="alert alert-info">Bu defter onaylandığı için yeni olay eklenemez.</div>
             {% endif %}
+            <hr>
+            <h5>Nobetçi Tekniker Ziyaret Kaydı</h5>
+            {% if tekniker_hata %}
+            <div class="alert alert-danger">{{ tekniker_hata }}</div>
+            {% endif %}
+            <form method="POST" class="mb-3">
+                {% csrf_token %}
+                {{ tekniker_form|crispy }}
+                <button type="submit" name="tekniker_ekle" class="btn btn-primary">Tekniker Kaydet</button>
+            </form>
+            <table class="table table-sm table-bordered">
+                <thead>
+                    <tr>
+                        <th>Tekniker Adı</th>
+                        <th>Geliş Saati</th>
+                        <th>Ayrılış Saati</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tekniker in teknikerler %}
+                    <tr>
+                        <td>{{ tekniker.tekniker_adi }}</td>
+                        <td>{{ tekniker.gelis_saati }}</td>
+                        <td>{{ tekniker.ayrilis_saati }}</td>
+                        <td>
+                            {% if is_defter_creator and not defter.onayli %}
+                            <form method="POST" action="{% url 'nobet_defteri:tekniker_sil' defter.id tekniker.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Silmek istediğinize emin misiniz?')">Sil</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center">Kayıt yok.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
         <div class="col-md-8">
             <h5>Olay Kayıtları</h5>

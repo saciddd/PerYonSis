@@ -2,8 +2,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils.timezone import now
 from django.http import HttpResponseForbidden, JsonResponse
-from .models import NobetDefteri, NobetTuru, NobetOlayKaydi, KontrolSoru, KontrolFormu, KontrolCevap
-from .forms import NobetDefteriForm, NobetOlayKaydiForm, KontrolFormuForm, KontrolCevapFormSet, DinamikKontrolForm, KontrolSoruForm
+from .forms import NobetDefteriForm, NobetOlayKaydiForm, KontrolFormuForm, KontrolCevapFormSet, DinamikKontrolForm, KontrolSoruForm, NobetciTeknikerForm
+from .models import NobetDefteri, NobetTuru, NobetOlayKaydi, KontrolSoru, KontrolFormu, KontrolCevap, NobetciTekniker
 from PersonelYonSis.views import get_user_permissions
 from django.contrib.auth import get_user_model
 from django.template.loader import render_to_string
@@ -14,6 +14,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse
 from django.conf import settings
 from pathlib import Path
+from django.db.models import F, ExpressionWrapper, DurationField, Sum
+from datetime import datetime, timedelta, time
+from collections import defaultdict
 User = get_user_model()
 
 # Nöbet defteri listesi
@@ -65,6 +68,8 @@ def nobet_defteri_olustur(request):
 def nobet_defteri_detay(request, defter_id):
     defter = get_object_or_404(NobetDefteri, id=defter_id)
     olaylar = defter.olaylar.order_by('saat')
+    # Tekniker kayıtları
+    teknikerler = defter.teknikerler.order_by('gelis_saati')
 
     # Determine if current user is the creator
     is_creator = (hasattr(defter, 'olusturan') and defter.olusturan == request.user)
@@ -89,6 +94,31 @@ def nobet_defteri_detay(request, defter_id):
         # If not the creator, render the event form as readonly
         if not is_creator:
             for f in form.fields.values():
+                f.required = False
+                f.widget.attrs['disabled'] = 'disabled'
+
+    # --- Nobetçi Tekniker ekleme işlemi ---
+    tekniker_form = NobetciTeknikerForm()
+    teknikerler = defter.teknikerler.order_by('gelis_saati')
+    tekniker_hata = None
+    if request.method == 'POST' and 'tekniker_ekle' in request.POST:
+        if not is_creator:
+            return HttpResponseForbidden("Sadece defteri oluşturan kullanıcı tekniker ekleyebilir.")
+        tekniker_form = NobetciTeknikerForm(request.POST)
+        if tekniker_form.is_valid():
+            tekniker_adi = tekniker_form.cleaned_data['tekniker_adi']
+            if defter.teknikerler.filter(tekniker_adi=tekniker_adi).exists():
+                tekniker_hata = "Bu tekniker adı zaten kayıtlı."
+            else:
+                tekniker = tekniker_form.save(commit=False)
+                tekniker.defter = defter
+                tekniker.save()
+                messages.success(request, "Tekniker kaydı eklendi.")
+                return redirect('nobet_defteri:detay', defter.id)
+    else:
+        # If not the creator, render the tekniker form as readonly
+        if not is_creator:
+            for f in tekniker_form.fields.values():
                 f.required = False
                 f.widget.attrs['disabled'] = 'disabled'
 
@@ -170,9 +200,25 @@ def nobet_defteri_detay(request, defter_id):
         'form': form,
         'kontrol_form': kontrol_form,
         'aktif_sorular': aktif_sorular,
-        'kontrol_items': kontrol_items,  # eklendi
+        'kontrol_items': kontrol_items,
         'is_defter_creator': is_creator,
+        'tekniker_form': tekniker_form,
+        'teknikerler': teknikerler,
+        'tekniker_hata': tekniker_hata,
     })
+
+# Tekniker kaydı silme
+from django.views.decorators.http import require_POST
+
+@require_POST
+def nobetci_tekniker_sil(request, defter_id, tekniker_id):
+    defter = get_object_or_404(NobetDefteri, id=defter_id)
+    tekniker = get_object_or_404(NobetciTekniker, id=tekniker_id, defter=defter)
+    if not (hasattr(defter, 'olusturan') and defter.olusturan == request.user):
+        return HttpResponseForbidden("Sadece defteri oluşturan kullanıcı silebilir.")
+    tekniker.delete()
+    messages.success(request, "Tekniker kaydı silindi.")
+    return redirect('nobet_defteri:detay', defter.id)
 
 # Nöbet defteri onayla
 def nobet_defteri_onayla(request, defter_id):
@@ -340,3 +386,81 @@ def kontrol_soru_sil(request, pk):
         return redirect('nobet_defteri:kontrol_soru_list')
     # GET için onay sayfası yerine hızlı redirect (veya isterseniz onay template ekleyin)
     return redirect('nobet_defteri:kontrol_soru_list')
+
+def tekniker_ziyaretleri(request):
+    # Tarih aralığı al
+    baslangic = request.GET.get('baslangic')
+    bitis = request.GET.get('bitis')
+    tekniker_adi_arama = request.GET.get('tekniker_adi', '').strip()
+    ziyaretler = []
+    gruplar = defaultdict(list)
+    toplam_sureler = {}
+
+    # Tarih parse
+    try:
+        baslangic_dt = datetime.strptime(baslangic, '%Y-%m-%d').date() if baslangic else None
+        bitis_dt = datetime.strptime(bitis, '%Y-%m-%d').date() if bitis else None
+    except Exception:
+        baslangic_dt = bitis_dt = None
+
+    qs = NobetciTekniker.objects.select_related('defter')
+    if baslangic_dt:
+        qs = qs.filter(defter__tarih__gte=baslangic_dt)
+    if bitis_dt:
+        qs = qs.filter(defter__tarih__lte=bitis_dt)
+    if tekniker_adi_arama:
+        qs = qs.filter(tekniker_adi__icontains=tekniker_adi_arama)
+
+    qs = qs.order_by('tekniker_adi', 'defter__tarih', 'gelis_saati')
+
+    # Gruplama ve süre hesaplama
+    for z in qs:
+        # Süre hesaplama
+        gs = z.gelis_saati
+        as_ = z.ayrilis_saati
+        # datetime objesine çevir
+        gs_dt = datetime.combine(z.defter.tarih, gs)
+        as_dt = datetime.combine(z.defter.tarih, as_)
+        if as_ < gs:
+            as_dt += timedelta(days=1)
+        sure = as_dt - gs_dt
+        # Süreyi string olarak hazırla
+        total_seconds = int(sure.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        sure_str = f"{hours} saat {minutes} dk"
+        gruplar[z.tekniker_adi].append({
+            'gun': z.defter.tarih,
+            'gelis_saati': gs,
+            'ayrilis_saati': as_,
+            'sure': sure,
+            'sure_str': sure_str,
+        })
+        toplam_sureler.setdefault(z.tekniker_adi, timedelta())
+        toplam_sureler[z.tekniker_adi] += sure
+
+    # Listeyi kolay işlemek için dönüştür
+    ziyaretler = [
+        {
+            'tekniker_adi': adi,
+            'kayitlar': kayitlar,
+            'toplam_sure': toplam_sureler[adi],
+        }
+        for adi, kayitlar in gruplar.items()
+    ]
+
+    # Toplam saat string olarak gösterilecek
+    for z in ziyaretler:
+        td = z['toplam_sure']
+        total_seconds = int(td.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        z['toplam_sure_str'] = f"{hours} saat {minutes} dk"
+
+    context = {
+        'ziyaretler': ziyaretler,
+        'baslangic': baslangic,
+        'bitis': bitis,
+        'tekniker_adi_arama': tekniker_adi_arama,
+    }
+    return render(request, 'nobet_defteri/tekniker_ziyaretleri.html', context)

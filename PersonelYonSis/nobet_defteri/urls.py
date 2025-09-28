@@ -18,4 +18,6 @@ urlpatterns = [
     path('kontrol-soru-ekle/', views.kontrol_soru_ekle, name='kontrol_soru_ekle'),
     path('kontrol-soru-guncelle/<int:pk>/', views.kontrol_soru_guncelle, name='kontrol_soru_guncelle'),
     path('kontrol-soru-sil/<int:pk>/', views.kontrol_soru_sil, name='kontrol_soru_sil'),
+    path('<int:defter_id>/tekniker-sil/<int:tekniker_id>/', views.nobetci_tekniker_sil, name='tekniker_sil'),
+    path('tekniker-ziyaretleri/', views.tekniker_ziyaretleri, name='tekniker_ziyaretleri'),
 ]

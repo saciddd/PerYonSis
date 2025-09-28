@@ -44,7 +44,6 @@ class KontrolSoru(models.Model):
     def __str__(self):
         return self.soru_metni
 
-
 class KontrolFormu(models.Model):
     nobet_defteri = models.OneToOneField(
         NobetDefteri, on_delete=models.CASCADE, related_name="kontrol_formu"
@@ -55,7 +54,6 @@ class KontrolFormu(models.Model):
     def __str__(self):
         return f"Kontrol Formu - {self.nobet_defteri}"
 
-
 class KontrolCevap(models.Model):
     form = models.ForeignKey(KontrolFormu, on_delete=models.CASCADE, related_name="cevaplar")
     soru = models.ForeignKey(KontrolSoru, on_delete=models.PROTECT)
@@ -64,3 +62,15 @@ class KontrolCevap(models.Model):
 
     def __str__(self):
         return f"{self.soru.soru_metni[:30]}... -> {self.cevap}"
+
+class NobetciTekniker(models.Model):
+    defter = models.ForeignKey(NobetDefteri, on_delete=models.CASCADE, related_name='teknikerler')
+    tekniker_adi = models.CharField(max_length=100)
+    gelis_saati = models.TimeField()
+    ayrilis_saati = models.TimeField()
+
+    class Meta:
+        unique_together = ('defter', 'tekniker_adi')
+
+    def __str__(self):
+        return f"{self.tekniker_adi} - {self.defter.tarih}"

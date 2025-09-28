@@ -44,6 +44,7 @@ class Menu:
             # Nöbet Defteri Modülü ve Alt Menüleri
             MenuItem('Nöbet Defteri Modülü', '#', 'bi bi-journal-check', 'Nöbet Defteri Modülü', is_parent=True),
             MenuItem('Nöbet Defteri', 'nobet_defteri:liste', 'bi bi-octagon', parent_menu='Nöbet Defteri Modülü'),
+            MenuItem('Tekniker Ziyaretleri', 'nobet_defteri:tekniker_ziyaretleri', 'bi bi-octagon', parent_menu='Nöbet Defteri Modülü'),
             MenuItem('Kontrol Formu Soruları', 'nobet_defteri:kontrol_soru_list', 'bi bi-octagon', 'Nöbet Defteri Soruları Düzenleme', parent_menu='Nöbet Defteri Modülü'),
             # Çizelge 657 ve Alt Menüleri
             MenuItem('Çizelge Sistemi 657', '#', 'bi bi-calendar3', 'ÇS 657 Çizelge Sayfası', is_parent=True),

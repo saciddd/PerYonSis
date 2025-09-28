@@ -111,4 +111,5 @@ urlpatterns = [
     
     # Yönetici Görünümleri
     path('yonetici/birim-listeleri/', views.birim_listeleri, name='birim_listeleri'),
+    path('personel-listesi/<int:liste_id>/sira-kaydet/', views.personel_listesi_sira_kaydet, name='personel_listesi_sira_kaydet'),
 ]

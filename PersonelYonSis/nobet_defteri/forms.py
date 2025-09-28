@@ -1,5 +1,5 @@
 from django import forms
-from .models import NobetDefteri, NobetOlayKaydi, KontrolSoru, KontrolFormu, KontrolCevap
+from .models import NobetDefteri, NobetOlayKaydi, KontrolSoru, KontrolFormu, KontrolCevap, NobetciTekniker
 from datetime import date
 
 class NobetDefteriForm(forms.ModelForm):
@@ -84,4 +84,14 @@ class KontrolSoruForm(forms.ModelForm):
         widgets = {
             'soru_metni': forms.TextInput(attrs={'class': 'form-control'}),
             'aktif': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+class NobetciTeknikerForm(forms.ModelForm):
+    class Meta:
+        model = NobetciTekniker
+        fields = ['tekniker_adi', 'gelis_saati', 'ayrilis_saati']
+        widgets = {
+            'tekniker_adi': forms.TextInput(attrs={'class': 'form-control'}),
+            'gelis_saati': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'ayrilis_saati': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
         }

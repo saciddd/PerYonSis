@@ -96,7 +96,7 @@ def cizelge_yazdir(request):
         # If list exists, build person rows
         if liste:
             # iterate over kayitlar to preserve ordering
-            for kayit in liste.kayitlar.select_related('personel').all():
+            for kayit in liste.kayitlar.select_related('personel').order_by('sira_no', 'personel__PersonelName', 'personel__PersonelSurname').all():
                 p = kayit.personel
                 # build mesai_data aligned with days
                 mesai_data = []
@@ -501,7 +501,7 @@ def get_or_create_izin_turu(izin_adi):
 @require_POST
 def izinleri_mesailere_isle(request, liste_id):
     """
-    liste_id ile ilişikli mesai kayıtları için izin kaydının olup olmadığını kontrol eder, varsa işler
+    liste_id ile ilişikli mesai kayıtları için izin kaydının olup olmadığını kontrol eder, varsa işler (FM'den çekerek).
     """
     try:
         liste = get_object_or_404(PersonelListesi, pk=liste_id)

@@ -75,6 +75,7 @@ class PersonelListesiKayit(models.Model):
     liste = models.ForeignKey(PersonelListesi, on_delete=models.CASCADE, related_name='kayitlar')
     personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
     radyasyon_calisani = models.BooleanField(default=False)
+    sira_no = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         unique_together = ('liste', 'personel')

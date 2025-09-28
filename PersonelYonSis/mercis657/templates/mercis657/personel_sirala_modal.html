@@ -1,0 +1,38 @@
+<div class="modal fade" id="personelSiralaModal" tabindex="-1" aria-labelledby="personelSiralaModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="personel-sirala-form">
+        <div class="modal-header">
+          <h5 class="modal-title" id="personelSiralaModalLabel">Personel Sıralama</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-2 d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="sirala-alfabetik">
+              <i class="bi bi-sort-alpha-down"></i> Alfabetik
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="sirala-unvan">
+              <i class="bi bi-person-badge"></i> Unvana Göre
+            </button>
+          </div>
+          <ul id="sortable-list" class="list-group">
+            {% for kayit in mevcut_personeller %}
+              <li class="list-group-item d-flex align-items-center" data-kayit-id="{{ kayit.id }}"
+                  data-unvan="{{ kayit.personel.PersonelTitle|default_if_none:''|lower }}"
+                  data-adsoyad="{{ kayit.personel.PersonelName|add:' '|add:kayit.personel.PersonelSurname|lower }}">
+                <span class="me-2" style="cursor:grab;">&#9776;</span>
+                <span>{{ kayit.sira_no }} - {{ kayit.personel.PersonelName }} {{ kayit.personel.PersonelSurname }} ({{ kayit.personel.PersonelTitle }})</span>
+              </li>
+            {% endfor %}
+          </ul>
+          <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" id="siralama-reset">Sıralamayı Sıfırla</button>
+          <button type="button" class="btn btn-primary" id="siralama-kaydet">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>

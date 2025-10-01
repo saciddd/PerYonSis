@@ -171,7 +171,7 @@
 </div>
 
 <script>
-    window.saveUrl = "{% url 'mercis657:personel_listesi_sira_kaydet' liste %}";
+    window.saveUrl = "{% url 'mercis657:personel_listesi_sira_kaydet' liste|default:0 %}";
 </script>
 <script src="{% static 'mercis657/js/personel_sirala.js' %}"></script>
 <!-- Personel Ekleme Modal ve Birim Yönetimi Modal -->

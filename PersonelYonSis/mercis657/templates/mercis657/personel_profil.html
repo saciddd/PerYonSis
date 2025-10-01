@@ -33,6 +33,15 @@
                                 </small>
                             </td></tr>
                         </table>
+                        <div class="d-flex justify-content-end mb-2">
+                            <button class="btn btn-outline-primary btn-sm" 
+                                    data-bs-dismiss="modal"
+                                    onclick="openYariZamanliCalismaModal({{ personel.PersonelID }})"
+                                    title="Yarım Zamanlı Çalışma Kaydı">
+                                <i class="bi bi-clock-history"></i> Yarım Zamanlı Çalışma
+                            </button>
+                        </div>
+
                         <!-- Fazla Mesai Hesaplama -->
                         <div class="row mb-4">
                             <div class="col-12">
@@ -201,7 +210,8 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% include 'mercis657/yarim_zamanli_calisma_modal.html' %}
+
 <script>
 // Radyasyon durumu değiştirme
 document.getElementById('radyasyonSwitch').addEventListener('change', function() {

@@ -42,6 +42,7 @@ urlpatterns = [
 
     path('onceki-donem-personel/<str:donem>/<int:birim_id>/', views.onceki_donem_personel, name='onceki_donem_personel'),
     path('personel/kaydet/', views.personel_kaydet, name='personel_kaydet'),
+    path("yarim-zamanli-kaydet/<int:personel_id>/", views.yarim_zamanli_calisma_kaydet, name="yarim_zamanli_calisma_kaydet"),
     path('cizelge/yazdir/', views.cizelge_yazdir, name='cizelge_yazdir'),
     path('cizelge-onay/', views.cizelge_onay, name='cizelge_onay'),
     path('mesai-onayla/<int:mesai_id>/', views.mesai_onayla, name='mesai_onayla'),

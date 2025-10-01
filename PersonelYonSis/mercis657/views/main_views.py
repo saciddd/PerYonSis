@@ -19,7 +19,7 @@ from django.db import transaction
 from django.contrib.auth import get_user_model
 from dateutil.relativedelta import relativedelta
 from ..valuelists import CKYS_BTF_VALUES
-from ..forms import MesaiTanimForm, ResmiTatilForm
+from ..forms import MesaiTanimForm, ResmiTatilForm, YarimZamanliCalismaForm
 User = get_user_model()
 try:
     # Windows için
@@ -94,10 +94,8 @@ def excel_export(request):
 def cizelge(request):
     user = request.user
     user_birimler = UserBirim.objects.filter(user=user).select_related('birim')
-    print(f"Kullanıcı: {user.Username}, Birimler: {[b.birim.BirimAdi for b in user_birimler]}")
     izinler = Izin.objects.all()
     kurumlar = Kurum.objects.all()
-    print(f"Kurumlar: {kurumlar}")
     ust_birimler = UstBirim.objects.all()
     idareciler = Idareci.objects.all()
     # Dönemler: mevcut aydan 6 ay önce ile 2 ay sonrası arası
@@ -239,6 +237,21 @@ def cizelge(request):
         "mevcut_personeller": kayitlar,  # Modal için ekledik
     }
     return render(request, 'mercis657/cizelge.html', context)
+
+@login_required
+@require_POST
+def yarim_zamanli_calisma_kaydet(request, personel_id):
+    personel = get_object_or_404(Personel, pk=personel_id)
+    form = YarimZamanliCalismaForm(request.POST)
+
+    if form.is_valid():
+        yz = form.save(commit=False)
+        yz.personel = personel
+        yz.haftalik_plan = json.loads(request.POST.get("haftalik_plan", "{}"))
+        yz.save()
+        return JsonResponse({"status": "success"})
+    return JsonResponse({"status": "error", "errors": form.errors})
+
 
 @login_required
 def personel_listeleri(request):

@@ -95,9 +95,14 @@ def personel_profil(request, personel_id, liste_id, year, month):
     arefe_gunleri = [
         t.TatilTarihi.day for t in tatiller if t.ArefeMi
     ]
+    
+    gunler = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+    mesai_tanimlari = Mesai_Tanimlari.objects.all()
 
     context = {
         'personel': personel,
+        'gunler': gunler,
+        "mesai_options": mesai_tanimlari,
         'liste': liste,
         'kayit': kayit,
         'mazeret_kayitlari': mazeret_kayitlari,

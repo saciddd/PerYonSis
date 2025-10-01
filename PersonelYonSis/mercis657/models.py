@@ -268,3 +268,16 @@ class Bildirim(models.Model):
     def ToplamIcap(self):
         """Toplam icap saati"""
         return self.NormalIcap + self.BayramIcap
+
+class YarimZamanliCalisma(models.Model):
+    personel = models.ForeignKey('Personel', on_delete=models.CASCADE, related_name="yarim_zamanli_donemler")
+    baslangic_tarihi = models.DateField()
+    bitis_tarihi = models.DateField(null=True, blank=True)
+    aciklama = models.TextField(blank=True, null=True)
+
+    # Günlere göre mesai planı
+    # {"Pazartesi": [1, 2], "Çarşamba": [5]}  -> Mesai_Tanimlari id listesi
+    haftalik_plan = models.JSONField()
+
+    def __str__(self):
+        return f"{self.personel} ({self.baslangic_tarihi} - {self.bitis_tarihi or 'devam'})"

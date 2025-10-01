@@ -1,0 +1,150 @@
+{% load custom_filters %}
+<div class="modal fade" id="yarimZamanliModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title">
+          <i class="bi bi-clock-history me-2"></i>
+          Haftalık Çalışma Takvimi ({{ personel.PersonelName }} {{ personel.PersonelSurname }})
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="yarimZamanliForm" method="post">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col">
+              <label class="form-label">Çalışma Başlangıç:</label>
+              <input type="date" name="baslangic_tarihi" class="form-control">
+            </div>
+            <div class="col">
+              <label class="form-label">Çalışma Bitiş:</label>
+              <input type="date" name="bitis_tarihi" class="form-control">
+            </div>
+          </div>
+
+          <table class="table table-bordered text-center align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>Gün</th>
+                <th>Mesai</th>
+                <th>Toplam Saat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for gun in gunler %}
+              <tr data-gun="{{ gun }}">
+                <td>{{ gun }}</td>
+                <td>
+                  <select class="form-select mesai-select" data-gun="{{ gun }}">
+                    <option value="">—</option>
+                    {% for m in mesai_options %}
+                      <option value="{{ m.id }}" data-sure="{{ m.Sure|floatformat:2|dot_decimal }}">
+                      {{ m.Saat }} ({{ m.Sure|floatformat:2|dot_decimal }} saat)
+                    </option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td class="gun-saat text-danger">0 saat</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <div class="alert alert-warning">
+            Koşullar: Toplam süre <strong>tam olarak 20 saat</strong> olmalı.
+            <span id="toplamSure" class="fw-bold text-danger ms-2">0 saat</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" id="kaydetBtn" class="btn btn-success" disabled>
+            <i class="bi bi-save"></i> Kaydet
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openYariZamanliCalismaModal(personelId) {
+    const modal = new bootstrap.Modal(document.getElementById('yarimZamanliModal'));
+    document.getElementById('yarimZamanliForm').dataset.personelId = personelId;
+    modal.show();
+}
+
+document.getElementById('yarimZamanliModal').addEventListener('shown.bs.modal', function() {
+  const selects = document.querySelectorAll(".mesai-select");
+  const toplamSpan = document.getElementById("toplamSure");
+  const kaydetBtn = document.getElementById("kaydetBtn");
+
+  function hesapla() {
+    let toplam = 0;
+    console.log(selects);
+    console.log(toplamSpan);
+    console.log(kaydetBtn);
+    console.log(toplam);
+    selects.forEach(sel => {
+        const selectedOption = sel.options[sel.selectedIndex];
+        const sure = selectedOption ? parseFloat(selectedOption.dataset.sure) || 0 : 0;
+        
+        const row = sel.closest("tr");
+        const gunSaatCell = row.querySelector(".gun-saat");
+        
+        gunSaatCell.innerText = sure > 0 ? sure.toFixed(2) + " saat" : "0 saat";
+        
+        if (sure > 0) {
+            gunSaatCell.classList.remove("text-danger");
+            gunSaatCell.classList.add("text-success");
+        } else {
+            gunSaatCell.classList.remove("text-success");
+            gunSaatCell.classList.add("text-danger");
+        }
+        
+        toplam += sure;
+    });
+    
+    toplamSpan.innerText = toplam.toFixed(2) + " saat";
+    
+    if (toplam === 20) {
+        toplamSpan.classList.remove("text-danger");
+        toplamSpan.classList.add("text-success");
+        kaydetBtn.disabled = false;
+    } else {
+        toplamSpan.classList.remove("text-success");
+        toplamSpan.classList.add("text-danger");
+        kaydetBtn.disabled = true;
+    }
+  }
+
+  selects.forEach(sel => sel.addEventListener("change", hesapla));
+  hesapla();
+
+  document.getElementById("yarimZamanliForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const plan = {};
+    selects.forEach(sel => {
+      if (sel.value) {
+        plan[sel.dataset.gun] = [parseInt(sel.value)];
+      }
+    });
+
+    const formData = new FormData(this);
+    formData.append("haftalik_plan", JSON.stringify(plan));
+
+    const personelId = this.dataset.personelId;
+    fetch(`/mercis657/yarim-zamanli-kaydet/${personelId}/`, {
+      method: "POST",
+      body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === "success") {
+        location.reload();
+      } else {
+        alert("Hata: " + (data.errors || "Kaydedilemedi"));
+      }
+    });
+  });
+});
+</script>

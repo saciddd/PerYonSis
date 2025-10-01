@@ -1,6 +1,6 @@
 # forms.py
 from django import forms
-from .models import Mesai_Tanimlari, ResmiTatil
+from .models import Mesai_Tanimlari, ResmiTatil, YarimZamanliCalisma
 
 class MesaiTanimForm(forms.ModelForm):
     class Meta:
@@ -46,4 +46,14 @@ class ResmiTatilForm(forms.ModelForm):
             'TatilTipi': 'Tatil Tipi',
             'BayramMi': 'Bayram mı?',
             'ArefeMi': 'Arefe mi?',
+        }
+
+class YarimZamanliCalismaForm(forms.ModelForm):
+    class Meta:
+        model = YarimZamanliCalisma
+        fields = ['baslangic_tarihi', 'bitis_tarihi', 'aciklama']
+        widgets = {
+            'baslangic_tarihi': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'bitis_tarihi': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'aciklama': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
         }

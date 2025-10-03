@@ -8,12 +8,19 @@ from django.contrib.auth import get_user_model
 from .middleware import get_current_request, get_current_user
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 import datetime
+from decimal import Decimal
+import uuid
 
 User = get_user_model()
 
 def serialize_for_json(data):
     """Dict içindeki date/datetime/time objelerini stringe çevirir."""
     def convert(val):
+        # handle Decimal (and similar) and UUID types which are not JSON serializable by default
+        if isinstance(val, Decimal):
+            return str(val)
+        if isinstance(val, uuid.UUID):
+            return str(val)
         if isinstance(val, (datetime.datetime, datetime.date, datetime.time)):
             return val.isoformat()
         if isinstance(val, dict):

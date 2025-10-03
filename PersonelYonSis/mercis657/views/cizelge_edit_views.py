@@ -33,7 +33,7 @@ def cizelge_yazdir(request):
 
     # default header variables
     kurum = "Kayseri Devlet Hastanesi"
-    dokuman_kodu = "FR-SA-11"
+    dokuman_kodu = "KU.FR.07"
 
     # Build an absolute file:// path to the logo if STATIC_ROOT is set
     pdf_logo = file_url
@@ -144,8 +144,8 @@ def cizelge_yazdir(request):
         'kurum': kurum,
         'dokuman_kodu': dokuman_kodu,
         'form_adi': form_adi,
-        'yayin_tarihi': '01.01.2024',
-        'revizyon_tarihi': '01.06.2024',
+        'yayin_tarihi': 'Haziran 2018',
+        'revizyon_tarihi': 'Ekim 2025',
         'revizyon_no': '02',
         'sayfa_no': '1',
         'pdf_logo': pdf_logo,

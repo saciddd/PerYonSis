@@ -66,6 +66,10 @@ urlpatterns = [
     path('radyasyon-toggle/<int:personel_id>/<int:liste_id>/', views.radyasyon_toggle, name='radyasyon_toggle'),
     path('hazir-mesai-ata/<int:personel_id>/<int:liste_id>/<int:year>/<int:month>/', views.hazir_mesai_ata, name='hazir_mesai_ata'),
     
+    # Stop işlemleri
+    path('stop-ekle/<int:mesai_id>/', views.stop_ekle, name='stop_ekle'),
+    path('stop-sil/<int:stop_id>/', views.stop_sil, name='stop_sil'),
+
     # Toplu işlemler
     path('toplu-islem/<int:liste_id>/<int:year>/<int:month>/', views.toplu_islem, name='toplu_islem'),
     path('toplu-radyasyon-ata/<int:liste_id>/', views.toplu_radyasyon_ata, name='toplu_radyasyon_ata'),

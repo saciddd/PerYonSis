@@ -76,10 +76,14 @@
 
     <!-- Alan Boşalt Switch -->
     <div class="col-auto">
-        <div class="form-check form-switch mt-3">
+        <div class="form-check form-switch mt-1">
             <input class="form-check-input" type="checkbox" id="alanBosaltSwitch">
             <label class="form-check-label small" for="alanBosaltSwitch">Alanı Boşalt</label>
         </div>
+            <div class="form-check form-switch mt-1">
+                <input class="form-check-input" type="checkbox" id="stopModeSwitch">
+                <label class="form-check-label small" for="stopModeSwitch">Stoplama Modu</label>
+            </div>
     </div>
 
     <!-- Aksiyon Butonları -->
@@ -158,6 +162,9 @@
                     </span>
                     {% if mesai.Degisiklik %}
                       <i class="bi bi-check-circle text-danger float-end" title="Onay bekleyen mesai. Önceki: {{ mesai.PrevSaat|default:mesai.PrevIzinAd }} | Talep edilen: {{ mesai.Saat|default:mesai.IzinAd }}"></i>
+                    {% endif %}
+                    {% if mesai.StopKaydi %}
+                        <i class="bi bi-pause-circle text-warning float-end ms-1" title="Stop kaydı: {{ mesai.StopKaydi.StopBaslangic }} - {{ mesai.StopKaydi.StopBitis }} | Süre: {{ mesai.StopKaydi.Sure }} saat | Oluşturan: {{ mesai.StopKaydi.created_by }}"></i>
                     {% endif %}
                 </td>
                 {% endfor %}
@@ -254,6 +261,7 @@
     const izinSelect = document.getElementById('izinSelection');
     const alanBosalt = document.getElementById('alanBosaltSwitch');
     const mesaiNotuSelect = document.getElementById('mesaiNotuSelection');
+    const stopModeSwitch = document.getElementById('stopModeSwitch');
 
     // Alanlar arası ilişki: biri seçilince diğerleri temizlenir
     mesaiSelect.addEventListener('change', function() {
@@ -282,6 +290,15 @@
             mesaiSelect.value = "";
             izinSelect.value = "";
             mesaiNotuSelect.value = "";
+        }
+    });
+    // Stoplama modu etkinleştirildiğinde diğer seçimleri temizle
+    stopModeSwitch.addEventListener('change', function() {
+        if (stopModeSwitch.checked) {
+            mesaiSelect.value = "";
+            izinSelect.value = "";
+            mesaiNotuSelect.value = "";
+            alanBosalt.checked = false;
         }
     });
 
@@ -319,6 +336,42 @@
                 return;
             }
 
+            // Eğer Stoplama modu açıksa, ilgili mesai için stop modalını aç
+            if (stopModeSwitch && stopModeSwitch.checked) {
+                const mesaiPk = cell.dataset.mesaiPk;
+                if (!mesaiPk) {
+                    if (window.Swal) Swal.fire('Uyarı', 'Bu hücre için stop eklenemez.', 'warning');
+                    else alert('Bu hücre için stop eklenemez.');
+                    return;
+                }
+                // openStopModal fonksiyonu stop_modal.html içinde tanımlı
+                if (typeof openStopModal === 'function') {
+                    openStopModal(mesaiPk);
+                } else {
+                    // Fallback: fetch modal HTML endpoint
+                    fetch(`/mercis657/stop-ekle/${mesaiPk}/`)
+                        .then(r => r.text())
+                        .then(html => {
+                            const container = document.createElement('div');
+                            container.innerHTML = html;
+                            document.body.appendChild(container);
+                            // execute scripts in fetched modal
+                            Array.from(container.querySelectorAll('script')).forEach(oldScript => {
+                                const newScript = document.createElement('script');
+                                if (oldScript.src) {
+                                    newScript.src = oldScript.src; newScript.async = false; document.head.appendChild(newScript);
+                                } else {
+                                    newScript.text = oldScript.innerHTML; document.body.appendChild(newScript);
+                                }
+                                oldScript.parentNode.removeChild(oldScript);
+                            });
+                            const modalEl = container.querySelector('#stopModal');
+                            if (modalEl) new bootstrap.Modal(modalEl).show();
+                        })
+                        .catch(err => { if (window.Swal) Swal.fire('Hata', err.toString(), 'error'); else alert(err); });
+                }
+                return;
+            }
             let mesaiVal = mesaiSelect.value;
             let izinVal = izinSelect.value;
             let bosalt = alanBosalt.checked;

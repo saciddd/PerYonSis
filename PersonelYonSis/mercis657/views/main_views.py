@@ -156,7 +156,7 @@ def cizelge(request):
         Personel__in=personeller,
         MesaiDate__year=current_year,
         MesaiDate__month=current_month
-    ).select_related('MesaiTanim', 'Izin').prefetch_related('yedekler')
+    ).select_related('MesaiTanim', 'Izin').prefetch_related('yedekler', 'mercis657_stoplar')
 
     # Resmi tatilleri al
     resmi_tatiller = ResmiTatil.objects.filter(
@@ -181,6 +181,13 @@ def cizelge(request):
     for mesai in mesailer:
         key = f"{mesai.Personel.PersonelID}_{mesai.MesaiDate.strftime('%Y-%m-%d')}"
         last_backup = mesai.yedekler.order_by('-created_at').first()
+        # get latest stop if any
+        last_stop = None
+        try:
+            last_stop = mesai.mercis657_stoplar.order_by('-created_at').first()
+        except Exception:
+            last_stop = None
+
         mesai_map[key] = {
             "MesaiID": mesai.MesaiID,
             "MesaiTanimID": mesai.MesaiTanim.id if mesai.MesaiTanim else None,
@@ -194,6 +201,27 @@ def cizelge(request):
             "PrevSaat": (last_backup.MesaiTanim.Saat if (last_backup and last_backup.MesaiTanim) else ""),
             "PrevIzinAd": (last_backup.Izin.ad if (last_backup and last_backup.Izin) else "")
         }
+
+        if last_stop:
+            # format datetimes for display
+            try:
+                sb = last_stop.StopBaslangic.strftime('%H:%M')
+            except Exception:
+                sb = str(last_stop.StopBaslangic)
+            try:
+                se = last_stop.StopBitis.strftime('%H:%M')
+            except Exception:
+                se = str(last_stop.StopBitis)
+
+            mesai_map[key]['StopKaydi'] = {
+                'StopBaslangic': sb,
+                'StopBitis': se,
+                'Sure': last_stop.Sure,
+                'created_by': str(last_stop.created_by) if last_stop.created_by else '' ,
+                'id': last_stop.id
+            }
+        else:
+            mesai_map[key]['StopKaydi'] = None
 
     # Personel nesnesine mesai bilgisi ekleyelim
     for idx, p in enumerate(personeller):

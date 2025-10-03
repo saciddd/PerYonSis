@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.db import models
 from datetime import date, timedelta
+from django.utils.timezone import now
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -127,9 +128,6 @@ class MesaiYedek(models.Model):
     def __str__(self):
         return f"Yedek: {self.mesai.Personel.PersonelName} - {self.mesai.MesaiDate}"
 
-
-from decimal import Decimal
-from datetime import timedelta
 
 class Mesai_Tanimlari(models.Model):
     Saat = models.CharField(max_length=11)
@@ -281,3 +279,31 @@ class YarimZamanliCalisma(models.Model):
 
     def __str__(self):
         return f"{self.personel} ({self.baslangic_tarihi} - {self.bitis_tarihi or 'devam'})"
+
+class StopKaydi(models.Model):
+    mesai = models.ForeignKey('Mesai', on_delete=models.CASCADE, related_name="mercis657_stoplar")
+    StopBaslangic = models.TimeField()
+    StopBitis = models.TimeField()
+    Sure = models.PositiveIntegerField(null=True, blank=True)  # dakika/saat türüne göre
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def hesapla_sure(self):
+        """Stop süresini saat cinsinden hesaplar."""
+        if self.StopBaslangic and self.StopBitis:
+            if self.StopBitis > self.StopBaslangic:
+                delta = self.StopBitis - self.StopBaslangic
+            else:
+                # Ertesi güne sarkıyorsa
+                delta = (self.StopBitis + timedelta(days=1)) - self.StopBaslangic
+            self.Sure = int(delta.total_seconds() // 3600)  # saat cinsinden
+        else:
+            self.Sure = 0
+        return self.Sure
+
+    def save(self, *args, **kwargs):
+        self.hesapla_sure()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.mesai} stop: {self.Sure} saat"

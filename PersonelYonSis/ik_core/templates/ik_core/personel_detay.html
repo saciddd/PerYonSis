@@ -437,7 +437,13 @@
                                         <div class="row">
                                             <div class="col-md-6 mb-1">
                                                 <div class="info-label">Kadrolu Personel</div>
-                                                <span class="editable-display info-value">{% if personel.kadrolu_personel %}Evet{% else %}Hayır{% endif %}</span>
+                                                <span class="editable-display info-value">
+                                                    {% if personel.kadrolu_personel %}
+                                                        <i style="color: #28a745;" class="bi bi-check-circle-fill"></i>
+                                                    {% else %}
+                                                        <i style="color: #dc3545;" class="bi bi-x-circle-fill"></i>
+                                                    {% endif %}
+                                                </span>
                                                 <div class="editable-input">
                                                     <div class="form-check form-switch">{{ form.kadrolu_personel }}</div>
                                                 </div>
@@ -483,7 +489,12 @@
                                             </div>
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">Aile Hek. Sözleşmesi</div>
-                                                <span class="editable-display info-value">{% if personel.aile_hek_sozlesmesi %}Var{% else %}Yok{% endif %}</span>
+                                                <span class="editable-display info-value">
+                                                    {% if personel.aile_hek_sozlesmesi %}
+                                                        <i style="color: #28a745;" class="bi bi-check-circle-fill"></i>
+                                                    {% else %}
+                                                        <i style="color: #dc3545;" class="bi bi-x-circle-fill"></i>
+                                                    {% endif %}</span>
                                                 <div class="editable-input">
                                                     <div class="form-check form-switch">{{ form.aile_hek_sozlesmesi }}</div>
                                                 </div>
@@ -493,28 +504,48 @@
                                         <div class="row">
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">DHY</div>
-                                                <span class="editable-display info-value">{% if personel.dhy %}Evet{% else %}Hayır{% endif %}</span>
+                                                <span class="editable-display info-value">
+                                                    {% if personel.dhy %}
+                                                    <i style="color: #28a745;" class="bi bi-check-circle-fill"></i>
+                                                    {% else %}
+                                                        <i style="color: #dc3545;" class="bi bi-x-circle-fill"></i>
+                                                    {% endif %}</span>
                                                 <div class="editable-input">
                                                     <div class="form-check form-switch">{{ form.dhy }}</div>
                                                 </div>
                                             </div>
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">SGK</div>
-                                                <span class="editable-display info-value">{% if personel.sgk %}Evet{% else %}Hayır{% endif %}</span>
+                                                <span class="editable-display info-value">
+                                                    {% if personel.sgk %}
+                                                        <i style="color: #28a745;" class="bi bi-check-circle-fill"></i>
+                                                    {% else %}
+                                                        <i style="color: #dc3545;" class="bi bi-x-circle-fill"></i>
+                                                    {% endif %}</span>
                                                 <div class="editable-input">
                                                     <div class="form-check form-switch">{{ form.sgk }}</div>
                                                 </div>
                                             </div>
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">DSS</div>
-                                                <span class="editable-display info-value">{% if personel.dss %}Evet{% else %}Hayır{% endif %}</span>
+                                                <span class="editable-display info-value">
+                                                    {% if personel.dss %}
+                                                        <i style="color: #28a745;" class="bi bi-check-circle-fill"></i>
+                                                    {% else %}
+                                                        <i style="color: #dc3545;" class="bi bi-x-circle-fill"></i>
+                                                    {% endif %}</span>
                                                 <div class="editable-input">
                                                     <div class="form-check form-switch">{{ form.dss }}</div>
                                                 </div>
                                             </div>
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">SHÇEK</div>
-                                                <span class="editable-display info-value">{% if personel.shcek %}Evet{% else %}Hayır{% endif %}</span>
+                                                <span class="editable-display info-value">
+                                                    {% if personel.shcek %}
+                                                        <i style="color: #28a745;" class="bi bi-check-circle-fill"></i>
+                                                    {% else %}
+                                                        <i style="color: #dc3545;" class="bi bi-x-circle-fill"></i>
+                                                    {% endif %}</span>
                                                 <div class="editable-input">
                                                     <div class="form-check form-switch">{{ form.shcek }}</div>
                                                 </div>

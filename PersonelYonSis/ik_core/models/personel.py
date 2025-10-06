@@ -92,6 +92,9 @@ class Personel(models.Model):
     dss = models.BooleanField(default=False)
     shcek = models.BooleanField(default=False)
 
+    # Kayıt tarihi
+    kayit_tarihi = models.DateField(auto_now_add=True)
+
     @property
     def ad_soyad(self):
         return f"{self.ad} {self.soyad}".strip()

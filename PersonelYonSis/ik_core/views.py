@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+from django.db.models.query import QuerySet
 from django.db.models import Q, Value as V
 from django.db.models.functions import Lower, Concat
 from django.http import JsonResponse
@@ -36,7 +37,8 @@ def personel_list(request):
     tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
     ad_soyad = request.GET.get('ad_soyad', '').strip()
     telefon = request.GET.get('telefon', '').strip()
-    unvan = request.GET.get('unvan', '')
+    # Çoklu unvan desteği: aynı isimle birden fazla parametre gelebilir
+    unvan_list = request.GET.getlist('unvan')
     durum = request.GET.get('durum', '')
 
     if tc_kimlik_no:
@@ -52,10 +54,10 @@ def personel_list(request):
 
     if telefon:
         query &= Q(telefon__icontains=telefon)
-    if unvan:
-        query &= Q(unvan_id=unvan)
+    if unvan_list:
+        query &= Q(unvan_id__in=unvan_list)
 
-    if not any([tc_kimlik_no, ad_soyad, telefon, unvan, durum]):
+    if not any([tc_kimlik_no, ad_soyad, telefon, unvan_list, durum]):
         personeller = Personel.objects.none()
     else:
         queryset = Personel.objects.annotate(
@@ -64,7 +66,12 @@ def personel_list(request):
         ).filter(query).select_related('unvan', 'brans', 'kurum')
 
         if durum:
-            personeller = [p for p in queryset if p.durum == durum]
+            # 'durum' model alanı değil (property), DB tarafında filtrelenemez.
+            # Kullanıcı 'Aktif' veya 'Pasif' seçmişse, property değerinin bu kelimeyle başlamasını kabul edelim.
+            if durum in ("Aktif", "Pasif"):
+                personeller = [p for p in queryset if (p.durum or "").startswith(durum)]
+            else:
+                personeller = [p for p in queryset if p.durum == durum]
         else:
             personeller = queryset
 
@@ -72,12 +79,13 @@ def personel_list(request):
 
     return render(request, 'ik_core/personel_list.html', {
         'personeller': personeller,
+        'personel_sayisi': personeller.count() if isinstance(personeller, QuerySet) else len(personeller),
         'unvanlar': unvanlar,
         'arama': {
             'tc_kimlik_no': tc_kimlik_no,
             'ad_soyad': ad_soyad,
             'telefon': telefon,
-            'unvan': unvan,
+            'unvan': unvan_list,
             'durum': durum,
         }
     })

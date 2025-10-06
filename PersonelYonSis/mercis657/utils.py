@@ -21,6 +21,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             'calisma_gunleri': int,
             'arefe_gunleri': int,
             'mazeret_azaltimi': Decimal
+            'stop_suresi': Decimal  # saat cinsinden
         }
     """
     personel = personel_listesi_kayit.personel
@@ -76,13 +77,15 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         Personel=personel,
         MesaiDate__year=year,
         MesaiDate__month=month
-    ).select_related('MesaiTanim')
+    ).select_related('MesaiTanim').prefetch_related('mercis657_stoplar')
 
     # izin kaynaklı azaltım (Mesai.Izin) için toplanacak
     izin_azaltimi = Decimal('0.0')
 
     # bayram mesaisi için toplanacak toplam (saat)
     bayram_fazla_mesai = Decimal('0.0')
+    # Toplam stop süresi (saat) bu fonksiyon boyunca toplanacak
+    stop_suresi = Decimal('0.0')
 
     def _parse_time_to_hours(tstr):
         # "HH:MM" -> Decimal saat; "24:00" -> 24.0
@@ -102,6 +105,17 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             fiili_calisma_suresi += hours
         else:
             hours = Decimal('0.0')
+
+        # STOP sürelerini düş: varsa tüm StopKaydi.Sure değerlerini topla ve fiili süreden çıkar
+        stopler = list(getattr(mesai, 'mercis657_stoplar').all())
+        for stop in stopler:
+            try:
+                stop_hours = Decimal(str(stop.Sure)) if stop.Sure is not None else Decimal('0.0')
+            except Exception:
+                stop_hours = Decimal('0.0')
+            # azalt
+            fiili_calisma_suresi -= stop_hours
+            stop_suresi += stop_hours
 
         # Eğer Mesai üzerinde izin bilgisi varsa ve tarih hafta içi ve resmi tatil değilse
         # olası gereken süreden azaltım uygula (7h radyasyon çalışanı için, yoksa 8h)
@@ -217,5 +231,6 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         'arefe_gunleri': arefe_gunleri,
         'mazeret_azaltimi': mazeret_azaltimi,
         'bayram_fazla_mesai': bayram_fazla_mesai,
-        'normal_fazla_mesai': normal_fazla_mesai
+        'normal_fazla_mesai': normal_fazla_mesai,
+        'stop_suresi': stop_suresi
     }

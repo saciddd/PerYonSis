@@ -84,7 +84,7 @@ def excel_export(request):
             # Yazdırma işlemi
             buffer.seek(0)
             response = HttpResponse(buffer, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            response['Content-Disposition'] = f'attachment; filename="{current_year}_{current_month}_mesai_verileri.xlsx"'
+            response['Content-Disposition'] = f'inline; filename="{current_year}_{current_month}_mesai_verileri.xlsx"'
             return response
 
         except Exception as e:

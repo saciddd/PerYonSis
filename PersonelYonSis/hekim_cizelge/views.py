@@ -891,7 +891,7 @@ def bildirim_form(request, birim_id):
         
         # HTTP response oluştur
         response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="bildirimler_{year}_{month}.pdf"'
+        response['Content-Disposition'] = f'inline; filename="bildirimler_{year}_{month}.pdf"'
         return response
         
     except Exception as e:
@@ -1369,7 +1369,7 @@ def hizmet_raporu_pdf(request):
 
         pdf = pdfkit.from_string(html, False, options=options, configuration=config)
         response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="hizmet_raporu_{baslangic_tarihi}_{bitis_tarihi}.pdf"'
+        response['Content-Disposition'] = f'inline; filename="hizmet_raporu_{baslangic_tarihi}_{bitis_tarihi}.pdf"'
         return response
 
     except Exception as e:
@@ -1644,7 +1644,7 @@ def bildirim_excel(request):
             output.read(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
-        response['Content-Disposition'] = f'attachment; filename="bildirimler_{year}_{month}.xlsx"'
+        response['Content-Disposition'] = f'inline; filename="bildirimler_{year}_{month}.xlsx"'
         return response
 
     except Exception as e:
@@ -1728,7 +1728,7 @@ def cizelge_form(request, birim_id):
 
         pdf = pdfkit.from_string(html, False, options=options, configuration=config)
         response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="cizelge_{birim.BirimAdi}_{year}_{month}.pdf"'
+        response['Content-Disposition'] = f'inline; filename="cizelge_{birim.BirimAdi}_{year}_{month}.pdf"'
         return response
     except Exception as e:
         return HttpResponse(f"PDF oluşturulamadı: {str(e)}", status=500)

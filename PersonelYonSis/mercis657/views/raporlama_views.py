@@ -282,7 +282,7 @@ def export_raporlama_excel(request):
 
     response = HttpResponse(output.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     file_name = f"FazlaMesaiBildirimleri_{donem_str}.xlsx"
-    response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+    response['Content-Disposition'] = f'inline; filename="{file_name}"'
     return response
 
 

@@ -716,7 +716,7 @@ def aylik_icra_kesinti(request):
 
         # PDF'i response olarak döndür
         response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="icra_kesinti_{donem_tarihi.strftime("%Y_%m")}.pdf"'
+        response['Content-Disposition'] = f'inline; filename="icra_kesinti_{donem_tarihi.strftime("%Y_%m")}.pdf"'
         return response
 
     except Exception as e:

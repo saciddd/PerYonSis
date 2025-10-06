@@ -815,7 +815,7 @@ def export_raporlama_excel(request):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     file_name = f"hizmet_sunum_rapor_{donem_str}.xlsx"
-    response['Content-Disposition'] = f'attachment; filename="{file_name}"'
+    response['Content-Disposition'] = f'inline; filename="{file_name}"'
     return response
 
 def birim_yetkililer(request, birim_id):

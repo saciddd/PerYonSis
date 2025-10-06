@@ -286,7 +286,7 @@ def nobet_defteri_pdf(request, defter_id):
     config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
     pdf = pdfkit.from_string(html, False, options=options, configuration=config)
     response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="nobet_defteri_{defter.id}.pdf"'
+    response['Content-Disposition'] = f'inline; filename="nobet_defteri_{defter.id}.pdf"'
     return response
 
 @csrf_exempt
@@ -339,7 +339,7 @@ def nobet_defteri_pdf_modal(request, defter_id):
     config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
     pdf = pdfkit.from_string(html, False, options=options, configuration=config)
     response = HttpResponse(pdf, content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="nobet_defteri_{defter.id}.pdf"'
+    response['Content-Disposition'] = f'inline; filename="nobet_defteri_{defter.id}.pdf"'
     return response
 
 # KontrolSoru CRUD (liste/ekle/guncelle/sil)

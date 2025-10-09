@@ -59,6 +59,45 @@ class PersonelForm(forms.ModelForm):
         if 'brans' in self.fields:
             self.fields['brans'].empty_label = "Branş seçiniz"
             self.fields['brans'].required = False
+        
+        # Bazı alanları zorunlu yap
+        self.fields['tc_kimlik_no'].required = True
+        self.fields['ad'].required = True
+        self.fields['soyad'].required = True
+        self.fields['kurum'].required = True
+        
+        # Tarih alanları için özel validasyon
+        self.fields['dogum_tarihi'].required = False
+        self.fields['atama_karar_tarihi'].required = False
+        self.fields['goreve_baslama_tarihi'].required = False
+        self.fields['memuriyete_baslama_tarihi'].required = False
+        self.fields['kamu_baslangic_tarihi'].required = False
+        self.fields['mazeret_baslangic'].required = False
+        self.fields['mazeret_bitis'].required = False
+        self.fields['ayrilma_tarihi'].required = False
+    
+    def clean_tc_kimlik_no(self):
+        tc_kimlik_no = self.cleaned_data.get('tc_kimlik_no')
+        if tc_kimlik_no:
+            # TC Kimlik No validasyonu
+            if not tc_kimlik_no.isdigit() or len(tc_kimlik_no) != 11:
+                raise forms.ValidationError("TC Kimlik No 11 haneli sayı olmalıdır.")
+        return tc_kimlik_no
+    
+    def clean_eposta(self):
+        eposta = self.cleaned_data.get('eposta')
+        if eposta and '@' not in eposta:
+            raise forms.ValidationError("Geçerli bir e-posta adresi giriniz.")
+        return eposta
+    
+    def clean_telefon(self):
+        telefon = self.cleaned_data.get('telefon')
+        if telefon:
+            # Telefon numarası temizleme
+            telefon = telefon.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+            if not telefon.isdigit():
+                raise forms.ValidationError("Telefon numarası sadece rakam içermelidir.")
+        return telefon
 
 class KurumForm(forms.ModelForm):
     class Meta:

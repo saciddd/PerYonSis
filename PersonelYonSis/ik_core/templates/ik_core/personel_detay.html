@@ -327,11 +327,49 @@
         {% endfor %}
     {% endif %}
     
+    <!-- Form Hataları -->
+    {% if form.errors %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h6><i class="bi bi-exclamation-triangle me-2"></i>Form Hataları:</h6>
+            <ul class="mb-0">
+                {% for field, errors in form.errors.items %}
+                    {% for error in errors %}
+                        <li><strong>{{ field }}:</strong> {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endif %}
+    
     <!-- Personel Bilgileri Üst Kısım -->
     <div class="card mb-3 w-100 px-0">
         <div class="card-body">
             <form id="personelDetayForm" method="post" autocomplete="off">
                 {% csrf_token %}
+                <!-- Mevcut personel bilgilerini hidden input olarak ekle -->
+                <input type="hidden" name="tc_kimlik_no" value="{{ personel.tc_kimlik_no }}">
+                <input type="hidden" name="ad" value="{{ personel.ad }}">
+                <input type="hidden" name="soyad" value="{{ personel.soyad }}">
+                <input type="hidden" name="kurum" value="{{ personel.kurum.id|default:'' }}">
+                <input type="hidden" name="unvan" value="{{ personel.unvan.id|default:'' }}">
+                <input type="hidden" name="brans" value="{{ personel.brans.id|default:'' }}">
+                <input type="hidden" name="sicil_no" value="{{ personel.sicil_no|default:'' }}">
+                <input type="hidden" name="dogum_tarihi" value="{{ personel.dogum_tarihi|date:'Y-m-d'|default:'' }}">
+                <input type="hidden" name="cinsiyet" value="{{ personel.cinsiyet|default:'' }}">
+                <input type="hidden" name="kadro_yeri" value="{{ personel.kadro_yeri.id|default:'' }}">
+                <input type="hidden" name="fiili_gorev_yeri" value="{{ personel.fiili_gorev_yeri.id|default:'' }}">
+                <input type="hidden" name="teskilat" value="{{ personel.teskilat|default:'' }}">
+                <input type="hidden" name="emekli_sicil_no" value="{{ personel.emekli_sicil_no|default:'' }}">
+                <input type="hidden" name="tahsil_durumu" value="{{ personel.tahsil_durumu|default:'' }}">
+                <input type="hidden" name="telefon" value="{{ personel.telefon|default:'' }}">
+                <input type="hidden" name="eposta" value="{{ personel.eposta|default:'' }}">
+                <input type="hidden" name="adres" value="{{ personel.adres|default:'' }}">
+                <input type="hidden" name="memur_devreden_izin" value="{{ personel.memur_devreden_izin|default:0 }}">
+                <input type="hidden" name="memur_hak_ettigi_izin" value="{{ personel.memur_hak_ettigi_izin|default:0 }}">
+                <input type="hidden" name="ayrilma_tarihi" value="{{ personel.ayrilma_tarihi|date:'Y-m-d'|default:'' }}">
+                <input type="hidden" name="ayrilma_nedeni" value="{{ personel.ayrilma_nedeni|default:'' }}">
+                <input type="hidden" name="ayrilma_detay" value="{{ personel.ayrilma_detay|default:'' }}">
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <div class="d-flex align-items-center">
@@ -1138,6 +1176,9 @@
                 
                 // Ayrılış alanlarını devre dışı bırak
                 document.querySelectorAll('.ayrilis-input').forEach(el => el.disabled = true);
+                
+                // Hidden input'ları güncelle
+                updateHiddenInputs();
             } else if (action === 'save_ayrilis') {
                 // Ayrılış alanlarını etkinleştir
                 document.querySelectorAll('.ayrilis-input').forEach(el => {
@@ -1151,6 +1192,28 @@
                 document.querySelectorAll('.editable-input:not(.ayrilis-input)').forEach(el => el.disabled = true);
             }
         });
+        
+        // Hidden input'ları güncelle
+        function updateHiddenInputs() {
+            // Mevcut değerleri hidden input'lara kopyala
+            document.querySelectorAll('.editable-input:not(.ayrilis-input) input, .editable-input:not(.ayrilis-input) select, .editable-input:not(.ayrilis-input) textarea').forEach(el => {
+                const name = el.name;
+                if (!name) return;
+                
+                const hiddenInput = document.querySelector(`input[name="${name}"]`);
+                if (hiddenInput) {
+                    if (el.type === 'checkbox') {
+                        hiddenInput.value = el.checked ? 'on' : '';
+                    } else if (el.multiple) {
+                        // Multiple select için
+                        const selectedValues = Array.from(el.selectedOptions).map(opt => opt.value);
+                        hiddenInput.value = selectedValues.join(',');
+                    } else {
+                        hiddenInput.value = el.value;
+                    }
+                }
+            });
+        }
     });
 </script>
 {% endblock %}

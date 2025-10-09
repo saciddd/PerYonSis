@@ -155,13 +155,51 @@ def personel_detay(request, pk):
 
     if request.method == 'POST':
         if 'save_main' in request.POST:
-            form = PersonelForm(request.POST, instance=personel)
+            # POST verilerini işle ve eksik alanları doldur
+            post_data = request.POST.copy()
+            
+            # Eğer hidden input'lardan gelen değerler varsa, onları kullan
+            # Aksi halde mevcut personel değerlerini kullan
+            if not post_data.get('tc_kimlik_no'):
+                post_data['tc_kimlik_no'] = personel.tc_kimlik_no
+            if not post_data.get('ad'):
+                post_data['ad'] = personel.ad
+            if not post_data.get('soyad'):
+                post_data['soyad'] = personel.soyad
+            if not post_data.get('kurum'):
+                post_data['kurum'] = personel.kurum.id if personel.kurum else ''
+            
+            form = PersonelForm(post_data, instance=personel)
             if form.is_valid():
                 form.save()
                 messages.success(request, f"{personel.ad} {personel.soyad} bilgileri başarıyla güncellendi.")
                 return redirect('ik_core:personel_detay', pk=pk)
             else:
-                messages.error(request, "Formda hatalar var. Lütfen kontrol ediniz.")
+                # Form hatalarını detaylı olarak logla
+                print("=== FORM HATALARI DEBUG ===")
+                print(f"POST verileri: {request.POST}")
+                print("İşlenmiş POST verileri: {post_data}")
+                print("Form hataları:")
+                for field, errors in form.errors.items():
+                    print(f"  {field}: {errors}")
+                
+                # Form alanlarının değerlerini kontrol et
+                print("Form alanları değerleri:")
+                for field_name, field in form.fields.items():
+                    value = form.data.get(field_name, 'BOŞ')
+                    print(f"  {field_name}: {value}")
+                
+                # Hata mesajlarını kullanıcıya göster
+                error_messages = []
+                for field, errors in form.errors.items():
+                    field_name = form.fields[field].label if hasattr(form.fields[field], 'label') else field
+                    for error in errors:
+                        error_messages.append(f"{field_name}: {error}")
+                
+                if error_messages:
+                    messages.error(request, f"Formda hatalar var: {'; '.join(error_messages)}")
+                else:
+                    messages.error(request, "Formda hatalar var. Lütfen kontrol ediniz.")
         elif 'save_ayrilis' in request.POST:
             # Ayrılış bilgilerini güncelle
             personel.ayrilma_tarihi = request.POST.get('ayrilma_tarihi') or None

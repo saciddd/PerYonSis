@@ -106,7 +106,7 @@
                 {% for personel in personeller %}
                 <tr data-personel-id="{{ personel.PersonelID }}">
                     <td>{{ forloop.counter }}</td>
-                    <td>{{ personel.PersonelName }}</td>
+                    <td>{{ personel.PersonelName }} {{ personel.PersonelSurname }}</td>
                     <!-- Mesai Değerleri -->
                     <td class="normal-mesai">-</td>
                     <td class="bayram-mesai">-</td>
@@ -250,8 +250,8 @@ document.addEventListener('DOMContentLoaded', function() {
             y = parseInt(parts[0],10); m = parseInt(parts[1],10);
         } catch(e){ y=null; m=null }
         if (!y || !m) { Swal.fire('Hata','Geçersiz dönem.','error'); return; }
-        window.location.href = `{% url 'mercis657:bildirim_form' 999 %}`.replace('999', selectedBirim) +
-            `?year=${y}&month=${m}`;
+        window.open(`{% url 'mercis657:bildirim_form' 999 %}`.replace('999', selectedBirim) +
+            `?year=${y}&month=${m}`, '_blank');
     });
 
     // Toplu Onay Butonu (Check if exists first)

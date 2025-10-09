@@ -639,10 +639,20 @@ def icra_hareket_ekle(request, icra_id):
 def icra_sonlandir(request, icra_id):
     """İcrayı manuel olarak sonlandırır (durumunu KAPANDI yapar)."""
     if request.method == 'POST':
-        icra = get_object_or_404(IcraTakibi, pk=icra_id)
-        icra.durum = 'KAPANDI'
-        icra.save(update_fields=['durum'])
-        return JsonResponse({'success': True})
+        try:
+            icra = get_object_or_404(IcraTakibi, pk=icra_id)
+            # Use queryset.update to bypass IcraTakibi.save() logic which may
+            # flip the durum back to 'AKTIF' based on kalan_borc. We want a
+            # manual override here.
+            updated = IcraTakibi.objects.filter(pk=icra_id).update(durum='KAPANDI')
+            if updated:
+                print("ICRA SONLANDIRILDI:", icra_id, icra.personel.tc_kimlik_no, icra.personel.ad_soyad)
+                return JsonResponse({'success': True})
+            else:
+                return JsonResponse({'success': False, 'message': 'Güncelleme başarısız.'})
+        except Exception as e:
+            print("ICRA SONLANDIRILIRKEN HATA:", str(e))
+            return JsonResponse({'success': False, 'message': str(e)})
     return JsonResponse({'success': False, 'message': 'Geçersiz istek.'})
 
 @login_required

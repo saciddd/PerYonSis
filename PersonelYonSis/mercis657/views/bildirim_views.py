@@ -1,8 +1,14 @@
-from datetime import date
+from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponseForbidden, HttpResponse
+from django.template.loader import render_to_string, get_template
+import pdfkit
+from django.templatetags.static import static
+from django.contrib.staticfiles.storage import staticfiles_storage
 from django.contrib import messages
+from django.conf import settings
+import re
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from ..models import Bildirim, PersonelListesi, UserBirim, Birim, Personel, PersonelListesiKayit, Mesai, ResmiTatil, Mesai_Tanimlari, Izin
@@ -247,7 +253,7 @@ def bildirim_listele(request, year, month, birim_id):
 
         result.append({
             'personel_id': p.PersonelID,
-            'personel_name': p.PersonelName,
+            'personel_name': p.PersonelName + ' ' + p.PersonelSurname,
             'bildirim_id': bildirim_id,
             'normal_mesai': normal,
             'bayram_mesai': bayram,
@@ -517,11 +523,187 @@ def bildirim_toplu_onay(request, birim_id):
     return JsonResponse({'status': 'success', 'message': f'{count} bildirim güncellendi.', 'count': count})
 
 @login_required
-def bildirim_form():
-    """ İlgili dönem ve birim için fazla mesai ve icap bildirim formu PDF çıktısı """
-    # Şimdi boş bir fonksiyon, ileride eklenebilir
-    pass
+def bildirim_form(request, birim_id):
+    if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
+        messages.error(request, "Yetkiniz yok.")
+        return HttpResponseForbidden("Yetkiniz yok.")
 
+    # year & month from query params (expected ?year=YYYY&month=M)
+    try:
+        year = int(request.GET.get('year') or datetime.now().year)
+        month = int(request.GET.get('month') or datetime.now().month)
+    except Exception:
+        year = datetime.now().year
+        month = datetime.now().month
+
+    # header/context similar to cizelge_yazdir
+    kurum = "Kayseri Devlet Hastanesi"
+    dokuman_kodu = "KU.FR.07"
+    form_adi = f"{year} Yılı {month}. Dönem Fazla Mesai Bildirim Formu"
+
+    # resolve birim
+    birim = Birim.objects.filter(BirimID=birim_id).first() or Birim.objects.filter(id=birim_id).first()
+    if not birim:
+        return HttpResponse(f"Birim bulunamadı: {birim_id}", status=404)
+
+    # find personel list
+    liste = PersonelListesi.objects.filter(birim=birim, yil=year, ay=month).first()
+
+    # Birim adı
+    birim_adi = birim.BirimAdi if hasattr(birim, 'BirimAdi') else getattr(birim, 'name', 'Birim Adı Yok')
+
+    # prepare days and resmi tatil info similar to cizelge_yazdir
+    num_days = calendar.monthrange(year, month)[1]
+    tatiller = ResmiTatil.objects.filter(TatilTarihi__year=year, TatilTarihi__month=month)
+    resmi_tatil_gunleri = [t.TatilTarihi for t in tatiller]
+
+    days = []
+    for day_num in range(1, num_days + 1):
+        current_date = date(year, month, day_num)
+        is_weekend = current_date.weekday() >= 5
+        is_holiday = current_date in resmi_tatil_gunleri
+        days.append({
+            'day_num': day_num,
+            'full_date': current_date.strftime('%Y-%m-%d'),
+            'is_weekend': is_weekend,
+            'is_holiday': is_holiday,
+        })
+
+    personel_rows = []
+    if liste:
+        kayitlar = liste.kayitlar.select_related('personel').order_by('sira_no', 'personel__PersonelName', 'personel__PersonelSurname')
+        for kayit in kayitlar:
+            p = kayit.personel
+            # get bildirim if exists
+            donem_baslangic = date(year, month, 1)
+            bildirim = Bildirim.objects.filter(PersonelListesi=liste, Personel=p, DonemBaslangic=donem_baslangic, SilindiMi=False).first()
+
+            normal = bildirim.NormalFazlaMesai if (bildirim and bildirim.NormalFazlaMesai is not None) else Decimal('0.0')
+            bayram = bildirim.BayramFazlaMesai if (bildirim and bildirim.BayramFazlaMesai is not None) else Decimal('0.0')
+            rnormal = bildirim.RiskliNormalFazlaMesai if (bildirim and bildirim.RiskliNormalFazlaMesai is not None) else Decimal('0.0')
+            rbayram = bildirim.RiskliBayramFazlaMesai if (bildirim and bildirim.RiskliBayramFazlaMesai is not None) else Decimal('0.0')
+            daily_mesai = bildirim.MesaiDetay if (bildirim and bildirim.MesaiDetay) else {}
+            onay = int(bildirim.OnayDurumu) if (bildirim and bildirim.OnayDurumu is not None) else 0
+
+            personel_rows.append({
+                'sira_no': kayit.sira_no or 0,
+                'personel': p,
+                'normal_fazla_mesai': normal,
+                'bayram_fazla_mesai': bayram,
+                'riskli_normal': rnormal,
+                'riskli_bayram': rbayram,
+                'toplam': (normal + bayram + rnormal + rbayram),
+                'daily_mesai': daily_mesai,
+                'onay_durumu': onay,
+            })
+
+    # Prepare PDF-specific context using the supplied PDF template (bildirim_formu.html)
+    try:
+        file_url = f"file:///{staticfiles_storage.path('logo/kdh_logo.png')}"
+    except Exception:
+        file_url = None
+
+    # Prepare personeller list for the PDF template by mapping existing personel_rows
+    resmi_tatil_gunleri_nums = []
+    arefe_gunleri_nums = []
+    try:
+        tatiller = ResmiTatil.objects.filter(TatilTarihi__year=year, TatilTarihi__month=month)
+        resmi_tatil_gunleri_nums = [t.TatilTarihi.day for t in tatiller if t.TatilTipi == 'TAM']
+        arefe_gunleri_nums = [t.TatilTarihi.day for t in tatiller if t.ArefeMi]
+    except Exception:
+        pass
+
+    personellers = []
+    for row in personel_rows:
+        p = row.get('personel')
+        daily = row.get('daily_mesai') or {}
+        onay_durumu = "Onaylandı" if row.get('onay_durumu', 0) == 1 else "Beklemede"
+        mesai_data = []
+        for d in days:
+            key = d['full_date']
+            entry = daily.get(key, {})
+            if isinstance(entry, dict):
+                saat = entry.get('saat', '')
+                izinad = entry.get('izin', '')
+                mesai_notu = entry.get('not', '')
+            else:
+                saat = entry or ''
+                izinad = ''
+                mesai_notu = ''
+            md = {
+                'MesaiTanimID': None,
+                'Saat': saat,
+                'IzinAd': izinad,
+                'MesaiNotu': mesai_notu,
+                'is_weekend': d.get('is_weekend', False),
+                'is_holiday': (d['day_num'] in resmi_tatil_gunleri_nums),
+                'is_arife': (d['day_num'] in arefe_gunleri_nums),
+            }
+            mesai_data.append(md)
+
+        personellers.append({
+            'PersonelName': getattr(p, 'PersonelName', ''),
+            'PersonelSurname': getattr(p, 'PersonelSurname', ''),
+            'PersonelTCKN': getattr(p, 'PersonelTCKN', ''),
+            'PersonelTitle': getattr(p, 'PersonelTitle', ''),
+            'normal_fazla_mesai': row.get('normal_fazla_mesai'),
+            'bayram_fazla_mesai': row.get('bayram_fazla_mesai'),
+            'riskli_normal': row.get('riskli_normal'),
+            'riskli_bayram': row.get('riskli_bayram'),
+            'mesai_data': mesai_data,
+            'hesaplama': {'fazla_mesai': None},
+            'onay_durumu': onay_durumu,
+        })
+
+    # prepare context matching the PDF template
+    context_pdf = {
+        'kurum': kurum,
+        'dokuman_kodu': dokuman_kodu,
+        'form_adi': form_adi,
+        'yayin_tarihi': 'Haziran 2018',
+        'revizyon_tarihi': 'Ekim 2025',
+        'revizyon_no': '02',
+        'sayfa_no': '1',
+        'birim_adi': birim_adi,
+        'pdf_logo': file_url,
+        'personellers': personellers,
+        'personeller': personellers,
+        'days': days,
+        'resmi_tatil_gunleri': resmi_tatil_gunleri_nums,
+        'arefe_gunleri': arefe_gunleri_nums,
+        'year': year,
+        'month': month,
+        'aciklama': liste.aciklama if liste else '',
+    }
+
+    # Render PDF template and generate PDF (landscape)
+    try:
+        template = get_template('mercis657/pdf/bildirim_formu.html')
+        html = template.render({**context_pdf})
+    except Exception:
+        html = render_to_string('mercis657/pdf/bildirim_formu.html', context_pdf)
+
+    config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+    options = {
+        'page-size': 'A4',
+        'orientation': 'Landscape',
+        'margin-top': '1.5cm',
+        'margin-right': '1.5cm',
+        'margin-bottom': '1.1cm',
+        'margin-left': '1.5cm',
+        'encoding': 'UTF-8',
+        'no-outline': None,
+        'enable-local-file-access': '',
+        'enable-external-links': True,
+        'quiet': ''
+    }
+
+    pdf = pdfkit.from_string(html, False, options=options, configuration=config)
+    response = HttpResponse(pdf, content_type='application/pdf')
+    filename = f"bildirim_form_{birim.BirimAdi}_{year}_{month:02d}.pdf"
+    filename = filename.replace(' ', '_')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
 
 @login_required
 def riskli_bildirim_data(request, birim_id):
@@ -554,7 +736,7 @@ def riskli_bildirim_data(request, birim_id):
             if bildirim:
                 bildirimler.append({
                     'bildirim_id': bildirim.BildirimID,
-                    'personel_adi': f"{kayit.personel.PersonelName}",
+                    'personel_adi': f"{kayit.personel.PersonelName} {kayit.personel.PersonelSurname}",
                     'normal_mesai': float(bildirim.NormalFazlaMesai or 0),
                     'bayram_mesai': float(bildirim.BayramFazlaMesai or 0),
                     'riskli_normal': float(bildirim.RiskliNormalFazlaMesai or 0),

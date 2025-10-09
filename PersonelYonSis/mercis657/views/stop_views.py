@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from ..models import StopKaydi, Mesai
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
+from django.contrib import messages
 from django.utils import timezone
 import datetime
 from datetime import timedelta
@@ -11,6 +12,7 @@ from datetime import timedelta
 @login_required
 def stop_ekle(request, mesai_id):
     if not request.user.has_permission('ÇS 657 Stop Kaydı Ekleme'):
+        messages.error(request, "Stop Kaydı Ekleme yetkiniz yok.")
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     
     mesai = get_object_or_404(Mesai, pk=mesai_id)

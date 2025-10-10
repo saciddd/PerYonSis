@@ -24,7 +24,14 @@
     <div class="row">
         <div class="col-md-4">
             {% if not defter.onayli %}
-            <h5>Yeni Olay Kaydı</h5>
+            <div class="d-flex align-items-center mb-2">
+                <h5 class="mb-0 me-2">Yeni Olay Kaydı</h5>
+                <!-- Devriye Kontrol Noktaları Butonu -->
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#devriyeKontrolModal">
+                    <i class="bi bi-geo-alt me-1"></i> Devriye Kontrol Noktaları
+                </button>
+            </div>
+
             <form method="POST" class="mb-4">
                 {% csrf_token %}
                 <div class="mb-2">
@@ -200,4 +207,7 @@
         </div>
     </div>
 </div>
+
+<!-- Devriye Kontrol Noktaları Modalını include ediyoruz -->
+{% include "nobet_defteri/_devriye_kontrol_noktalari.html" %}
 {% endblock %}

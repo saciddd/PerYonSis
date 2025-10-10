@@ -641,7 +641,15 @@
                                                 <div class="editable-input">{{ form.dogum_tarihi }}</div>
                                             </div>
                                             <div class="col-md-3 mb-1">
-                                                <div class="info-label">Telefon</div>
+                                                <div class="info-label">
+                                                    Telefon
+                                                    {% if personel.telefon %}
+                                                        <!-- Whatsapp Web butonu -->
+                                                        <a href="https://web.whatsapp.com/send/?phone=90{{ personel.telefon }}" target="_blank" class="ms-1" title="Whatsapp ile mesaj gönder">
+                                                            <i class="bi bi-whatsapp" style="color: #25d366; font-size: 1.1em;"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                </div>
                                                 <span class="editable-display info-value">{{ personel.telefon|default:"-" }}</span>
                                                 <div class="editable-input">{{ form.telefon }}</div>
                                             </div>

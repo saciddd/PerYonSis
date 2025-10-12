@@ -1,0 +1,234 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ form_adi|default:"İlişik Kesme Formu" }}</title>
+  </head>
+  <body>
+    <!-- Header -->
+    <div class="header">
+      {% include "common/pdf_header_dikey.html" with kurum=kurum form_adi=form_adi dokuman_kodu=dokuman_kodu yayin_tarihi=yayin_tarihi revizyon_tarihi=revizyon_tarihi revizyon_no=revizyon_no sayfa_no=sayfa_no pdf_logo=pdf_logo %}
+    </div>
+
+    <style>
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid black;
+        padding: 5px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+      }
+      .konum {
+        text-align: center;
+        transform: rotate(-0.25turn);
+      }
+      p {
+        padding: 0px;
+        margin: 0px;
+      }
+      .satir {
+        height: 80px;
+      }
+    </style>
+
+    <table>
+      <colgroup>
+        <col style="width: 15%" />
+        <col style="width: 35%" />
+        <col style="width: 15%" />
+        <col style="width: 35%" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th colspan="4" style="text-align: center">
+            İLİŞİĞİ KESİLECEK PERSONELİN
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Adı Soyadı</td>
+          <td>{{ personel.ad_soyad }}</td>
+          <td>Unvanı</td>
+          <td>{{ personel.unvan.ad|default:"-" }}</td>
+        </tr>
+        <tr>
+          <td>Sicil No</td>
+          <td>{{ personel.sicil_no|default:" " }}</td>
+          <td>Birimi</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Ayrılma Sebebi</td>
+          <td>{{ personel.ayrilma_nedeni }}</td>
+          <td>Ayrılış Tarihi</td>
+          <td>{{ personel.ayrilma_tarihi|date:"d.m.Y" }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <br />
+
+    <table>
+      <tbody>
+        <tr>
+          <td colspan="5" style="text-align: center">
+            <p><strong>İLİŞİĞİ BULUNMADIĞINI BİLDİRENİN</strong></p>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="text-align: center">
+            <p><strong>BİRİMİ</strong></p>
+          </td>
+          <td style="text-align: center">
+            <p><strong>ADI SOYADI</strong></p>
+          </td>
+          <td style="text-align: center">
+            <p><strong>İMZA</strong></p>
+          </td>
+          <td style="text-align: center">
+            <p><strong>TARİH</strong></p>
+          </td>
+        </tr>
+        <tr class="satir">
+          <td style="text-align: center">
+            <strong class="konum">1.Blok</strong>
+          </td>
+          <td>
+            <p><strong>Ayniyat Saymanlığı;</strong></p>
+            <p>Üzerindeki zimmetler düşülmüştür:</p>
+            <p>
+              ☐ Bilgisayar ☐ Yazıcı ☐ Tarayıcı ☐ Telefon ☐ Demirbaşlar ☐ Diğer
+            </p>
+          </td>
+          <td width="88"></td>
+          <td width="76"></td>
+          <td width="82"></td>
+        </tr>
+        <tr class="satir">
+          <td width="32">
+            <p><strong class="konum">1.Blok</strong></p>
+          </td>
+          <td width="419">
+            <p><strong>Mutemetlik;</strong></p>
+            <p>Maaş ve diğer mali borcu yoktur.</p>
+          </td>
+          <td width="88"></td>
+          <td width="76"></td>
+          <td width="82"></td>
+        </tr>
+        <tr class="satir">
+          <td width="32">
+            <p><strong class="konum">2.Blok</strong></p>
+          </td>
+          <td width="419">
+            <p><strong>İzin İşleri;</strong></p>
+            <p>Ayrılış tarihi itibariyle mevcut izin sayısı:</p>
+            <p>Yıl içerisindeki tek hekim raporlu gün sayısı:</p>
+          </td>
+          <td width="88"></td>
+          <td width="76"></td>
+          <td width="82"></td>
+        </tr>
+        <tr class="satir">
+          <td width="32">
+            <p><strong class="konum">5.Blok</strong></p>
+          </td>
+          <td width="419">
+            <p><strong>Biyomedikal Depo;</strong></p>
+            <p>Üzerindeki zimmetler düşülmüştür.</p>
+            <p>☐ Biyomedikal Cihazlar ☐ Diğer</p>
+          </td>
+          <td width="88"></td>
+          <td width="76"></td>
+          <td width="82"></td>
+        </tr>
+        <tr class="satir">
+          <td width="32">
+            <p><strong class="konum">1.Blok</strong></p>
+          </td>
+          <td width="419">
+            <p><strong>Bilgi İşlem(Basın ve İletişim);</strong></p>
+            <p>☐ Personel Kimliği teslim alınmıştır.</p>
+            <p>☐ Kullanıcı yetkileri iptal edilmiştir.</p>
+          </td>
+          <td width="88"></td>
+          <td width="76"></td>
+          <td width="82"></td>
+        </tr>
+        <tr class="satir">
+          <td width="32">
+            <p><strong class="konum">Acil</strong></p>
+          </td>
+          <td width="419">
+            <p><strong>Eczane;</strong></p>
+            <p>☐ Üzerindeki zimmetler düşülmüştür.</p>
+          </td>
+          <td width="88"></td>
+          <td width="76"></td>
+          <td width="82"></td>
+        </tr>
+        <tr class="satir">
+          <td width="32"></td>
+          <td width="419">
+            <p><strong>Birim Sorumlusu;</strong></p>
+            <p>☐ Görevi ile ilgili belge, döküman ve dosyaları teslim etti.</p>
+          </td>
+          <td width="88"></td>
+          <td width="76"></td>
+          <td width="82"></td>
+        </tr>
+        <tr class="satir">
+          <td width="32">
+            <p><strong class="konum">5.Blok</strong></p>
+          </td>
+          <td width="419">
+            <p><strong>Eğitim Birimi:</strong></p>
+            <p>☐ Kullanıcı Adı ve Şifresi Pasif Edildi / Kapatıldı</p>
+          </td>
+          <td width="88"></td>
+          <td width="76"></td>
+          <td width="82"></td>
+        </tr>
+        <tr class="satir">
+          <td width="32">
+            <p><strong class="konum">1.Blok</strong></p>
+          </td>
+          <td width="419">
+            <p><strong>İnsan Kaynakları;</strong></p>
+            <p>Ayrılmasında sakınca yoktur.</p>
+          </td>
+          <td width="88"></td>
+          <td width="76"></td>
+          <td width="82"></td>
+        </tr>
+        <tr>
+          <td width="32"></td>
+          <td width="419">
+            <p><strong>Giyim Yardımı;</strong></p>
+            <p>
+              - Toplu İş Sözleşmesi kapsamında geçmiş yıllar dahil bu ana kadar
+              ki bütün mali haklarımı ve Giyim Yardımımı (Yıllık Giyim Yardımı
+              ödemesi ile Unvanıma Uygun İşbaşı Giysisi ve Ekipmanı) aldım.
+            </p>
+            <p>
+              - Memurlara Yapılacak Giyim Yardımı Yönetmeliği kapsamında kadro
+              unvanım ve sınıfıma uygun ilgili yıla ait Giyim Yardımını aldım.
+            </p>
+          </td>
+          <td width="88"></td>
+          <td width="76"></td>
+          <td width="82"></td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

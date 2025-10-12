@@ -44,9 +44,6 @@ class PersonelForm(forms.ModelForm):
             'adres': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'telefon': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Telefon'}),
             'eposta': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'E-posta'}),
-            'ayrilma_tarihi': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
-            'ayrilma_nedeni': forms.Select(attrs={'class': 'form-select'}),
-            'ayrilma_detay': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'dhy': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'sgk': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'dss': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -74,7 +71,6 @@ class PersonelForm(forms.ModelForm):
         self.fields['kamu_baslangic_tarihi'].required = False
         self.fields['mazeret_baslangic'].required = False
         self.fields['mazeret_bitis'].required = False
-        self.fields['ayrilma_tarihi'].required = False
     
     def clean_tc_kimlik_no(self):
         tc_kimlik_no = self.cleaned_data.get('tc_kimlik_no')

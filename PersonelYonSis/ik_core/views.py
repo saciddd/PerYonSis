@@ -2,10 +2,13 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models.query import QuerySet
 from django.db.models import Q, Value as V
 from django.db.models.functions import Lower, Concat
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.staticfiles.storage import staticfiles_storage
+from django.template.loader import render_to_string, get_template
+import pdfkit
 from django.urls import reverse, reverse_lazy
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib import messages # Import messages framework
 from django.contrib.auth.decorators import login_required
 from .models.personel import Personel, Unvan, Brans, Kurum, OzelDurum # Import OzelDurum
@@ -307,11 +310,153 @@ def tanimlamalar(request):
 
 # Placeholder view for Ilisik Kesme Formu
 def ilisik_kesme_formu(request, pk):
+    # Prepare PDF-specific context using the supplied PDF template (ilisik_kesme_formu.html)
+    try:
+        file_url = f"file:///{staticfiles_storage.path('logo/kdh_logo.png')}"
+    except Exception:
+        file_url = None
+    
     personel = get_object_or_404(Personel, pk=pk)
-    # TODO: Implement the logic for generating/displaying the form
-    context = {
+    
+    # prepare context matching the PDF template
+    context_pdf = {
+        'dokuman_kodu': 'KU.FR.31',
+        'form_adi': 'İlişik Kesme Formu',
+        'yayin_tarihi': 'Mayıs 2023',
+        'kurum': 'KAYSERİ DEVLET HASTANESİ',
+        'revizyon_tarihi': '-',
+        'revizyon_no': '0',
+        'sayfa_no': '1',
+        'pdf_logo': file_url,
         'personel': personel,
-        # Add any other context needed for the form
     }
-    # Replace 'ik_core/ilisik_kesme_formu.html' with the actual template path
-    return render(request, 'ik_core/ilisik_kesme_formu_placeholder.html', context)
+
+    # Render PDF template and generate PDF (landscape)
+    try:
+        template = get_template('ik_core/pdf/ilisik_kesme_formu.html')
+        html = template.render({**context_pdf})
+    except Exception:
+        html = render_to_string('ik_core/pdf/ilisik_kesme_formu.html', context_pdf)
+
+    config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+    options = {
+        'page-size': 'A4',
+        'orientation': 'Portrait',
+        'margin-top': '1.5cm',
+        'margin-right': '1.5cm',
+        'margin-bottom': '1.1cm',
+        'margin-left': '1.5cm',
+        'encoding': 'UTF-8',
+        'no-outline': None,
+        'enable-local-file-access': '',
+        'enable-external-links': True,
+        'quiet': ''
+    }
+
+    pdf = pdfkit.from_string(html, False, options=options, configuration=config)
+    response = HttpResponse(pdf, content_type='application/pdf')
+    filename = f"ilisik_kesme_formu_{personel.ad_soyad}.pdf"
+    filename = filename.replace(' ', '_')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
+
+@require_http_methods(["POST"])
+def ayrilis_kaydet(request, pk):
+    """Ayrılış bilgilerini kaydet"""
+    if request.method == 'POST':
+        try:
+            personel = get_object_or_404(Personel, pk=pk)
+            
+            # Ayrılış bilgilerini al
+            ayrilma_tarihi = request.POST.get('ayrilma_tarihi')
+            ayrilma_nedeni = request.POST.get('ayrilma_nedeni')
+            ayrilma_detay = request.POST.get('ayrilma_detay', '')
+            
+            # Validasyon
+            if not ayrilma_tarihi:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Ayrılma tarihi zorunludur.'
+                })
+            
+            if not ayrilma_nedeni:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Ayrılma nedeni seçilmelidir.'
+                })
+            
+            # Personel bilgilerini güncelle
+            personel.ayrilma_tarihi = ayrilma_tarihi
+            personel.ayrilma_nedeni = ayrilma_nedeni
+            personel.ayrilma_detay = ayrilma_detay
+            personel.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Ayrılış bilgileri başarıyla kaydedildi.'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Hata oluştu: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Geçersiz istek.'
+    })
+
+@require_http_methods(["POST"])
+def personeli_aktiflestir(request, pk):
+    """Personeli aktifleştir - ayrılış bilgilerini temizle"""
+    if request.method == 'POST':
+        try:
+            personel = get_object_or_404(Personel, pk=pk)
+            
+            # Ayrılış bilgilerini temizle
+            personel.ayrilma_tarihi = None
+            personel.ayrilma_nedeni = None
+            personel.ayrilma_detay = None
+            personel.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Personel başarıyla aktifleştirildi.'
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Hata oluştu: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Geçersiz istek.'
+    })
+
+@require_http_methods(["POST"])
+def mazeret_sil(request, pk):
+    """İlgili personel için mazeret kaydını sil"""
+    if request.method == 'POST':
+        try:
+            personel = get_object_or_404(Personel, pk=pk)
+            personel.mazeret_durumu = None
+            personel.mazeret_baslangic = None
+            personel.mazeret_bitis = None
+            personel.save()
+            return JsonResponse({
+                'success': True,
+                'message': 'Mazeret kaydı silindi.'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Hata oluştu: {str(e)}'
+            })
+    return JsonResponse({
+        'success': False,
+        'message': 'Geçersiz istek.'
+    })    
+    

@@ -3,6 +3,7 @@
 {% block extra_css %}
 <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <style>
+    /* Personel Detay CSS */
     :root {
         --primary-color: #2c3e50;
         --secondary-color: #3498db;
@@ -203,6 +204,31 @@
         align-items: center;
     }
     
+    /* Ayrılış input alanları için özel stiller */
+    .ayrilis-input {
+        display: none;
+    }
+    
+    .ayrilis-input input,
+    .ayrilis-input select,
+    .ayrilis-input textarea {
+        width: 100%;
+        margin-bottom: 0;
+        font-size: 0.8rem;
+        padding: 2px 4px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+    }
+    
+    .ayrilis-input input:focus,
+    .ayrilis-input select:focus,
+    .ayrilis-input textarea:focus {
+        border-color: #86b7fe;
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
     /* Personel başlık kısmı */
     .personel-header {
         margin-bottom: 8px;
@@ -367,9 +393,6 @@
                 <input type="hidden" name="adres" value="{{ personel.adres|default:'' }}">
                 <input type="hidden" name="memur_devreden_izin" value="{{ personel.memur_devreden_izin|default:0 }}">
                 <input type="hidden" name="memur_hak_ettigi_izin" value="{{ personel.memur_hak_ettigi_izin|default:0 }}">
-                <input type="hidden" name="ayrilma_tarihi" value="{{ personel.ayrilma_tarihi|date:'Y-m-d'|default:'' }}">
-                <input type="hidden" name="ayrilma_nedeni" value="{{ personel.ayrilma_nedeni|default:'' }}">
-                <input type="hidden" name="ayrilma_detay" value="{{ personel.ayrilma_detay|default:'' }}">
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <div class="d-flex align-items-center">
@@ -489,7 +512,10 @@
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">Atama Karar Tarihi</div>
                                                 <span class="editable-display info-value">{{ personel.atama_karar_tarihi|date:"d.m.Y"|default:"-" }}</span>
-                                                <div class="editable-input">{{ form.atama_karar_tarihi }}</div>
+                                                <div class="editable-input">
+                                                    <input type="date" class="form-control" name="atama_karar_tarihi" 
+                                                           value="{% if personel.atama_karar_tarihi %}{{ personel.atama_karar_tarihi|date:'Y-m-d' }}{% endif %}">
+                                                </div>
                                             </div>
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">Atama Karar No</div>
@@ -506,12 +532,18 @@
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">Göreve Başlama Tarihi</div>
                                                 <span class="editable-display info-value">{{ personel.goreve_baslama_tarihi|date:"d.m.Y"|default:"-" }}</span>
-                                                <div class="editable-input">{{ form.goreve_baslama_tarihi }}</div>
+                                                <div class="editable-input">
+                                                    <input type="date" class="form-control" name="goreve_baslama_tarihi" 
+                                                           value="{% if personel.goreve_baslama_tarihi %}{{ personel.goreve_baslama_tarihi|date:'Y-m-d' }}{% endif %}">
+                                                </div>
                                             </div>
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">Memuriyete Başlama Tarihi</div>
                                                 <span class="editable-display info-value">{{ personel.memuriyete_baslama_tarihi|date:"d.m.Y"|default:"-" }}</span>
-                                                <div class="editable-input">{{ form.memuriyete_baslama_tarihi }}</div>
+                                                <div class="editable-input">
+                                                    <input type="date" class="form-control" name="memuriyete_baslama_tarihi" 
+                                                           value="{% if personel.memuriyete_baslama_tarihi %}{{ personel.memuriyete_baslama_tarihi|date:'Y-m-d' }}{% endif %}">
+                                                </div>
                                             </div>
                                         </div>                                        
                                         <div class="row">
@@ -523,7 +555,10 @@
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label text-success">Kamu Başlangıç Tarihi</div>
                                                 <span class="editable-display info-value">{{ personel.kamu_baslangic_tarihi|date:"d.m.Y"|default:"-" }}</span>
-                                                <div class="editable-input">{{ form.kamu_baslangic_tarihi }}</div>
+                                                <div class="editable-input">
+                                                    <input type="date" class="form-control" name="kamu_baslangic_tarihi" 
+                                                           value="{% if personel.kamu_baslangic_tarihi %}{{ personel.kamu_baslangic_tarihi|date:'Y-m-d' }}{% endif %}">
+                                                </div>
                                             </div>
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">Aile Hek. Sözleşmesi</div>
@@ -592,22 +627,35 @@
                                     </div>
                                     <div class="col-md-3">
                                         <div class="card border-secondary mt-3">
-                                            <div class="card-header bg-secondary text-white py-1 px-2">Mazeret Bilgileri</div>
+                                            <div class="card-header bg-secondary text-white py-1 px-2 d-flex justify-content-between align-items-center mb-0">Mazeret Bilgileri
+                                            <!-- Mazeret bilgileri sil butonu -->
+                                            <div class="d-flex justify-content-end">
+                                                <button type="button" class="btn btn-sm btn-dark" id="btnMazeretSil">
+                                                    <i class="bi bi-trash"></i> Mazeret Sil
+                                                </button>
+                                            </div>
+                                            </div>
                                             <div class="card-body py-2 px-2">
                                                 <div class="mb-2">
                                                     <div class="info-label">Durum</div>
                                                     <span class="editable-display info-value">{{ personel.get_mazeret_durumu_display|default:"-" }}</span>
-                                                    <div class="editable-input">{{ form.mazeret_durumu }}</div>
+                                                    <div class="editable-input mazeret-input">{{ form.mazeret_durumu }}</div>
                                                 </div>
                                                 <div class="mb-2">
                                                     <div class="info-label">Başlangıç</div>
                                                     <span class="editable-display info-value">{{ personel.mazeret_baslangic|date:"d.m.Y"|default:"-" }}</span>
-                                                    <div class="editable-input">{{ form.mazeret_baslangic }}</div>
+                                                    <div class="editable-input">
+                                                        <input type="date" class="form-control" name="mazeret_baslangic" 
+                                                               value="{% if personel.mazeret_baslangic %}{{ personel.mazeret_baslangic|date:'Y-m-d' }}{% endif %}">
+                                                    </div>
                                                 </div>
                                                 <div>
                                                     <div class="info-label">Bitiş</div>
                                                     <span class="editable-display info-value">{{ personel.mazeret_bitis|date:"d.m.Y"|default:"-" }}</span>
-                                                    <div class="editable-input">{{ form.mazeret_bitis }}</div>
+                                                    <div class="editable-input">
+                                                        <input type="date" class="form-control" name="mazeret_bitis" 
+                                                               value="{% if personel.mazeret_bitis %}{{ personel.mazeret_bitis|date:'Y-m-d' }}{% endif %}">
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -638,7 +686,10 @@
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">Doğum Tarihi</div>
                                                 <span class="editable-display info-value">{{ personel.dogum_tarihi|date:"d.m.Y"|default:"-" }}</span>
-                                                <div class="editable-input">{{ form.dogum_tarihi }}</div>
+                                                <div class="editable-input">
+                                                    <input type="date" class="form-control" name="dogum_tarihi" 
+                                                           value="{% if personel.dogum_tarihi %}{{ personel.dogum_tarihi|date:'Y-m-d' }}{% endif %}">
+                                                </div>
                                             </div>
                                             <div class="col-md-3 mb-1">
                                                 <div class="info-label">
@@ -800,7 +851,10 @@
                                             -
                                         {% endif %}
                                     </span>
-                                    <div class="editable-input ayrilis-input">{{ form.ayrilma_tarihi }}</div>
+                                    <div class="editable-input ayrilis-input">
+                                        <input type="date" class="form-control" id="ayrilma_tarihi" name="ayrilma_tarihi" 
+                                               value="{% if personel.ayrilma_tarihi %}{{ personel.ayrilma_tarihi|date:'Y-m-d' }}{% endif %}">
+                                    </div>
                                 </div>
                                 <div class="mb-3">
                                     <div class="info-label">Ayrılma Nedeni</div>
@@ -811,12 +865,23 @@
                                             -
                                         {% endif %}
                                     </span>
-                                    <div class="editable-input ayrilis-input">{{ form.ayrilma_nedeni }}</div>
+                                    <div class="editable-input ayrilis-input">
+                                        <select class="form-select" id="ayrilma_nedeni" name="ayrilma_nedeni">
+                                            <option value="">Ayrılma nedeni seçiniz</option>
+                                            <option value="Emekli" {% if personel.ayrilma_nedeni == 'Emekli' %}selected{% endif %}>Emekli</option>
+                                            <option value="İstifa" {% if personel.ayrilma_nedeni == 'İstifa' %}selected{% endif %}>İstifa</option>
+                                            <option value="İhraç" {% if personel.ayrilma_nedeni == 'İhraç' %}selected{% endif %}>İhraç</option>
+                                            <option value="Vefat" {% if personel.ayrilma_nedeni == 'Vefat' %}selected{% endif %}>Vefat</option>
+                                            <option value="Diğer" {% if personel.ayrilma_nedeni == 'Diğer' %}selected{% endif %}>Diğer</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div class="mb-3">
                                     <div class="info-label">Ayrılma Detay</div>
                                     <span class="editable-display info-value">{{ personel.ayrilma_detay|default:"-" }}</span>
-                                    <div class="editable-input ayrilis-input">{{ form.ayrilma_detay }}</div>
+                                    <div class="editable-input ayrilis-input">
+                                        <textarea class="form-control" id="ayrilma_detay" name="ayrilma_detay" rows="2">{{ personel.ayrilma_detay|default:"" }}</textarea>
+                                    </div>
                                 </div>
                                 <div class="d-grid gap-2">
                                     <button type="button" class="btn btn-info {% if personel.ayrilma_tarihi %}d-none{% endif %}" id="ayrilisBaslatBtn">
@@ -828,9 +893,13 @@
                                     <a href="{% if personel.ayrilma_tarihi %}{% url 'ik_core:ilisik_kesme_formu' personel.pk %}{% else %}#{% endif %}"
                                        class="btn btn-primary {% if not personel.ayrilma_tarihi %}d-none{% endif %}"
                                        id="ilisikKesmeBtn"
-                                       {% if not personel.ayrilma_tarihi %}aria-disabled="true" tabindex="-1"{% endif %}>
+                                       {% if not personel.ayrilma_tarihi %}aria-disabled="true" tabindex="-1"{% endif %}
+                                       {% if personel.ayrilma_tarihi %}target="_blank" rel="noopener"{% endif %}>
                                        <i class="bi bi-file-earmark-text me-1"></i> İlişik Kesme Formu
                                     </a>
+                                    <button type="button" class="btn btn-warning {% if not personel.ayrilma_tarihi %}d-none{% endif %}" id="personeliAktiflestirBtn">
+                                        <i class="bi bi-arrow-clockwise me-1"></i> Personeli Aktifleştir
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -932,6 +1001,7 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     $(document).ready(function() {
         // Modalı açan butonun submit davranışını engelle
@@ -998,16 +1068,29 @@
         document.querySelectorAll('.editable-input select').forEach(el => {
             el.disabled = true;
         });
+        
+        // Ayrılış alanlarını başlangıçta devre dışı bırak
+        document.querySelectorAll('.ayrilis-input input, .ayrilis-input select, .ayrilis-input textarea').forEach(el => {
+            el.disabled = true;
+            if (el.type !== 'checkbox') {
+                el.readOnly = true;
+            }
+            el.style.backgroundColor = '#f8f9fa';
+            el.style.border = '1px solid #e9ecef';
+        });
 
-        // Select2 alanlarını devre dışı bırak
-        $('.form-select').prop('disabled', true);
+        // Select2 alanlarını devre dışı bırak (ayrılış ve mazeret alanları hariç)
+        $('.form-select:not(.ayrilis-input select):not(.mazeret-input select)').prop('disabled', true);
 
         // Düzenleme modu kontrolü
         const editBtn = document.getElementById('editBtn');
         const saveBtn = document.getElementById('saveBtn');
         const cancelBtn = document.getElementById('cancelBtn');
         const ayrilisBaslatBtn = document.getElementById('ayrilisBaslatBtn');
+        const ayrilisKaydetBtn = document.getElementById('ayrilisKaydetBtn');
         const ilisikKesmeBtn = document.getElementById('ilisikKesmeBtn');
+        const personeliAktiflestirBtn = document.getElementById('personeliAktiflestirBtn');
+        const btnMazeretSil = document.getElementById('btnMazeretSil');
 
         let originalValues = {};
 
@@ -1068,12 +1151,22 @@
             document.querySelectorAll('.editable-input select').forEach(el => {
                 el.disabled = false;
             });
+            // Ayrılış alanlarını devre dışı bırak
+            document.querySelectorAll('.ayrilis-input input, .ayrilis-input select, .ayrilis-input textarea').forEach(el => {
+                el.disabled = true;
+                if (el.type !== 'checkbox') {
+                    el.readOnly = true;
+                }
+                el.style.backgroundColor = '#f8f9fa';
+                el.style.border = '1px solid #e9ecef';
+                el.style.display = 'block';
+            });
 
             // Select2 alanlarını etkinleştir
             $('.form-select').prop('disabled', false);
 
-            // Select2 alanlarını yeniden başlat
-            $('.form-select').each(function() {
+            // Select2 alanlarını yeniden başlat (ayrılış ve mazeret alanları hariç)
+            $('.form-select:not(.ayrilis-input select):not(.mazeret-input select)').each(function() {
                 if (!$(this).hasClass('select2-hidden-accessible')) {
                     $(this).select2({
                         theme: 'bootstrap-5',
@@ -1087,6 +1180,59 @@
                         theme: 'bootstrap-5',
                         width: '100%',
                         allowClear: true
+                    });
+                }
+            });
+            
+            // Mazeret alanları için Select2 başlat
+            $('.mazeret-input select').each(function() {
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({
+                        theme: 'bootstrap-5',
+                        width: '100%',
+                        allowClear: true
+                    });
+                }
+            });
+        });
+
+        // Mazeret silme fonksiyonu
+        btnMazeretSil.addEventListener('click', function() {
+            Swal.fire({
+                title: 'Mazeret Sil',
+                text: 'Bu mazeret kaydını silmek istediğinize emin misiniz?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Evet, Sil',
+                cancelButtonText: 'İptal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: "{% url 'ik_core:mazeret_sil' personel.id %}",
+                        type: 'POST',
+                        data: {
+                            'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Başarılı',
+                                    text: 'Mazeret kaydı silindi!'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            }
+                        },
+                        error: function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Hata',
+                                text: 'Mazeret kaydı silinemedi!'
+                            });
+                        }
                     });
                 }
             });
@@ -1114,8 +1260,15 @@
                 el.disabled = true;
             });
 
-            // Select2 alanlarını devre dışı bırak
-            $('.form-select').prop('disabled', true);
+            // Select2 alanlarını devre dışı bırak (ayrılış ve mazeret alanları hariç)
+            $('.form-select:not(.ayrilis-input select):not(.mazeret-input select)').prop('disabled', true);
+            
+            // Mazeret Select2'yi temizle
+            $('.mazeret-input select').each(function() {
+                if ($(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2('destroy');
+                }
+            });
         });
 
         // Unvan değiştiğinde branşları filtrele
@@ -1149,15 +1302,39 @@
         // Ayrılış işlemi başlat
         if (ayrilisBaslatBtn) {
             ayrilisBaslatBtn.addEventListener('click', function() {
+                // Ayrılış input alanlarını görünür yap ve etkinleştir
                 document.querySelectorAll('.ayrilis-input').forEach(el => {
-                    if (el.tagName === 'SELECT') {
-                        el.disabled = false;
-                    } else {
-                        el.readOnly = false;
+                    el.style.display = 'block';
+                    
+                    // Input alanlarını etkinleştir
+                    const inputs = el.querySelectorAll('input, select, textarea');
+                    inputs.forEach(input => {
+                        input.disabled = false;
+                        input.readOnly = false;
+                        input.style.backgroundColor = '#fff';
+                        input.style.border = '1px solid #ced4da';
+                    });
+                });
+                
+                // Ayrılış select alanları için Select2 başlat (sadece ayrılış alanları)
+                $('.ayrilis-input select').each(function() {
+                    if (!$(this).hasClass('select2-hidden-accessible')) {
+                        $(this).select2({
+                            theme: 'bootstrap-5',
+                            width: '100%',
+                            allowClear: true
+                        });
                     }
                 });
                 
-                const ayrilisKaydetBtn = document.getElementById('ayrilisKaydetBtn');
+                // Ayrılış display alanlarını gizle
+                document.querySelectorAll('.ayrilis-input').forEach(el => {
+                    const displayEl = el.previousElementSibling;
+                    if (displayEl && displayEl.classList.contains('editable-display')) {
+                        displayEl.style.display = 'none';
+                    }
+                });
+                
                 if (ayrilisKaydetBtn) {
                     ayrilisKaydetBtn.classList.remove('d-none');
                 }
@@ -1165,6 +1342,120 @@
                 
                 // İlişik kesme butonunu güncelle
                 ilisikKesmeBtn.classList.add('d-none');
+            });
+        }
+        
+        // Ayrılış kaydetme fonksiyonu
+        if (ayrilisKaydetBtn) {
+            ayrilisKaydetBtn.addEventListener('click', function() {
+                const ayrilmaTarihi = document.getElementById('ayrilma_tarihi').value;
+                const ayrilmaNedeni = document.getElementById('ayrilma_nedeni').value;
+                const ayrilmaDetay = document.getElementById('ayrilma_detay').value;
+                
+                if (!ayrilmaTarihi) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Uyarı',
+                        text: 'Ayrılma tarihi zorunludur!'
+                    });
+                    return;
+                }
+                
+                if (!ayrilmaNedeni) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Uyarı',
+                        text: 'Ayrılma nedeni seçilmelidir!'
+                    });
+                    return;
+                }
+                
+                // AJAX ile ayrılış bilgilerini kaydet
+                $.ajax({
+                    url: "{% url 'ik_core:ayrilis_kaydet' personel.id %}",
+                    type: 'POST',
+                    data: {
+                        'ayrilma_tarihi': ayrilmaTarihi,
+                        'ayrilma_nedeni': ayrilmaNedeni,
+                        'ayrilma_detay': ayrilmaDetay,
+                        'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Başarılı',
+                                text: 'Ayrılış bilgileri kaydedildi!'
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Hata',
+                                text: response.message || 'Ayrılış bilgileri kaydedilemedi!'
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Hata',
+                            text: 'Sunucu hatası oluştu!'
+                        });
+                    }
+                });
+            });
+        }
+        
+        // Personeli aktifleştirme fonksiyonu
+        if (personeliAktiflestirBtn) {
+            personeliAktiflestirBtn.addEventListener('click', function() {
+                Swal.fire({
+                    title: 'Personeli Aktifleştir',
+                    text: 'Bu personeli aktifleştirmek istediğinize emin misiniz? Ayrılış bilgileri silinecektir.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Evet, Aktifleştir',
+                    cancelButtonText: 'İptal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // AJAX ile personeli aktifleştir
+                        $.ajax({
+                            url: "{% url 'ik_core:personeli_aktiflestir' personel.id %}",
+                            type: 'POST',
+                            data: {
+                                'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Başarılı',
+                                        text: 'Personel aktifleştirildi!'
+                                    }).then(() => {
+                                        location.reload();
+                                    });
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Hata',
+                                        text: response.message || 'Personel aktifleştirilemedi!'
+                                    });
+                                }
+                            },
+                            error: function() {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Hata',
+                                    text: 'Sunucu hatası oluştu!'
+                                });
+                            }
+                        });
+                    }
+                });
             });
         }
         
@@ -1198,6 +1489,9 @@
                 
                 // Ana form alanlarını devre dışı bırak
                 document.querySelectorAll('.editable-input:not(.ayrilis-input)').forEach(el => el.disabled = true);
+                
+                // Hidden input'ları ayrılış bilgileri ile güncelle
+                updateAyrilisHiddenInputs();
             }
         });
         
@@ -1205,6 +1499,31 @@
         function updateHiddenInputs() {
             // Mevcut değerleri hidden input'lara kopyala
             document.querySelectorAll('.editable-input:not(.ayrilis-input) input, .editable-input:not(.ayrilis-input) select, .editable-input:not(.ayrilis-input) textarea').forEach(el => {
+                const name = el.name;
+                if (!name) return;
+                
+                const hiddenInput = document.querySelector(`input[name="${name}"]`);
+                if (hiddenInput) {
+                    if (el.type === 'checkbox') {
+                        hiddenInput.value = el.checked ? 'on' : '';
+                    } else if (el.multiple) {
+                        // Multiple select için
+                        const selectedValues = Array.from(el.selectedOptions).map(opt => opt.value);
+                        hiddenInput.value = selectedValues.join(',');
+                    } else if (el.type === 'date') {
+                        // Tarih alanları için özel işlem
+                        hiddenInput.value = el.value;
+                    } else {
+                        hiddenInput.value = el.value;
+                    }
+                }
+            });
+        }
+        
+        // Ayrılış hidden input'ları güncelle
+        function updateAyrilisHiddenInputs() {
+            // Ayrılış bilgilerini hidden input'lara kopyala
+            document.querySelectorAll('.ayrilis-input input, .ayrilis-input select, .ayrilis-input textarea').forEach(el => {
                 const name = el.name;
                 if (!name) return;
                 

@@ -1,0 +1,62 @@
+{% load static %}
+<table width="100%" style="border: 1px solid black; border-collapse: collapse; margin-bottom: 10px;">
+  <tr>
+    <td rowspan="5" style="border: 1px solid black; width: 10%; text-align: center;">
+      {% if pdf_logo %}
+        <img src="{{ pdf_logo }}" height="90">
+      {% else %}
+        <img src="{% static 'logo/kdh_logo.png' %}" height="90">
+      {% endif %}
+    </td>
+    <td style="border: 1px solid black; width: 60%; text-align: center;">
+      <strong>T.C.</strong><br>
+      <strong>SAĞLIK BAKANLIĞI</strong><br>
+      {{ kurum }}<br>
+      {{ form_adi }}
+    </td>
+    <td style="border: 1px solid black; width: 20%; text-align: right; font-size: 12px; vertical-align: top; padding: 0;">
+      <table width="100%" style="border-collapse: collapse;">
+        <tr>
+          <td style="border-bottom: 1px solid black; border-right: 1px solid #212121; border-left: none; border-top: none; padding: 2px 4px; width: 50%;">
+        Döküman Kodu:
+          </td>
+          <td style="border-bottom: 1px solid black; border-right: none; border-left: none; border-top: none; padding: 2px 4px;">
+        {{ dokuman_kodu }}
+          </td>
+        </tr>
+        <tr>
+          <td style="border-bottom: 1px solid black; border-right: 1px solid #212121; border-left: none; border-top: none; padding: 2px 4px;">
+        Yayın Tarihi:
+          </td>
+          <td style="border-bottom: 1px solid black; border-right: none; border-left: none; border-top: none; padding: 2px 4px;">
+        {{ yayin_tarihi }}
+          </td>
+        </tr>
+        <tr>
+          <td style="border-bottom: 1px solid black; border-right: 1px solid #212121; border-left: none; border-top: none; padding: 2px 4px;">
+        Revizyon Tarihi:
+          </td>
+          <td style="border-bottom: 1px solid black; border-right: none; border-left: none; border-top: none; padding: 2px 4px;">
+        {{ revizyon_tarihi }}
+          </td>
+        </tr>
+        <tr>
+          <td style="border-bottom: 1px solid black; border-right: 1px solid #212121; border-left: none; border-top: none; padding: 2px 4px;">
+        Revizyon No:
+          </td>
+          <td style="border-bottom: 1px solid black; border-right: none; border-left: none; border-top: none; padding: 2px 4px;">
+        {{ revizyon_no }}
+          </td>
+        </tr>
+        <tr>
+          <td style="border: none; border-right: 1px solid #212121; padding: 2px 4px;">
+        Sayfa No:
+          </td>
+          <td style="border: none; padding: 2px 4px;">
+        {{ sayfa_no }}
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

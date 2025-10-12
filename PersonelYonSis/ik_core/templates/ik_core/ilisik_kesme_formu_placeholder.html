@@ -1,9 +1,46 @@
-{% extends "base.html" %}
-
-{% block content %}
+{% load static %}
 <div class="container">
+	<table width="100%" style="border-collapse: collapse;" cellpadding="1">
+  <tbody>
+    <tr>
+      <td width="120" rowspan="5">
+		{% if pdf_logo %}
+        <img src="{{ pdf_logo }}" height="90">
+     	 {% else %}
+        <img src="{% static 'logo/kdh_logo.png' %}" height="90">
+      	{% endif %}
+		</td>
+      <td rowspan="5" align="center" valign="middle" bgcolor="#E8E8E8"><table border="0" cellspacing="0" cellpadding="0" width="703">
+        <tr>
+          <td width="434"><p align="center">KAYSERİ DEVLET HASTANESİ<br>
+            <strong>İLİŞİK KESME FORMU</strong> </p></td>
+        </tr>
+      </table></td>
+      <td width="120">Döküman Kodu&nbsp;</td>
+      <td>&nbsp;KU.FR.31</td>
+    </tr>
+    <tr>
+      <td>&nbsp;Yayın Tarihi</td>
+      <td>&nbsp;MAYIS 2023</td>
+    </tr>
+    <tr>
+      <td>&nbsp;Revizyon Tarihi</td>
+      <td>&nbsp;-</td>
+    </tr>
+    <tr>
+      <td>&nbsp;Revizyon No&nbsp;&nbsp;</td>
+      <td width="120">&nbsp;0</td>
+    </tr>
+    <tr>
+      <td>&nbsp;Sayfa</td>
+      <td>&nbsp;1/1</td>
+    </tr>
+  </tbody>
+</table>
+
+  <h3>&nbsp;</h3>
     <h3>İlişik Kesme Formu - {{ personel.ad_soyad }}</h3>
-    <hr>
+<hr>
     <div class="alert alert-info" role="alert">
         Bu sayfa ilişik kesme formu için bir yer tutucudur. Formun içeriği ve işlevselliği daha sonra eklenecektir.
     </div>
@@ -18,4 +55,3 @@
 
     <a href="{% url 'ik_core:personel_detay' personel.pk %}" class="btn btn-secondary">Geri Dön</a>
 </div>
-{% endblock %}

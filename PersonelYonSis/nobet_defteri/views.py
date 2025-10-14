@@ -23,6 +23,7 @@ User = get_user_model()
 def nobet_defteri_list(request):
     defterler = NobetDefteri.objects.all().order_by('-tarih', '-created_at')
     onay_yetkisi = 'Nöbet Defteri Onaylayabilir' in get_user_permissions(request.user)
+    silme_yetkisi = 'Nöbet Defteri Silebilir' in get_user_permissions(request.user)
     # Her defter için önemli olay sayısını ekle
     defterler_with_onemli = []
     for defter in defterler:
@@ -31,7 +32,7 @@ def nobet_defteri_list(request):
             'defter': defter,
             'onemli_sayi': onemli_sayi
         })
-    return render(request, 'nobet_defteri/list.html', {'defterler_with_onemli': defterler_with_onemli, 'onay_yetkisi': onay_yetkisi})
+    return render(request, 'nobet_defteri/list.html', {'defterler_with_onemli': defterler_with_onemli, 'onay_yetkisi': onay_yetkisi, 'silme_yetkisi': silme_yetkisi})
 
 # Yeni nöbet defteri oluştur
 def nobet_defteri_olustur(request):
@@ -231,6 +232,16 @@ def nobet_defteri_onayla(request, defter_id):
     defter.onay_tarihi = now()
     defter.save()
     messages.success(request, "Nöbet defteri onaylandı.")
+    return redirect('nobet_defteri:liste')
+
+# Nöbet defteri sil
+def nobet_defteri_sil(request, defter_id):
+    if not request.user.has_permission('Nöbet Defteri Silebilir'):
+        return HttpResponseForbidden("Nöbet defteri silme yetkiniz yok.")
+
+    defter = get_object_or_404(NobetDefteri, id=defter_id)
+    defter.delete()
+    messages.success(request, "Nöbet defteri silindi.")
     return redirect('nobet_defteri:liste')
 
 def nobet_defteri_olaylar_modal(request, defter_id):

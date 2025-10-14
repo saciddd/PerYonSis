@@ -61,6 +61,9 @@
                         <button type='button' class='btn btn-sm btn-success' onclick='onaylaSweetAlert("{{ item.defter.id }}", "{{ item.defter.tarih|date:"d.m.Y" }}", "{{ item.defter.nobet_turu }}")'>Onayla</button>
                     {% endif %}
                     <button type="button" class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#pdfModal{{ item.defter.id }}">Yazdır</button>
+                    {% if silme_yetkisi %}
+                        <button type="button" class="btn btn-sm btn-danger" onclick="silSweetAlert('{{ item.defter.id }}', '{{ item.defter.tarih|date:"d.m.Y" }}', '{{ item.defter.nobet_turu }}')">Sil</button>
+                    {% endif %}
 
                     <!-- Modal -->
                     <div class="modal fade" id="pdfModal{{ item.defter.id }}" tabindex="-1" aria-labelledby="pdfModalLabel{{ item.defter.id }}" aria-hidden="true">
@@ -169,6 +172,22 @@ function onaylaSweetAlert(defterId, tarih, tur) {
     }).then(function(result) {
         if (result.isConfirmed) {
             window.location.href = '/nobet_defteri/' + defterId + '/onayla/';
+        }
+    });
+}
+
+function silSweetAlert(defterId, tarih, tur) {
+    Swal.fire({
+        title: 'Silmek istiyor musunuz?',
+        html: `<b>${tarih}</b> tarihli <b>${tur}</b> defterini silmek istiyor musunuz?<br><small class="text-danger">Bu işlem geri alınamaz!</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, Sil',
+        cancelButtonText: 'Vazgeç',
+        confirmButtonColor: '#dc3545'
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            window.location.href = '/nobet_defteri/' + defterId + '/sil/';
         }
     });
 }

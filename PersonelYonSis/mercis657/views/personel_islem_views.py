@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from datetime import datetime, date
 import json
-from ..models import Personel, PersonelListesi, PersonelListesiKayit, Mesai, Mesai_Tanimlari, ResmiTatil, MazeretKaydi
+from ..models import Personel, PersonelListesi, PersonelListesiKayit, Mesai, Mesai_Tanimlari, ResmiTatil, MazeretKaydi, SabitMesai
 from ..utils import hesapla_fazla_mesai
 
 
@@ -62,6 +62,22 @@ def personel_profil(request, personel_id, liste_id, year, month):
     """Personel profil modalını döner"""
     personel = get_object_or_404(Personel, pk=personel_id)
     liste = get_object_or_404(PersonelListesi, pk=liste_id)
+    # Tüm Sabit mesaileri çekiyoruz - güvenli şekilde
+    try:
+        # Problemli ara_dinlenme değerlerini filtrele
+        sabit_mesailer = []
+        for sm in SabitMesai.objects.all():
+            try:
+                # ara_dinlenme değerini kontrol et
+                if sm.ara_dinlenme is not None:
+                    float(sm.ara_dinlenme)
+                sabit_mesailer.append(sm)
+            except (ValueError, TypeError):
+                # Problemli kayıtları atla
+                continue
+    except Exception as e:
+        # Eğer veritabanında problem varsa boş liste döndür
+        sabit_mesailer = []
 
     kayit, created = PersonelListesiKayit.objects.get_or_create(
         liste=liste,
@@ -73,6 +89,10 @@ def personel_profil(request, personel_id, liste_id, year, month):
         personel=personel
     ).order_by('-baslangic_tarihi')
 
+    # year ve month'u integer'a çevir
+    year = int(year)
+    month = int(month)
+    
     hesaplama = hesapla_fazla_mesai(kayit, year, month)
     mesai_tanimlari = Mesai_Tanimlari.objects.filter(GecerliMesai=True)
 
@@ -101,6 +121,7 @@ def personel_profil(request, personel_id, liste_id, year, month):
 
     context = {
         'personel': personel,
+        'sabit_mesailer' : sabit_mesailer,
         'gunler': gunler,
         "mesai_options": mesai_tanimlari,
         'liste': liste,
@@ -123,4 +144,84 @@ def personel_profil(request, personel_id, liste_id, year, month):
         },
     }
     return render(request, 'mercis657/personel_profil.html', context)
+
+
+@login_required
+@require_POST
+def sabit_mesai_guncelle(request):
+    """Sabit mesai güncelleme endpoint'i"""
+    try:
+        data = json.loads(request.body)
+        personel_id = data.get('personel_id')
+        liste_id = data.get('liste_id')
+        sabit_mesai_id = data.get('sabit_mesai_id')
+        
+        if not personel_id or not liste_id:
+            return JsonResponse({'status': 'error', 'message': 'Personel ID ve Liste ID gerekli'})
+        
+        # Personel ve liste kontrolü
+        personel = get_object_or_404(Personel, pk=personel_id)
+        liste = get_object_or_404(PersonelListesi, pk=liste_id)
+        
+        # PersonelListesiKayit'ı bul veya oluştur
+        kayit, created = PersonelListesiKayit.objects.get_or_create(
+            liste=liste,
+            personel=personel,
+            defaults={'radyasyon_calisani': False}
+        )
+        
+        # Sabit mesai güncelle
+        if sabit_mesai_id:
+            sabit_mesai = get_object_or_404(SabitMesai, pk=sabit_mesai_id)
+            kayit.sabit_mesai = sabit_mesai
+        else:
+            kayit.sabit_mesai = None
+            
+        kayit.save()
+        
+        return JsonResponse({
+            'status': 'success', 
+            'message': 'Sabit mesai başarıyla güncellendi'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error', 
+            'message': f'Hata oluştu: {str(e)}'
+        })
+
+
+@login_required
+@require_POST
+def toplu_sabit_mesai_ata(request, liste_id):
+    """Tüm personele sabit mesai durumu atar"""
+    try:
+        data = json.loads(request.body)
+        sabit_mesai_id = data.get('sabit_mesai_id')
+        
+        liste = get_object_or_404(PersonelListesi, pk=liste_id)
+        
+        # Sabit mesai kontrolü
+        sabit_mesai = None
+        if sabit_mesai_id:
+            sabit_mesai = get_object_or_404(SabitMesai, pk=sabit_mesai_id)
+        
+        # Tüm personel kayıtlarını güncelle
+        updated_count = PersonelListesiKayit.objects.filter(
+            liste=liste
+        ).update(sabit_mesai=sabit_mesai)
+        
+        sabit_mesai_text = sabit_mesai.aralik if sabit_mesai else "Hiçbiri"
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'{updated_count} personelin sabit mesai durumu "{sabit_mesai_text}" olarak güncellendi.',
+            'updated_count': updated_count
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error', 
+            'message': f'Hata oluştu: {str(e)}'
+        })
 

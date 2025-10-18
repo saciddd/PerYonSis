@@ -17,20 +17,44 @@
                             <tr><td><strong>TC Kimlik:</strong></td><td>{{ personel.PersonelTCKN }}</td></tr>
                             <tr><td><strong>Unvan:</strong></td><td>{{ personel.PersonelTitle|default:"-" }}</td></tr>
                             <tr><td><strong>Çalışma Durumu:</strong></td><td>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="radyasyonSwitch" 
-                                        {% if kayit.radyasyon_calisani %}checked{% endif %}>
-                                    <label class="form-check-label" for="radyasyonSwitch">
-                                        Radyasyon Çalışanı
-                                    </label>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="radyasyonSwitch" 
+                                                {% if kayit.radyasyon_calisani %}checked{% endif %}>
+                                            <label class="form-check-label" for="radyasyonSwitch">
+                                                Radyasyon Çalışanı
+                                            </label>
+                                        </div>
+                                        <small class="text-muted">
+                                            {% if kayit.radyasyon_calisani %}
+                                                Günlük 7 saat çalışma
+                                            {% else %}
+                                                Günlük 8 saat çalışma
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6 mt-2">
+                                        <div class="d-flex align-items-center">
+                                            <label for="sabit_mesai" class="form-label me-2 mb-0"><strong>Sabit Mesai:</strong></label>
+                                            <select class="form-control me-2" name="sabit_mesai" id="sabit_mesai">
+                                                <option value="">Hiçbiri</option>
+                                                {% for sabit_mesai in sabit_mesailer %}
+                                                    <option value="{{ sabit_mesai.id }}" 
+                                                        {% if kayit.sabit_mesai and kayit.sabit_mesai.id == sabit_mesai.id %}selected{% endif %}>
+                                                        {{ sabit_mesai.aralik }}
+                                                        {% if sabit_mesai.ara_dinlenme %}
+                                                            (Ara Dinlenme: {{ sabit_mesai.ara_dinlenme|floatformat:2 }} saat)
+                                                        {% endif %}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+                                            <button type="button" class="btn btn-success btn-sm" id="sabit_mesai_save" title="Sabit Mesai Kaydet">
+                                                <i class="bi bi-save"></i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <small class="text-muted">
-                                    {% if kayit.radyasyon_calisani %}
-                                        Günlük 7 saat çalışma
-                                    {% else %}
-                                        Günlük 8 saat çalışma
-                                    {% endif %}
-                                </small>
                             </td></tr>
                         </table>
                         <div class="d-flex justify-content-end mb-2">
@@ -341,4 +365,44 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+// Sabit mesai kaydetme fonksiyonu
+document.getElementById('sabit_mesai_save').addEventListener('click', function() {
+    const sabitMesaiId = document.getElementById('sabit_mesai').value;
+    const personelId = {{ personel.PersonelID }};
+    const listeId = {{ liste.id }};
+    const currentYear = {{ year }};
+    const currentMonth = {{ month }};
+    
+    // CSRF token al
+    const csrftoken = getCookie('csrftoken');
+    
+    fetch('{% url "mercis657:sabit_mesai_guncelle" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({
+            'personel_id': personelId,
+            'liste_id': listeId,
+            'year': currentYear,
+            'month': currentMonth,
+            'sabit_mesai_id': sabitMesaiId || null
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Başarı mesajı göster
+            alert('Sabit mesai başarıyla güncellendi!');
+        } else {
+            alert('Hata: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Bir hata oluştu!');
+    });
+});
 </script>

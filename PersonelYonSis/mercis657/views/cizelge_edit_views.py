@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, render
 from django.template.loader import get_template
 from django.conf import settings
 from pathlib import Path
-from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim
+from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim, SabitMesai
 from ..utils import hesapla_fazla_mesai
 from PersonelYonSis.FMConnection.KDHIzin import IzinSorgula
 import pdfkit
@@ -388,6 +388,7 @@ def toplu_islem(request, liste_id, year, month):
     arefe_gunleri = [
         t.TatilTarihi.day for t in tatiller if t.ArefeMi
     ]
+    sabit_mesailer = SabitMesai.objects.all()
 
     context = {
         'liste': liste,
@@ -395,6 +396,7 @@ def toplu_islem(request, liste_id, year, month):
         'mesai_tanimlari': mesai_tanimlari,
         'year': year,
         'month': month,
+        'sabit_mesailer': sabit_mesailer,
         'resmi_tatil_gunleri': resmi_tatil_gunleri,
         'extra_payload': {'liste_id': liste.id},  # her zaman dictionary
         'arefe_gunleri': arefe_gunleri,

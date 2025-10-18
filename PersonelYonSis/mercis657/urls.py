@@ -65,6 +65,7 @@ urlpatterns = [
     path('mazeret-sil/<int:mazeret_id>/', views.mazeret_sil, name='mazeret_sil'),
     path('radyasyon-toggle/<int:personel_id>/<int:liste_id>/', views.radyasyon_toggle, name='radyasyon_toggle'),
     path('hazir-mesai-ata/<int:personel_id>/<int:liste_id>/<int:year>/<int:month>/', views.hazir_mesai_ata, name='hazir_mesai_ata'),
+    path('sabit-mesai-guncelle/', views.sabit_mesai_guncelle, name='sabit_mesai_guncelle'),
     
     # Stop işlemleri
     path('stop-ekle/<int:mesai_id>/', views.stop_ekle, name='stop_ekle'),
@@ -73,6 +74,7 @@ urlpatterns = [
     # Toplu işlemler
     path('toplu-islem/<int:liste_id>/<int:year>/<int:month>/', views.toplu_islem, name='toplu_islem'),
     path('toplu-radyasyon-ata/<int:liste_id>/', views.toplu_radyasyon_ata, name='toplu_radyasyon_ata'),
+    path('toplu-sabit-mesai-ata/<int:liste_id>/', views.toplu_sabit_mesai_ata, name='toplu_sabit_mesai_ata'),
     path('toplu-mesai-ata/<int:liste_id>/<int:year>/<int:month>/', views.toplu_mesai_ata, name='toplu_mesai_ata'),
 
     # İzin çek

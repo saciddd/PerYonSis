@@ -9,7 +9,7 @@ import json
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from PersonelYonSis import settings
-from ..models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, Idareci, Izin, ResmiTatil, IlkListe
+from ..models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, Idareci, Izin, ResmiTatil, IlkListe, SabitMesai
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 import locale
@@ -109,12 +109,29 @@ def cizelge(request):
 
     selected_birim_id = request.GET.get('birim_id') or ""
     selected_donem = request.GET.get('donem') or ""
+    
+    # Güvenli sabit_mesailer listesi oluştur
+    sabit_mesailer = []
+    try:
+        for sm in SabitMesai.objects.all():
+            try:
+                # ara_dinlenme değerini kontrol et
+                if sm.ara_dinlenme is not None:
+                    float(sm.ara_dinlenme)
+                sabit_mesailer.append(sm)
+            except (ValueError, TypeError):
+                # Problemli kayıtları atla
+                continue
+    except Exception:
+        sabit_mesailer = []
+    
     pastcontext = {
             "user_birimler": user_birimler,
             "selected_birim_id": selected_birim_id,
             "donemler": donemler,
             "selected_donem": selected_donem,
             "mesai_options": Mesai_Tanimlari.objects.all(),
+            "sabit_mesailer": sabit_mesailer,  # Modal için eklendi
             "kurumlar": kurumlar,
             "ust_birimler": ust_birimler,
             "idareciler": idareciler,
@@ -243,9 +260,25 @@ def cizelge(request):
             mesai_info["is_resmi_tatil"] = day['is_resmi_tatil']
             p.mesai_data.append(mesai_info)
 
+    # Güvenli sabit_mesailer listesi oluştur
+    sabit_mesailer = []
+    try:
+        for sm in SabitMesai.objects.all():
+            try:
+                # ara_dinlenme değerini kontrol et
+                if sm.ara_dinlenme is not None:
+                    float(sm.ara_dinlenme)
+                sabit_mesailer.append(sm)
+            except (ValueError, TypeError):
+                # Problemli kayıtları atla
+                continue
+    except Exception:
+        sabit_mesailer = []
+
     context = {
         "personeller": personeller,
         "mesai_options": mesai_tanimlari,
+        "sabit_mesailer": sabit_mesailer,  # Modal için eklendi
         "izinler": izinler,
         "days": days,
         "birim": birim,

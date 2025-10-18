@@ -73,10 +73,15 @@ class PersonelListesi(models.Model):
     def __str__(self):
         return f"{self.birim.BirimAdi} - {self.ay}/{self.yil}"
 
+class SabitMesai(models.Model):
+    aralik = models.CharField(max_length=20)
+    ara_dinlenme = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    
 class PersonelListesiKayit(models.Model):
     liste = models.ForeignKey(PersonelListesi, on_delete=models.CASCADE, related_name='kayitlar')
     personel = models.ForeignKey('Personel', on_delete=models.CASCADE)
     radyasyon_calisani = models.BooleanField(default=False)
+    sabit_mesai = models.ForeignKey(SabitMesai, null=True, blank=True, on_delete=models.SET_NULL)
     sira_no = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:

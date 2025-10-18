@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
 import calendar
-from .models import ResmiTatil, MazeretKaydi, Mesai, Mesai_Tanimlari
+from .models import ResmiTatil, MazeretKaydi, Mesai, Mesai_Tanimlari, SabitMesai
 
 
 def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
@@ -26,6 +26,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     """
     personel = personel_listesi_kayit.personel
     radyasyon_calisani = personel_listesi_kayit.radyasyon_calisani
+    sabit_mesai = personel_listesi_kayit.sabit_mesai
 
     # Aylık gün sayısı ve hafta içi günleri hesapla
     days_in_month = calendar.monthrange(year, month)[1]
@@ -103,6 +104,9 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             total_seconds = mesai.MesaiTanim.Sure # saat cinsinden
             hours = Decimal(str(total_seconds))
             fiili_calisma_suresi += hours
+            # Eğer personelin sabit_mesaisi varsa ve mesai süesi 8 saatten fazla ise sabit_mesai.ara_dinlenme süresini düş
+            if sabit_mesai and fiili_calisma_suresi > 8:
+                fiili_calisma_suresi -= sabit_mesai.ara_dinlenme
         else:
             hours = Decimal('0.0')
 

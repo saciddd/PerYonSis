@@ -72,7 +72,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         db_table = 'Users'  # Veritabanındaki tablo adı
 
     def __str__(self):
-        return self.Username
+        return self.FullName
 
     def has_permission(self, permission_name):
         """

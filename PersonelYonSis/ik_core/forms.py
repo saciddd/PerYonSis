@@ -30,6 +30,7 @@ class PersonelForm(forms.ModelForm):
             'kamu_baslangic_tarihi': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'teskilat': forms.Select(attrs={'class': 'form-select'}),
             'emekli_sicil_no': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Emekli Sicil No'}),
+            'aday_memur': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'tahsil_durumu': forms.Select(choices=EGITIM_DEGERLERI, attrs={'class': 'form-select'}),
             'aile_hek_sozlesmesi': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'mazeret_durumu': forms.Select(attrs={'class': 'form-select'}),

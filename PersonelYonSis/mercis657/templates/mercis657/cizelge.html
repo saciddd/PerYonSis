@@ -107,7 +107,17 @@
         <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#personelSiralaModal">
             <i class="bi bi-list-ul"></i> Personelleri Sırala
         </button>
+    <!-- İlk Liste Bildirimi Butonu -->
+    <button class="btn btn-outline-primary btn-sm"
+        onclick="olusturIlkListe('{{ liste|default:0 }}')">
+            {% if ilk_liste %}
+                <i class="bi bi-check-circle-fill text-success"></i> İlk Liste Bildirimi Oluşturuldu
+            {% else %}
+                <i class="bi bi-exclamation-circle-fill text-warning"></i> İlk Liste Bildirimi Oluştur
+            {% endif %}
+    </button>
     </div>
+
     <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
         <colgroup>
             <col style="width: 12px;">
@@ -850,6 +860,33 @@
             $('#personelAramaSelect').val(null).trigger('change');
         });
     });
+</script>
+<script>
+    function olusturIlkListe(listeId) {
+      Swal.fire({
+        title: "İlk Liste Bildirimi Oluşturulsun mu?",
+        text: "Bu işlem yalnızca bir kez yapılabilir.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Evet, oluştur",
+        cancelButtonText: "Vazgeç"
+      }).then(result => {
+        if (result.isConfirmed) {
+          fetch(`/mercis657/ilk-liste-olustur/${listeId}/`, {
+            method: "POST",
+            headers: {"X-CSRFToken": getCookie("csrftoken")}
+          })
+          .then(r => r.json())
+          .then(data => {
+            Swal.fire({
+              icon: data.status === "success" ? "success" : "error",
+              text: data.message
+            });
+            if (data.status === "success") location.reload();
+          });
+        }
+      });
+    }
 </script>
 <style>
     body, .container-fluid { font-size: 0.95rem; }

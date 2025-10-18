@@ -9,7 +9,7 @@ import json
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from PersonelYonSis import settings
-from ..models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, Idareci, Izin, ResmiTatil
+from ..models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, Idareci, Izin, ResmiTatil, IlkListe
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 import locale
@@ -263,6 +263,7 @@ def cizelge(request):
         "idareciler": idareciler,
         "aciklama": liste.aciklama if liste else "",
         "mevcut_personeller": kayitlar,  # Modal için ekledik
+        "ilk_liste": IlkListe.objects.filter(PersonelListesi=liste).first() if liste else None,
     }
     return render(request, 'mercis657/cizelge.html', context)
 

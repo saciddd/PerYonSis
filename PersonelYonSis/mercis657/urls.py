@@ -117,4 +117,10 @@ urlpatterns = [
     # Yönetici Görünümleri
     path('yonetici/birim-listeleri/', views.birim_listeleri, name='birim_listeleri'),
     path('personel-listesi/<int:liste_id>/sira-kaydet/', views.personel_listesi_sira_kaydet, name='personel_listesi_sira_kaydet'),
+
+    # İlk Liste Bildirimi
+    path('ilk-liste-olustur/<int:liste_id>/', views.ilk_liste_olustur, name='ilk_liste_olustur'),
+    path('ilk-liste-onayla/<int:ilk_liste_id>/', views.ilk_liste_onayla, name='ilk_liste_onayla'),
+    path('ilk-liste-onay-kaldir/<int:ilk_liste_id>/', views.ilk_liste_onay_kaldir, name='ilk_liste_onay_kaldir'),
+    path('ilk-liste-detay/<int:liste_id>/', views.ilk_liste_detay, name='ilk_liste_detay'),
 ]

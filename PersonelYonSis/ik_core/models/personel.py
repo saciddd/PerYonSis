@@ -1,3 +1,4 @@
+from PersonelYonSis.FMConnection.KDHIzin import sync_personel_to_filemaker
 from django.db import models
 from datetime import date
 from .valuelists import (
@@ -61,6 +62,7 @@ class Personel(models.Model):
     emekli_sicil_no = models.CharField(max_length=30, blank=True, null=True)
     tahsil_durumu = models.CharField(max_length=30, choices=EGITIM_DEGERLERI, blank=True, null=True)
     aile_hek_sozlesmesi = models.BooleanField(default=False, null=True, blank=True)
+    aday_memur = models.BooleanField(default=False, null=True, blank=True)
     # Mazeret bilgileri
     mazeret_durumu = models.CharField(max_length=30, choices=MAZERET_DEGERLERI, blank=True, null=True)
     mazeret_baslangic = models.DateField(null=True, blank=True)
@@ -113,6 +115,22 @@ class Personel(models.Model):
         # 'burc' template filter yoksa, string döndür
         from .valuelists import get_burc_for_date
         return get_burc_for_date(self.dogum_tarihi)
+
+    @property
+    def memuriyet_durumu(self):
+        if self.teskilat == "İşçi Personel 696 (Döner Sermaye)":
+            return "SÜREKLİ İŞÇİ (696)"
+        elif self.teskilat == "İşçi Personel (Genel Bütçe)":
+            return "İşçi Personel"
+        else:
+            return "Memur (657)"
+
+    @property
+    def kadro_durumu(self):
+        if self.kadrolu_personel:
+            return "Kadrolu"
+        else:
+            return "Geçici Gelen"
 
     @property
     def durum(self):
@@ -178,3 +196,11 @@ class Personel(models.Model):
 
     def __str__(self):
         return self.ad_soyad
+    
+    def save(self, *args, **kwargs):
+        """Kaydı kaydet ve FileMaker senkronizasyonu tetikle"""
+        super().save(*args, **kwargs)
+        try:
+            sync_personel_to_filemaker(self)
+        except Exception as e:
+            print(f"[FM SYNC HATA] {self.tc_kimlik_no}: {e}")

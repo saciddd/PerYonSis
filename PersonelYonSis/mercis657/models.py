@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.db import models
 from datetime import date, timedelta
+from django.utils import timezone
 from django.utils.timezone import now
 from django.contrib.auth import get_user_model
 
@@ -307,3 +308,50 @@ class StopKaydi(models.Model):
 
     def __str__(self):
         return f"{self.mesai} stop: {self.Sure} saat"
+
+class IlkListe(models.Model):
+    PersonelListesi = models.ForeignKey(
+        'PersonelListesi',
+        on_delete=models.CASCADE,
+        related_name='mercis657_ilk_liste'
+    )
+
+    # JSON snapshot
+    Veriler = models.JSONField(null=True, blank=True)
+
+    # İşlem bilgileri
+    OlusturanKullanici = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, related_name='mercis657_olusturan_ilk_liste'
+    )
+    OlusturmaTarihi = models.DateTimeField(auto_now_add=True)
+
+    OnaylayanKullanici = models.ForeignKey(
+        User, on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='mercis657_onaylayan_ilk_liste'
+    )
+    OnayTarihi = models.DateTimeField(null=True, blank=True)
+    OnayDurumu = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "İlk Liste Bildirimi"
+        verbose_name_plural = "İlk Liste Bildirimleri"
+        ordering = ['-OlusturmaTarihi']
+
+    def __str__(self):
+        return f"{self.PersonelListesi.birim} - {self.PersonelListesi.yil}/{self.PersonelListesi.ay} İlk Liste"
+
+    def onayla(self, kullanici):
+        """İlk listeyi onaylar ve bilgileri kaydeder."""
+        self.OnayDurumu = True
+        self.OnaylayanKullanici = kullanici
+        self.OnayTarihi = timezone.now()
+        self.save()
+
+    def onay_kaldir(self, kullanici):
+        """İlk listeyi onayını kaldırır ve bilgileri kaydeder."""
+        self.OnayDurumu = False
+        self.OnaylayanKullanici = kullanici
+        self.OnayTarihi = timezone.now()
+        self.save()

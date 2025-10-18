@@ -64,6 +64,7 @@
                 <th>Liste Oluşturuldu</th>
                 <th>Personel Sayısı</th>
                 <th>Listeyi Oluşturan</th>
+                <th>İlk Liste Bildirimi</th>
                 <th>İşlem</th>
             </tr>
         </thead>
@@ -79,6 +80,20 @@
                 <td>{{ row.personel_sayisi }}</td>
                 <td>{{ row.created_by|default:"-" }}</td>
                 <td>
+                    {% if row.ilk_liste %}
+                    <button class="btn btn-dark btn-sm"
+                    onclick="openIlkListeModal({{ row.ilk_liste.PersonelListesi.id }})">
+                            {% if row.ilk_liste.OnayDurumu %}
+                                <i class="bi bi-check-circle-fill text-success"></i> Onaylandı
+                            {% else %}
+                                <i class="bi bi-exclamation-circle-fill text-warning"></i> Onay Bekliyor
+                            {% endif %}
+                        </button>
+                    {% else %}
+                        <button class="btn btn-sm btn-secondary" disabled>İlk Liste Bildirimi Yok</button>
+                    {% endif %}
+                </td>
+                <td>
                     {% if row.liste %}
                         <a href="{% url 'mercis657:cizelge' %}?donem={{ selected_donem }}&birim_id={{ row.birim.BirimID }}" 
                            class="btn btn-sm btn-primary">Listeyi Düzenle</a>
@@ -93,4 +108,6 @@
         </tbody>
     </table>
 </div>
+
+{% include 'mercis657/partials/ilk_liste_goruntuleme_modal.html' %}
 {% endblock %}

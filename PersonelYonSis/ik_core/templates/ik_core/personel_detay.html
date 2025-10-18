@@ -479,9 +479,26 @@
                                         <div class="editable-input">{{ form.brans }}</div>
                                     </div>
                                     <div class="col-md-4 mb-1">
-                                        <div class="info-label">Emekli Sicil No</div>
-                                        <span class="editable-display info-value">{{ personel.emekli_sicil_no|default:"-" }}</span>
-                                        <div class="editable-input">{{ form.emekli_sicil_no }}</div>
+                                        <div class="row">
+                                            <div class="col-md-6 mb-1">
+                                                <div class="info-label">Emekli Sicil No</div>
+                                                    <span class="editable-display info-value">{{ personel.emekli_sicil_no|default:"-" }}</span>
+                                                <div class="editable-input">{{ form.emekli_sicil_no }}</div>
+                                            </div>
+                                            <div class="col-md-6 mb-1">
+                                                <div class="info-label">Aday Memur</div>
+                                                <span class="editable-display info-value">
+                                                    {% if personel.aday_memur %}
+                                                        <i style="color: #28a745;" class="bi bi-check-circle-fill"></i>
+                                                    {% else %}
+                                                        <i style="color: #dc3545;" class="bi bi-x-circle-fill"></i>
+                                                    {% endif %}
+                                                </span>
+                                                <div class="editable-input">
+                                                    <div class="form-check form-switch">{{ form.aday_memur }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

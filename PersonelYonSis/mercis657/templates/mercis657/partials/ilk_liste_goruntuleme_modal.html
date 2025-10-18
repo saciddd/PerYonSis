@@ -1,0 +1,186 @@
+<!-- İlk Liste Görüntüleme Modal -->
+ <style>
+    .table-responsive {
+        padding: 0px !important;
+    }
+    /* Tablo hücre içi boşlukları (padding) sıfırla */
+    #ilkListeTable th,
+    #ilkListeTable td {
+        padding: 0 !important;
+    }
+    /* Kenarlıkların bitişik görünmesi için */
+    #ilkListeTable {
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+ </style>
+
+<div class="modal fade" id="ilkListeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable" style="max-width:calc(100vw - 200px);margin-left:60px;margin-right:60px;">
+      <div class="modal-content">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title"><i class="bi bi-calendar3 me-2"></i> İlk Liste Detayı</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+  
+        <div class="modal-body">
+          <div id="ilkListeHeader" class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <strong>Liste:</strong> <span id="listeInfo"></span><br>
+              <strong>Oluşturan:</strong> <span id="olusturanInfo"></span><br>
+              <strong>Oluşturma Tarihi:</strong> <span id="tarihInfo"></span>
+            </div>
+            <div>
+              <button id="onaylaBtn" class="btn btn-success me-2">
+                <i class="bi bi-check2-circle"></i> Onayla
+              </button>
+              <button id="onayKaldirBtn" class="btn btn-warning">
+                <i class="bi bi-x-circle"></i> Onay Kaldır
+              </button>
+            </div>
+          </div>
+  
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle text-center small" id="ilkListeTable">
+              <thead class="table-light" id="ilkListeHead"></thead>
+              <tbody id="ilkListeBody">
+                <tr><td colspan="10" class="text-muted">Veri yükleniyor...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+  // CSRF helper (fallback if not globally provided)
+  if (typeof window.getCookie !== 'function') {
+    window.getCookie = function(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    }
+  }
+
+  function openIlkListeModal(listeId) {
+    const modal = new bootstrap.Modal(document.getElementById('ilkListeModal'));
+    modal.show();
+  
+    const head = document.getElementById("ilkListeHead");
+    const body = document.getElementById("ilkListeBody");
+    head.innerHTML = ""; body.innerHTML = "";
+  
+    fetch(`/mercis657/ilk-liste-detay/${listeId}/`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.status !== "success") {
+          body.innerHTML = `<tr><td colspan="10" class="text-danger">${data.message}</td></tr>`;
+          return;
+        }
+  
+        // Başlık bilgileri
+        document.getElementById("listeInfo").textContent = data.liste;
+        document.getElementById("olusturanInfo").textContent = data.olusturan;
+        document.getElementById("tarihInfo").textContent = data.olusturma_tarihi;
+  
+        // Butonlar
+        const onaylaBtn = document.getElementById("onaylaBtn");
+        const onayKaldirBtn = document.getElementById("onayKaldirBtn");
+        onaylaBtn.replaceWith(onaylaBtn.cloneNode(true));
+        onayKaldirBtn.replaceWith(onayKaldirBtn.cloneNode(true));
+        const onaylaBtnNew = document.getElementById("onaylaBtn");
+        const onayKaldirBtnNew = document.getElementById("onayKaldirBtn");
+        onaylaBtnNew.addEventListener('click', function () { ilkListeOnayla(data.id); });
+        onayKaldirBtnNew.addEventListener('click', function () { ilkListeOnayKaldir(data.id); });
+        onaylaBtnNew.classList.toggle("d-none", !!data.onay_durumu);
+        onayKaldirBtnNew.classList.toggle("d-none", !data.onay_durumu);
+  
+        // 🔹 Tablo başlığı
+        let dayHeaders = data.days.map(d => {
+          let classes = "";
+          if (d.is_weekend) classes = "bg-light text-muted";
+          if (d.is_resmi_tatil) classes = "bg-danger text-white";
+          return `<th class="${classes}">${d.day_num}</th>`;
+        }).join("");
+  
+        head.innerHTML = `
+          <tr>
+            <th>#</th>
+            <th>Personel</th>
+            <th>Radyasyon</th>
+            <th>Fazla Mesai</th>
+            ${dayHeaders}
+          </tr>
+        `;
+  
+        // 🔹 Satırlar
+        body.innerHTML = "";
+        data.veriler.forEach((v, i) => {
+          let dayCells = data.days.map(d => {
+            const entry = v.mesai_data?.[d.full_date];
+            if (!entry) return `<td>-</td>`;
+            const content = entry.saat || entry.izin || "";
+            let style = "";
+            if (entry.izin) style = "bg-warning-subtle";
+            return `<td class="${style}" title="${content}">${content}</td>`;
+          }).join("");
+  
+          const fmVal = Number(v.fazla_mesai || 0);
+          const fmClass = fmVal < 0 ? 'text-danger' : (fmVal > 0 ? 'text-success' : '');
+
+          body.innerHTML += `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${v.personel_adi}</td>
+              <td>${v.radyasyon_calisani ? "Evet" : "Hayır"}</td>
+              <td class="${fmClass}">${fmVal.toFixed(2)}</td>
+              ${dayCells}
+            </tr>
+          `;
+        });
+      });
+  }
+  
+ function ilkListeOnayla(id) {
+   fetch(`/mercis657/ilk-liste-onayla/${id}/`, {
+     method: "POST",
+     credentials: 'same-origin',
+     headers: {
+       "X-CSRFToken": getCookie("csrftoken"),
+       "Accept": "application/json"
+     }
+   })
+  .then(r => r.json())
+  .then(data => {
+    Swal.fire({
+      icon: data.status === "success" ? "success" : "error",
+      text: data.message
+    }).then(() => {
+      if (data.status === "success") location.reload();
+    });
+  });
+}
+
+ function ilkListeOnayKaldir(id) {
+   fetch(`/mercis657/ilk-liste-onay-kaldir/${id}/`, {
+     method: "POST",
+     credentials: 'same-origin',
+     headers: {
+       "X-CSRFToken": getCookie("csrftoken"),
+       "Accept": "application/json"
+     }
+   })
+  .then(r => r.json())
+  .then(data => {
+    Swal.fire({
+      icon: data.status === "success" ? "success" : "error",
+      text: data.message
+    }).then(() => {
+      if (data.status === "success") location.reload();
+    });
+  });
+}
+</script>
+  

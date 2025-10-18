@@ -4,7 +4,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
 
-from ..models import Birim, PersonelListesi, PersonelListesiKayit, Kurum, UstBirim, Idareci
+from ..models import Birim, PersonelListesi, PersonelListesiKayit, Kurum, UstBirim, Idareci, IlkListe
 
 
 @login_required
@@ -62,6 +62,7 @@ def birim_listeleri(request):
             "liste": liste,
             "personel_sayisi": personel_sayisi,
             "created_by": created_by,
+            "ilk_liste": IlkListe.objects.filter(PersonelListesi=liste).first() if liste else None,
         })
 
     context = {

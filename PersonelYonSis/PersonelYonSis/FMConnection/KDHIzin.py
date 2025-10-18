@@ -46,111 +46,74 @@ def format_date_for_filemaker(dt):
         return dt.strftime("%Y-%m-%d")
     return str(dt)
 
-def sync_personel_to_filemaker(personel):
+def sync_personel_to_filemaker(personel, silent=False):
     """
-    Django Personel kaydını FileMaker'a senkronize eder.
-    Eğer kayıt varsa UPDATE, yoksa INSERT yapar.
+    Personel modelini FileMaker'daki 'Personeller' tablosuyla senkronize eder.
+    TCKimlikNo eşleşiyorsa UPDATE, yoksa INSERT yapar.
     """
     global connection
     try:
         connection = pyodbc.connect(conn_str)
         cursor = connection.cursor()
 
-        # 1️⃣ Kayıt var mı kontrol et
+        # FileMaker'da kayıt var mı kontrol et
         check_sql = 'SELECT "TCKimlikNo" FROM Personeller WHERE "TCKimlikNo" = ?'
         cursor.execute(check_sql, (personel.tc_kimlik_no,))
         existing = cursor.fetchone()
 
-        # Ortak alan listesi
-        data = [
-            int(personel.aday_memur or 0),
-            personel.ad or "",
-            personel.adres or "",
-            personel.atama_karar_no or "",
-            format_date_for_filemaker(personel.atama_karar_tarihi),
-            personel.brans or "",
-            personel.cinsiyet or "",
-            format_date_for_filemaker(personel.dogum_tarihi),
-            personel.durum or "",
-            format_date_for_filemaker(personel.goreve_baslama_tarihi),
-            personel.kadro_durumu or "",
-            personel.ayrilma_nedeni or "",
-            personel.ayrilma_detay or "",
-            personel.memuriyet_durumu or "",
-            format_date_for_filemaker(personel.memuriyete_baslama_tarihi),
-            personel.sicil_no or "",
-            personel.soyad or "",
-            int(personel.tc_kimlik_no),
-            personel.telefon or "",
-            personel.teskilat or "",
-            personel.unvan or "",
-        ]
+        # Tarih formatını FileMaker uyumlu hale getir (YYYY-MM-DD)
+        def fmt_date(value):
+            return value.strftime("%Y-%m-%d") if isinstance(value, date) else None
+
+        data = {
+            "AdayMemur?": int(personel.aday_memur or 0),
+            "Adi": personel.ad or "",
+            "Soyadi": personel.soyad or "",
+            "Adres": personel.adres or "",
+            "AtamaKararNo": personel.atama_karar_no or "",
+            "AtamaKararTarihi": fmt_date(personel.atama_karar_tarihi),
+            "Brans": personel.brans.ad if personel.brans else "",
+            "Cinsiyet": personel.cinsiyet or "",
+            "Doğum Tarihi": fmt_date(personel.dogum_tarihi),
+            "Durum": personel.durum or "",
+            "GoreveBaslamaTarihi": fmt_date(personel.goreve_baslama_tarihi),
+            "KadroDurumu": personel.kadro_durumu or "",
+            "KurumdanAyrilmaNedeni": personel.ayrilma_nedeni or "",
+            "KurumdanAyrilmaNedeniDetay": personel.ayrilma_detay or "",
+            "MemuriyetDurumu": personel.memuriyet_durumu or "",
+            "Memuriyete Başlama Tarihi": fmt_date(personel.memuriyete_baslama_tarihi),
+            "SicilNo": personel.sicil_no or "",
+            "Telefon": personel.telefon or "",
+            "Teşkilat": personel.teskilat or "",
+            "Unvan": personel.unvan.ad if personel.unvan else "",
+            "TCKimlikNo": personel.tc_kimlik_no,
+        }
 
         if existing:
-            # 2️⃣ Güncelleme işlemi
-            update_sql = """
-                UPDATE Personeller SET
-                    "AdayMemur?"=?,
-                    "Adi"=?,
-                    "Adres"=?,
-                    "AtamaKararNo"=?,
-                    "AtamaKararTarihi"=?,
-                    "Brans"=?,
-                    "Cinsiyet"=?,
-                    "Doğum Tarihi"=?,
-                    "Durum"=?,
-                    "GoreveBaslamaTarihi"=?,
-                    "KadroDurumu"=?,
-                    "KurumdanAyrilmaNedeni"=?,
-                    "KurumdanAyrilmaNedeniDetay"=?,
-                    "MemuriyetDurumu"=?,
-                    "Memuriyete Başlama Tarihi"=?,
-                    "SicilNo"=?,
-                    "Soyadi"=?,
-                    "TCKimlikNo"=?,
-                    "Telefon"=?,
-                    "Teşkilat"=?,
-                    "Unvan"=?
-                WHERE "TCKimlikNo"=?
-            """
-            cursor.execute(update_sql, data + [personel.tc_kimlik_no])
-            print(f"🟡 Güncellendi: {personel.ad} {personel.soyad}")
-
+            # UPDATE
+            set_clause = ", ".join([f'"{k}" = ?' for k in data.keys()])
+            sql = f'UPDATE Personeller SET {set_clause} WHERE "TCKimlikNo" = ?'
+            cursor.execute(sql, list(data.values()) + [personel.tc_kimlik_no])
+            action = "güncellendi"
         else:
-            # 3️⃣ Yeni kayıt ekleme
-            insert_sql = """
-                INSERT INTO Personeller (
-                    "AdayMemur?",
-                    "Adi",
-                    "Adres",
-                    "AtamaKararNo",
-                    "AtamaKararTarihi",
-                    "Brans",
-                    "Cinsiyet",
-                    "Doğum Tarihi",
-                    "Durum",
-                    "GoreveBaslamaTarihi",
-                    "KadroDurumu",
-                    "KurumdanAyrilmaNedeni",
-                    "KurumdanAyrilmaNedeniDetay",
-                    "MemuriyetDurumu",
-                    "Memuriyete Başlama Tarihi",
-                    "SicilNo",
-                    "Soyadi",
-                    "TCKimlikNo",
-                    "Telefon",
-                    "Teşkilat",
-                    "Unvan"
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-            cursor.execute(insert_sql, data)
-            print(f"🟢 Eklendi: {personel.ad} {personel.soyad}")
+            # INSERT
+            columns = ", ".join([f'"{k}"' for k in data.keys()])
+            placeholders = ", ".join(["?" for _ in data])
+            sql = f'INSERT INTO Personeller ({columns}) VALUES ({placeholders})'
+            cursor.execute(sql, list(data.values()))
+            action = "eklenildi"
 
         connection.commit()
+        message = f"🟢 FileMaker'a {personel.ad} {personel.soyad} {action}."
+        if silent:
+            print(message)
+        return {"status": "success", "message": message}
 
     except pyodbc.Error as e:
-        print(f"❌ FileMaker senkronizasyon hatası: {e}")
+        msg = f"❌ FileMaker senkronizasyon hatası: {e}"
+        if silent:
+            print(msg)
+        return {"status": "error", "message": msg}
 
     finally:
         if connection:

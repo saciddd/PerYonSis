@@ -4,7 +4,7 @@ TESKILAT_DEGERLERI = [
     ("İşçi Personel (Genel Bütçe)", "İşçi Personel (Genel Bütçe)"),
     ("İşçi Personel 696 (Döner Sermaye)", "İşçi Personel 696 (Döner Sermaye)"),
     ("Sözleşmeli (4924)", "Sözleşmeli (4924)"),
-    ("Taşra", "Taşra"),
+    ("Memur 657", "Memur 657"),
 ]
 
 EGITIM_DEGERLERI = [

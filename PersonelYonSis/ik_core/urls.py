@@ -20,6 +20,9 @@ urlpatterns = [
     path('personel_kontrol/', views.personel_kontrol, name='personel_kontrol'),
     path('get_brans_by_unvan/', views.get_brans_by_unvan, name='get_brans_by_unvan'),
     path('personel/<int:pk>/mazeret-sil/', views.mazeret_sil, name='mazeret_sil'),
+    # Geçici Görevler
+    path('gecici-gorevler/', views.gecici_gorevler, name='gecici_gorevler'),
+    path('gecici-gorevler/bulk-kaydet/', views.gecici_gorev_bulk_kaydet, name='gecici_gorev_bulk_kaydet'),
     # API endpoints
     path('api/personel_aktar/', api_views.filemaker_personel_aktar, name='filemaker_personel_aktar'),
 

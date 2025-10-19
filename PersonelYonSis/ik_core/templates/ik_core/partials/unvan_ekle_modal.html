@@ -1,0 +1,50 @@
+<!-- Unvan Ekleme Modal -->
+<div class="modal fade" id="unvanEkleModal" tabindex="-1" aria-labelledby="unvanEkleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="unvanEkleModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Yeni Unvan Ekle
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="unvanEkleForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_unvan-ad" class="form-label">
+                            Unvan Adı <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" name="unvan-ad" id="id_unvan-ad" class="form-control" required>
+                        <div class="invalid-feedback">
+                            Unvan adı zorunludur.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_unvan-sinif" class="form-label">
+                            Sınıf <span class="text-danger">*</span>
+                        </label>
+                        <select name="unvan-sinif" id="id_unvan-sinif" class="form-select" required>
+                            <option value="">Sınıf seçiniz</option>
+                            <option value="S.H.S.">S.H.S.</option>
+                            <option value="G.İ.H.">G.İ.H.</option>
+                            <option value="T.H.S.">T.H.S.</option>
+                            <option value="BİLİNMİYOR">BİLİNMİYOR</option>
+                        </select>
+                        <div class="invalid-feedback">
+                            Sınıf seçimi zorunludur.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>İptal
+                    </button>
+                    <button type="submit" name="unvan_ekle" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i>Unvan Ekle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

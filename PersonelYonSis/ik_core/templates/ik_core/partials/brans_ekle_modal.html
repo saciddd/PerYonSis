@@ -1,0 +1,45 @@
+<!-- Branş Ekleme Modal -->
+<div class="modal fade" id="bransEkleModal" tabindex="-1" aria-labelledby="bransEkleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bransEkleModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Yeni Branş Ekle
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" id="bransEkleForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_brans-ad" class="form-label">
+                            Branş Adı <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" name="brans-ad" id="id_brans-ad" class="form-control" required>
+                        <div class="invalid-feedback">
+                            Branş adı zorunludur.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_brans-unvan" class="form-label">
+                            Unvan
+                        </label>
+                        <input type="text" id="id_brans-unvan" class="form-control" readonly>
+                        <input type="hidden" name="brans-unvan" id="hidden_brans-unvan">
+                        <div class="form-text">
+                            Bu branş seçili unvana eklenecektir.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>İptal
+                    </button>
+                    <button type="submit" name="brans_ekle" class="btn btn-success">
+                        <i class="fas fa-save me-1"></i>Branş Ekle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

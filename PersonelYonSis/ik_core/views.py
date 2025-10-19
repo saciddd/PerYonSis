@@ -19,6 +19,9 @@ from .models.valuelists import (
     AYRILMA_NEDENI_DEGERLERI, ENGEL_DERECESI_DEGERLERI # Add necessary value lists
 )
 from .forms import PersonelForm, KurumForm, UnvanForm, BransForm, GeciciGorevForm
+from django.db import models
+from django.utils.dateparse import parse_date
+from django.views.decorators.http import require_GET
 
 # Türkçe lower/upper normalize edici yardımcı
 def lower_tr(text: str) -> str:
@@ -288,11 +291,13 @@ def unvan_branstanimlari(request):
             unvan_form = UnvanForm(request.POST, prefix='unvan')
             if unvan_form.is_valid():
                 unvan_form.save()
+                messages.success(request, f"{unvan_form.cleaned_data['ad']} unvanı tanımlandı")
                 return redirect('ik_core:unvan_branstanimlari')
         elif 'brans_ekle' in request.POST:
             brans_form = BransForm(request.POST, prefix='brans')
             if brans_form.is_valid():
                 brans_form.save()
+                messages.success(request, f"{brans_form.cleaned_data['ad']} branşı tanımlandı")
                 return redirect(f"{request.path}?unvan_id={brans_form.cleaned_data['unvan'].id}")
     else:
         unvan_form = UnvanForm(prefix='unvan')
@@ -459,4 +464,162 @@ def mazeret_sil(request, pk):
         'success': False,
         'message': 'Geçersiz istek.'
     })    
+
+# =====================
+# Geçici Görevler Sayfası
+# =====================
+
+@login_required
+def gecici_gorevler(request):
+    """
+    RFC-001-GeciciGorevSayfasi gereksinimlerine uygun liste ve modal sayfası
+    - Tarih filtresi ile o günü kapsayan kayıtlar
+    - Sağ üstte modal açan buton
+    """
+    tarih_str = request.GET.get('tarih')
+    kayitlar = []
+    from .models.GeciciGorev import GeciciGorev
+    if tarih_str:
+        tarih = parse_date(tarih_str)
+        if tarih:
+            kayitlar = (GeciciGorev.objects
+                        .filter(gecici_gorev_baslangic__lte=tarih)
+                        .filter(models.Q(gecici_gorev_bitis__isnull=True) | models.Q(gecici_gorev_bitis__gte=tarih))
+                        .select_related('personel'))
+    kurumlar = Kurum.objects.order_by('ad').all()
+    return render(request, 'ik_core/gecici_gorevler.html', {
+        'kayitlar': kayitlar,
+        'tarih': tarih_str or '',
+        'kurumlar': kurumlar,
+    })
+
+
+@login_required
+@require_POST
+def gecici_gorev_bulk_kaydet(request):
+    """
+    Excel'den yapıştırılan satırlar için toplu kayıt oluşturma.
+    Beklenen JSON body:
+    {
+      "kurum": "KAYSERİ DEVLET HASTANESİ",
+      "satirlar": [
+        {
+          "tc": "123...",
+          "sicil": "...",
+          "ad": "...",
+          "soyad": "...",
+          "unvan": "...",
+          "brans": "...",
+          "kadro_birim": "...",
+          "aktif_birim": "...",
+          "baslangic": "YYYY-MM-DD",
+          "bitis": "YYYY-MM-DD|null"
+        }
+      ]
+    }
+    Tip belirleme:
+      - kurum == kadro_birim -> Gidis
+      - kurum == aktif_birim -> Gelis
+    """
+    import json
+    import re
+    from datetime import datetime
+    from .models.GeciciGorev import GeciciGorev
+
+    def normalize_text(value: str) -> str:
+        if value is None:
+            return ''
+        v = str(value).strip()
+        # Baş/son tırnakları kaldır
+        if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+            v = v[1:-1]
+        # CR/LF -> boşluk, birden fazla boşluğu tek boşluk yap
+        v = re.sub(r"\s+", " ", v.replace("\r", " ").replace("\n", " ")).strip()
+        return v
+
+    def upper_norm(value: str) -> str:
+        return normalize_text(value).upper()
+
+    def parse_any_date(value: str):
+        if not value:
+            return None
+        s = normalize_text(value)
+        # Doğrudan ISO (yyyy-mm-dd)
+        d = parse_date(s)
+        if d:
+            return d
+        # dd.mm.yyyy | d.mm.yyyy | dd/mm/yyyy | dd-mm-yyyy
+        s2 = s.replace('/', '.').replace('-', '.')
+        parts = s2.split('.')
+        if len(parts) == 3 and parts[2].isdigit():
+            try:
+                day = parts[0].zfill(2)
+                month = parts[1].zfill(2)
+                year = parts[2]
+                return datetime.strptime(f"{day}.{month}.{year}", "%d.%m.%Y").date()
+            except Exception:
+                pass
+        # yyyy.mm.dd
+        if len(parts) == 3 and parts[0].isdigit() and len(parts[0]) == 4:
+            try:
+                year = parts[0]
+                month = parts[1].zfill(2)
+                day = parts[2].zfill(2)
+                return datetime.strptime(f"{year}.{month}.{day}", "%Y.%m.%d").date()
+            except Exception:
+                pass
+        return None
+    body = json.loads(request.body or '{}')
+    kurum_adi = body.get('kurum')
+    satirlar = body.get('satirlar', [])
+
+    sayac_gelis = 0
+    sayac_gidis = 0
+    sayac_atlanan = 0
+
+    for s in satirlar:
+        tc = normalize_text(s.get('tc') or '')
+        kadro_birim = normalize_text(s.get('kadro_birim') or '')
+        aktif_birim = normalize_text(s.get('aktif_birim') or '')
+        baslangic = parse_any_date(s.get('baslangic') or '')
+        bitis = parse_any_date(s.get('bitis') or '') if s.get('bitis') else None
+        if not tc or not baslangic:
+            sayac_atlanan += 1
+            continue
+        try:
+            personel = Personel.objects.get(tc_kimlik_no=tc)
+        except Personel.DoesNotExist:
+            sayac_atlanan += 1
+            continue
+
+        gorev_tipi = None
+        if kurum_adi and upper_norm(kurum_adi) == upper_norm(kadro_birim):
+            gorev_tipi = 'Gidis'
+        if kurum_adi and upper_norm(kurum_adi) == upper_norm(aktif_birim):
+            # aktif eşleşme varsa geliş öncelik kazansın
+            gorev_tipi = 'Gelis'
+        if gorev_tipi is None:
+            sayac_atlanan += 1
+            continue
+
+        GeciciGorev.objects.create(
+            personel=personel,
+            gecici_gorev_tipi=gorev_tipi,
+            gecici_gorev_baslangic=baslangic,
+            gecici_gorev_bitis=bitis,
+            asil_kurumu=kadro_birim,
+            gorevlendirildigi_birim=aktif_birim,
+        )
+        if gorev_tipi == 'Gelis':
+            sayac_gelis += 1
+        else:
+            sayac_gidis += 1
+
+    return JsonResponse({
+        'success': True,
+        'message': (
+            f"Geçici Görev kayıtları tamamlandı: {sayac_gelis} geliş, {sayac_gidis} gidiş. "
+            f"{sayac_atlanan} satır atlandı."
+        )
+    })
     

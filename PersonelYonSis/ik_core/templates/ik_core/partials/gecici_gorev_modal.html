@@ -1,0 +1,230 @@
+<!-- Geçici Görev Ekleme Modal -->
+<div class="modal fade" id="geciciGorevModal" tabindex="-1">
+    {% csrf_token %}
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Geçici Görev Kayıtları</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-end align-items-center mb-2 gap-2">
+                    <button type="button" class="btn btn-outline-secondary" id="btnSayfayaYapistir">
+                        Yapıştır
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" id="btnSayfayiTemizle">
+                        Temizle
+                    </button>
+                    <button class="btn btn-outline-secondary" id="btnKurumlariYenile">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <select id="kurumSecimi" class="form-select" style="max-width: 420px;">
+                        <option value="">Kurum Seçiniz</option>
+                        {% for k in kurumlar %}
+                        <option value="{{ k.ad }}">{{ k.ad }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn btn-success" id="btnKayitlariEkle">
+                        <i class="bi bi-save me-1"></i> Kayıtları Ekle
+                    </button>
+                </div>
+                <div class="alert alert-info">
+                    Excel'den kopyaladığınız satırları tabloya yapıştırabilirsiniz. Enter/Aşağı ok ile yeni satır eklenir.
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm" id="geciciGorevTable" style="border:2px solid #80a3d4;">
+                        <thead>
+                            <tr>
+                                <th>S. NO</th>
+                                <th>TC KİMLİK NO</th>
+                                <th>SİCİL NO</th>
+                                <th>ADI</th>
+                                <th>SOYADI</th>
+                                <th>UNVAN</th>
+                                <th>BRANŞ</th>
+                                <th>KADRO BİRİM ADI</th>
+                                <th>AKTİF BİRİM ADI</th>
+                                <th>G. GÖREV BAŞLANGIÇ</th>
+                                <th>G. GÖREV BİTİŞ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="width: 50px;">1</td>
+                                <td contenteditable="true"></td>
+                                <td contenteditable="true"></td>
+                                <td contenteditable="true"></td>
+                                <td contenteditable="true"></td>
+                                <td contenteditable="true"></td>
+                                <td contenteditable="true"></td>
+                                <td contenteditable="true"></td>
+                                <td contenteditable="true"></td>
+                                <td contenteditable="true"></td>
+                                <td contenteditable="true"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function initGeciciGorevModal() {
+    const table = document.getElementById('geciciGorevTable');
+    const tbody = table.querySelector('tbody');
+
+    function addRowListeners(row) {
+        row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+            cell.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    addNewRow();
+                }
+            });
+        });
+    }
+
+    function addNewRow() {
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td>${tbody.children.length + 1}</td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+            <td contenteditable="true"></td>
+        `;
+        tbody.appendChild(newRow);
+        addRowListeners(newRow);
+        newRow.querySelector('td[contenteditable="true"]').focus();
+    }
+
+    // Excel/TSV yapıştırmasını tırnak ve hücre içi yeni satırları destekleyecek şekilde işle
+    function parseClipboardTSV(text) {
+        const rows = [];
+        let currentRow = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            const next = text[i + 1];
+            if (ch === '"') {
+                if (inQuotes && next === '"') { current += '"'; i++; }
+                else { inQuotes = !inQuotes; }
+                continue;
+            }
+            if (!inQuotes && ch === '\t') { currentRow.push(current); current = ''; continue; }
+            if (!inQuotes && (ch === '\n' || ch === '\r')) {
+                if (ch === '\r' && next === '\n') { i++; }
+                currentRow.push(current); rows.push(currentRow); currentRow = []; current = ''; continue;
+            }
+            if (inQuotes && (ch === '\n' || ch === '\r')) { if (ch === '\r' && next === '\n') { i++; } current += ' '; continue; }
+            current += ch;
+        }
+        if (current.length > 0 || currentRow.length > 0) { currentRow.push(current); rows.push(currentRow); }
+        return rows.filter(r => r.some(c => (c || '').trim().length > 0)).map(r => r.map(c => normalizeCell(c)));
+    }
+    function normalizeCell(value) {
+        if (value == null) return '';
+        let v = String(value).trim();
+        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith('\'') && v.endsWith('\''))) { v = v.substring(1, v.length - 1); }
+        v = v.replace(/\r?\n+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+        return v;
+    }
+    table.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const raw = e.clipboardData.getData('text');
+        const parsed = parseClipboardTSV(raw);
+        if (!parsed.length) return;
+        tbody.innerHTML = '';
+        parsed.forEach((cols, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td contenteditable="true">${cols[0] || ''}</td>
+                <td contenteditable="true">${cols[1] || ''}</td>
+                <td contenteditable="true">${cols[2] || ''}</td>
+                <td contenteditable="true">${cols[3] || ''}</td>
+                <td contenteditable="true">${cols[4] || ''}</td>
+                <td contenteditable="true">${cols[5] || ''}</td>
+                <td contenteditable="true">${cols[6] || ''}</td>
+                <td contenteditable="true">${cols[7] || ''}</td>
+                <td contenteditable="true">${cols[8] || ''}</td>
+                <td contenteditable="true">${cols[9] || ''}</td>
+            `;
+            tbody.appendChild(tr);
+            addRowListeners(tr);
+        });
+    });
+
+    document.getElementById('btnKurumlariYenile').addEventListener('click', function() {
+        // Kurum listesi sayfa contextinden geliyor; burada sadece kullanıcıya bilgi verelim.
+        alert('Kurum listesi sayfa yenilendiğinde güncellenir.');
+    });
+
+    document.getElementById('btnKayitlariEkle').addEventListener('click', function() {
+        const modal = document.getElementById('geciciGorevModal');
+        const csrfTokenInput = modal.querySelector('[name=csrfmiddlewaretoken]');
+        const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+        const kurum = document.getElementById('kurumSecimi').value;
+        if (!kurum) {
+            alert('Lütfen kurum seçiniz');
+            return;
+        }
+        const satirlar = [];
+        tbody.querySelectorAll('tr').forEach(row => {
+            const cells = row.querySelectorAll('td[contenteditable="true"]');
+            if (cells.length === 10) {
+                const rec = {
+                    tc: cells[0].textContent.trim(),
+                    sicil: cells[1].textContent.trim(),
+                    ad: cells[2].textContent.trim(),
+                    soyad: cells[3].textContent.trim(),
+                    unvan: cells[4].textContent.trim(),
+                    brans: cells[5].textContent.trim(),
+                    kadro_birim: cells[6].textContent.trim(),
+                    aktif_birim: cells[7].textContent.trim(),
+                    baslangic: cells[8].textContent.trim(),
+                    bitis: cells[9].textContent.trim(),
+                };
+                if (rec.tc && rec.baslangic) {
+                    satirlar.push(rec);
+                }
+            }
+        });
+        if (satirlar.length === 0) {
+            alert('Eklenecek uygun satır bulunamadı.');
+            return;
+        }
+        fetch('{% url "ik_core:gecici_gorev_bulk_kaydet" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ kurum: kurum, satirlar: satirlar })
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message || 'İşlem tamamlandı');
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Kayıt sırasında hata oluştu');
+        });
+    });
+
+    // İlk satır için dinleyicileri bağla
+    addRowListeners(tbody.querySelector('tr'));
+}
+</script>
+

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h3>Geçici Görevler</h3>
+    <div class="d-flex justify-content-between align-items-end mb-3">
+        <div>
+            <label class="form-label">Tarih</label>
+            <form method="get" class="d-flex gap-2">
+                <input type="date" class="form-control" name="tarih" value="{{ tarih }}" required>
+                <button class="btn btn-primary" type="submit">Ara</button>
+            </form>
+        </div>
+        <div>
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#geciciGorevModal">
+                <i class="bi bi-plus-square me-1"></i> Kayıt Ekle
+            </button>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>TC</th>
+                    <th>Sicil No</th>
+                    <th>Ad</th>
+                    <th>Soyad</th>
+                    <th>Unvan</th>
+                    <th>Branş</th>
+                    <th>Kadro Birim Adı</th>
+                    <th>Aktif Birim Adı</th>
+                    <th>Başlangıç</th>
+                    <th>Bitiş</th>
+                    <th>Tip</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for k in kayitlar %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ k.personel.tc_kimlik_no }}</td>
+                    <td>{{ k.personel.sicil_no }}</td>
+                    <td>{{ k.personel.ad }}</td>
+                    <td>{{ k.personel.soyad }}</td>
+                    <td>{% if k.personel.unvan %}{{ k.personel.unvan.ad }}{% endif %}</td>
+                    <td>{% if k.personel.brans %}{{ k.personel.brans.ad }}{% endif %}</td>
+                    <td>{{ k.asil_kurumu }}</td>
+                    <td>{{ k.gorevlendirildigi_birim }}</td>
+                    <td>{{ k.gecici_gorev_baslangic }}</td>
+                    <td>{{ k.gecici_gorev_bitis|default:'-' }}</td>
+                    <td>
+                        {% if k.gecici_gorev_tipi == 'Gelis' %}
+                            <span class="badge bg-success">Geliş</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Gidiş</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="12" class="text-center">Kayıt yok.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% include 'ik_core/partials/gecici_gorev_modal.html' %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initGeciciGorevModal();
+    // Sayfa üstündeki Yapıştır ve Temizle: modaldaki tabloya delegasyon
+    const btnPaste = document.getElementById('btnSayfayaYapistir');
+    const btnClear = document.getElementById('btnSayfayiTemizle');
+    const modalEl = document.getElementById('geciciGorevModal');
+    const table = document.getElementById('geciciGorevTable');
+    const tbody = table ? table.querySelector('tbody') : null;
+    if (btnPaste) {
+        btnPaste.addEventListener('click', async function() {
+            try {
+                const text = await navigator.clipboard.readText();
+                const pasteEvent = new ClipboardEvent('paste', {
+                    clipboardData: new DataTransfer()
+                });
+                pasteEvent.clipboardData.setData('text', text);
+                table.dispatchEvent(pasteEvent);
+                // modal açık değilse aç
+                if (modalEl) {
+                    const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    bsModal.show();
+                }
+            } catch (e) {
+                alert('Panodan okuma izni verilmedi veya desteklenmiyor. Lütfen modal içinde Ctrl+V ile yapıştırın.');
+            }
+        });
+    }
+    if (btnClear && tbody) {
+        btnClear.addEventListener('click', function() {
+            tbody.innerHTML = `
+                <tr>
+                    <td style="width: 50px;">1</td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                    <td contenteditable="true"></td>
+                </tr>`;
+        });
+    }
+});
+</script>
+{% endblock %}
+

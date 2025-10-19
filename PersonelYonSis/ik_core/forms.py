@@ -105,11 +105,37 @@ class UnvanForm(forms.ModelForm):
     class Meta:
         model = Unvan
         fields = ['ad', 'sinif']
+        widgets = {
+            'ad': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
+            'sinif': forms.Select(attrs={'class': 'form-select', 'required': True}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['ad'].required = True
+        self.fields['sinif'].required = True
+        self.fields['sinif'].choices = [
+            ('', 'Sınıf seçiniz'),
+            ('S.H.S.', 'S.H.S.'),
+            ('G.İ.H.', 'G.İ.H.'),
+            ('T.H.S.', 'T.H.S.'),
+            ('BİLİNMİYOR', 'BİLİNMİYOR'),
+        ]
 
 class BransForm(forms.ModelForm):
     class Meta:
         model = Brans
         fields = ['ad', 'unvan']
+        widgets = {
+            'ad': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
+            'unvan': forms.Select(attrs={'class': 'form-select', 'required': True}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['ad'].required = True
+        self.fields['unvan'].required = True
+        self.fields['unvan'].empty_label = "Unvan seçiniz"
 
 class GeciciGorevForm(forms.ModelForm):
     class Meta:

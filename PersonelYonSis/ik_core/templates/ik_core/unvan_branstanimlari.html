@@ -4,25 +4,23 @@
     <h3>Unvan ve Branş Tanımları</h3>
     <div class="row">
         <div class="col-md-5">
-            <h5>Yeni Unvan Tanımlama</h5>
-            <form method="post" class="mb-3">
-                {% csrf_token %}
-                <div class="mb-2">
-                    <label for="id_unvan-ad" class="form-label">Unvan Adı</label>
-                    {{ unvan_form.ad }}
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Unvanlar</h5>
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#unvanEkleModal">
+                    <i class="bi bi-plus-square me-1"></i>Unvan Ekle
+                </button>
+            </div>
+            
+            <!-- Arama Kutusu -->
+            <div class="mb-3">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" class="form-control" id="unvanArama" placeholder="Unvan ara...">
                 </div>
-                <div class="mb-2">
-                    <label for="id_unvan-sinif" class="form-label">Sınıf</label>
-                    <select name="unvan-sinif" id="id_unvan-sinif" class="form-select">
-                        <option value="S.H.S.">S.H.S.</option>
-                        <option value="G.İ.H.">G.İ.H.</option>
-                        <option value="T.H.S.">T.H.S.</option>
-                        <option value="BİLİNMİYOR">BİLİNMİYOR</option>
-                    </select>
-                </div>
-                <button type="submit" name="unvan_ekle" class="btn btn-success">Unvan Ekle</button>
-            </form>
-            <table class="table table-bordered table-sm">
+            </div>
+            <table class="table table-bordered table-sm" id="unvanTablosu">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -40,7 +38,9 @@
                         <td>{{ unvan.sinif }}</td>
                         <td>{{ unvan.brans_set.count }}</td>
                         <td>
-                            <a href="?unvan_id={{ unvan.id }}" class="btn btn-sm btn-info">Branşları Gör</a>
+                            <a href="?unvan_id={{ unvan.id }}" class="btn btn-sm btn-dark">
+                                <i class="bi bi-arrow-return-right me-1"></i>Branşlar
+                            </a>
                         </td>
                     </tr>
                     {% empty %}
@@ -52,21 +52,20 @@
             </table>
         </div>
         <div class="col-md-7">
-            <h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>
+                    {% if selected_unvan %}
+                        "{{ selected_unvan.ad }}" Unvanına Bağlı Branşlar
+                    {% else %}
+                        Branşlar
+                    {% endif %}
+                </h5>
                 {% if selected_unvan %}
-                    "{{ selected_unvan.ad }}" Unvanına Bağlı Branşlar
-                {% else %}
-                    Branşlar
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#bransEkleModal" data-unvan-id="{{ selected_unvan.id }}" data-unvan-ad="{{ selected_unvan.ad }}">
+                    <i class="bi bi-plus-square me-1"></i>Branş Ekle
+                </button>
                 {% endif %}
-            </h5>
-            {% if selected_unvan %}
-            <form method="post" class="mb-3">
-                {% csrf_token %}
-                {{ brans_form.as_p }}
-                <input type="hidden" name="brans-unvan" value="{{ selected_unvan.id }}">
-                <button type="submit" name="brans_ekle" class="btn btn-success">Branş Ekle</button>
-            </form>
-            {% endif %}
+            </div>
             <table class="table table-bordered table-sm">
                 <thead>
                     <tr>
@@ -92,4 +91,94 @@
         </div>
     </div>
 </div>
+
+<!-- Modalları Include Et -->
+{% include 'ik_core/partials/unvan_ekle_modal.html' %}
+{% include 'ik_core/partials/brans_ekle_modal.html' %}
+
+<!-- JavaScript -->
+<script>
+// Unvan arama fonksiyonu
+document.getElementById('unvanArama').addEventListener('keyup', function() {
+    const aramaMetni = this.value.toLowerCase();
+    const tablo = document.getElementById('unvanTablosu');
+    const satirlar = tablo.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    
+    for (let i = 0; i < satirlar.length; i++) {
+        const satir = satirlar[i];
+        const unvanAdi = satir.cells[1].textContent.toLowerCase();
+        const sinif = satir.cells[2].textContent.toLowerCase();
+        
+        if (unvanAdi.includes(aramaMetni) || sinif.includes(aramaMetni)) {
+            satir.style.display = '';
+        } else {
+            satir.style.display = 'none';
+        }
+    }
+});
+
+// Seçili unvanı branş modalına set etme fonksiyonu
+function setSelectedUnvan(unvanId, unvanAdi) {
+    document.getElementById('id_brans-unvan').value = unvanAdi;
+    document.getElementById('hidden_brans-unvan').value = unvanId;
+}
+
+// Branş ekle butonuna tıklandığında unvan bilgilerini set et
+document.addEventListener('DOMContentLoaded', function() {
+    const bransEkleBtn = document.querySelector('[data-unvan-id]');
+    if (bransEkleBtn) {
+        bransEkleBtn.addEventListener('click', function() {
+            const unvanId = this.getAttribute('data-unvan-id');
+            const unvanAdi = this.getAttribute('data-unvan-ad');
+            setSelectedUnvan(unvanId, unvanAdi);
+        });
+    }
+});
+
+// Form validasyonu
+document.getElementById('unvanEkleForm').addEventListener('submit', function(e) {
+    const unvanAdi = document.getElementById('id_unvan-ad').value.trim();
+    const sinif = document.getElementById('id_unvan-sinif').value;
+    
+    if (!unvanAdi) {
+        e.preventDefault();
+        document.getElementById('id_unvan-ad').classList.add('is-invalid');
+    } else {
+        document.getElementById('id_unvan-ad').classList.remove('is-invalid');
+    }
+    
+    if (!sinif) {
+        e.preventDefault();
+        document.getElementById('id_unvan-sinif').classList.add('is-invalid');
+    } else {
+        document.getElementById('id_unvan-sinif').classList.remove('is-invalid');
+    }
+});
+
+document.getElementById('bransEkleForm').addEventListener('submit', function(e) {
+    const bransAdi = document.getElementById('id_brans-ad').value.trim();
+    
+    if (!bransAdi) {
+        e.preventDefault();
+        document.getElementById('id_brans-ad').classList.add('is-invalid');
+    } else {
+        document.getElementById('id_brans-ad').classList.remove('is-invalid');
+    }
+});
+
+// Modal temizleme
+document.getElementById('unvanEkleModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('unvanEkleForm').reset();
+    document.querySelectorAll('#unvanEkleForm .is-invalid').forEach(el => {
+        el.classList.remove('is-invalid');
+    });
+});
+
+document.getElementById('bransEkleModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('bransEkleForm').reset();
+    document.querySelectorAll('#bransEkleForm .is-invalid').forEach(el => {
+        el.classList.remove('is-invalid');
+    });
+});
+</script>
 {% endblock %}

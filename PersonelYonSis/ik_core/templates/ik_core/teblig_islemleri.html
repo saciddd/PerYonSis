@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-3">
+  <style>
+    /* Print area typography and clean paper look */
+    #printArea { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 11pt; }
+    #printArea pre { font-family: inherit; font-size: inherit; }
+    #printArea #tebligMetni { border: none; box-shadow: none; outline: none; resize: none; padding: 0; }
+  </style>
+  <div class="row">
+    <div class="col-md-4">
+      <div class="d-flex justify-content-end mb-2">
+        <button class="btn btn-success" onclick="printArea()">Kaydet ve Yazdır</button>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Tebliğ Eden</label>
+        <div class="input-group">
+          <select id="ddlImza" class="form-select" onchange="updatePreview()">
+            <option value="">Seçiniz</option>
+            {% for i in imzalar %}
+              <option value="{{ i.id }}" data-metin="{{ i.metin|escapejs }}">{{ i.ad }}</option>
+            {% endfor %}
+          </select>
+          <a class="btn btn-outline-secondary" href="{% url 'ik_core:imza_tanimlari' %}"><i class="bi bi-link"></i></a>
+        </div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Tebliğ Edilecek Yazı</label>
+        <div class="input-group">
+          <select id="ddlTeblig" class="form-select" onchange="loadTebligMetni()">
+            <option value="">Seçiniz</option>
+            {% for t in tebligler %}
+              <option value="{{ t.id }}">{{ t.ad }}</option>
+            {% endfor %}
+          </select>
+          <a class="btn btn-outline-secondary" href="{% url 'ik_core:teblig_tanimlari' %}"><i class="bi bi-link"></i></a>
+        </div>
+      </div>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" id="chkKayitsiz" onchange="updatePreview()">
+        <label class="form-check-label" for="chkKayitsiz">Sistemde kayıtlı olmayan personel</label>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Personel Bilgileri</label>
+        <textarea id="kayitsizBilgi" class="form-control" rows="3" placeholder="Ad Soyad\nUnvan\nSicil No" oninput="updatePreview()"></textarea>
+      </div>
+      <hr/>
+      <div class="small">
+        <div><strong>Personel Adı Soyadı:</strong> {{ personel.ad }} {{ personel.soyad }}</div>
+        <div><strong>Sicil No:</strong> {{ personel.sicil_no }}</div>
+        <div><strong>Unvan:</strong> {{ personel.unvan }}</div>
+        <div><strong>Branş:</strong> {{ personel.brans }}</div>
+        <div><strong>Atama Karar Tarihi:</strong> {{ personel.atama_karar_tarihi }}</div>
+        <div><strong>Atama Karar No:</strong> {{ personel.atama_karar_no }}</div>
+        <div><strong>DHY:</strong> {{ personel.dhy|yesno:"Evet,Hayır" }}</div>
+        <div><strong>DSS:</strong> {{ personel.dss|yesno:"Evet,Hayır" }}</div>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div id="printArea">
+        <br/>
+        <br/>
+        <div class="text-center fw-bold">TEBLİĞ TEBELLÜĞ BELGESİ</div>
+        <div style="height:2em"></div>
+        <div>
+          <textarea id="tebligMetni" class="form-control" rows="6" oninput="debouncedMetinChanged()" placeholder="Metin yüklemek için soldan seçiniz..."></textarea>
+        </div>
+        <div style="height:1em"></div>
+        <div class="row text-center">
+          <div class="col">TEBLİĞ EDEN</div>
+          <div class="col">TEBLİĞ TARİHİ</div>
+          <div class="col">TEBELLÜĞ EDEN</div>
+        </div>
+        <div class="row text-center mt-2" style="min-height:6em">
+          <div class="col"><pre id="imzaMetin" style="white-space:pre-line">&nbsp;</pre></div>
+          <div class="col">...../...../20....</div>
+          <div class="col"><pre id="tebellugEden" style="white-space:pre-line">&nbsp;</pre></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock%}
+{% block extra_js %}
+<script>
+let metinUpdateTimer = null;
+function updatePreview(){
+  const selImza = document.getElementById('ddlImza');
+  const raw = selImza.selectedOptions[0]?.dataset?.metin || '';
+  // Decode escape sequences like \u000D\u000A and \n so line breaks render
+  const decoded = raw
+    .replace(/\\u000D/gi, '\r')
+    .replace(/\\u000A/gi, '\n')
+    .replace(/\\n/g, '\n');
+  document.getElementById('imzaMetin').textContent = decoded;
+
+  const kayitsiz = document.getElementById('chkKayitsiz').checked;
+  if(kayitsiz){
+    document.getElementById('tebellugEden').textContent = document.getElementById('kayitsizBilgi').value;
+  } else {
+    document.getElementById('tebellugEden').textContent = `{{ personel.ad }} {{ personel.soyad }}\n{{ personel.unvan }}\n{{ personel.sicil_no }}`;
+  }
+}
+async function loadTebligMetni(){
+  const id = document.getElementById('ddlTeblig').value;
+  if(!id) return;
+  try {
+    const res = await fetch('{% url "ik_core:teblig_metni_get" 0 %}'.replace('/0/','/'+id+'/'));
+    if(!res.ok) return;
+    const data = await res.json();
+    document.getElementById('tebligMetni').value = (data.metin || '');
+    updatePreview();
+  } catch (e) {
+    console.error(e);
+  }
+}
+function debouncedMetinChanged(){
+  updatePreview();
+  if(metinUpdateTimer){ clearTimeout(metinUpdateTimer); }
+  metinUpdateTimer = setTimeout(saveMetinIfSelected, 600);
+}
+async function saveMetinIfSelected(){
+  const id = document.getElementById('ddlTeblig').value;
+  if(!id) return;
+  const formData = new FormData();
+  formData.append('metin', document.getElementById('tebligMetni').value);
+  const url = '{% url "ik_core:teblig_metni_guncelle" 0 %}'.replace('/0/','/'+id+'/');
+  await fetch(url, {method:'POST', headers:{'X-CSRFToken': '{{ csrf_token }}'}, body: formData});
+}
+function printArea(){
+  const style = document.createElement('style');
+  style.id = 'printStyleOnlyArea';
+  style.type = 'text/css';
+  style.media = 'print';
+  style.textContent = `
+    @media print {
+      body * { visibility: hidden !important; }
+      #printArea, #printArea * { visibility: visible !important; }
+      #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  `;
+  document.head.appendChild(style);
+
+  const cleanup = () => {
+    setTimeout(() => {
+      const s = document.getElementById('printStyleOnlyArea');
+      if (s) s.remove();
+      window.removeEventListener('afterprint', cleanup);
+    }, 0);
+  };
+  window.addEventListener('afterprint', cleanup);
+
+  try { window.print(); } catch(e) { cleanup(); }
+  // Fallback cleanup in case afterprint doesn't fire
+  setTimeout(() => {
+    const s = document.getElementById('printStyleOnlyArea');
+    if (s) s.remove();
+  }, 2000);
+}
+updatePreview();
+</script>
+{% endblock %}

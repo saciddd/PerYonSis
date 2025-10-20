@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5>İmza Tanımları</h5>
+    <button class="btn btn-primary" onclick="openImzaModal()">İmza Ekle</button>
+  </div>
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>Kısa Ad</th>
+        <th>Metin</th>
+        <th style="width:90px"></th>
+      </tr>
+    </thead>
+    <tbody id="imzaTableBody">
+      {% for i in imzalar %}
+      <tr data-id="{{ i.id }}">
+        <td>{{ i.ad }}</td>
+        <td><div style="white-space:pre-line; text-align:center; max-height:4.5em; overflow:auto;">{{ i.metin }}</div></td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-secondary" onclick="openImzaModal({{ i.id }}, '{{ i.ad|escapejs }}', `{{ i.metin|escapejs }}`)"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteImza({{ i.id }})"><i class="bi bi-trash"></i></button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="text-center">Kayıt yok</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include 'ik_core/partials/_imza_modal.html' %}
+{% endblock %}
+{% block extra_js %}
+<script>
+function openImzaModal(id, ad, metin){
+  document.getElementById('imza_id').value = id || '';
+  document.getElementById('imza_ad').value = ad || '';
+  document.getElementById('imza_metin').value = metin || '';
+  document.getElementById('imzaModal').style.display = 'block';
+}
+function closeImzaModal(){
+  document.getElementById('imzaModal').style.display = 'none';
+}
+async function saveImza(){
+  const form = document.getElementById('imzaForm');
+  const formData = new FormData(form);
+  const res = await fetch('{% url "ik_core:teblig_imzasi_ekle" %}', {method:'POST', headers:{'X-CSRFToken': '{{ csrf_token }}'}, body: formData});
+  if(res.ok){ location.reload(); }
+  else { alert('Kaydetme hatası'); }
+}
+async function deleteImza(id){
+  if(!confirm('Silmek istiyor musunuz?')) return;
+  const res = await fetch('{% url "ik_core:teblig_imzasi_sil" 0 %}'.replace('/0/','/'+id+'/'), {method:'POST', headers:{'X-CSRFToken': '{{ csrf_token }}'}});
+  if(res.ok){ location.reload(); }
+  else { alert('Silme hatası'); }
+}
+</script>
+{% endblock %}

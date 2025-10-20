@@ -424,6 +424,10 @@
                     </div>
                     <div class="col-md-4">
                         <div class="d-flex justify-content-end action-buttons">
+                            <!-- Tebliğ işlemleri butonu -->
+                            <a href="{% url 'ik_core:teblig_islemleri' personel.id %}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-file-earmark-text me-1"></i> Tebliğ İşlemleri
+                            </a>
                             <button type="button" class="btn btn-warning btn-sm" id="editBtn">
                                 <i class="bi bi-pencil me-1"></i> Düzenle
                             </button>

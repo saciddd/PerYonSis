@@ -22,6 +22,8 @@ from .forms import PersonelForm, KurumForm, UnvanForm, BransForm, GeciciGorevFor
 from django.db import models
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET
+from django.forms import ModelForm
+from .models.Teblig import TebligImzasi, TebligMetni
 
 # Türkçe lower/upper normalize edici yardımcı
 def lower_tr(text: str) -> str:
@@ -312,6 +314,124 @@ def unvan_branstanimlari(request):
 
 def tanimlamalar(request):
     return render(request, 'ik_core/tanimlamalar.html')
+
+# =====================
+# Tebliğ: Modeller için basit formlar
+# =====================
+
+class TebligImzasiForm(ModelForm):
+    class Meta:
+        model = TebligImzasi
+        fields = ['ad', 'metin']
+
+
+class TebligMetniForm(ModelForm):
+    class Meta:
+        model = TebligMetni
+        fields = ['ad', 'metin']
+
+
+# =====================
+# Tebliğ: Tanım sayfaları ve CRUD
+# =====================
+
+@login_required
+def imza_tanimlari(request):
+    imzalar = TebligImzasi.objects.order_by('ad')
+    form = TebligImzasiForm()
+    return render(request, 'ik_core/imza_tanimlari.html', {
+        'imzalar': imzalar,
+        'form': form,
+    })
+
+
+@login_required
+def teblig_tanimlari(request):
+    tebligler = TebligMetni.objects.order_by('ad')
+    form = TebligMetniForm()
+    return render(request, 'ik_core/teblig_tanimlari.html', {
+        'tebligler': tebligler,
+        'form': form,
+    })
+
+
+@login_required
+@require_POST
+def teblig_imzasi_ekle(request):
+    pk = request.POST.get('id')
+    if pk:
+        instance = get_object_or_404(TebligImzasi, pk=pk)
+        form = TebligImzasiForm(request.POST, instance=instance)
+    else:
+        form = TebligImzasiForm(request.POST)
+    if form.is_valid():
+        imza = form.save()
+        return JsonResponse({'success': True, 'id': imza.id, 'ad': imza.ad, 'metin': imza.metin})
+    return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+
+
+@login_required
+@require_POST
+def teblig_imzasi_sil(request, pk):
+    imza = get_object_or_404(TebligImzasi, pk=pk)
+    imza.delete()
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def teblig_metni_ekle(request):
+    pk = request.POST.get('id')
+    if pk:
+        instance = get_object_or_404(TebligMetni, pk=pk)
+        form = TebligMetniForm(request.POST, instance=instance)
+    else:
+        form = TebligMetniForm(request.POST)
+    if form.is_valid():
+        tm = form.save()
+        return JsonResponse({'success': True, 'id': tm.id, 'ad': tm.ad, 'metin': tm.metin})
+    return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+
+
+@login_required
+@require_POST
+def teblig_metni_sil(request, pk):
+    tm = get_object_or_404(TebligMetni, pk=pk)
+    tm.delete()
+    return JsonResponse({'success': True})
+
+
+# =====================
+# Tebliğ: İşlemleri Sayfası
+# =====================
+
+@login_required
+def teblig_islemleri(request, personel_id: int):
+    personel = get_object_or_404(Personel, pk=personel_id)
+    imzalar = TebligImzasi.objects.order_by('ad')
+    tebligler = TebligMetni.objects.order_by('ad')
+    return render(request, 'ik_core/teblig_islemleri.html', {
+        'personel': personel,
+        'imzalar': imzalar,
+        'tebligler': tebligler,
+    })
+
+
+@login_required
+@require_POST
+def teblig_metni_guncelle(request, pk: int):
+    tm = get_object_or_404(TebligMetni, pk=pk)
+    metin = request.POST.get('metin', '')
+    tm.metin = metin
+    tm.save(update_fields=['metin'])
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_GET
+def teblig_metni_get(request, pk: int):
+    tm = get_object_or_404(TebligMetni, pk=pk)
+    return JsonResponse({'id': tm.id, 'ad': tm.ad, 'metin': tm.metin})
 
 # Placeholder view for Ilisik Kesme Formu
 def ilisik_kesme_formu(request, pk):

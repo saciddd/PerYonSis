@@ -1,0 +1,88 @@
+<!-- Birim Ekleme Modalı -->
+<div class="modal fade" id="birimEkleModal" tabindex="-1" aria-labelledby="birimEkleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="birimEkleModalLabel">Birim Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="birimEkleForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_birim-bina" class="form-label">Bina</label>
+                        <input type="text" class="form-control" id="id_birim-bina" readonly>
+                        <input type="hidden" id="hidden_birim-bina" name="bina_id">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_birim-ust_birim" class="form-label">Üst Birim</label>
+                        <select class="form-control" id="id_birim-ust_birim" name="ust_birim_id" required>
+                            <option value="">Üst Birim Seçiniz</option>
+                            {% for ust_birim in ust_birimler %}
+                            <option value="{{ ust_birim.id }}">{{ ust_birim.ad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_birim-ad" class="form-label">Birim Adı</label>
+                        <input type="text" class="form-control" id="id_birim-ad" name="ad" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Birim ekleme form submit
+document.addEventListener('DOMContentLoaded', function() {
+    const birimEkleForm = document.getElementById('birimEkleForm');
+    if (birimEkleForm) {
+        birimEkleForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            
+            if (!csrfToken) {
+                alert('CSRF token bulunamadı.');
+                return;
+            }
+            
+            fetch('/ik_core/birim_ekle/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken.value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Başarılı mesajı göster
+                    alert(data.message);
+                    
+                    // Modalı kapat
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('birimEkleModal'));
+                    modal.hide();
+                    
+                    // Formu temizle
+                    this.reset();
+                    
+                    // Sayfayı yenile
+                    location.reload();
+                } else {
+                    alert('Hata: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Bir hata oluştu.');
+            });
+        });
+    }
+});
+</script>

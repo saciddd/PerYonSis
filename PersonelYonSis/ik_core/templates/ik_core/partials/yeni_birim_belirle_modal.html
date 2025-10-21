@@ -1,0 +1,129 @@
+<!-- Yeni Birim Belirleme Modalı -->
+<div class="modal fade" id="yeniBirimBelirleModal" tabindex="-1" aria-labelledby="yeniBirimBelirleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="yeniBirimBelirleModalLabel">Yeni Birim Belirle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="yeniBirimBelirleForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_yeni_birim-ust_birim" class="form-label">Üst Birim</label>
+                            <select class="form-control" id="id_yeni_birim-ust_birim" name="ust_birim_id" required>
+                                <option value="">Üst Birim Seçiniz</option>
+                                {% for ust_birim in ust_birimler %}
+                                <option value="{{ ust_birim.id }}">{{ ust_birim.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_yeni_birim-bina" class="form-label">Bina</label>
+                            <select class="form-control" id="id_yeni_birim-bina" name="bina_id" required>
+                                <option value="">Bina Seçiniz</option>
+                                {% for bina in binalar %}
+                                <option value="{{ bina.id }}">{{ bina.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_yeni_birim-birim" class="form-label">Birim</label>
+                            <select class="form-control" id="id_yeni_birim-birim" name="birim_id" required>
+                                <option value="">Önce Üst Birim ve Bina Seçiniz</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_yeni_birim-gecis_tarihi" class="form-label">Geçiş Tarihi</label>
+                            <input type="date" class="form-control" id="id_yeni_birim-gecis_tarihi" name="gecis_tarihi" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="id_yeni_birim-sorumlu" name="sorumlu">
+                                <label class="form-check-label" for="id_yeni_birim-sorumlu">
+                                    Sorumlu
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_yeni_birim-not" class="form-label">Not</label>
+                            <input type="text" class="form-control" id="id_yeni_birim-not" name="not" maxlength="100">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Yeni birim belirleme form submit
+document.getElementById('yeniBirimBelirleForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    formData.append('personel_id', {{ personel.id }});
+    
+    fetch('/ik_core/personel_birim_ekle/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            const modal = bootstrap.Modal.getInstance(document.getElementById('yeniBirimBelirleModal'));
+            modal.hide();
+            this.reset();
+            location.reload();
+        } else {
+            alert('Hata: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Bir hata oluştu.');
+    });
+});
+
+// Üst birim ve bina seçimine göre birimleri getirme
+function updateBirimler() {
+    const ustBirimId = document.getElementById('id_yeni_birim-ust_birim').value;
+    const binaId = document.getElementById('id_yeni_birim-bina').value;
+    const birimSelect = document.getElementById('id_yeni_birim-birim');
+    
+    if (!ustBirimId || !binaId) {
+        birimSelect.innerHTML = '<option value="">Önce Üst Birim ve Bina Seçiniz</option>';
+        return;
+    }
+    
+    fetch(`/ik_core/get_birimler_by_bina/?bina_id=${binaId}&ust_birim_id=${ustBirimId}`)
+        .then(response => response.json())
+        .then(data => {
+            birimSelect.innerHTML = '<option value="">Birim Seçiniz</option>';
+            data.birimler.forEach(birim => {
+                const option = document.createElement('option');
+                option.value = birim.id;
+                option.textContent = birim.ad;
+                birimSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
+
+document.getElementById('id_yeni_birim-ust_birim').addEventListener('change', updateBirimler);
+document.getElementById('id_yeni_birim-bina').addEventListener('change', updateBirimler);
+</script>

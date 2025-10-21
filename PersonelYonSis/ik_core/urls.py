@@ -33,6 +33,14 @@ urlpatterns = [
     path('teblig-islemleri/<int:personel_id>/', views.teblig_islemleri, name='teblig_islemleri'),
     path('teblig-metni/guncelle/<int:pk>/', views.teblig_metni_guncelle, name='teblig_metni_guncelle'),
     path('teblig-metni/get/<int:pk>/', views.teblig_metni_get, name='teblig_metni_get'),
+    # Birim yönetimi
+    path('birim-yonetimi/', views.birim_yonetimi, name='birim_yonetimi'),
+    path('bina-ekle/', views.bina_ekle, name='bina_ekle'),
+    path('ust-birim-ekle/', views.ust_birim_ekle, name='ust_birim_ekle'),
+    path('birim-ekle/', views.birim_ekle, name='birim_ekle'),
+    path('get-birimler-by-bina/', views.get_birimler_by_bina, name='get_birimler_by_bina'),
+    path('personel-birim-ekle/', views.personel_birim_ekle, name='personel_birim_ekle'),
+    path('gorevlendirme-yazisi/<int:personel_birim_id>/', views.gorevlendirme_yazisi, name='gorevlendirme_yazisi'),
     # API endpoints
     path('api/personel_aktar/', api_views.filemaker_personel_aktar, name='filemaker_personel_aktar'),
 

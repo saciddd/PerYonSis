@@ -1,0 +1,74 @@
+<!-- Üst Birim Ekleme Modalı -->
+<div class="modal fade" id="ustBirimEkleModal" tabindex="-1" aria-labelledby="ustBirimEkleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ustBirimEkleModalLabel">Üst Birim Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="ustBirimEkleForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_ust_birim-ad" class="form-label">Üst Birim Adı</label>
+                        <input type="text" class="form-control" id="id_ust_birim-ad" name="ad" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Üst birim ekleme form submit
+document.addEventListener('DOMContentLoaded', function() {
+    const ustBirimEkleForm = document.getElementById('ustBirimEkleForm');
+    if (ustBirimEkleForm) {
+        ustBirimEkleForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            
+            if (!csrfToken) {
+                alert('CSRF token bulunamadı.');
+                return;
+            }
+            
+            fetch('/ik_core/ust_birim_ekle/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken.value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Başarılı mesajı göster
+                    alert(data.message);
+                    
+                    // Modalı kapat
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('ustBirimEkleModal'));
+                    modal.hide();
+                    
+                    // Formu temizle
+                    this.reset();
+                    
+                    // Sayfayı yenile
+                    location.reload();
+                } else {
+                    alert('Hata: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Bir hata oluştu.');
+            });
+        });
+    }
+});
+</script>

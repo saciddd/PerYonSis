@@ -39,7 +39,44 @@ created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbo
 - Yeni Birim Belirleme ve Birim Geçmişi için gerekli endpointler oluşturulacak.
 - Yeni Birim Belirleme modalında sırasıyla Üst Birim, Bina, Birim, alt alta dropdown biçiminde seçilecek. Üst Birim ve Bina seçimine göre fetch isteği atılıp Birim Listesi güncellenecek.
 - Altında gecis_tarihi, sorumlu, not alanları ve Kaydet butonu yer almalı.
-- Birim Geçmişi modalında Personelin çalıştığı birim kayıtları yeniden eskiye doğru sıralanmalı.
+- Birim Geçmişi modalında Personelin çalıştığı birim kayıtları tablo biçiminde yeniden eskiye doğru sıralanmalı.
+- Birim Geçmişi modalındandaki tablonun sağ üst kısmında dropdown list biçiminde TebligImzasi kayıtları yer alacak. Label olarak "İmza Seçiniz:" yazacak.
+- Birim Geçmişi modalında Personelin çalıştığı birim kayıtları tablosunun son sütununda "Görevlendirme Yazısı" butonu yer almalı, ilgili kayıt için pdf formatında Görevlendirme yazısı oluşturmalı.
+- Görevlendirme Yazısı fonksiyonu aşağıdaki yapıya benzer olacak:
+    config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+    options = {
+        'page-size': 'A4',
+        'orientation': 'Portrait',
+        'margin-top': '5cm',
+        'margin-right': '1.5cm',
+        'margin-bottom': '1.1cm',
+        'margin-left': '1.5cm',
+        'encoding': 'UTF-8',
+        'no-outline': None,
+        'enable-local-file-access': '',
+        'enable-external-links': True,
+        'quiet': ''
+    }
+
+    pdf = pdfkit.from_string(html, False, options=options, configuration=config)
+    response = HttpResponse(pdf, content_type='application/pdf')
+    filename = f"Gorevlendirme_{personel.ad_soyad}.pdf"
+    filename = filename.replace(' ', '_')
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
+- Görevlendirme Yazıdı pdf template'i pdf klasöründe oluşturulacak, aşağıdaki yapıda olacak.
+-- Üstten 5 cm boşluk
+-- Ortalanmış biçimde "Sayın {PersonelBirim.Personel.ad} {PersonelBirim.Personel.soyad}"
+-- Ortalanmış biçimde "{PersonelBirim.Personel.unvan}"
+-- 2 satır boşluk
+-- iki yana yaslanmış biçimde " {PersonelBirim.Ustbirim} tarafından yapılan değerlendirme neticesinde çalıştığınız birim bilgilerinin aşağıdaki şekilde güncellenmesi uygun görülmüştür.
+    Bilgilerinizi ve gereğini rica ederim."
+-- 1 satır boşluk
+-- col-md-4 ve col-md-8 olarak 2 sütun oluşturuyoruz.
+-- sol tarafa alt alta "Birime Geçiş Tarihi" ve "Görevlendirildiği Birim" ifadeleri.
+-- sağ tarafa alt alta ": {PersonelBirim.gecis_tarihi}" ve ": {PersonelBirim.birim}" ifadeleri, Birim bold biçimde.
+-- 1 satır boşluk
+-- 3 col oluşturulup, 3. sütuna Ortalanmış biçimde "{TebligImzasi.metin}" yazılacak.
 
 - modaller dışındaki sayfa tasarımlarında bu etiketler kullanılacak:
 {% extends "base.html" %}
@@ -50,3 +87,5 @@ created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbo
 {% endblock %}
 {% block extra_js %}
 {% endblock %}
+
+- Gerekli endpointler ve fonksiyonlar yazılacak.

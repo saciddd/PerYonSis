@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block content %}
+{% csrf_token %}
+<div class="container">
+    <h3>Birim Yönetimi</h3>
+    <div class="row">
+        <div class="col-md-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Binalar</h5>
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#binaEkleModal">
+                    <i class="bi bi-plus-square me-1"></i>Bina Ekle
+                </button>
+            </div>
+            
+            <!-- Arama Kutusu -->
+            <div class="mb-3">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" class="form-control" id="binaArama" placeholder="Bina ara...">
+                </div>
+            </div>
+            
+            <table class="table table-bordered table-sm" id="binaTablosu">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Bina Adı</th>
+                        <th>Birim Sayısı</th>
+                        <th>Seç</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for bina in binalar %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ bina.ad }}</td>
+                        <td>{{ bina.birim_sayisi }}</td>
+                        <td>
+                            <a href="?bina_id={{ bina.id }}" class="btn btn-sm btn-dark">
+                                <i class="bi bi-arrow-return-right me-1"></i>Birimler
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center">Bina kaydı yok.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="col-md-7">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>
+                    {% if selected_bina %}
+                        "{{ selected_bina.ad }}" Binasına Bağlı Birimler
+                    {% else %}
+                        Birimler
+                    {% endif %}
+                </h5>
+                {% if selected_bina %}
+                <div class="d-flex gap-2">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="ustBirimDropdown" data-bs-toggle="dropdown">
+                            Üst Birim Filtrele
+                        </button>
+                        <ul class="dropdown-menu" id="ustBirimList">
+                            <li><a class="dropdown-item" href="#" data-ust-birim-id="">Tümü</a></li>
+                            {% for ust_birim in ust_birimler %}
+                            <li><a class="dropdown-item" href="#" data-ust-birim-id="{{ ust_birim.id }}">{{ ust_birim.ad }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#ustBirimEkleModal">
+                        <i class="bi bi-plus-circle"></i>
+                    </button>
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#birimEkleModal" data-bina-id="{{ selected_bina.id }}" data-bina-ad="{{ selected_bina.ad }}">
+                        <i class="bi bi-plus-square me-1"></i>Birim Ekle
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            
+            <table class="table table-bordered table-sm" id="birimTablosu">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Birim Adı</th>
+                        <th>Üst Birim</th>
+                        <th>Bina</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for birim in birimler %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ birim.ad }}</td>
+                        <td>{{ birim.ust_birim.ad }}</td>
+                        <td>{{ birim.bina.ad }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center">
+                            {% if selected_bina %}
+                                Bu binada birim kaydı yok.
+                            {% else %}
+                                Birim kaydı yok.
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modalları Include Et -->
+{% include 'ik_core/partials/bina_ekle_modal.html' %}
+{% include 'ik_core/partials/ust_birim_ekle_modal.html' %}
+{% include 'ik_core/partials/birim_ekle_modal.html' %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Bina arama fonksiyonu
+    const binaArama = document.getElementById('binaArama');
+    if (binaArama) {
+        binaArama.addEventListener('keyup', function() {
+            const aramaMetni = this.value.toLowerCase();
+            const tablo = document.getElementById('binaTablosu');
+            const satirlar = tablo.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            
+            for (let i = 0; i < satirlar.length; i++) {
+                const satir = satirlar[i];
+                const binaAdi = satir.cells[1].textContent.toLowerCase();
+                
+                if (binaAdi.includes(aramaMetni)) {
+                    satir.style.display = '';
+                } else {
+                    satir.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Üst birim filtreleme
+    const ustBirimList = document.getElementById('ustBirimList');
+    if (ustBirimList) {
+        ustBirimList.addEventListener('click', function(e) {
+            e.preventDefault();
+            const ustBirimId = e.target.getAttribute('data-ust-birim-id');
+            const tablo = document.getElementById('birimTablosu');
+            const satirlar = tablo.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+            
+            for (let i = 0; i < satirlar.length; i++) {
+                const satir = satirlar[i];
+                const ustBirimCell = satir.cells[2];
+                const ustBirimIdAttr = ustBirimCell.getAttribute('data-ust-birim-id');
+                
+                if (!ustBirimId || ustBirimId === '' || ustBirimIdAttr === ustBirimId) {
+                    satir.style.display = '';
+                } else {
+                    satir.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Birim ekle butonuna tıklandığında bina bilgilerini set et
+    const birimEkleBtn = document.querySelector('[data-bina-id]');
+    if (birimEkleBtn) {
+        birimEkleBtn.addEventListener('click', function() {
+            const binaId = this.getAttribute('data-bina-id');
+            const binaAdi = this.getAttribute('data-bina-ad');
+            setSelectedBina(binaId, binaAdi);
+        });
+    }
+});
+
+// Seçili binayı birim modalına set etme fonksiyonu
+function setSelectedBina(binaId, binaAdi) {
+    const binaInput = document.getElementById('id_birim-bina');
+    const hiddenInput = document.getElementById('hidden_birim-bina');
+    
+    if (binaInput) binaInput.value = binaAdi;
+    if (hiddenInput) hiddenInput.value = binaId;
+}
+
+// AJAX ile birimleri getirme
+function getBirimlerByBina(binaId, ustBirimId = '') {
+    fetch(`/ik_core/get_birimler_by_bina/?bina_id=${binaId}&ust_birim_id=${ustBirimId}`)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#birimTablosu tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            if (data.birimler.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">Bu binada birim kaydı yok.</td></tr>';
+                return;
+            }
+            
+            data.birimler.forEach((birim, index) => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${birim.ad}</td>
+                    <td data-ust-birim-id="${birim.ust_birim_id}">${birim.ust_birim_ad}</td>
+                    <td>${birim.bina_ad}</td>
+                `;
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+}
+</script>
+{% endblock %}
+{% endblock %}

@@ -13,6 +13,7 @@ from django.contrib import messages # Import messages framework
 from django.contrib.auth.decorators import login_required
 from .models.personel import Personel, Unvan, Brans, Kurum, OzelDurum # Import OzelDurum
 from .models.GeciciGorev import GeciciGorev
+from .models import UstBirim, Bina, Birim, PersonelBirim
 # Import value lists needed
 from .models.valuelists import (
     TESKILAT_DEGERLERI, EGITIM_DEGERLERI, MAZERET_DEGERLERI,
@@ -145,6 +146,17 @@ def personel_detay(request, pk):
     kurumlar = Kurum.objects.all()
     ozel_durum_all = OzelDurum.objects.all()
     ozel_durumu_ids = list(personel.ozel_durumu.values_list('id', flat=True))
+    
+    # Personelin en son çalıştığı birim bilgisini al
+    son_birim_kaydi = PersonelBirim.objects.filter(personel=personel).order_by('-gecis_tarihi', '-creation_timestamp').first()
+    
+    # Personelin birim geçmişi
+    personel_birim_gecmisi = PersonelBirim.objects.filter(personel=personel).order_by('-gecis_tarihi', '-creation_timestamp')
+    
+    # Modal'lar için gerekli veriler
+    ust_birimler = UstBirim.objects.all().order_by('ad')
+    binalar = Bina.objects.all().order_by('ad')
+    teblig_imzalari = TebligImzasi.objects.all().order_by('ad')
 
     # Use constants from valuelists
     teskilat_choices = TESKILAT_DEGERLERI
@@ -235,6 +247,11 @@ def personel_detay(request, pk):
         'ozel_durumu_ids': ozel_durumu_ids,
         'ayrilma_nedeni_choices': ayrilma_nedeni_choices,
         'vergi_indirimi_choices': vergi_indirimi_choices,
+        'son_birim_kaydi': son_birim_kaydi,
+        'personel_birim_gecmisi': personel_birim_gecmisi,
+        'ust_birimler': ust_birimler,
+        'binalar': binalar,
+        'teblig_imzalari': teblig_imzalari,
     }
     return render(request, 'ik_core/personel_detay.html', context)
 
@@ -742,4 +759,201 @@ def gecici_gorev_bulk_kaydet(request):
             f"{sayac_atlanan} satır atlandı."
         )
     })
+
+@login_required
+def birim_yonetimi(request):
+    """Birim yönetimi sayfası - unvan_branstanimlari.html benzeri yapı"""
+    binalar = Bina.objects.all().order_by('ad')
+    ust_birimler = UstBirim.objects.all().order_by('ad')
+    selected_bina_id = request.GET.get('bina_id')
+    selected_bina = None
+    birimler = []
+    
+    if selected_bina_id:
+        selected_bina = get_object_or_404(Bina, id=selected_bina_id)
+        birimler = Birim.objects.filter(bina=selected_bina).order_by('ust_birim__ad', 'ad')
+    
+    context = {
+        'binalar': binalar,
+        'ust_birimler': ust_birimler,
+        'selected_bina': selected_bina,
+        'birimler': birimler,
+    }
+    return render(request, 'ik_core/birim_yonetimi.html', context)
+
+@login_required
+@require_POST
+def bina_ekle(request):
+    """Bina ekleme endpoint'i"""
+    ad = request.POST.get('ad', '').strip()
+    if not ad:
+        return JsonResponse({'success': False, 'message': 'Bina adı gereklidir.'})
+    
+    if Bina.objects.filter(ad=ad).exists():
+        return JsonResponse({'success': False, 'message': 'Bu bina adı zaten mevcut.'})
+    
+    bina = Bina.objects.create(ad=ad)
+    return JsonResponse({
+        'success': True, 
+        'message': 'Bina başarıyla eklendi.',
+        'bina': {'id': bina.id, 'ad': bina.ad, 'birim_sayisi': 0}
+    })
+
+@login_required
+@require_POST
+def ust_birim_ekle(request):
+    """Üst birim ekleme endpoint'i"""
+    ad = request.POST.get('ad', '').strip()
+    if not ad:
+        return JsonResponse({'success': False, 'message': 'Üst birim adı gereklidir.'})
+    
+    if UstBirim.objects.filter(ad=ad).exists():
+        return JsonResponse({'success': False, 'message': 'Bu üst birim adı zaten mevcut.'})
+    
+    ust_birim = UstBirim.objects.create(ad=ad)
+    return JsonResponse({
+        'success': True, 
+        'message': 'Üst birim başarıyla eklendi.',
+        'ust_birim': {'id': ust_birim.id, 'ad': ust_birim.ad}
+    })
+
+@login_required
+@require_POST
+def birim_ekle(request):
+    """Birim ekleme endpoint'i"""
+    bina_id = request.POST.get('bina_id')
+    ust_birim_id = request.POST.get('ust_birim_id')
+    ad = request.POST.get('ad', '').strip()
+    
+    if not all([bina_id, ust_birim_id, ad]):
+        return JsonResponse({'success': False, 'message': 'Tüm alanlar gereklidir.'})
+    
+    try:
+        bina = Bina.objects.get(id=bina_id)
+        ust_birim = UstBirim.objects.get(id=ust_birim_id)
+    except (Bina.DoesNotExist, UstBirim.DoesNotExist):
+        return JsonResponse({'success': False, 'message': 'Geçersiz bina veya üst birim.'})
+    
+    if Birim.objects.filter(bina=bina, ad=ad).exists():
+        return JsonResponse({'success': False, 'message': 'Bu birim adı bu binada zaten mevcut.'})
+    
+    birim = Birim.objects.create(bina=bina, ust_birim=ust_birim, ad=ad)
+    return JsonResponse({
+        'success': True, 
+        'message': 'Birim başarıyla eklendi.',
+        'birim': {
+            'id': birim.id, 
+            'ad': birim.ad, 
+            'bina_ad': birim.bina.ad,
+            'ust_birim_ad': birim.ust_birim.ad
+        }
+    })
+
+@login_required
+def get_birimler_by_bina(request):
+    """Bina seçimine göre birimleri getiren AJAX endpoint'i"""
+    bina_id = request.GET.get('bina_id')
+    ust_birim_id = request.GET.get('ust_birim_id')
+    
+    if not bina_id:
+        return JsonResponse({'birimler': []})
+    
+    birimler = Birim.objects.filter(bina_id=bina_id)
+    if ust_birim_id:
+        birimler = birimler.filter(ust_birim_id=ust_birim_id)
+    
+    birimler = birimler.order_by('ust_birim__ad', 'ad')
+    
+    return JsonResponse({
+        'birimler': [
+            {'id': birim.id, 'ad': birim.ad, 'ust_birim_ad': birim.ust_birim.ad}
+            for birim in birimler
+        ]
+    })
+
+@login_required
+@require_POST
+def personel_birim_ekle(request):
+    """Personel birim ekleme endpoint'i"""
+    personel_id = request.POST.get('personel_id')
+    birim_id = request.POST.get('birim_id')
+    gecis_tarihi = request.POST.get('gecis_tarihi')
+    sorumlu = request.POST.get('sorumlu') == 'on'
+    not_text = request.POST.get('not', '').strip()
+    
+    if not all([personel_id, birim_id, gecis_tarihi]):
+        return JsonResponse({'success': False, 'message': 'Tüm zorunlu alanlar doldurulmalıdır.'})
+    
+    try:
+        personel = Personel.objects.get(id=personel_id)
+        birim = Birim.objects.get(id=birim_id)
+    except (Personel.DoesNotExist, Birim.DoesNotExist):
+        return JsonResponse({'success': False, 'message': 'Geçersiz personel veya birim.'})
+    
+    # PersonelBirim kaydı oluştur
+    personel_birim = PersonelBirim.objects.create(
+        personel=personel,
+        birim=birim,
+        gecis_tarihi=gecis_tarihi,
+        sorumlu=sorumlu,
+        not_text=not_text,
+        created_by=request.user
+    )
+    
+    return JsonResponse({
+        'success': True, 
+        'message': 'Birim ataması başarıyla kaydedildi.',
+        'personel_birim': {
+            'id': personel_birim.id,
+            'birim_ad': personel_birim.birim.ad,
+            'bina_ad': personel_birim.birim.bina.ad,
+            'ust_birim_ad': personel_birim.birim.ust_birim.ad,
+            'gecis_tarihi': personel_birim.gecis_tarihi.strftime('%d.%m.%Y'),
+            'sorumlu': personel_birim.sorumlu
+        }
+    })
+
+@login_required
+def gorevlendirme_yazisi(request, personel_birim_id):
+    """Görevlendirme yazısı PDF oluşturma"""
+    try:
+        personel_birim = get_object_or_404(PersonelBirim.objects.select_related('personel', 'birim__bina', 'birim__ust_birim', 'personel__unvan'), id=personel_birim_id)
+        imza_id = request.GET.get('imza_id')
+        
+        if not imza_id:
+            return JsonResponse({'success': False, 'message': 'İmza seçilmelidir.'})
+        
+        teblig_imzasi = get_object_or_404(TebligImzasi, id=imza_id)
+        
+        # PDF template'ini render et
+        html = render_to_string('ik_core/pdf/gorevlendirme_yazisi.html', {
+            'personel_birim': personel_birim,
+            'teblig_imzasi': teblig_imzasi,
+        })
+        
+        # PDF konfigürasyonu
+        config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+        options = {
+            'page-size': 'A4',
+            'orientation': 'Portrait',
+            'margin-top': '5cm',
+            'margin-right': '1.5cm',
+            'margin-bottom': '1.1cm',
+            'margin-left': '1.5cm',
+            'encoding': 'UTF-8',
+            'no-outline': None,
+            'enable-local-file-access': '',
+            'enable-external-links': True,
+            'quiet': ''
+        }
+        
+        pdf = pdfkit.from_string(html, False, options=options, configuration=config)
+        response = HttpResponse(pdf, content_type='application/pdf')
+        filename = f"Gorevlendirme_{personel_birim.personel.ad_soyad}.pdf"
+        filename = filename.replace(' ', '_')
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        return response
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'PDF oluşturulurken hata: {str(e)}'})
     

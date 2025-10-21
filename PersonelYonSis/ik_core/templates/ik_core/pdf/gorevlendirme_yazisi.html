@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Görevlendirme Yazısı</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            margin-top: 5cm;
+            text-align: center;
+            margin-bottom: 2cm;
+        }
+        .person-name {
+            font-size: 14pt;
+            font-weight: bold;
+            margin-bottom: 0.5cm;
+        }
+        .person-title {
+            font-size: 12pt;
+            margin-bottom: 1cm;
+        }
+        .content {
+            margin-bottom: 1cm;
+        }
+        .info-section {
+            margin-bottom: 1cm;
+        }
+        .info-row {
+            display: flex;
+            margin-bottom: 0.3cm;
+        }
+        .info-label {
+            width: 4cm;
+            font-weight: bold;
+        }
+        .info-value {
+            width: 8cm;
+        }
+        .signature {
+            text-align: center;
+            margin-top: 1cm;
+        }
+        .bold {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="person-name">Sayın {{ personel_birim.personel.ad }} {{ personel_birim.personel.soyad }}</div>
+        <div class="person-title">{{ personel_birim.personel.unvan.ad|default:"" }}</div>
+    </div>
+
+    <div class="content">
+        <p>{{ personel_birim.birim.ust_birim.ad }} tarafından yapılan değerlendirme neticesinde çalıştığınız birim bilgilerinin aşağıdaki şekilde güncellenmesi uygun görülmüştür.</p>
+        <p>Bilgilerinizi ve gereğini rica ederim.</p>
+    </div>
+
+    <div class="info-section">
+        <div class="info-row">
+            <div class="info-label">Birime Geçiş Tarihi</div>
+            <div class="info-value">: {{ personel_birim.gecis_tarihi|date:"d.m.Y" }}</div>
+        </div>
+        <div class="info-row">
+            <div class="info-label">Görevlendirildiği Birim</div>
+            <div class="info-value">: <span class="bold">{{ personel_birim.birim.ad }}</span></div>
+        </div>
+    </div>
+
+    <div class="signature">
+        <p>{{ teblig_imzasi.metin }}</p>
+    </div>
+</body>
+</html>

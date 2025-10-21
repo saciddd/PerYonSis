@@ -803,11 +803,33 @@
                                 <div class="row">
                                     <div class="col-md-4">
                                         <div class="info-label">Çalıştığı Bina</div>
-                                        <span class="editable-display info-value">Tanımsız</span>
+                                        <span class="editable-display info-value">
+                                            {% if son_birim_kaydi %}
+                                                {{ son_birim_kaydi.birim.bina.ad }}
+                                            {% else %}
+                                                Tanımsız
+                                            {% endif %}
+                                        </span>
+                                        <div class="d-inline-block ms-2">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#yeniBirimBelirleModal" title="Yeni Birim Belirle">
+                                                <i class="bi bi-building-add"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="info-label">Birim</div>
-                                        <span class="editable-display info-value">Tanımsız</span>
+                                        <span class="editable-display info-value">
+                                            {% if son_birim_kaydi %}
+                                                {{ son_birim_kaydi.birim.ad }}
+                                            {% else %}
+                                                Tanımsız
+                                            {% endif %}
+                                        </span>
+                                        <div class="d-inline-block ms-2">
+                                            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#birimGecmisiModal" title="Birim Geçmişi">
+                                                <i class="bi bi-clock-history"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1564,4 +1586,8 @@
         }
     });
 </script>
+
+<!-- Modal Include'ları -->
+{% include 'ik_core/partials/yeni_birim_belirle_modal.html' %}
+{% include 'ik_core/partials/birim_gecmisi_modal.html' %}
 {% endblock %}

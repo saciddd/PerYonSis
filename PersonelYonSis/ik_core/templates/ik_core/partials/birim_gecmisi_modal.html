@@ -1,0 +1,87 @@
+<!-- Birim Geçmişi Modalı -->
+<div class="modal fade" id="birimGecmisiModal" tabindex="-1" aria-labelledby="birimGecmisiModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="birimGecmisiModalLabel">Birim Geçmişi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="imzaSecimi" class="form-label">İmza Seçiniz:</label>
+                        <select class="form-control" id="imzaSecimi">
+                            <option value="">İmza Seçiniz</option>
+                            {% for imza in teblig_imzalari %}
+                            <option value="{{ imza.id }}">{{ imza.ad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Geçiş Tarihi</th>
+                                <th>Birim</th>
+                                <th>Bina</th>
+                                <th>Üst Birim</th>
+                                <th>Sorumlu</th>
+                                <th>Not</th>
+                                <th>İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="birimGecmisiTablosu">
+                            {% for kayit in personel_birim_gecmisi %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ kayit.gecis_tarihi|date:"d.m.Y" }}</td>
+                                <td>{{ kayit.birim.ad }}</td>
+                                <td>{{ kayit.birim.bina.ad }}</td>
+                                <td>{{ kayit.birim.ust_birim.ad }}</td>
+                                <td>
+                                    {% if kayit.sorumlu %}
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    {% else %}
+                                        <i class="bi bi-x-circle-fill text-danger"></i>
+                                    {% endif %}
+                                </td>
+                                <td>{{ kayit.not|default:"-" }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="gorevlendirmeYazisiOlustur({{ kayit.id }})">
+                                        Görevlendirme Yazısı
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center">Birim geçmişi kaydı yok.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function gorevlendirmeYazisiOlustur(personelBirimId) {
+    const imzaId = document.getElementById('imzaSecimi').value;
+    
+    if (!imzaId) {
+        alert('Lütfen bir imza seçiniz.');
+        return;
+    }
+    
+    // Görevlendirme yazısı PDF'ini oluştur
+    const url = `/ik_core/gorevlendirme_yazisi/${personelBirimId}/?imza_id=${imzaId}`;
+    window.open(url, '_blank');
+}
+</script>

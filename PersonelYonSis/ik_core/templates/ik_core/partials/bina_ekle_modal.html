@@ -1,0 +1,74 @@
+<!-- Bina Ekleme Modalı -->
+<div class="modal fade" id="binaEkleModal" tabindex="-1" aria-labelledby="binaEkleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="binaEkleModalLabel">Bina Ekle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="binaEkleForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="id_bina-ad" class="form-label">Bina Adı</label>
+                        <input type="text" class="form-control" id="id_bina-ad" name="ad" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Bina ekleme form submit
+document.addEventListener('DOMContentLoaded', function() {
+    const binaEkleForm = document.getElementById('binaEkleForm');
+    if (binaEkleForm) {
+        binaEkleForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            
+            if (!csrfToken) {
+                alert('CSRF token bulunamadı.');
+                return;
+            }
+            
+            fetch('/ik_core/bina_ekle/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken.value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Başarılı mesajı göster
+                    alert(data.message);
+                    
+                    // Modalı kapat
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('binaEkleModal'));
+                    modal.hide();
+                    
+                    // Formu temizle
+                    this.reset();
+                    
+                    // Sayfayı yenile
+                    location.reload();
+                } else {
+                    alert('Hata: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Bir hata oluştu.');
+            });
+        });
+    }
+});
+</script>

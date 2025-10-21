@@ -81,7 +81,7 @@ function gorevlendirmeYazisiOlustur(personelBirimId) {
     }
     
     // Görevlendirme yazısı PDF'ini oluştur
-    const url = `/ik_core/gorevlendirme_yazisi/${personelBirimId}/?imza_id=${imzaId}`;
+    const url = `{% url "ik_core:gorevlendirme_yazisi" 0 %}`.replace('/0/', `/${personelBirimId}/`) + `?imza_id=${imzaId}`;
     window.open(url, '_blank');
 }
 </script>

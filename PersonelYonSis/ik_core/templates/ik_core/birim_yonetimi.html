@@ -98,7 +98,7 @@
                     <tr>
                         <td>{{ forloop.counter }}</td>
                         <td>{{ birim.ad }}</td>
-                        <td>{{ birim.ust_birim.ad }}</td>
+                        <td data-ust-birim-id="{{ birim.ust_birim.id }}">{{ birim.ust_birim.ad }}</td>
                         <td>{{ birim.bina.ad }}</td>
                     </tr>
                     {% empty %}
@@ -152,20 +152,34 @@ document.addEventListener('DOMContentLoaded', function() {
     if (ustBirimList) {
         ustBirimList.addEventListener('click', function(e) {
             e.preventDefault();
-            const ustBirimId = e.target.getAttribute('data-ust-birim-id');
+            const target = e.target;
+            
+            // Sadece dropdown item'lara tıklandığında çalışsın
+            if (!target.classList.contains('dropdown-item')) {
+                return;
+            }
+            
+            const ustBirimId = target.getAttribute('data-ust-birim-id');
             const tablo = document.getElementById('birimTablosu');
             const satirlar = tablo.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
             
             for (let i = 0; i < satirlar.length; i++) {
                 const satir = satirlar[i];
-                const ustBirimCell = satir.cells[2];
+                const ustBirimCell = satir.cells[2]; // Üst birim hücresi (3. sütun)
                 const ustBirimIdAttr = ustBirimCell.getAttribute('data-ust-birim-id');
                 
+                // Tümü seçildiğinde veya eşleşen üst birim ID'si varsa göster
                 if (!ustBirimId || ustBirimId === '' || ustBirimIdAttr === ustBirimId) {
                     satir.style.display = '';
                 } else {
                     satir.style.display = 'none';
                 }
+            }
+            
+            // Dropdown butonunun metnini güncelle
+            const dropdownBtn = document.getElementById('ustBirimDropdown');
+            if (dropdownBtn) {
+                dropdownBtn.textContent = ustBirimId === '' ? 'Üst Birim Filtrele' : target.textContent;
             }
         });
     }

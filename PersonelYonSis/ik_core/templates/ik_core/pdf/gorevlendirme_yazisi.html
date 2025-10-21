@@ -8,7 +8,7 @@
         body {
             font-family: 'Times New Roman', serif;
             font-size: 12pt;
-            line-height: 1.5;
+            line-height: 1;
             margin: 0;
             padding: 0;
         }
@@ -29,23 +29,26 @@
         .content {
             margin-bottom: 1cm;
         }
+        .content p {
+            text-indent: 1.5cm; /* 1 tab girintisi */
+            margin-bottom: 0.5cm;
+        }
         .info-section {
             margin-bottom: 1cm;
         }
         .info-row {
-            display: flex;
             margin-bottom: 0.3cm;
+            display: flex;
+            align-items: baseline;
         }
         .info-label {
-            width: 4cm;
+            width: 5cm;
             font-weight: bold;
+            display: inline-block;
         }
         .info-value {
             width: 8cm;
-        }
-        .signature {
-            text-align: center;
-            margin-top: 1cm;
+            display: inline-block;
         }
         .bold {
             font-weight: bold;
@@ -59,7 +62,7 @@
     </div>
 
     <div class="content">
-        <p>{{ personel_birim.birim.ust_birim.ad }} tarafından yapılan değerlendirme neticesinde çalıştığınız birim bilgilerinin aşağıdaki şekilde güncellenmesi uygun görülmüştür.</p>
+        <p>     {{ personel_birim.birim.ust_birim.ad }} tarafından yapılan değerlendirme neticesinde çalıştığınız birim bilgilerinin aşağıdaki şekilde güncellenmesi uygun görülmüştür.</p>
         <p>Bilgilerinizi ve gereğini rica ederim.</p>
     </div>
 
@@ -73,9 +76,18 @@
             <div class="info-value">: <span class="bold">{{ personel_birim.birim.ad }}</span></div>
         </div>
     </div>
+    <br/>
 
-    <div class="signature">
-        <p>{{ teblig_imzasi.metin }}</p>
+    <div class="signature-container">
+        <!-- 3 sütunlu tablo oluşturulup, 3. kutucuğa Ortalanmış biçimde "{TebligImzasi.metin}" yazılacak. -->
+        <table style="width: 100%;">
+            <tr>
+                <td style="text-align: center; width: 33.33%;"></td>
+                <td style="text-align: center; width: 33.33%;"></td>
+                <td style="text-align: center; width: 33.33%;"><p>{{ teblig_imzasi.metin }}</p></td>
+            </tr>
+        </table>
     </div>
+
 </body>
 </html>

@@ -72,7 +72,7 @@ document.getElementById('yeniBirimBelirleForm').addEventListener('submit', funct
     const formData = new FormData(this);
     formData.append('personel_id', {{ personel.id }});
     
-    fetch('/ik_core/personel_birim_ekle/', {
+    fetch('{% url "ik_core:personel_birim_ekle" %}', {
         method: 'POST',
         body: formData,
         headers: {
@@ -108,7 +108,7 @@ function updateBirimler() {
         return;
     }
     
-    fetch(`/ik_core/get_birimler_by_bina/?bina_id=${binaId}&ust_birim_id=${ustBirimId}`)
+    fetch(`{% url "ik_core:get_birimler_by_bina" %}?bina_id=${encodeURIComponent(binaId)}&ust_birim_id=${encodeURIComponent(ustBirimId)}`)
         .then(response => response.json())
         .then(data => {
             birimSelect.innerHTML = '<option value="">Birim Seçiniz</option>';

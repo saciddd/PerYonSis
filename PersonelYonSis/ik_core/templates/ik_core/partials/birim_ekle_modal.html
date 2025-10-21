@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            fetch('/ik_core/birim_ekle/', {
+            fetch('{% url "ik_core:birim_ekle" %}', {
                 method: 'POST',
                 body: formData,
                 headers: {

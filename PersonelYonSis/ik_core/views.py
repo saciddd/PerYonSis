@@ -908,7 +908,11 @@ def personel_birim_ekle(request):
             'birim_ad': personel_birim.birim.ad,
             'bina_ad': personel_birim.birim.bina.ad,
             'ust_birim_ad': personel_birim.birim.ust_birim.ad,
-            'gecis_tarihi': personel_birim.gecis_tarihi.strftime('%d.%m.%Y'),
+            'gecis_tarihi': (
+                personel_birim.gecis_tarihi.strftime('%d.%m.%Y')
+                if hasattr(personel_birim.gecis_tarihi, 'strftime')
+                else str(personel_birim.gecis_tarihi)
+            ),
             'sorumlu': personel_birim.sorumlu
         }
     })

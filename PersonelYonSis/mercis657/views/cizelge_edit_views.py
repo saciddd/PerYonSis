@@ -120,7 +120,7 @@ def cizelge_yazdir(request):
                 hesaplama = hesapla_fazla_mesai(kayit, year, month)
 
                 personeller_for_pdf.append({
-                    'PersonelName': p.PersonelName,
+                    'PersonelName': f"{ p.PersonelName} {p.PersonelSurname}",
                     'PersonelTitle': getattr(p, 'PersonelTitle', ''),
                     'mesai_data': mesai_data,
                     'hesaplama': {'fazla_mesai': hesaplama['fazla_mesai'] if hesaplama else 0 }

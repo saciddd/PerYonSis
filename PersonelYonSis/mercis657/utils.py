@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
 import calendar
-from .models import ResmiTatil, MazeretKaydi, Mesai, Mesai_Tanimlari, SabitMesai
+from .models import ResmiTatil, MazeretKaydi, Mesai, Mesai_Tanimlari, SabitMesai, UserMesaiFavori
 
 
 def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
@@ -238,3 +238,10 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         'normal_fazla_mesai': normal_fazla_mesai,
         'stop_suresi': stop_suresi
     }
+
+def get_favori_mesailer(user):
+    """Kullanıcının favori mesailerini döndürür. Favori yoksa tüm mesailer gelir."""
+    favoriler = UserMesaiFavori.objects.filter(user=user).select_related("mesai")
+    if favoriler.exists():
+        return [f.mesai for f in favoriler]
+    return Mesai_Tanimlari.objects.all()

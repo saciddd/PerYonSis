@@ -7,6 +7,7 @@ app_name = 'mercis657'  # Namespace tanımlaması
 urlpatterns = [
     path('cizelge', views.cizelge, name='cizelge'),
     path('cizelge_kaydet', views.cizelge_kaydet, name='cizelge_kaydet'),
+    path('favori-mesai-kaydet/', views.favori_mesai_kaydet, name='favori_mesai_kaydet'),
     path('export_excel/', views.excel_export, name='export_excel'),
     path('add_mesai_tanim/', views.add_mesai_tanim, name='add_mesai_tanim'),
     path('mesai_tanim_update/', views.mesai_tanim_update, name='mesai_tanim_update'),

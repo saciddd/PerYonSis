@@ -1,0 +1,57 @@
+<div class="modal fade" id="favoriMesaiModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-light">
+        <h5 class="modal-title">
+          <i class="bi bi-star me-2"></i> Favori Mesailerini Seç
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row row-cols-3 g-2" id="favoriMesaiListesi">
+          {% for m in all_mesai_tanimlari %}
+            <div class="col">
+              <div class="form-check">
+                <input class="form-check-input favori-mesai" type="checkbox" id="mesai{{ m.id }}"
+                  value="{{ m.id }}"
+                  {% if m.id in favori_ids %}checked{% endif %}>
+                <label class="form-check-label" for="mesai{{ m.id }}">{{ m.Saat }} ({{ m.Sure }} saat)</label>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" id="favoriMesaiKaydetBtn">
+          <i class="bi bi-save"></i> Kaydet
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openFavoriMesaiModal() {
+  new bootstrap.Modal(document.getElementById("favoriMesaiModal")).show();
+}
+
+document.getElementById("favoriMesaiKaydetBtn").addEventListener("click", function() {
+  const secimler = Array.from(document.querySelectorAll(".favori-mesai:checked")).map(el => el.value);
+
+  fetch("{% url 'mercis657:favori_mesai_kaydet' %}", {
+    method: "POST",
+    headers: {"X-CSRFToken": "{{ csrf_token }}"},
+    body: JSON.stringify({mesai_ids: secimler})
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === "success") {
+      Swal.fire("Kaydedildi", "Favori mesaileriniz güncellendi.", "success").then(() => location.reload());
+    } else {
+      Swal.fire("Hata", data.message || "Kaydedilemedi", "error");
+    }
+  });
+});
+</script>

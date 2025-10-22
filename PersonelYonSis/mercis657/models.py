@@ -360,3 +360,15 @@ class IlkListe(models.Model):
         self.OnaylayanKullanici = kullanici
         self.OnayTarihi = timezone.now()
         self.save()
+
+class UserMesaiFavori(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favori_mesaileri")
+    mesai = models.ForeignKey(Mesai_Tanimlari, on_delete=models.CASCADE, related_name="favori_kullanicilar")
+
+    class Meta:
+        unique_together = ('user', 'mesai')
+        verbose_name = "Favori Mesai"
+        verbose_name_plural = "Favori Mesailer"
+
+    def __str__(self):
+        return f"{self.user} → {self.mesai.Saat}"

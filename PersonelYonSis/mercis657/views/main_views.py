@@ -9,7 +9,8 @@ import json
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from PersonelYonSis import settings
-from ..models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, Idareci, Izin, ResmiTatil, IlkListe, SabitMesai
+from ..models import Birim, Mesai, Mesai_Tanimlari, Personel, PersonelListesi, PersonelListesiKayit, UserBirim, Kurum, UstBirim, Idareci, Izin, ResmiTatil, IlkListe, SabitMesai, UserMesaiFavori
+from ..utils import get_favori_mesailer
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 import locale
@@ -125,17 +126,23 @@ def cizelge(request):
     except Exception:
         sabit_mesailer = []
     
+    # Favori mesai modal için gerekli veriler
+    favori_mesailer = UserMesaiFavori.objects.filter(user=user).values_list('mesai_id', flat=True)
+    all_mesai_tanimlari = Mesai_Tanimlari.objects.all().order_by('Saat')
+    
     pastcontext = {
             "user_birimler": user_birimler,
             "selected_birim_id": selected_birim_id,
             "donemler": donemler,
             "selected_donem": selected_donem,
-            "mesai_options": Mesai_Tanimlari.objects.all(),
+            "mesai_options": get_favori_mesailer(user),
             "sabit_mesailer": sabit_mesailer,  # Modal için eklendi
             "kurumlar": kurumlar,
             "ust_birimler": ust_birimler,
             "idareciler": idareciler,
             "izinler": izinler,
+            "all_mesai_tanimlari": all_mesai_tanimlari,
+            "favori_ids": list(favori_mesailer),
         }
     # Eğer GET ile birim ve dönem seçilmemişse, context'e sadece seçim listelerini gönder
     if not selected_birim_id or not selected_donem:
@@ -168,7 +175,7 @@ def cizelge(request):
     # Sıralı personel listesi
     kayitlar = PersonelListesiKayit.objects.filter(liste=liste).select_related('personel').order_by('sira_no', 'personel__PersonelName', 'personel__PersonelSurname')
     personeller = [k.personel for k in kayitlar]
-    mesai_tanimlari = Mesai_Tanimlari.objects.all()
+    mesai_tanimlari = get_favori_mesailer(user)
     mesailer = Mesai.objects.filter(
         Personel__in=personeller,
         MesaiDate__year=current_year,
@@ -275,6 +282,10 @@ def cizelge(request):
     except Exception:
         sabit_mesailer = []
 
+    # Favori mesai modal için gerekli veriler
+    favori_mesailer = UserMesaiFavori.objects.filter(user=user).values_list('mesai_id', flat=True)
+    all_mesai_tanimlari = Mesai_Tanimlari.objects.all().order_by('Saat')
+    
     context = {
         "personeller": personeller,
         "mesai_options": mesai_tanimlari,
@@ -290,6 +301,8 @@ def cizelge(request):
         "selected_birim_id": selected_birim_id,
         "liste": liste.id if liste else 0,
         "donemler": donemler,
+        "all_mesai_tanimlari": all_mesai_tanimlari,
+        "favori_ids": list(favori_mesailer),
         "selected_donem": selected_donem,
         "kurumlar": kurumlar,
         "ust_birimler": ust_birimler,
@@ -369,7 +382,7 @@ def tanimlamalar(request):
     ust_birimler = UstBirim.objects.all()
     idareciler = Idareci.objects.all()
     izinler = Izin.objects.all()
-    mesai_tanimlari = Mesai_Tanimlari.objects.all().order_by('Saat')
+    mesai_tanimlari = get_favori_mesailer(request.user)
     mesai_form = MesaiTanimForm()
     resmi_tatil_form = ResmiTatilForm()
     tatiller = ResmiTatil.objects.all().order_by('TatilTarihi')
@@ -512,4 +525,17 @@ def personel_listesi_sira_kaydet(request, liste_id):
         return JsonResponse({'status': 'success', 'updated': len(kayit_objs)})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+def favori_mesai_kaydet(request):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "Geçersiz istek."}, status=400)
+
+    mesai_ids = json.loads(request.body.decode("utf-8")).get("mesai_ids", [])
+    UserMesaiFavori.objects.filter(user=request.user).delete()
+
+    for mid in mesai_ids:
+        UserMesaiFavori.objects.create(user=request.user, mesai_id=mid)
+
+    return JsonResponse({"status": "success"})
 

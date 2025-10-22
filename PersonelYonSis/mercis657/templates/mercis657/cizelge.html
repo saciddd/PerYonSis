@@ -50,7 +50,12 @@
 
     <!-- Mesai/İzin Kontrolleri -->
     <div class="col-auto">
-        <label class="form-label small fw-bold">İşlemler</label>
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <label class="form-label small fw-bold mb-0">İşlemler</label>
+            <button class="btn btn-outline-warning btn-sm" onclick="openFavoriMesaiModal()">
+                <i class="bi bi-star"></i> Favori Mesailer
+            </button>
+        </div>
         <div class="input-group input-group-sm">
             <select id="mesaiSelection" class="form-select" style="width: 110px;">
                 <option value="">Mesai</option>
@@ -921,4 +926,8 @@
         display: inline;
     }
 </style>
+
+<!-- Favori Mesai Modal -->
+{% include 'mercis657/partials/favori_mesai_modal.html' %}
+
 {% endblock %}

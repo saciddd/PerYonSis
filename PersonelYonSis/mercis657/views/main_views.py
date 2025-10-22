@@ -155,7 +155,7 @@ def cizelge(request):
 
     birim = get_object_or_404(Birim, BirimID=birim_id)
 
-    if not UserBirim.objects.filter(user=request.user, birim=birim).exists() or not (request.user.has_permission('ÇS Tüm Listeleri Düzenleyebilir')):
+    if not UserBirim.objects.filter(user=request.user, birim=birim).exists() and not (request.user.has_permission('ÇS 657 Tüm Listeleri Düzenleyebilir')):
         return HttpResponseForbidden("Bu birim için yetkiniz yok.")
 
     # Liste varsa getir

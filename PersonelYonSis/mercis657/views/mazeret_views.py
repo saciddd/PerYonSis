@@ -14,7 +14,7 @@ from ..utils import hesapla_fazla_mesai
 @require_POST
 def mazeret_ekle(request):
     """Yeni mazeret kaydı ekler"""
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Sayfası'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     
     try:
@@ -61,7 +61,7 @@ def mazeret_ekle(request):
 @require_POST
 def mazeret_guncelle(request, mazeret_id):
     """Mazeret kaydını günceller"""
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Sayfası'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     
     try:
@@ -83,7 +83,7 @@ def mazeret_guncelle(request, mazeret_id):
 @require_POST
 def mazeret_sil(request, mazeret_id):
     """Mazeret kaydını siler"""
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Sayfası'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     
     try:
@@ -99,7 +99,7 @@ def mazeret_sil(request, mazeret_id):
 @require_POST
 def radyasyon_toggle(request, personel_id, liste_id):
     """Personelin radyasyon çalışanı durumunu değiştirir"""
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Sayfası'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     
     try:

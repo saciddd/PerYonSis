@@ -1,0 +1,59 @@
+.sticky-header th {
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
+    z-index: 10;
+    border-bottom: 2px solid #606468 !important;
+}
+
+/* Sticky first columns */
+.sticky-col {
+    position: sticky;
+    background-color: #fff !important;
+    z-index: 15 !important;
+}
+
+.sticky-col-1 { /* S/N column */
+    left: 0px;
+    z-index: 16 !important;
+}
+
+.sticky-col-2 { /* Personel Adı Soyadı column */
+    left: 30px;  /* Adjust based on S/N column width */
+    z-index: 16 !important;
+}
+
+.sticky-col-3 { /* Unvan column */
+    left: 120px; /* Adjust based on previous columns width */
+    z-index: 16 !important;
+}
+
+.table-responsive {
+    scrollbar-gutter: stable both-edges;
+    max-height: calc(100vh - 250px);
+    overflow: auto;
+    padding-bottom: 10px;
+}
+
+.fazla-mesai-badge {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 0.75em;
+    font-weight: bold;
+    background: rgba(180,180,180,0.35);
+    color: #000000;
+    padding: 1px 5px;
+    border-radius: 6px;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Badge colors */
+.fazla-mesai-positive {
+    background: rgba(0,128,0,0.3) !important;
+}
+
+.fazla-mesai-negative {
+    background: rgba(255,0,0,0.3) !important;
+}

@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}657 Çizelge İşlemleri{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/cizelge.css' %}">
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-3">
 <form id="filterForm" method="get" class="row g-2 align-items-end mb-3">
@@ -73,6 +78,7 @@
                 <option value="">Not</option>
                 <option value="★">★</option>
                 <option value="★★">★★</option>
+                <option value="★★★">★★★</option>
                 <option value="TAK">TAK</option>
                 <option value="TEMIZLE">Temizle</option>
             </select>
@@ -121,8 +127,12 @@
                 <i class="bi bi-exclamation-circle-fill text-warning"></i> İlk Liste Bildirimi Oluştur
             {% endif %}
     </button>
+    <button class="btn btn-outline-success btn-sm" type="button" id="showFazlaMesaiBtn" title="Fazla Mesaileri Hesapla">
+        <i class="bi bi-clock-history"></i> Fazla Mesaileri Göster
+    </button>
     </div>
 
+    <div class="table-responsive" style="max-height: calc(100vh - 250px); overflow: auto; padding-bottom: 10px;">
     <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
         <colgroup>
             <col style="width: 12px;">
@@ -132,11 +142,11 @@
             <col style="width: 32px;">
             {% endfor %}
         </colgroup>
-        <thead class="table-light">
+        <thead class="table-light sticky-header">
             <tr>
-                <th>S/N</th>
-                <th>Personel Adı Soyadı</th>
-                <th>Unvanı</th>
+                <th class="sticky-col-1">S/N</th>
+                <th class="sticky-col-2">Personel Adı Soyadı</th>
+                <th class="sticky-col-3">Unvanı</th>
                 {% for day in days %}
                 <th class="{% if day.is_weekend %}weekend{% elif day.is_resmi_tatil %}resmi-tatil{% endif %}">{{ day.day_num }}</th>
                 {% endfor %}
@@ -144,10 +154,10 @@
         </thead>
         <tbody id="tableBody">
             {% for personel in personeller %}
-            <tr>
+            <tr id="personel-{{ personel.PersonelID }}">
                 <!-- Satır Numarası -->
-                <td>{{ forloop.counter }}</td>
-                <td>
+                <td class="sticky-col sticky-col-1">{{ forloop.counter }}</td>
+                <td class="sticky-col sticky-col-2">
                     {{ personel.PersonelName }} {{ personel.PersonelSurname }}
                     <i class="bi bi-person-circle text-primary ms-1 person-profile-btn" 
                        style="cursor: pointer; font-size: 0.9em;" 
@@ -156,8 +166,9 @@
                        data-year="{{ current_year }}"
                        data-month="{{ current_month }}"
                        title="Personel Profili" role="button"></i>
+                    <span class="fazla-mesai-badge" style="display:none">-</span>
                 </td>
-                <td>{{ personel.PersonelTitle }}</td>
+                <td class="sticky-col sticky-col-3">{{ personel.PersonelTitle }}</td>
                 {% for mesai in personel.mesai_data %}
                 <td contenteditable="true"
                     class="mesai-cell {% if mesai.Saat or mesai.IzinAd %}has-value{% endif %} {% if mesai.is_weekend %}weekend{% elif mesai.is_resmi_tatil %}resmi-tatil{% endif %} {% if mesai.SistemdekiIzin %}sistemdeki-izin{% endif %}"
@@ -233,6 +244,80 @@
 {% block extra_js %}
 <script src="{% static 'mercis657/js/birim_kullanici_yetkileri.js' %}"></script>
 <script>
+    // Fazla mesai hesaplama
+    document.getElementById("showFazlaMesaiBtn").addEventListener("click", function() {
+        const donem = document.getElementById('selectDonem').value; // YYYY/MM
+        const [year, month] = donem.split('/');
+    // Prefer the rendered PersonelListesi id ("liste") if available, otherwise fall back to selected birim
+    const renderedListeId = {{ liste|default:0 }};
+    const listeId = renderedListeId && renderedListeId !== 0 ? renderedListeId : document.getElementById('selectBirim').value;
+
+        // Show loading state
+        Swal.fire({
+            title: 'Hesaplanıyor...',
+            html: 'Fazla mesailer hesaplanıyor, lütfen bekleyin.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        fetch(`/mercis657/fazla-mesai-hesapla?year=${year}&month=${month}&liste_id=${listeId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    data.data.forEach(item => {
+                        try {
+                            const rowId = `personel-${item.personel_id}`;
+                            let badge = document.querySelector(`#${rowId} .fazla-mesai-badge`);
+                            // fallback: try to find by data-personel-id in case row id missing
+                            if (!badge) {
+                                badge = document.querySelector(`[data-personel-id="${item.personel_id}"] .fazla-mesai-badge`);
+                            }
+                            // another fallback: search any .fazla-mesai-badge and match nearest parent row
+                            if (!badge) {
+                                const candidates = Array.from(document.querySelectorAll('.fazla-mesai-badge'));
+                                for (const c of candidates) {
+                                    const parentRow = c.closest('[id]');
+                                    if (parentRow && parentRow.id === rowId) { badge = c; break; }
+                                }
+                            }
+
+                            if (badge) {
+                                const fm = item.fazla_mesai;
+                                badge.textContent = `${fm > 0 ? '+' : ''}${fm}`;
+                                badge.classList.remove('fazla-mesai-positive', 'fazla-mesai-negative');
+                                badge.classList.add(fm >= 0 ? 'fazla-mesai-positive' : 'fazla-mesai-negative');
+                                badge.style.display = "inline-block";
+                                badge.style.zIndex = 2000;
+                                badge.style.opacity = 1;
+                                console.log('Fazla mesai badge updated for', item.personel_id, fm);
+                            } else {
+                                console.warn('Badge not found for personel', item.personel_id);
+                            }
+                        } catch (e) {
+                            console.error('Error while updating badge for', item.personel_id, e);
+                        }
+                    });
+                    Swal.fire({
+                        title: "Tamamlandı",
+                        text: "Fazla mesailer hesaplandı.",
+                        icon: "success"
+                    });
+                } else {
+                    throw new Error(data.message || 'Hesaplama hatası');
+                }
+            })
+            .catch(error => {
+                console.error('Fazla mesai hesaplama hatası:', error);
+                Swal.fire({
+                    title: "Hata",
+                    text: error.message || "Fazla mesailer hesaplanırken bir hata oluştu.",
+                    icon: "error"
+                });
+            });
+    });
+
     // Dönem veya birim değiştiğinde sorgula (sayfayı yenile)
     document.getElementById('selectDonem').addEventListener('change', function() {
         document.getElementById('filterForm').submit();

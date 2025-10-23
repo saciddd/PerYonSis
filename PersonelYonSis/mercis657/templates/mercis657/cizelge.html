@@ -29,7 +29,7 @@
             <select name="birim_id" id="selectBirim" class="form-select" style="width: 180px;" required>
                 <option value="">Seçiniz</option>
                 {% for user_birim in user_birimler %}
-                    <option value="{{ user_birim.birim.BirimID }}" {% if user_birim.birim.BirimID|stringformat:"s" == selected_birim_id|stringformat:"s" %}selected{% endif %}>
+                    <option value="{{ user_birim.birim.BirimID }}" {% if user_birim.birim.BirimID == selected_birim_id|add:0 %}selected{% endif %}>
                         {{ user_birim.birim.BirimAdi }}
                     </option>
                 {% endfor %}
@@ -44,7 +44,7 @@
     </div>
 
     <!-- Personel Arama -->
-    <div class="col-auto">
+    <div class="col-auto" id="editControls1">
         <label for="personelAramaSelect" class="form-label small fw-bold">Personel Ara</label>
         <div>
         <select id="personelAramaSelect" name="personel_id" class="form-select" style="width: 200px;" required>
@@ -54,7 +54,7 @@
     </div>
 
     <!-- Mesai/İzin Kontrolleri -->
-    <div class="col-auto">
+    <div class="col-auto" id="editControls2">
         <div class="d-flex align-items-center gap-2 mb-2">
             <label class="form-label small fw-bold mb-0">İşlemler</label>
             <button class="btn btn-outline-warning btn-sm" onclick="openFavoriMesaiModal()">
@@ -86,7 +86,7 @@
     </div>
 
     <!-- Alan Boşalt Switch -->
-    <div class="col-auto">
+    <div class="col-auto" id="editControls3">
         <div class="form-check form-switch mt-1">
             <input class="form-check-input" type="checkbox" id="alanBosaltSwitch">
             <label class="form-check-label small" for="alanBosaltSwitch">Alanı Boşalt</label>
@@ -347,13 +347,17 @@
     // Approval mod kontrolü: URL'de approval=1 ise edit kontrolleri gizle, Tümünü Onayla göster
     const params = new URLSearchParams(window.location.search);
     const isApproval = params.get('approval') === '1';
-    const editControls = document.getElementById('editControls');
+    const editControls1 = document.getElementById('editControls1');
+    const editControls2 = document.getElementById('editControls2');
+    const editControls3 = document.getElementById('editControls3');
     const saveButton = document.getElementById('saveButton');
     const approveAllButton = document.getElementById('approveAllButton');
     const topluIslemButton = document.getElementById('topluIslemButton');
     
     if (isApproval) {
-        editControls.classList.add('d-none');
+        editControls1.classList.add('d-none');
+        editControls2.classList.add('d-none');
+        editControls3.classList.add('d-none');
         saveButton.classList.add('d-none');
         topluIslemButton.classList.add('d-none');
         approveAllButton.classList.remove('d-none');

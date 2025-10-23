@@ -245,77 +245,95 @@
 <script src="{% static 'mercis657/js/birim_kullanici_yetkileri.js' %}"></script>
 <script>
     // Fazla mesai hesaplama
-    document.getElementById("showFazlaMesaiBtn").addEventListener("click", function() {
-        const donem = document.getElementById('selectDonem').value; // YYYY/MM
-        const [year, month] = donem.split('/');
-    // Prefer the rendered PersonelListesi id ("liste") if available, otherwise fall back to selected birim
-    const renderedListeId = {{ liste|default:0 }};
-    const listeId = renderedListeId && renderedListeId !== 0 ? renderedListeId : document.getElementById('selectBirim').value;
+    document.addEventListener('DOMContentLoaded', function() {
+        var showFazlaMesaiBtn = document.getElementById("showFazlaMesaiBtn");
+        if (showFazlaMesaiBtn) {
+            showFazlaMesaiBtn.addEventListener("click", function() {
+                const donem = document.getElementById('selectDonem').value; // YYYY/MM
+                const [year, month] = donem.split('/');
+                // Prefer the rendered PersonelListesi id ("liste") if available, otherwise fall back to selected birim
+                const renderedListeId = {{ liste|default:0 }};
+                const listeId = renderedListeId && renderedListeId !== 0 ? renderedListeId : document.getElementById('selectBirim').value;
 
-        // Show loading state
-        Swal.fire({
-            title: 'Hesaplanıyor...',
-            html: 'Fazla mesailer hesaplanıyor, lütfen bekleyin.',
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-
-        fetch(`/mercis657/fazla-mesai-hesapla?year=${year}&month=${month}&liste_id=${listeId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === "success") {
-                    data.data.forEach(item => {
-                        try {
-                            const rowId = `personel-${item.personel_id}`;
-                            let badge = document.querySelector(`#${rowId} .fazla-mesai-badge`);
-                            // fallback: try to find by data-personel-id in case row id missing
-                            if (!badge) {
-                                badge = document.querySelector(`[data-personel-id="${item.personel_id}"] .fazla-mesai-badge`);
-                            }
-                            // another fallback: search any .fazla-mesai-badge and match nearest parent row
-                            if (!badge) {
-                                const candidates = Array.from(document.querySelectorAll('.fazla-mesai-badge'));
-                                for (const c of candidates) {
-                                    const parentRow = c.closest('[id]');
-                                    if (parentRow && parentRow.id === rowId) { badge = c; break; }
-                                }
-                            }
-
-                            if (badge) {
-                                const fm = item.fazla_mesai;
-                                badge.textContent = `${fm > 0 ? '+' : ''}${fm}`;
-                                badge.classList.remove('fazla-mesai-positive', 'fazla-mesai-negative');
-                                badge.classList.add(fm >= 0 ? 'fazla-mesai-positive' : 'fazla-mesai-negative');
-                                badge.style.display = "inline-block";
-                                badge.style.zIndex = 2000;
-                                badge.style.opacity = 1;
-                                console.log('Fazla mesai badge updated for', item.personel_id, fm);
-                            } else {
-                                console.warn('Badge not found for personel', item.personel_id);
-                            }
-                        } catch (e) {
-                            console.error('Error while updating badge for', item.personel_id, e);
-                        }
-                    });
-                    Swal.fire({
-                        title: "Tamamlandı",
-                        text: "Fazla mesailer hesaplandı.",
-                        icon: "success"
-                    });
-                } else {
-                    throw new Error(data.message || 'Hesaplama hatası');
-                }
-            })
-            .catch(error => {
-                console.error('Fazla mesai hesaplama hatası:', error);
+                // Show loading state
                 Swal.fire({
-                    title: "Hata",
-                    text: error.message || "Fazla mesailer hesaplanırken bir hata oluştu.",
-                    icon: "error"
+                    title: 'Hesaplanıyor...',
+                    html: 'Fazla mesailer hesaplanıyor, lütfen bekleyin.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
                 });
+
+                fetch(`/mercis657/fazla-mesai-hesapla?year=${year}&month=${month}&liste_id=${listeId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === "success") {
+                            data.data.forEach(item => {
+                                try {
+                                    const rowId = `personel-${item.personel_id}`;
+                                    let badge = document.querySelector(`#${rowId} .fazla-mesai-badge`);
+                                    // fallback: try to find by data-personel-id in case row id missing
+                                    if (!badge) {
+                                        badge = document.querySelector(`[data-personel-id="${item.personel_id}"] .fazla-mesai-badge`);
+                                    }
+                                    // another fallback: search any .fazla-mesai-badge and match nearest parent row
+                                    if (!badge) {
+                                        const candidates = Array.from(document.querySelectorAll('.fazla-mesai-badge'));
+                                        for (const c of candidates) {
+                                            const parentRow = c.closest('[id]');
+                                            if (parentRow && parentRow.id === rowId) { badge = c; break; }
+                                        }
+                                    }
+
+                                    if (badge) {
+                                        const fm = item.fazla_mesai;
+                                        badge.textContent = `${fm > 0 ? '+' : ''}${fm}`;
+                                        badge.classList.remove('fazla-mesai-positive', 'fazla-mesai-negative');
+                                        badge.classList.add(fm >= 0 ? 'fazla-mesai-positive' : 'fazla-mesai-negative');
+                                        badge.style.display = "inline-block";
+                                        badge.style.zIndex = 2000;
+                                        badge.style.opacity = 1;
+                                        console.log('Fazla mesai badge updated for', item.personel_id, fm);
+                                    } else {
+                                        console.warn('Badge not found for personel', item.personel_id);
+                                    }
+                                } catch (e) {
+                                    console.error('Error while updating badge for', item.personel_id, e);
+                                }
+                            });
+                            Swal.fire({
+                                title: "Tamamlandı",
+                                text: "Fazla mesailer hesaplandı.",
+                                icon: "success"
+                            });
+                        } else {
+                            throw new Error(data.message || 'Hesaplama hatası');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Fazla mesai hesaplama hatası:', error);
+                        Swal.fire({
+                            title: "Hata",
+                            text: error.message || "Fazla mesailer hesaplanırken bir hata oluştu.",
+                            icon: "error"
+                        });
+                    });
             });
+        }
+
+        var selectDonem = document.getElementById('selectDonem');
+        if (selectDonem) {
+            selectDonem.addEventListener('change', function() {
+                document.getElementById('filterForm').submit();
+            });
+        }
+        var selectBirim = document.getElementById('selectBirim');
+        if (selectBirim) {
+            selectBirim.addEventListener('change', function() {
+                document.getElementById('filterForm').submit();
+            });
+        }
     });
 
     // Dönem veya birim değiştiğinde sorgula (sayfayı yenile)

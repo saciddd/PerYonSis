@@ -19,12 +19,12 @@
 }
 
 .sticky-col-2 { /* Personel Adı Soyadı column */
-    left: 30px;  /* Adjust based on S/N column width */
+    left: 20px;  /* Adjust based on S/N column width */
     z-index: 16 !important;
 }
 
 .sticky-col-3 { /* Unvan column */
-    left: 120px; /* Adjust based on previous columns width */
+    left: 100px !important; /* Adjust based on previous columns width */
     z-index: 16 !important;
 }
 

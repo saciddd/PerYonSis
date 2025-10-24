@@ -67,9 +67,10 @@ def birim_ekle(request):
 def birim_detay(request, birim_id):
     try:
         birim = get_object_or_404(Birim, BirimID=birim_id)
-        # Kullanıcının bu birim için yetkisi var mı kontrol et
-        if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
-             return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
+        # Kullanıcının bu birim için yetkisi veya "ÇS 657 Tüm Birimleri Görebilir" yetkisi var mı kontrol et
+        if not request.user.has_permission("ÇS 657 Tüm Birimleri Görebilir"):
+            if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
+                return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
 
         data = {
             'BirimID': birim.BirimID,
@@ -90,9 +91,10 @@ def birim_detay(request, birim_id):
 def birim_guncelle(request, birim_id):
     try:
         birim = get_object_or_404(Birim, BirimID=birim_id)
-        # Kullanıcının bu birim için yetkisi var mı kontrol et
-        if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
-             return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
+        # Kullanıcının bu birim için yetkisi veya "ÇS 657 Tüm Birimleri Görebilir" yetkisi var mı kontrol et
+        if not request.user.has_permission("ÇS 657 Tüm Birimleri Görebilir"):
+            if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
+                return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
 
         ad = request.POST.get('birimAdi')
         kurum_id = request.POST.get('Kurum') or None
@@ -120,9 +122,10 @@ def birim_guncelle(request, birim_id):
 def birim_sil(request, birim_id):
     try:
         birim = get_object_or_404(Birim, BirimID=birim_id)
-         # Kullanıcının bu birim için yetkisi var mı kontrol et (isteğe bağlı: silme yetkisi farklı olabilir)
-        if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
-             return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
+        # Kullanıcının bu birim için yetkisi veya "ÇS 657 Tüm Birimleri Görebilir" yetkisi var mı kontrol et
+        if not request.user.has_permission("ÇS 657 Tüm Birimleri Görebilir"):
+            if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
+                return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
 
         birim.delete()
         return JsonResponse({'status': 'success', 'message': 'Birim başarıyla silindi.'})

@@ -13,7 +13,7 @@ from ..utils import hesapla_fazla_mesai
 @require_POST
 def hazir_mesai_ata(request, personel_id, liste_id, year, month):
     """Seçilen günlere hazır mesai atar"""
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Sayfası'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     
     try:

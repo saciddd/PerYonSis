@@ -90,8 +90,11 @@ class NobetciTeknikerForm(forms.ModelForm):
     class Meta:
         model = NobetciTekniker
         fields = ['tekniker_adi', 'gelis_saati', 'ayrilis_saati']
+        labels = {
+            'tekniker_adi': '',
+        }
         widgets = {
-            'tekniker_adi': forms.TextInput(attrs={'class': 'form-control'}),
-            'gelis_saati': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
-            'ayrilis_saati': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'tekniker_adi': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'İcap Personeli Adı'}),
+            'gelis_saati': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control', 'placeholder': 'Geliş Saati'}),
+            'ayrilis_saati': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control', 'placeholder': 'Ayrılış Saati'}),
         }

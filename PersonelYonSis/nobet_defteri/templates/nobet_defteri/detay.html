@@ -77,19 +77,28 @@
             <div class="alert alert-info">Bu defter onaylandığı için yeni olay eklenemez.</div>
             {% endif %}
             <hr>
-            <h5>Nobetçi Tekniker Ziyaret Kaydı</h5>
+            <h5>İcap Personeli Ziyaret Kaydı</h5>
             {% if tekniker_hata %}
             <div class="alert alert-danger">{{ tekniker_hata }}</div>
             {% endif %}
             <form method="POST" class="mb-3">
                 {% csrf_token %}
-                {{ tekniker_form|crispy }}
-                <button type="submit" name="tekniker_ekle" class="btn btn-primary">Tekniker Kaydet</button>
+                <div class="mb-2">
+                    <label for="{{ tekniker_form.tekniker_adi.id_for_label }}" class="form-label">İcap Personeli Adı</label>
+                    {{ tekniker_form.tekniker_adi|as_crispy_field }}
+                </div>
+                <div class="mb-2">
+                    {{ tekniker_form.gelis_saati|as_crispy_field }}
+                </div>
+                <div class="mb-2">
+                    {{ tekniker_form.ayrilis_saati|as_crispy_field }}
+                </div>
+                <button type="submit" name="tekniker_ekle" class="btn btn-primary">İcap Personeli Kaydet</button>
             </form>
             <table class="table table-sm table-bordered">
                 <thead>
                     <tr>
-                        <th>Tekniker Adı</th>
+                        <th>İcap Personeli Adı</th>
                         <th>Geliş Saati</th>
                         <th>Ayrılış Saati</th>
                         <th>İşlem</th>

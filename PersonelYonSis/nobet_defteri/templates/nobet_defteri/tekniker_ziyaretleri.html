@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Tekniker Ziyaretleri{% endblock %}
+{% block title %}İcap Ziyaretleri{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h3>Tekniker Ziyaretleri</h3>
+    <h3>İcap Ziyaretleri</h3>
     <form method="get" class="row g-2 align-items-end mb-3">
         <div class="col-auto">
             <label for="id_baslangic" class="form-label">Başlangıç Tarihi</label>
@@ -14,7 +14,7 @@
             <input type="date" id="id_bitis" name="bitis" class="form-control" value="{{ bitis }}">
         </div>
         <div class="col-auto">
-            <label for="id_tekniker_adi" class="form-label">Tekniker Adı</label>
+            <label for="id_tekniker_adi" class="form-label">Personel Adı</label>
             <input type="text" id="id_tekniker_adi" name="tekniker_adi" class="form-control" value="{{ tekniker_adi_arama }}">
         </div>
         <div class="col-auto">

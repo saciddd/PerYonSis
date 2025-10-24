@@ -24,7 +24,7 @@
 }
 
 .sticky-col-3 { /* Unvan column */
-    left: 250px; /* Adjust based on previous columns width */
+    left: 100px; /* Adjust based on previous columns width */
     z-index: 6;
 }
 

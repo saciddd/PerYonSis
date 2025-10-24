@@ -95,7 +95,7 @@
                 </td>
                 <td>
                     {% if row.liste %}
-                        <a href="{% url 'mercis657:cizelge' %}?donem={{ selected_donem }}&birim_id={{ row.birim.BirimID }}" 
+                        <a href="{% url 'mercis657:cizelge' %}?birim_id={{ row.birim.BirimID }}&donem={{ selected_donem }}" 
                            class="btn btn-sm btn-primary">Listeyi Düzenle</a>
                     {% else %}
                         <button class="btn btn-sm btn-secondary" disabled>Liste Yok</button>

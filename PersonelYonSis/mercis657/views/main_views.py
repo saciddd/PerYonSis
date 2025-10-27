@@ -364,8 +364,9 @@ def personel_listesi_olustur(request):
 @login_required
 def personel_listesi_detay(request, liste_id):
     liste = get_object_or_404(PersonelListesi, id=liste_id)
-    if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
-        return HttpResponseForbidden('Bu listeye erişim yetkiniz yok.')
+    if not request.user.has_permission("ÇS 657 Tüm Birimleri Görebilir"):
+        if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
+            return HttpResponseForbidden('Bu listeye erişim yetkiniz yok.')
 
     mevcut_personeller = PersonelListesiKayit.objects.filter(personel_listesi=liste).select_related('personel').order_by('sira_no', 'personel__FirstName', 'personel__LastName')
     tum_personeller = Personel.objects.all().order_by('FirstName', 'LastName')
@@ -401,8 +402,9 @@ def tanimlamalar(request):
 @login_required
 def personel_cikar(request, liste_id, personel_id):
     liste = get_object_or_404(PersonelListesi, id=liste_id)
-    if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
-        return JsonResponse({'status': 'error', 'message': 'Yetkisiz işlem.'}, status=403)
+    if not request.user.has_permission("ÇS 657 Tüm Birimleri Görebilir"):
+        if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
+            return JsonResponse({'status': 'error', 'message': 'Yetkisiz işlem.'}, status=403)
 
     try:
         kayit = get_object_or_404(PersonelListesiKayit, liste=liste, personel_id=personel_id)
@@ -483,8 +485,9 @@ def personel_listesi_sira_kaydet(request, liste_id):
       http://localhost:8000/mercis657/personel-listesi/1/sira-kaydet/
     """
     liste = get_object_or_404(PersonelListesi, id=liste_id)
-    if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
-        return HttpResponseForbidden('Yetkisiz işlem.')
+    if not request.user.has_permission("ÇS 657 Tüm Birimleri Görebilir"):
+        if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
+            return HttpResponseForbidden('Yetkisiz işlem.')
 
     try:
         data = json.loads(request.body)

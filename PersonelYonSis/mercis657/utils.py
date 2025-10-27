@@ -241,7 +241,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
 
 def get_favori_mesailer(user):
     """Kullanıcının favori mesailerini döndürür. Favori yoksa tüm mesailer gelir."""
-    favoriler = UserMesaiFavori.objects.filter(user=user).select_related("mesai")
+    favoriler = UserMesaiFavori.objects.filter(user=user).select_related("mesai").order_by("mesai")
     if favoriler.exists():
         return [f.mesai for f in favoriler]
-    return Mesai_Tanimlari.objects.all()
+    return Mesai_Tanimlari.objects.all().order_by("Saat")

@@ -281,10 +281,6 @@ def cizelge(request):
                 continue
     except Exception:
         sabit_mesailer = []
-
-    # Favori mesai modal için gerekli veriler
-    favori_mesailer = UserMesaiFavori.objects.filter(user=user).values_list('mesai_id', flat=True)
-    all_mesai_tanimlari = Mesai_Tanimlari.objects.all().order_by('Saat')
     
     context = {
         "personeller": personeller,

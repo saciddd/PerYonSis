@@ -28,6 +28,16 @@
         <div class="input-group input-group-sm">
             <select name="birim_id" id="selectBirim" class="form-select" style="width: 180px;" required>
                 <option value="">Seçiniz</option>
+                {% with birim_found=False %}
+                {% for user_birim in user_birimler %}
+                    {% if user_birim.birim.BirimID == selected_birim_id|add:0 %}
+                        {% with birim_found=True %}{% endwith %}
+                    {% endif %}
+                {% endfor %}
+                {% if selected_birim_id and not birim_found %}
+                    <option value="{{ selected_birim_id }}" selected>{{ birim.BirimAdi }}</option>
+                {% endif %}
+                {% endwith %}
                 {% for user_birim in user_birimler %}
                     <option value="{{ user_birim.birim.BirimID }}" {% if user_birim.birim.BirimID == selected_birim_id|add:0 %}selected{% endif %}>
                         {{ user_birim.birim.BirimAdi }}

@@ -648,6 +648,17 @@
     }
 
     document.getElementById('saveButton').addEventListener('click', function () {
+        const saveBtn = document.getElementById('saveButton');
+        // Prevent double-clicks: if already disabled, ignore
+        if (!saveBtn || saveBtn.disabled) return;
+
+        // Preserve original content to restore later
+        if (!saveBtn.dataset.origHtml) saveBtn.dataset.origHtml = saveBtn.innerHTML;
+        // Show spinner and set disabled
+        saveBtn.disabled = true;
+        saveBtn.setAttribute('aria-disabled', 'true');
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Kaydediliyor...';
+
         const changes = {};
         document.querySelectorAll('.mesai-cell').forEach(cell => {
             const pid = cell.dataset.personelId;
@@ -742,6 +753,14 @@
                 Swal.fire({ icon: 'error', title: 'İstek hatası', text: err.toString() });
             } else {
                 alert('İstek hatası: ' + err);
+            }
+        })
+        .finally(() => {
+            // Restore button state (if page is reloading this won't be visible but safe)
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.removeAttribute('aria-disabled');
+                saveBtn.innerHTML = saveBtn.dataset.origHtml || 'Kaydet';
             }
         });
     });

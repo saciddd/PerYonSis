@@ -76,14 +76,10 @@
             <td class="small mesai-cell-pdf {% if md.is_weekend %}weekend{% endif %} {% if md.is_holiday %}holiday{% endif %} {% if md.is_arife %}arife{% endif %}">
               <span class="mesai-notu-badge" {% if not md.MesaiNotu %}style="display:none"{% endif %}>{{ md.MesaiNotu }}</span>
               <span>
-                {% if md.MesaiTanimID or md.Saat %}
-                  {% if md.IzinAd %}
-                    {{ md.IzinAd }}
-                  {% else %}
-                    {{ md.Saat|default:'' }}
-                  {% endif %}
+                {% if md.IzinAd %}
+                  {{ md.IzinAd }}
                 {% else %}
-                  -
+                  {{ md.Saat|default:'' }}
                 {% endif %}
               </span>
             </td>

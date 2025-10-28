@@ -185,7 +185,7 @@ class Mesai_Tanimlari(models.Model):
         return f"{self.Saat} ({self.Sure} saat)"
 
 class Izin(models.Model):
-    ad = models.CharField(max_length=100, unique=True)
+    ad = models.CharField(max_length=100, unique=False)
     kod = models.CharField(max_length=20, unique=False)
     fm_karsiligi = models.CharField(max_length=100)
 

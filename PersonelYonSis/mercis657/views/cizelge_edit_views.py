@@ -496,7 +496,7 @@ def toplu_mesai_ata(request, liste_id, year, month):
 
 
 def get_or_create_izin_turu(izin_adi):
-    izin_obj, created = Izin.objects.get_or_create(ad=izin_adi)
+    izin_obj, created = Izin.objects.get_or_create(fm_karsiligi=izin_adi)
     return izin_obj
 
 @login_required

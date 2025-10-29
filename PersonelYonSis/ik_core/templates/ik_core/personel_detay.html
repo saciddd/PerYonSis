@@ -424,6 +424,10 @@
                     </div>
                     <div class="col-md-4">
                         <div class="d-flex justify-content-end action-buttons">
+                            <!-- Resmi Yazı butonu -->
+                             <a href="{% url 'ik_core:resmi_yazi' personel.id %}" class="btn btn-success btn-sm me-1">
+                                <i class="bi bi-file-earmark-text me-1"></i> Resmi Yazı
+                            </a>
                             <!-- Tebliğ işlemleri butonu -->
                             <a href="{% url 'ik_core:teblig_islemleri' personel.id %}" class="btn btn-primary btn-sm">
                                 <i class="bi bi-file-earmark-text me-1"></i> Tebliğ İşlemleri

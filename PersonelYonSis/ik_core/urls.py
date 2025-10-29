@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, resmi_yazi_views
 from ik_core.api import views as api_views
 
 app_name = 'ik_core'
@@ -33,6 +33,13 @@ urlpatterns = [
     path('teblig-islemleri/<int:personel_id>/', views.teblig_islemleri, name='teblig_islemleri'),
     path('teblig-metni/guncelle/<int:pk>/', views.teblig_metni_guncelle, name='teblig_metni_guncelle'),
     path('teblig-metni/get/<int:pk>/', views.teblig_metni_get, name='teblig_metni_get'),
+    # Resmi Yazı
+    path('resmi-yazi/<int:personel_id>/', resmi_yazi_views.resmi_yazi_olustur, name='resmi_yazi'),
+    path('resmi-yazi-tanimlari/', resmi_yazi_views.resmi_yazi_tanimlari, name='resmi_yazi_tanimlari'),
+    path('resmi-yazi-ekle/', resmi_yazi_views.resmi_yazi_ekle, name='resmi_yazi_ekle'),
+    path('resmi-yazi-guncelle/<int:yazi_id>/', resmi_yazi_views.resmi_yazi_guncelle, name='resmi_yazi_guncelle'),
+    path('resmi-yazi-sil/<int:yazi_id>/', resmi_yazi_views.resmi_yazi_sil, name='resmi_yazi_sil'),
+    path('resmi-yazi-get/<int:pk>/', resmi_yazi_views.resmi_yazi_get, name='resmi_yazi_get'),
     # Birim yönetimi
     path('birim-yonetimi/', views.birim_yonetimi, name='birim_yonetimi'),
     path('bina-ekle/', views.bina_ekle, name='bina_ekle'),

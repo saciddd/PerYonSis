@@ -1,6 +1,7 @@
 from django import forms
 from .models.personel import Personel, Kurum, Unvan, Brans
 from .models.GeciciGorev import GeciciGorev
+from .models.ResmiYazi import ResmiYazi
 from .models.valuelists import (
     TESKILAT_DEGERLERI, EGITIM_DEGERLERI, MAZERET_DEGERLERI,
     AYRILMA_NEDENI_DEGERLERI, ENGEL_DERECESI_DEGERLERI # Add necessary value lists
@@ -147,4 +148,13 @@ class GeciciGorevForm(forms.ModelForm):
             'gecici_gorev_bitis': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'asil_kurumu': forms.TextInput(attrs={'class': 'form-control'}),
             'gorevlendirildigi_birim': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+class ResmiYaziForm(forms.ModelForm):
+    class Meta:
+        model = ResmiYazi
+        fields = ['ad', 'metin']
+        widgets = {
+            'ad': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Şablon Adı'}),
+            'metin': forms.Textarea(attrs={'class': 'form-control', 'rows': 10, 'placeholder': 'Resmi yazı metni'}),
         }

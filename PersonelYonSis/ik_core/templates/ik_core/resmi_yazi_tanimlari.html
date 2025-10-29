@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5>Resmi Yazı Tanımları</h5>
+    <button class="btn btn-primary" onclick="openResmiYaziModal()">Resmi Yazı Ekle</button>
+  </div>
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>Kısa Ad</th>
+        <th>Metin</th>
+        <th>İlgi</th>
+        <th>Ek</th>
+        <th style="width:90px"></th>
+      </tr>
+    </thead>
+    <tbody id="resmi_yaziTableBody">
+      {% for t in resmi_yazilar %}
+      <tr data-id="{{ t.id }}">
+        <td>{{ t.ad }}</td>
+        <td><div style="white-space:pre-line; text-align:center; max-height:4.5em; overflow:auto;">{{ t.metin }}</div></td>
+        <td>{{ t.ilgi }}</td>
+        <td>{{ t.ek }}</td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-secondary" onclick="openResmiYaziModal({{ t.id }}, '{{ t.ad|escapejs }}', `{{ t.metin|escapejs }}`)"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteResmiYazi({{ t.id }})"><i class="bi bi-trash"></i></button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="text-center">Kayıt yok</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include 'ik_core/partials/_resmi_yazi_modal.html' %}
+{% endblock %}
+{% block extra_js %}
+<script>
+function openResmiYaziModal(id, ad, metin){
+  document.getElementById('resmi_yazi_id').value = id || '';
+  document.getElementById('resmi_yazi_ad').value = ad || '';
+  document.getElementById('resmi_yazi_metin').value = metin || '';
+
+  const modalEl = document.getElementById('resmi_yaziModal');
+  if(window.bootstrap && bootstrap.Modal){
+    if(!modalEl._bsModal) modalEl._bsModal = new bootstrap.Modal(modalEl);
+    modalEl._bsModal.show();
+  } else {
+    // fallback: show modal and add backdrop
+    modalEl.classList.add('show');
+    modalEl.style.display = 'block';
+    modalEl.setAttribute('aria-modal','true');
+    modalEl.removeAttribute('aria-hidden');
+    if(!document.getElementById('resmiYaziModalBackdrop')){
+      const bg = document.createElement('div');
+      bg.id = 'resmiYaziModalBackdrop';
+      bg.className = 'modal-backdrop fade show';
+      document.body.appendChild(bg);
+    }
+  }
+}
+function closeResmiYaziModal(){
+  const modalEl = document.getElementById('resmi_yaziModal');
+  if(window.bootstrap && bootstrap.Modal){
+    try{ modalEl._bsModal.hide(); }catch(e){ /* ignore */ }
+  } else {
+    modalEl.classList.remove('show');
+    modalEl.style.display = 'none';
+    modalEl.removeAttribute('aria-modal');
+    modalEl.setAttribute('aria-hidden','true');
+    const bg = document.getElementById('resmiYaziModalBackdrop');
+    if(bg) bg.remove();
+  }
+}
+async function saveResmiYazi(){
+  const form = document.getElementById('resmi_yaziForm');
+  const formData = new FormData(form);
+  const res = await fetch('{% url "ik_core:resmi_yazi_ekle" %}', {method:'POST', headers:{'X-CSRFToken': '{{ csrf_token }}'}, body: formData});
+  if(res.ok){ location.reload(); }
+  else { alert('Kaydetme hatası'); }
+}
+async function deleteResmiYazi(id){
+  if(!confirm('Silmek istiyor musunuz?')) return;
+  const res = await fetch('{% url "ik_core:resmi_yazi_sil" 0 %}'.replace('/0/','/'+id+'/'), {method:'POST', headers:{'X-CSRFToken': '{{ csrf_token }}'}});
+  if(res.ok){ location.reload(); }
+  else { alert('Silme hatası'); }
+}
+</script>
+{% endblock %}

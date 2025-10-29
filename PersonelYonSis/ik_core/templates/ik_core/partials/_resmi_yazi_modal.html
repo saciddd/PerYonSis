@@ -1,0 +1,37 @@
+<div id="resmi_yaziModal" class="modal fade" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Resmi Yazı</h5>
+        <button type="button" class="btn-close" onclick="closeResmiYaziModal()"></button>
+      </div>
+      <div class="modal-body">
+        <form id="resmi_yaziForm" onsubmit="event.preventDefault(); saveResmiYazi();">
+          {% csrf_token %}
+          <input type="hidden" name="id" id="resmi_yazi_id" />
+          <div class="mb-2">
+            <label class="form-label">Kısa Ad</label>
+            <input type="text" class="form-control" name="ad" id="resmi_yazi_ad" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">İlgi</label>
+            <input type="text" class="form-control" name="ilgi" id="resmi_yazi_ilgi">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Ek</label>
+            <input type="text" class="form-control" name="ek" id="resmi_yazi_ek">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Metin</label>
+            <textarea class="form-control" name="metin" id="resmi_yazi_metin" rows="3" required></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeResmiYaziModal()">Kapat</button>
+        <button class="btn btn-primary" onclick="saveResmiYazi()">Kaydet</button>
+      </div>
+    </div>
+  </div>
+</div>
+

@@ -39,10 +39,37 @@ function openTebligModal(id, ad, metin){
   document.getElementById('teblig_id').value = id || '';
   document.getElementById('teblig_ad').value = ad || '';
   document.getElementById('teblig_metin').value = metin || '';
-  document.getElementById('tebligModal').style.display = 'block';
+  const tebligModal = document.getElementById('tebligModal');
+  if(window.bootstrap && bootstrap.Modal){
+    if(!tebligModal._bsModal) tebligModal._bsModal = new bootstrap.Modal(tebligModal);
+    tebligModal._bsModal.show();
+  } else {
+    // fallback: show modal and add backdrop
+    tebligModal.classList.add('show');
+    tebligModal.style.display = 'block';
+    tebligModal.setAttribute('aria-modal','true');
+    tebligModal.removeAttribute('aria-hidden');
+    if(!document.getElementById('tebligModalBackdrop')){
+      const bg = document.createElement('div');
+      bg.id = 'tebligModalBackdrop';
+      bg.className = 'modal-backdrop fade show';
+      document.body.appendChild(bg);
+    }
+  }
 }
 function closeTebligModal(){
-  document.getElementById('tebligModal').style.display = 'none';
+  const tebligModal = document.getElementById('tebligModal');
+  if(window.bootstrap && bootstrap.Modal){
+    if(tebligModal._bsModal) tebligModal._bsModal.hide();
+  } else {
+    // fallback: hide modal and remove backdrop
+    tebligModal.classList.remove('show');
+    tebligModal.style.display = 'none';
+    tebligModal.setAttribute('aria-hidden','true');
+    tebligModal.removeAttribute('aria-modal');
+    const bg = document.getElementById('tebligModalBackdrop');
+    if(bg) document.body.removeChild(bg);
+  }
 }
 async function saveTeblig(){
   const form = document.getElementById('tebligForm');

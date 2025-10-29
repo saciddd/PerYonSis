@@ -32,6 +32,24 @@ def serialize_for_json(data):
 
 def create_log(sender, instance, action, changes=None):
     """AuditLog kaydını oluşturan yardımcı fonksiyon"""
+        
+    # 🔹 Loglanacak modellerin listesi (app bazlı)
+    ALLOWED_MODELS = {
+        "mercis657": ["Birim", "UserBirim", "PersonelListesi", "SabitMesai", "PersonelListesiKayit", "Mesai", "MazeretKaydi", "ResmiTatil", "Bildirim", "YarimZamanliCalisma", "StopKaydi", "IlkListe"],  # sadece bu modeller loglansın
+        "PersonelYonSis": ["Permission", "RolePermission", "User"],
+        "mutemet_app": ["Sendika", "PersonelHareket", "SendikaUyelik", "IcraTakibi", "IcraHareketleri", "OdemeTakibi", "SilinenIcraTakibi"],
+        "ik_core": ["Personel" "OzelDurum", "GeciciGorev", "PersonelBirim",],
+        "nobet_defteri": ["NobetDefteri"],
+        "sessions": ["Session"],
+    }
+
+    app_label = sender._meta.app_label
+    model_name = sender.__name__
+
+    # 🔸 Eğer model izinli listede değilse loglama
+    if app_label not in ALLOWED_MODELS or model_name not in ALLOWED_MODELS[app_label]:
+        return
+    
     req = get_current_request()
     user = get_current_user()
     log_kwargs = {}

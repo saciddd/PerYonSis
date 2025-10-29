@@ -24,7 +24,7 @@
         <td>{{ t.ilgi }}</td>
         <td>{{ t.ek }}</td>
         <td class="text-end">
-          <button class="btn btn-sm btn-outline-secondary" onclick="openResmiYaziModal({{ t.id }}, '{{ t.ad|escapejs }}', `{{ t.metin|escapejs }}`)"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="openResmiYaziModal({{ t.id }}, '{{ t.ad|escapejs }}', `{{ t.metin|escapejs }}`, '{{ t.ilgi|escapejs }}', '{{t.ek}}')"><i class="bi bi-pencil"></i></button>
           <button class="btn btn-sm btn-outline-danger" onclick="deleteResmiYazi({{ t.id }})"><i class="bi bi-trash"></i></button>
         </td>
       </tr>
@@ -39,10 +39,12 @@
 {% endblock %}
 {% block extra_js %}
 <script>
-function openResmiYaziModal(id, ad, metin){
+function openResmiYaziModal(id, ad, metin, ilgi, ek){
   document.getElementById('resmi_yazi_id').value = id || '';
   document.getElementById('resmi_yazi_ad').value = ad || '';
   document.getElementById('resmi_yazi_metin').value = metin || '';
+  document.getElementById('resmi_yazi_ilgi').value = ilgi || '';
+  document.getElementById('resmi_yazi_ek').value = ek || '';
 
   const modalEl = document.getElementById('resmi_yaziModal');
   if(window.bootstrap && bootstrap.Modal){
@@ -78,9 +80,25 @@ function closeResmiYaziModal(){
 async function saveResmiYazi(){
   const form = document.getElementById('resmi_yaziForm');
   const formData = new FormData(form);
-  const res = await fetch('{% url "ik_core:resmi_yazi_ekle" %}', {method:'POST', headers:{'X-CSRFToken': '{{ csrf_token }}'}, body: formData});
-  if(res.ok){ location.reload(); }
-  else { alert('Kaydetme hatası'); }
+  const id = (document.getElementById('resmi_yazi_id').value || '').toString().trim();
+
+  // Eğer id varsa güncelle endpoint'ine, yoksa ekle endpoint'ine gönder
+  const url = id
+    ? '{% url "ik_core:resmi_yazi_guncelle" 0 %}'.replace('/0/','/'+id+'/')
+    : '{% url "ik_core:resmi_yazi_ekle" %}';
+
+  try {
+    const res = await fetch(url, { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token }}'}, body: formData });
+    if(res.ok){
+      location.reload();
+    } else {
+      console.error('Kaydetme hatası detay:', await res.text());
+      alert('Kaydetme hatası');
+    }
+  } catch (e) {
+    console.error(e);
+    alert('Kaydetme hatası');
+  }
 }
 async function deleteResmiYazi(id){
   if(!confirm('Silmek istiyor musunuz?')) return;

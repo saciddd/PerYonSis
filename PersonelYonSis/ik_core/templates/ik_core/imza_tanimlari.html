@@ -39,10 +39,37 @@ function openImzaModal(id, ad, metin){
   document.getElementById('imza_id').value = id || '';
   document.getElementById('imza_ad').value = ad || '';
   document.getElementById('imza_metin').value = metin || '';
-  document.getElementById('imzaModal').style.display = 'block';
+  const imzaModal = document.getElementById('imzaModal');
+  if(window.bootstrap && bootstrap.Modal){
+    if(!imzaModal._bsModal) imzaModal._bsModal = new bootstrap.Modal(imzaModal);
+    imzaModal._bsModal.show();
+  } else {
+    // fallback: show modal and add backdrop
+    imzaModal.classList.add('show');
+    imzaModal.style.display = 'block';
+    imzaModal.setAttribute('aria-modal','true');
+    imzaModal.removeAttribute('aria-hidden');
+    if(!document.getElementById('imzaModalBackdrop')){
+      const bg = document.createElement('div');
+      bg.id = 'imzaModalBackdrop';
+      bg.className = 'modal-backdrop fade show';
+      document.body.appendChild(bg);
+    }
+  }
 }
 function closeImzaModal(){
-  document.getElementById('imzaModal').style.display = 'none';
+  const imzaModal = document.getElementById('imzaModal');
+  if(window.bootstrap && bootstrap.Modal){
+    if(imzaModal._bsModal) imzaModal._bsModal.hide();
+  } else {
+    // fallback: hide modal and remove backdrop
+    imzaModal.classList.remove('show');
+    imzaModal.style.display = 'none';
+    imzaModal.setAttribute('aria-hidden','true');
+    imzaModal.removeAttribute('aria-modal');
+    const bg = document.getElementById('imzaModalBackdrop');
+    if(bg) document.body.removeChild(bg);
+  }
 }
 async function saveImza(){
   const form = document.getElementById('imzaForm');

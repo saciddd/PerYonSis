@@ -26,6 +26,7 @@ def stop_ekle(request, mesai_id):
     if request.method == "POST":
         baslangic_raw = request.POST.get("StopBaslangic")  # expected 'HH:MM' or 'HH:MM:SS'
         bitis_raw = request.POST.get("StopBitis")
+        aciklama = request.POST.get("StopAciklama")
         if not baslangic_raw or not bitis_raw:
             return JsonResponse({'status': 'error', 'message': 'Zaman verisi eksik.'}, status=400)
 
@@ -55,6 +56,7 @@ def stop_ekle(request, mesai_id):
             mesai=mesai,
             StopBaslangic=bas_dt,
             StopBitis=bit_dt,
+            Aciklama=aciklama,
             created_by=request.user,
         )
         # return sure in hours

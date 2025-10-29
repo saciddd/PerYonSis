@@ -148,6 +148,7 @@
             <col style="width: 12px;">
             <col style="width: 120px;">
             <col style="width: 100px;">
+            <col style="width: 80px;">
             {% for day in days %}
             <col style="width: 32px;">
             {% endfor %}
@@ -157,6 +158,7 @@
                 <th class="sticky-col-1">S/N</th>
                 <th class="sticky-col-2">Personel Adı Soyadı</th>
                 <th class="sticky-col-3">Unvanı</th>
+                <th>Fazla Mesai</th>
                 {% for day in days %}
                 <th class="{% if day.is_weekend %}weekend{% elif day.is_resmi_tatil %}resmi-tatil{% endif %}">{{ day.day_num }}</th>
                 {% endfor %}
@@ -176,9 +178,9 @@
                        data-year="{{ current_year }}"
                        data-month="{{ current_month }}"
                        title="Personel Profili" role="button"></i>
-                    <span class="fazla-mesai-badge" style="display:none">-</span>
                 </td>
                 <td class="sticky-col sticky-col-3">{{ personel.PersonelTitle }}</td>
+                <td class="fazla-mesai-cell">-</td>
                 {% for mesai in personel.mesai_data %}
                 <td contenteditable="true"
                     class="mesai-cell {% if mesai.Saat or mesai.IzinAd %}has-value{% endif %} {% if mesai.is_weekend %}weekend{% elif mesai.is_resmi_tatil %}resmi-tatil{% endif %} {% if mesai.SistemdekiIzin %}sistemdeki-izin{% endif %}"
@@ -282,31 +284,15 @@
                             data.data.forEach(item => {
                                 try {
                                     const rowId = `personel-${item.personel_id}`;
-                                    let badge = document.querySelector(`#${rowId} .fazla-mesai-badge`);
-                                    // fallback: try to find by data-personel-id in case row id missing
-                                    if (!badge) {
-                                        badge = document.querySelector(`[data-personel-id="${item.personel_id}"] .fazla-mesai-badge`);
-                                    }
-                                    // another fallback: search any .fazla-mesai-badge and match nearest parent row
-                                    if (!badge) {
-                                        const candidates = Array.from(document.querySelectorAll('.fazla-mesai-badge'));
-                                        for (const c of candidates) {
-                                            const parentRow = c.closest('[id]');
-                                            if (parentRow && parentRow.id === rowId) { badge = c; break; }
-                                        }
-                                    }
-
-                                    if (badge) {
-                                        const fm = item.fazla_mesai;
-                                        badge.textContent = `${fm > 0 ? '+' : ''}${fm}`;
-                                        badge.classList.remove('fazla-mesai-positive', 'fazla-mesai-negative');
-                                        badge.classList.add(fm >= 0 ? 'fazla-mesai-positive' : 'fazla-mesai-negative');
-                                        badge.style.display = "inline-block";
-                                        badge.style.zIndex = 2000;
-                                        badge.style.opacity = 1;
-                                        console.log('Fazla mesai badge updated for', item.personel_id, fm);
+                                    const cell = document.querySelector(`#${rowId} .fazla-mesai-cell`);
+                                    if (cell) {
+                                        const fm = Number(item.fazla_mesai);
+                                        cell.textContent = `${fm > 0 ? '+' : ''}${fm}`;
+                                        cell.classList.remove('fm-pos', 'fm-neg');
+                                        if (fm > 0) cell.classList.add('fm-pos');
+                                        else if (fm < 0) cell.classList.add('fm-neg');
                                     } else {
-                                        console.warn('Badge not found for personel', item.personel_id);
+                                        console.warn('Fazla mesai hücresi bulunamadı', item.personel_id);
                                     }
                                 } catch (e) {
                                     console.error('Error while updating badge for', item.personel_id, e);
@@ -1061,6 +1047,8 @@
     .mesai-main-value {
         display: inline;
     }
+    .fm-pos { color: #198754 !important; font-weight: 700; }
+    .fm-neg { color: #dc3545 !important; font-weight: 700; }
 </style>
 
 <!-- Favori Mesai Modal -->

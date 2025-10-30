@@ -48,6 +48,7 @@ urlpatterns = [
     path("yarim-zamanli-kaydet/<int:personel_id>/", views.yarim_zamanli_calisma_kaydet, name="yarim_zamanli_calisma_kaydet"),
     path('cizelge/yazdir/', views.cizelge_yazdir, name='cizelge_yazdir'),
     path('cizelge-onay/', views.cizelge_onay, name='cizelge_onay'),
+    path('imza_cizelgeleri_yazdir/', views.imza_cizelgeleri_yazdir, name='imza_cizelgeleri_yazdir'),
     path('mesai-onayla/<int:mesai_id>/', views.mesai_onayla, name='mesai_onayla'),
     path('mesai-reddet/<int:mesai_id>/', views.mesai_reddet, name='mesai_reddet'),
     path('toplu-onay/<int:birim_id>/<int:year>/<int:month>/', views.toplu_onay, name='toplu_onay'),

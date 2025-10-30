@@ -1,0 +1,61 @@
+{% load static %}
+{% load mercis_filters %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: A4 portrait; margin: 2cm 1cm; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    th, td { border: 1px solid #000; padding: 4px; text-align: center; }
+    .header { text-align: center; margin-bottom: 10px; }
+    .footer { margin-top: 30px; font-size: 11px; }
+  </style>
+  <title>İmza Çizelgesi</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: file:; img-src 'self' data: file:; style-src 'self' 'unsafe-inline';" />
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  {% include "common/pdf_header_dikey.html" with kurum=kurum form_adi=form_adi dokuman_kodu=dokuman_kodu yayin_tarihi=yayin_tarihi revizyon_tarihi=revizyon_tarihi revizyon_no=revizyon_no sayfa_no=sayfa_no pdf_logo=pdf_logo %}
+</div>
+
+<p><b>AD / SOYAD:</b> {{ personel.PersonelName }} {{ personel.PersonelSurname }}<br>
+<b>ÇALIŞTIĞI SERVİS:</b> {{ birim }} &nbsp;&nbsp;
+<b>UNVAN:</b> {{ personel.PersonelTitle }} &nbsp;&nbsp;
+<b>AİT OLDUĞU AY/YIL:</b> {{ days.0|date:"Y" }} - {{ days.0|date:"F" }}</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Tarih</th>
+      <th>SABAH GELİŞ</th>
+      <th>MESAİ</th>
+      <th>AKŞAM ÇIKIŞ</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for day in days %}
+    {% with key=day|date:"Y-m-d" %}
+    <tr {% if day|date:"w" in "0,6" %}style="background:#eee"{% endif %}>
+      <td>{{ day|date:"j.m.Y" }}</td>
+      <td></td>
+      <td>{{ mesai_data|get_item:key|default:"" }}</td>
+      <td></td>
+    </tr>
+    {% endwith %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="footer">
+  <div style="height: 30px;"></div>
+  <div style="width:80%; display:flex; justify-content:space-between; font-size:12px; margin-left: 50px;">
+    <div style="text-align:left;">Kontrol Eden (Birim Sorumlusu)</div>
+    <div style="text-align:right;">Müdür Yardımcısı</div>
+  </div>
+</div>
+
+</body>
+</html>

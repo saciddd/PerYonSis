@@ -1,3 +1,4 @@
+from tkinter import Y
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.http import JsonResponse
@@ -5,7 +6,9 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from datetime import datetime, date
 import json
-from ..models import Personel, PersonelListesi, PersonelListesiKayit, Mesai, Mesai_Tanimlari, ResmiTatil, MazeretKaydi, SabitMesai
+
+from mercis657.views.main_views import yarim_zamanli_calisma_kaydet
+from ..models import Personel, PersonelListesi, PersonelListesiKayit, Mesai, Mesai_Tanimlari, ResmiTatil, MazeretKaydi, SabitMesai, YarimZamanliCalisma
 from ..utils import hesapla_fazla_mesai
 
 
@@ -89,6 +92,8 @@ def personel_profil(request, personel_id, liste_id, year, month):
         personel=personel
     ).order_by('-baslangic_tarihi')
 
+    yarim_zamanli_calisma = YarimZamanliCalisma.objects.filter( personel=personel ).first()
+
     # year ve month'u integer'a çevir
     year = int(year)
     month = int(month)
@@ -127,6 +132,7 @@ def personel_profil(request, personel_id, liste_id, year, month):
         'liste': liste,
         'kayit': kayit,
         'mazeret_kayitlari': mazeret_kayitlari,
+        'yarim_zamanli_calisma': yarim_zamanli_calisma,
         'hesaplama': hesaplama,
         'mesai_tanimlari': mesai_tanimlari,
         'year': year,

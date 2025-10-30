@@ -1,7 +1,8 @@
 from datetime import date, timedelta
 from decimal import Decimal
 import calendar
-from .models import ResmiTatil, MazeretKaydi, Mesai, Mesai_Tanimlari, SabitMesai, UserMesaiFavori
+from django.db import models
+from .models import ResmiTatil, MazeretKaydi, Mesai, Mesai_Tanimlari, SabitMesai, UserMesaiFavori, YarimZamanliCalisma
 
 
 def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
@@ -27,6 +28,27 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     personel = personel_listesi_kayit.personel
     radyasyon_calisani = personel_listesi_kayit.radyasyon_calisani
     sabit_mesai = personel_listesi_kayit.sabit_mesai
+    # O dönemdeki yarim_zamanli_calisma durumu
+    ilk_gun = date(year, month, 1)
+    yarim_zamanli_calisma = YarimZamanliCalisma.objects.filter(
+        personel=personel,
+        baslangic_tarihi__lte=ilk_gun
+    ).filter(
+        models.Q(bitis_tarihi__isnull=True) | models.Q(bitis_tarihi__gt=ilk_gun)
+    ).first()
+
+    if yarim_zamanli_calisma:
+        return {
+    'olması_gereken_sure': 0,
+    'fiili_calisma_suresi': 0,
+    'fazla_mesai': 0,
+    'calisma_gunleri': 0,
+    'arefe_gunleri': 0,
+    'mazeret_azaltimi': 0,
+    'bayram_fazla_mesai': 0,
+    'normal_fazla_mesai': 0,
+    'stop_suresi': 0
+}
 
     # Aylık gün sayısı ve hafta içi günleri hesapla
     days_in_month = calendar.monthrange(year, month)[1]
@@ -197,7 +219,14 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 # Resmi tatil değilse say
                 is_resmi_tatil = resmi_tatiller.filter(TatilTarihi=current_date).exists()
                 if not is_resmi_tatil:
-                    mazeret_gunleri += 1
+                    # İzin değilse say
+                    izinli_mi = Mesai.objects.filter(
+                        Personel=personel,
+                        MesaiDate=current_date
+                    ).exclude(Izin=False).exclude(Izin__isnull=True).exists()
+                    if not izinli_mi:
+                        mazeret_gunleri += 1
+
             current_date += timedelta(days=1)
 
         mazeret_azaltimi += mazeret_gunleri * mazeret.gunluk_azaltim_saat

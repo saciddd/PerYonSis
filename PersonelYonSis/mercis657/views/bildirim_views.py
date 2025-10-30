@@ -148,7 +148,7 @@ def bildirimler(request):
     
     # Yetki kontrolünü context'e ekle
     can_approve_notifications = request.user.has_permission("ÇS 657 Bildirim Onaylama")
-
+    print ("", can_approve_notifications)
     context = {
         "donemler": get_donemler(),
         "selected_donem": selected_donem,

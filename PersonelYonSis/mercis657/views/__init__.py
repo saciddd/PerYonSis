@@ -12,3 +12,4 @@ from .raporlama_views import *
 from .yonetici_views import *
 from .stop_views import *
 from .ilk_liste_views import *
+from .imza_cizelgeleri_views import *

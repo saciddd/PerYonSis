@@ -58,6 +58,17 @@
                             </td></tr>
                         </table>
                         <div class="d-flex justify-content-end mb-2">
+                            <div class="me-2 fw-bold">
+                                {% if yarim_zamanli_calisma %}
+                                    Yarım Zamanlı Çalışma Kaydı: 
+                                    {{ yarim_zamanli_calisma.baslangic_tarihi|date:"d.m.Y" }} - 
+                                    {% if yarim_zamanli_calisma.bitis_tarihi %}
+                                        {{ yarim_zamanli_calisma.bitis_tarihi|date:"d.m.Y" }}
+                                    {% else %}
+                                        <span class="text-muted">devam</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
                             <button class="btn btn-outline-primary btn-sm" 
                                     data-bs-dismiss="modal"
                                     onclick="openYariZamanliCalismaModal({{ personel.PersonelID }})"

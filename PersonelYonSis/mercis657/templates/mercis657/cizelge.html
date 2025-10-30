@@ -140,6 +140,9 @@
     <button class="btn btn-outline-success btn-sm" type="button" id="showFazlaMesaiBtn" title="Fazla Mesaileri Hesapla">
         <i class="bi bi-clock-history"></i> Fazla Mesaileri Göster
     </button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="imzaCizelgeleriBtn" title="İmza Çizelgeleri Yazdır">
+        <i class="bi bi-printer"></i> İmza Çizelgeleri
+    </button>
     </div>
 
     <div class="table-responsive" style="max-height: calc(100vh - 250px); overflow: auto; padding-bottom: 10px;">
@@ -315,6 +318,41 @@
                             icon: "error"
                         });
                     });
+            });
+        }
+
+        // İmza Çizelgeleri Yazdır
+        const imzaBtn = document.getElementById("imzaCizelgeleriBtn");
+        if (imzaBtn && window.Swal) {
+            imzaBtn.addEventListener("click", function() {
+                Swal.fire({
+                    title: "İmza Çizelgeleri Hazırlansın mı?",
+                    text: "İlgili döneme ait İmza Çizelgeleri hazırlanacak. Mesai verileri olsun mu?",
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonText: "Evet, mesai verileriyle",
+                    cancelButtonText: "İptal",
+                    showDenyButton: true,
+                    denyButtonText: "Hayır, boş çizelge",
+                }).then((result) => {
+                    if (result.isConfirmed || result.isDenied) {
+                        const includeMesai = result.isConfirmed;
+                        const donem = document.getElementById('selectDonem').value; // YYYY/MM
+                        const [year, month] = donem.split('/');
+                        const birimId = document.getElementById('selectBirim').value;
+                        if (!year || !month || !birimId) {
+                            Swal.fire('Uyarı', 'Lütfen dönem ve birim seçiniz.', 'warning');
+                            return;
+                        }
+                        fetch(`/mercis657/imza_cizelgeleri_yazdir/?mesai=${includeMesai}&year=${year}&month=${month}&birim=${birimId}`)
+                            .then(res => res.blob())
+                            .then(blob => {
+                                const url = window.URL.createObjectURL(blob);
+                                window.open(url, "_blank");
+                            })
+                            .catch(() => Swal.fire('Hata', 'PDF oluşturulamadı.', 'error'));
+                    }
+                });
             });
         }
 

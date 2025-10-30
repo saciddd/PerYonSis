@@ -3,7 +3,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="personelProfilModalLabel">
-                    <i class="bi bi-person-circle"></i> {{ personel.PersonelName }} - Profil
+                    <i class="bi bi-person-circle"></i> {{ personel.PersonelName }} {{personel.PersonelSurname}} - Profil
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -13,7 +13,7 @@
                     <div class="col-md-8">
                         <h6>Kişisel Bilgiler</h6>
                         <table class="table table-sm">
-                            <tr><td><strong>Ad Soyad:</strong></td><td>{{ personel.PersonelName }}</td></tr>
+                            <tr><td><strong>Ad Soyad:</strong></td><td>{{ personel.PersonelName }} {{personel.PersonelSurname}}</td></tr>
                             <tr><td><strong>TC Kimlik:</strong></td><td>{{ personel.PersonelTCKN }}</td></tr>
                             <tr><td><strong>Unvan:</strong></td><td>{{ personel.PersonelTitle|default:"-" }}</td></tr>
                             <tr><td><strong>Çalışma Durumu:</strong></td><td>

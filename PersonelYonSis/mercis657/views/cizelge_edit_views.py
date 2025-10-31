@@ -158,6 +158,7 @@ def cizelge_yazdir(request):
         'month': month,
         'liste': liste if 'liste' in locals() else None,
         'aciklama': aciklama,
+        'user': request.user,  # Giriş yapan kullanıcı bilgisi
     }
 
     # Pdf oluştur

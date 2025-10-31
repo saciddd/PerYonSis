@@ -123,8 +123,8 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         # Fiili çalışma süresine ekleme (Decimal üzerinden)
         if mesai.MesaiTanim and getattr(mesai.MesaiTanim, 'Sure', None):
             total_seconds = mesai.MesaiTanim.Sure # saat cinsinden
-            hours = Decimal(str(total_seconds))
-            fiili_calisma_suresi += hours
+            # hours = Decimal(str(total_seconds))
+            fiili_calisma_suresi += total_seconds
             # Eğer personelin sabit_mesaisi varsa ve mesai süesi 8 saatten fazla ise sabit_mesai.ara_dinlenme süresini düş
             if sabit_mesai and fiili_calisma_suresi > 8:
                 fiili_calisma_suresi -= sabit_mesai.ara_dinlenme

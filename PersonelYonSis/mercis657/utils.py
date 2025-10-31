@@ -60,7 +60,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         TatilTarihi__year=year,
         TatilTarihi__month=month
     )
-
+    
     # Hafta içi günleri say (Pazartesi=0, Pazar=6)
     for day in range(1, days_in_month + 1):
         current_date = date(year, month, day)
@@ -74,23 +74,22 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             if not is_resmi_tatil:
                 calisma_gunleri += 1
 
-                # Arefe günü mü kontrol et
-                is_arefe = resmi_tatiller.filter(
-                    TatilTarihi=current_date,
-                    ArefeMi=True
-                ).exists()
+            # Arefe günü mü kontrol et
+            is_arefe = resmi_tatiller.filter(
+                TatilTarihi=current_date,
+                ArefeMi=True
+            ).exists()
 
-                if is_arefe:
-                    arefe_gunleri += 1
-
+            if is_arefe:
+                arefe_gunleri += 1
     # Günlük çalışma saati
     gunluk_saat = Decimal('7.0') if radyasyon_calisani else Decimal('8.0')
 
     # Olması gereken süre hesapla
     normal_calisma_suresi = calisma_gunleri * gunluk_saat
-    # Arefe günleri tüm personeller için -5 saat olacak
-    arefe_azaltimi = arefe_gunleri * Decimal('5.0')
-    olmasi_gereken_sure = normal_calisma_suresi - arefe_azaltimi
+    # Arefe günleri tüm personeller için +5 saat olacak
+    arefe_arttirimi = arefe_gunleri * Decimal('5.0')
+    olmasi_gereken_sure = normal_calisma_suresi + arefe_arttirimi
 
     # Fiili çalışma süresini hesapla
     fiili_calisma_suresi = Decimal('0.0')
@@ -172,9 +171,10 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                     if is_arefe:
                         # Arefede 13:00 sonrası bayram mesaisi
                         limit = Decimal('13.0')
-                        if bit_saat > limit:
+                        bayram_part = Decimal('0.0')
+                        if bit_saat > limit and bas_saat <= limit:
                             bayram_part = bit_saat - limit
-                        else:
+                        elif bas_saat >= limit and bit_saat < limit:
                             bayram_part = (bit_saat + Decimal('24.0')) - limit
                         if bayram_part > 0:
                             bayram_fazla_mesai += bayram_part

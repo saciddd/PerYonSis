@@ -379,7 +379,7 @@ def tanimlamalar(request):
     ust_birimler = UstBirim.objects.all()
     idareciler = Idareci.objects.all()
     izinler = Izin.objects.all()
-    mesai_tanimlari = get_favori_mesailer(request.user)
+    mesai_tanimlari = Mesai_Tanimlari.objects.all().order_by('Saat')
     mesai_form = MesaiTanimForm()
     resmi_tatil_form = ResmiTatilForm()
     tatiller = ResmiTatil.objects.all().order_by('TatilTarihi')

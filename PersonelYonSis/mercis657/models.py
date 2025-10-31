@@ -117,6 +117,11 @@ class Mesai(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='mercis657_mesai_ekleyen')
     
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['Personel', 'MesaiDate'], name='unique_personel_mesaidate')
+        ]
+    
     def __str__(self):
         return f"{self.Personel.PersonelName} - {self.MesaiDate}"
 

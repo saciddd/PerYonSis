@@ -720,7 +720,11 @@
                 Swal.fire({ icon: 'info', title: 'Değişiklik yok', text: 'Kaydetmek için değişiklik bulunamadı.' });
             } else {
                 alert('Kaydetmek için değişiklik bulunamadı.');
-            }
+            };
+            // Restore button state
+            saveBtn.disabled = false;
+            saveBtn.setAttribute('aria-disabled', 'false');
+            saveBtn.innerHTML = saveBtn.dataset.origHtml || 'Kaydet';
             return;
         }
 
@@ -787,14 +791,6 @@
                 Swal.fire({ icon: 'error', title: 'İstek hatası', text: err.toString() });
             } else {
                 alert('İstek hatası: ' + err);
-            }
-        })
-        .finally(() => {
-            // Restore button state (if page is reloading this won't be visible but safe)
-            if (saveBtn) {
-                saveBtn.disabled = false;
-                saveBtn.removeAttribute('aria-disabled');
-                saveBtn.innerHTML = saveBtn.dataset.origHtml || 'Kaydet';
             }
         });
     });

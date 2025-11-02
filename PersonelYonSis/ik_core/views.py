@@ -67,7 +67,7 @@ def personel_list(request):
         query &= Q(unvan_id__in=unvan_list)
 
     if not any([tc_kimlik_no, ad_soyad, telefon, unvan_list, durum]):
-        personeller = Personel.objects.none()
+        personeller = Personel.objects.select_related('unvan', 'brans', 'kurum').order_by('-kayit_tarihi')[:10]
     else:
         queryset = Personel.objects.annotate(
             ad_lower=Lower('ad'),
@@ -123,16 +123,21 @@ def personel_ekle(request):
             kadrolu = form.cleaned_data.get('kadrolu_personel')
             # Geçici görev alanlarını POST'tan al
             gecici_gorev_baslangic = request.POST.get('gecici_gorev_baslangic')
-            gorevlendirildigi_birim = request.POST.get('gorevlendirildigi_birim')
+            gecici_gorev_bitis = request.POST.get('gecici_gorev_bitis')
+            gorevlendirildigi_birim = form.cleaned_data.get('fiili_gorev_yeri').ad if form.cleaned_data.get('fiili_gorev_yeri') else ''
+            asil_kurumu = form.cleaned_data.get('kadro_yeri').ad if form.cleaned_data.get('kadro_yeri') else ''
             # Kişi kaydını oluştur
             personel.save()
             form.save_m2m()
             # Eğer kadrolu değilse otomatik geçici görev kaydı oluştur
             if not kadrolu and gecici_gorev_baslangic and gorevlendirildigi_birim:
                 GeciciGorev.objects.create(
+                    gecici_gorev_tipi='Gelis',
                     personel=personel,
                     gecici_gorev_baslangic=gecici_gorev_baslangic,
-                    gorevlendirildigi_birim=gorevlendirildigi_birim
+                    gecici_gorev_bitis=gecici_gorev_bitis or None,
+                    gorevlendirildigi_birim=gorevlendirildigi_birim,
+                    asil_kurumu=asil_kurumu
                 )
             return redirect('ik_core:personel_list')
     else:

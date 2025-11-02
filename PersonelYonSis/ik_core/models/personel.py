@@ -144,7 +144,7 @@ class Personel(models.Model):
                 gecici_gorev_baslangic__lte=today
             ).exists()
             if active_gorev:
-                return "Pasif (Geçici Görevde)" # More descriptive status
+                return "Pasif" # More descriptive status
             return "Aktif"
         else:
             # For non-kadrolu, maybe active means they have an ongoing assignment?
@@ -153,7 +153,7 @@ class Personel(models.Model):
                 models.Q(gecici_gorev_bitis__isnull=True) | models.Q(gecici_gorev_bitis__gte=today),
                 gecici_gorev_baslangic__lte=today
             ).exists()
-            return "Aktif (Görevde)" if active_gorev else "Pasif (Görevde Değil)" # Or adjust as needed
+            return "Aktif" if active_gorev else "Pasif" # Or adjust as needed
 
     @property
     def memuriyet_durumu(self):

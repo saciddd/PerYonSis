@@ -153,7 +153,7 @@ class Personel(models.Model):
                 models.Q(gecici_gorev_bitis__isnull=True) | models.Q(gecici_gorev_bitis__gte=today),
                 gecici_gorev_baslangic__lte=today
             ).exists()
-            return "Aktif" if active_gorev else "Pasif" # Or adjust as needed
+            return "Aktif" if active_gorev else "Kurumdan Ayrıldı" # Or adjust as needed
 
     @property
     def memuriyet_durumu(self):

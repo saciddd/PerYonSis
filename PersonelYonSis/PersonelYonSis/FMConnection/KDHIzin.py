@@ -65,6 +65,13 @@ def sync_personel_to_filemaker(personel, silent=False):
         def fmt_date(value):
             return value.strftime("%Y-%m-%d") if isinstance(value, date) else None
 
+        cinsiyet_val = ""
+        c = (personel.cinsiyet or "").strip().lower()
+        if c in ("kadin", "kadın"):
+            cinsiyet_val = "Kadın"
+        elif c == "erkek":
+            cinsiyet_val = "Erkek"
+
         data = {
             "AdayMemur?": int(personel.aday_memur or 0),
             "Adi": personel.ad or "",
@@ -73,7 +80,7 @@ def sync_personel_to_filemaker(personel, silent=False):
             "AtamaKararNo": personel.atama_karar_no or "",
             "AtamaKararTarihi": fmt_date(personel.atama_karar_tarihi),
             "Brans": personel.brans.ad if personel.brans else "",
-            "Cinsiyet": personel.cinsiyet or "",
+            "Cinsiyet": cinsiyet_val,
             "Doğum Tarihi": fmt_date(personel.dogum_tarihi),
             "Durum": personel.durum or "",
             "GoreveBaslamaTarihi": fmt_date(personel.goreve_baslama_tarihi),

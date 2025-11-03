@@ -17,6 +17,7 @@ from .forms import ProfileForm, PasswordChangeForm
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from .middleware import get_current_request, get_current_user
+import json
 
 @login_required
 def audit_log_list(request):
@@ -43,6 +44,19 @@ def audit_log_list(request):
     paginator = Paginator(logs, 25)  # sayfa başı 25 kayıt
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
+
+    # JSON verilerini güzel formatla decode et (yalnızca mevcut sayfadaki kayıtlar için)
+    for log in page_obj:
+        try:
+            if log.changes:
+                if isinstance(log.changes, str):
+                    log.pretty_changes = json.dumps(json.loads(log.changes), indent=2, ensure_ascii=False)
+                else:
+                    log.pretty_changes = json.dumps(log.changes, indent=2, ensure_ascii=False)
+            else:
+                log.pretty_changes = None
+        except Exception:
+            log.pretty_changes = str(log.changes) if log.changes else None
 
     return render(request, "auditlog/audit_log_list.html", {
         "page_obj": page_obj

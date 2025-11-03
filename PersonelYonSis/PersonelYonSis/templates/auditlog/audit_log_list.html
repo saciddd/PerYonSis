@@ -1,28 +1,24 @@
 {% extends "base.html" %}
 {% load static %}
+{% block extra_css %}
+<style>
+    .log-table td, .log-table th { font-size: 0.9rem; vertical-align: middle; }
+    .json-view {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 8px;
+        font-size: 0.9em;
+        font-family: "Consolas", monospace;
+        white-space: pre-wrap;
+        border-radius: 4px;
+        max-height: 350px;
+        overflow-y: auto;
+    }
+    .filter-form .form-control, .filter-form .form-select { font-size: 0.95rem; }
+    .filter-form .btn { font-size: 0.95rem; }
+</style>
+{% endblock %}
 {% block content %}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Audit Log</title>
-    <style>
-        body { background: #f8f9fa; }
-        .log-table td, .log-table th { font-size: 0.9rem; vertical-align: middle; }
-        pre.json-view {
-            background: #212529;
-            color: #f8f9fa;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            white-space: pre-wrap;
-            max-height: 350px;
-            overflow: auto;
-        }
-        .filter-form .form-control, .filter-form .form-select { font-size: 0.95rem; }
-        .filter-form .btn { font-size: 0.95rem; }
-    </style>
-</head>
-<body>
 <div class="container-fluid mt-4">
     <h4 class="mb-3">📜 Audit Log</h4>
 
@@ -89,7 +85,7 @@
                         <td>{{ log.object_id }}</td>
                         <td>{{ log.request_method }} {{ log.request_path }}</td>
                         <td>
-                            {% if log.changes %}
+                            {% if log.pretty_changes %}
                                 <button class="btn btn-sm btn-outline-primary show-json-btn" type="button"
                                         data-log-id="{{ log.id }}">
                                     Görüntüle
@@ -99,10 +95,10 @@
                             {% endif %}
                         </td>
                     </tr>
-                    {% if log.changes %}
+                    {% if log.pretty_changes %}
                     <tr class="json-row" id="json-row-{{ log.id }}" style="display:none;">
                         <td colspan="8">
-                            <pre class="json-view" id="json-view-{{ log.id }}"></pre>
+                            <pre class="json-view" id="json-view-{{ log.id }}">{{ log.pretty_changes }}</pre>
                         </td>
                     </tr>
                     {% endif %}
@@ -126,44 +122,24 @@
         </nav>
     </div>
 </div>
+{% endblock %}
 
-{% for log in page_obj %}
-    {% if log.changes %}
-        <script type="application/json" id="json_log_{{ log.id }}">
-            {{ log.changes|escapejs }}
-        </script>
-    {% endif %}
-{% endfor %}
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.show-json-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var logId = btn.getAttribute('data-log-id');
-            var jsonRow = document.getElementById('json-row-' + logId);
-            var jsonView = document.getElementById('json-view-' + logId);
-            if (jsonRow.style.display === 'none') {
-                var scriptTag = document.getElementById('json_log_' + logId);
-                if (scriptTag) {
-                    try {
-                        // escapejs ile yazıldığı için JSON.parse yerine eval kullanıyoruz
-                        var jsonData = eval('(' + scriptTag.textContent + ')');
-                        jsonView.textContent = JSON.stringify(jsonData, null, 2);
-                    } catch (e) {
-                        jsonView.textContent = scriptTag.textContent || "JSON verisi okunamadı.";
-                    }
-                } else {
-                    jsonView.textContent = "Veri bulunamadı.";
-                }
+            const logId = btn.dataset.logId;
+            const jsonRow = document.getElementById(`json-row-${logId}`);
+            if (jsonRow && jsonRow.style.display === 'none') {
                 jsonRow.style.display = '';
-                btn.textContent = "Gizle";
-            } else {
+                btn.textContent = 'Gizle';
+            } else if (jsonRow) {
                 jsonRow.style.display = 'none';
-                btn.textContent = "Görüntüle";
+                btn.textContent = 'Görüntüle';
             }
         });
     });
 });
 </script>
-</body>
-</html>
 {% endblock %}

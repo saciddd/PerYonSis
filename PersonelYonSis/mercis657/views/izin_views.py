@@ -31,8 +31,6 @@ def izin_ekle(request):
         # benzersizlik kontrolleri
         if Izin.objects.filter(ad__iexact=ad).exists():
             return JsonResponse({'status': 'error', 'message': 'Bu ad ile izin zaten mevcut.'})
-        if kod is not None and Izin.objects.filter(kod=kod).exists():
-            return JsonResponse({'status': 'error', 'message': 'Bu kod zaten kullanılmış.'})
 
         izin = Izin.objects.create(ad=ad, kod=kod)
         messages.success(request, f"{ad} izni başarıyla eklendi.")

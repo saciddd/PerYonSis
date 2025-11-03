@@ -317,7 +317,7 @@ def cizelge_onay(request):
 
 @login_required
 def mesai_onayla(request, mesai_id):
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Onay'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     mesai = Mesai.objects.filter(pk=mesai_id).first()
     if not mesai:
@@ -330,7 +330,7 @@ def mesai_onayla(request, mesai_id):
 
 @login_required
 def mesai_reddet(request, mesai_id):
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Onay'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     mesai = Mesai.objects.filter(pk=mesai_id).first()
     if not mesai:
@@ -348,7 +348,7 @@ def mesai_reddet(request, mesai_id):
 
 @login_required
 def toplu_onay(request, birim_id, year, month):
-    if not request.user.has_permission('Mesai Onaylayabilir'):
+    if not request.user.has_permission('ÇS 657 Çizelge Onay'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
     year = int(year)
     month = int(month)

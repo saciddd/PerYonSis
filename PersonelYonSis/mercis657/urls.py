@@ -1,11 +1,18 @@
 from django.urls import path
 from . import views
-from .views import fazla_mesai_views
+from .views import fazla_mesai_views, liste_views
 # from .views import main_views
 
 app_name = 'mercis657'  # Namespace tanımlaması
 
 urlpatterns = [
+    # Yeni eklenen URL pattern'leri
+    path('birim/<int:birim_id>/listeler/', liste_views.birim_listeleri, name='birim_listeleri'),
+    path('liste/<int:liste_id>/personeller/', liste_views.liste_personeller, name='liste_personeller'),
+    path('liste/<int:liste_id>/personel/<int:personel_id>/sil/', liste_views.personel_cikar, name='personel_cikar'),
+    path('liste/<int:liste_id>/sil/', liste_views.liste_sil, name='liste_sil'),
+    
+    # Mevcut URL pattern'leri
     path('cizelge', views.cizelge, name='cizelge'),
     path('cizelge_kaydet', views.cizelge_kaydet, name='cizelge_kaydet'),
     path('favori-mesai-kaydet/', views.favori_mesai_kaydet, name='favori_mesai_kaydet'),
@@ -22,6 +29,7 @@ urlpatterns = [
     path('personel-listesi/<int:liste_id>/cikar/<int:personel_id>/', views.personel_cikar, name='personel_cikar'),
     path('birim-yonetim/', views.birim_yonetim, name='birim_yonetim'),
     path('birim-ekle/', views.birim_ekle, name='birim_ekle'),
+    path('birim/<int:birim_id>/sil/', views.birim_sil, name='birim_sil'),
     path('birim/<int:birim_id>/yetki-ekle/', views.birim_yetki_ekle, name='birim_yetki_ekle'),
     path('birim/<int:birim_id>/yetki-sil/', views.birim_yetki_sil, name='birim_yetki_sil'),
     path('birim/<int:birim_id>/yetkililer/', views.birim_yetkililer, name='birim_yetkililer'),

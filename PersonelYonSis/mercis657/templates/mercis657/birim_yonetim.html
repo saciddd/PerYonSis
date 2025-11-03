@@ -29,6 +29,7 @@
                     <th>Müdür Yrd.</th>
                     <th class="text-center">Yetkili</th>
                     <th>Yetkililer</th>
+                    <th>Pasif?</th>
                     <th>İşlem</th>
                 </tr>
             </thead>
@@ -51,12 +52,18 @@
                             <span class="text-muted small">Yok</span>
                         {% endif %}
                     </td>
+                    <td>{% if birim.pasif %}<i class="bi bi-x-lg text-danger"></i>{% endif %}</td>
                     <td>
                         <button class="btn btn-outline-primary btn-sm" onclick="openYetkiliKullanicilarModal({{ birim.id }})" title="Yetkili Kullanıcılar">
                             <i class="bi bi-people-fill"></i>
                         </button>
                         <button class="btn btn-outline-secondary btn-sm" onclick="openBirimDuzenleModal({{ birim.id }})" title="Düzenle">
                             <i class="bi bi-gear"></i>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" 
+                                onclick="openBirimListeleriModal({{ birim.id }})" 
+                                title="Listeler">
+                            <i class="bi bi-card-checklist"></i>
                         </button>
                     </td>
                 </tr>
@@ -68,6 +75,8 @@
         </nav>
     </div>
 </div>
+
+{% include 'partials/birim_listeleri_modal.html' %}
 
 <!-- Birim Ekle Modal -->
 <div class="modal fade" id="birimEkleModal" tabindex="-1">

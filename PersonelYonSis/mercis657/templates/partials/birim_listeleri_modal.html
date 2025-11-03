@@ -1,0 +1,144 @@
+<!-- Birim Listeleri Modal -->
+<div class="modal fade" id="birimListeleriModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Birim Listeleri</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body d-flex">
+        <div class="col-5 pe-3 border-end">
+          <h6>Listeler</h6>
+          <ul id="birimListeleriList" class="list-group"></ul>
+        </div>
+        <div class="col-7 ps-3">
+          <h6>Personeller</h6>
+          <ul id="listePersonellerList" class="list-group"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript Functions -->
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function openBirimListeleriModal(birimId) {
+    fetch(`/mercis657/birim/${birimId}/listeler/`)
+        .then(response => response.json())
+        .then(data => {
+            const listContainer = document.getElementById('birimListeleriList');
+            listContainer.innerHTML = '';
+            data.listeler.forEach(liste => {
+                const li = document.createElement('li');
+                li.classList.add('list-group-item', 'd-flex', 'justify-content-between');
+                li.innerHTML = `
+                    <span>${liste.ay}/${liste.yil}</span>
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm me-2" onclick="showListePersoneller(${liste.id})">
+                            <i class="bi bi-people-fill"></i> Personeller
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteListe(${liste.id})">
+                            <i class="bi bi-trash"></i> Sil
+                        </button>
+                    </div>`;
+                listContainer.appendChild(li);
+            });
+            new bootstrap.Modal(document.getElementById('birimListeleriModal')).show();
+        })
+        .catch(err => Swal.fire('Hata', 'Listeler yüklenemedi: ' + err, 'error'));
+}
+
+function showListePersoneller(listeId) {
+    fetch(`/mercis657/liste/${listeId}/personeller/`)
+        .then(response => response.json())
+        .then(data => {
+            const personelList = document.getElementById('listePersonellerList');
+            personelList.innerHTML = '';
+            data.personeller.forEach(p => {
+                const li = document.createElement('li');
+                li.classList.add('list-group-item', 'd-flex', 'justify-content-between');
+                li.innerHTML = `
+                    <span>${p.ad} ${p.soyad}</span>
+                    <button id="btnPersonelCikar" class="btn btn-outline-danger btn-sm" 
+                        onclick="removePersonelFromListe(${listeId}, ${p.id})">
+                        <i class="bi bi-x-circle"></i> Çıkar
+                    </button>`;
+                personelList.appendChild(li);
+            });
+        })
+        .catch(err => Swal.fire('Hata', 'Personeller yüklenemedi: ' + err, 'error'));
+}
+
+function removePersonelFromListe(listeId, personelId) {
+    Swal.fire({
+        title: 'Personeli Listeden Çıkar',
+        text: 'Bu personeli listeden çıkarmak istediğinize emin misiniz?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, çıkar',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/mercis657/liste/${listeId}/personel/${personelId}/sil/`, {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": getCookie('csrftoken'),
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === "success") {
+                    Swal.fire('Başarılı!', data.message, 'success');
+                    showListePersoneller(listeId);
+                } else {
+                    Swal.fire('Hata!', data.message, 'error');
+                }
+            })
+            .catch(err => Swal.fire('Hata!', 'Bir hata oluştu: ' + err, 'error'));
+        }
+    });
+}
+
+function deleteListe(listeId) {
+    Swal.fire({
+        title: 'Listeyi Sil',
+        text: 'Bu listeyi silmek istediğinize emin misiniz? (İlişkili personel yoksa silinir)',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, sil',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/mercis657/liste/${listeId}/sil/`, {
+                method: 'DELETE',
+                headers: { "X-CSRFToken": getCookie('csrftoken') }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === "success") {
+                    Swal.fire('Başarılı!', data.message, 'success');
+                    openBirimListeleriModal(data.birim_id);
+                } else {
+                    Swal.fire('Hata!', data.message, 'error');
+                }
+            });
+        }
+    });
+}
+</script>

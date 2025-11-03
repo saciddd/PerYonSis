@@ -35,6 +35,7 @@ class Birim(models.Model):
     BayramNobetKodu = models.PositiveIntegerField(null=True, blank=True)
     RiskliNormalNobetKodu = models.PositiveIntegerField(null=True, blank=True)
     RiskliBayramNobetKodu = models.PositiveIntegerField(null=True, blank=True)
+    Pasif = models.BooleanField(default=False)
 
     Kurum = models.ForeignKey(Kurum, on_delete=models.SET_NULL, null=True, blank=True)
     UstBirim = models.ForeignKey(UstBirim, on_delete=models.SET_NULL, null=True, blank=True)

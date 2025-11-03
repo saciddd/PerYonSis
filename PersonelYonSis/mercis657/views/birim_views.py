@@ -27,6 +27,7 @@ def birim_yonetim(request):
             "kurum": birim.Kurum.ad if birim.Kurum else "",
             "ust_birim": birim.UstBirim.ad if birim.UstBirim else "",
             "idareci": birim.Idareci.ad if birim.Idareci else "",
+            "pasif": birim.Pasif,
             "yetkili_sayisi": len(yetkili_users),
             "yetkililer": yetkili_users,
         })
@@ -127,7 +128,8 @@ def birim_sil(request, birim_id):
             if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
                 return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
 
-        birim.delete()
+        birim.Pasif = True
+        birim.save()
         return JsonResponse({'status': 'success', 'message': 'Birim başarıyla silindi.'})
     except Birim.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Birim bulunamadı.'}, status=404)

@@ -55,6 +55,7 @@ class Menu:
             MenuItem('Bildirim İşlemleri', 'mercis657:bildirimler', 'bi bi-octagon', 'ÇS 657 Bildirim İşlemleri', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Birim Yönetimi', 'mercis657:birim_yonetim', 'bi bi-octagon', 'ÇS 657 Birim Yönetimi Sayfası', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Çizelge Yönetimi', 'mercis657:birim_listeleri', 'bi bi-octagon', 'ÇS 657 Birim Yönetimi Sayfası', parent_menu='Çizelge Sistemi 657'),
+            MenuItem('Personel Yönetimi', 'mercis657:personel_yonetim', 'bi bi-octagon', 'ÇS 657 Personel Yönetimi Sayfası', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Tanımlamalar', 'mercis657:tanimlamalar', 'bi bi-octagon', 'ÇS 657 Mesai Tanımlama', parent_menu='Çizelge Sistemi 657'),
             # Çizelge 696 ve Alt Menüleri
             MenuItem('Çizelge Sistemi 696', '#', 'bi bi-calendar-week', 'ÇS 696 Çizelge Sayfası', is_parent=True),

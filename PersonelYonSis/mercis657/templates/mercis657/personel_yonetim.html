@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+  <h3>Personel Yönetimi</h3>
+
+  <!-- 1️⃣ Filtre Alanı -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <form id="filterForm" class="row g-2">
+        <div class="col-md-4">
+          <label class="form-label">Ad Soyad</label>
+          <input type="text" class="form-control" id="adSoyad" placeholder="Ad veya Soyad">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">T.C. Kimlik No</label>
+          <input type="text" class="form-control" id="tckn" placeholder="11 haneli TCKN">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Dönem (Yıl/Ay)</label>
+          <input type="text" class="form-control" id="donem" placeholder="YYYY/MM">
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+          <button type="button" class="btn btn-primary w-100" id="btnSorgula">
+            Sorgula
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2️⃣ Sonuç Tablosu -->
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped" id="personelTable">
+          <thead>
+            <tr>
+              <th>T.C. Kimlik No</th>
+              <th>Ad Soyad</th>
+              <th>Unvan</th>
+              <th>En Son Bulunduğu Liste</th>
+              <th>İşlemler</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3️⃣ Modal: Personelin Listeleri -->
+<div class="modal fade" id="personelListeleriModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Personelin Listeleri</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Yıl / Ay</th>
+                <th>Birim</th>
+                <th>Listeye Git</th>
+              </tr>
+            </thead>
+            <tbody id="modalListelerBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+      </div>
+    </div>
+  </div>
+ </div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function fetchJSON(url, params) {
+    const u = new URL(url, window.location.origin);
+    if (params) Object.keys(params).forEach(k => params[k] !== undefined && params[k] !== '' && u.searchParams.append(k, params[k]));
+    const res = await fetch(u, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    if (!res.ok) throw new Error('İstek başarısız: ' + res.status);
+    return await res.json();
+  }
+
+  async function sorgula() {
+    const adSoyad = document.getElementById('adSoyad').value.trim();
+    const tckn = document.getElementById('tckn').value.trim();
+    const donem = document.getElementById('donem').value.trim();
+    const tbody = document.querySelector('#personelTable tbody');
+    tbody.innerHTML = '<tr><td colspan="5">Yükleniyor...</td></tr>';
+    try {
+      const data = await fetchJSON('{% url "mercis657:personel_sorgula" %}', { ad_soyad: adSoyad, tckn, donem });
+      if (data.status !== 'ok') throw new Error(data.message || 'Hata');
+      tbody.innerHTML = '';
+      if (!data.data.length) {
+        tbody.innerHTML = '<tr><td colspan="5">Kayıt bulunamadı.</td></tr>';
+        return;
+      }
+      for (const row of data.data) {
+        const latest = row.latest ? `${row.latest.yil}/${String(row.latest.ay).padStart(2, '0')} - ${row.latest.birim}` : '';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.tckn || ''}</td>
+          <td>${row.ad_soyad || ''}</td>
+          <td>${row.unvan || ''}</td>
+          <td>${latest}</td>
+          <td>
+            <button class="btn btn-outline-primary btn-sm" onclick="openPersonelListeleriModal(${row.id})">
+              <i class="bi bi-card-list"></i> Listeler
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="5">Hata: ${e.message}</td></tr>`;
+    }
+  }
+
+  async function openPersonelListeleriModal(personelId) {
+    const body = document.getElementById('modalListelerBody');
+    body.innerHTML = '<tr><td colspan="3">Yükleniyor...</td></tr>';
+    const modalEl = document.getElementById('personelListeleriModal');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+    try {
+      const rows = await fetchJSON('{% url "mercis657:personel_listeleri_kisi" personel_id=0 %}'.replace('/0/', `/${personelId}/`));
+      body.innerHTML = '';
+      if (!rows.length) {
+        body.innerHTML = '<tr><td colspan="3">Kayıt bulunamadı.</td></tr>';
+        return;
+      }
+      for (const row of rows) {
+        const donem = `${row.yil}/${String(row.ay).padStart(2, '0')}`;
+        const tr = document.createElement('tr');
+        const url = `{% url 'mercis657:cizelge' %}?birim_id=${row.birim_id}&donem=${donem}`;
+        tr.innerHTML = `
+          <td>${donem}</td>
+          <td>${row.birim}</td>
+          <td><a class="btn btn-sm btn-primary" href="${url}">Listeye Git</a></td>
+        `;
+        body.appendChild(tr);
+      }
+    } catch (e) {
+      body.innerHTML = `<tr><td colspan="3">Hata: ${e.message}</td></tr>`;
+    }
+  }
+
+  document.getElementById('btnSorgula').addEventListener('click', sorgula);
+  // Enter ile çalıştırma
+  document.getElementById('filterForm').addEventListener('submit', function(ev) { ev.preventDefault(); sorgula(); });
+</script>
+{% endblock %}
+
+

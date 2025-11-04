@@ -1,11 +1,16 @@
 from django.urls import path
 from . import views
 from .views import fazla_mesai_views, liste_views
+from .views import personel_yonetim_views
 # from .views import main_views
 
 app_name = 'mercis657'  # Namespace tanımlaması
 
 urlpatterns = [
+    # Personel Yönetimi
+    path('personel-yonetim/', personel_yonetim_views.personel_yonetim, name='personel_yonetim'),
+    path('personel-sorgula/', personel_yonetim_views.personel_sorgula, name='personel_sorgula'),
+    path('personel/<int:personel_id>/listeler/', personel_yonetim_views.personel_listeleri, name='personel_listeleri_kisi'),
     # Yeni eklenen URL pattern'leri
     path('birim/<int:birim_id>/listeler/', liste_views.birim_listeleri, name='birim_listeleri'),
     path('liste/<int:liste_id>/personeller/', liste_views.liste_personeller, name='liste_personeller'),

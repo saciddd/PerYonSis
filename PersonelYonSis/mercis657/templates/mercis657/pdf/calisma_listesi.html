@@ -86,7 +86,7 @@
           {% endfor %}
           <td>
             {% if person.hesaplama and person.hesaplama.fazla_mesai is not None %}
-              {{ person.hesaplama.fazla_mesai|floatformat:2 }}
+              {{ person.hesaplama.fazla_mesai|floatformat:0 }}
             {% else %}
               -
             {% endif %}

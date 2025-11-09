@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import calendar
 import json
 from django.shortcuts import get_object_or_404, render
@@ -11,7 +11,7 @@ from django.template.loader import get_template
 from django.conf import settings
 from pathlib import Path
 from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim, SabitMesai
-from ..utils import hesapla_fazla_mesai
+from ..utils import hesapla_fazla_mesai, get_favori_mesailer
 from PersonelYonSis.FMConnection.KDHIzin import IzinSorgula
 import pdfkit
 from django.conf import settings
@@ -233,6 +233,7 @@ def cizelge_kaydet(request):
                     existing_mesai.MesaiNotu = mesai_notu
                     existing_mesai.OnayDurumu = True
                     existing_mesai.Degisiklik = False
+                    existing_mesai.SistemdekiIzin = False  # manuel değişiklik
                     existing_mesai.save()
                     last_backup.delete()
                     continue
@@ -251,6 +252,7 @@ def cizelge_kaydet(request):
                 existing_mesai.MesaiNotu = mesai_notu
                 existing_mesai.OnayDurumu = False
                 existing_mesai.Degisiklik = True
+                existing_mesai.SistemdekiIzin = False  # manuel değişiklik
                 existing_mesai.save()
 
             except Mesai.DoesNotExist:
@@ -377,7 +379,7 @@ def toplu_islem(request, liste_id, year, month):
     personeller = Personel.objects.filter(
         personellistesikayit__liste=liste
     ).distinct()
-    mesai_tanimlari = Mesai_Tanimlari.objects.filter(GecerliMesai=True)
+    mesai_tanimlari = get_favori_mesailer(request.user)
 
     # resmi tatil ve arefe günleri
     tatiller = ResmiTatil.objects.filter(
@@ -530,7 +532,7 @@ def izinleri_mesailere_isle(request, liste_id):
                 continue  # Django’da personeli yoksa atla
 
             start_date = datetime.strptime(str(baslangic_tarihi), "%Y-%m-%d").date()
-            end_date = datetime.strptime(str(bitis_tarihi), "%Y-%m-%d").date()
+            end_date = datetime.strptime(str(bitis_tarihi), "%Y-%m-%d").date() - timedelta(days=1)
 
             # Tarih aralığındaki mesaileri bul
             mesailer = Mesai.objects.filter(

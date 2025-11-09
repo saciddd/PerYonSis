@@ -8,8 +8,8 @@ from datetime import datetime, date
 import json
 
 from mercis657.views.main_views import yarim_zamanli_calisma_kaydet
-from ..models import Personel, PersonelListesi, PersonelListesiKayit, Mesai, Mesai_Tanimlari, ResmiTatil, MazeretKaydi, SabitMesai, YarimZamanliCalisma
-from ..utils import hesapla_fazla_mesai
+from ..models import Personel, PersonelListesi, PersonelListesiKayit, Mesai, Mesai_Tanimlari, ResmiTatil, MazeretKaydi, SabitMesai, YarimZamanliCalisma, UserMesaiFavori
+from ..utils import hesapla_fazla_mesai, get_favori_mesailer
 
 
 @login_required
@@ -65,6 +65,7 @@ def personel_profil(request, personel_id, liste_id, year, month):
     """Personel profil modalını döner"""
     personel = get_object_or_404(Personel, pk=personel_id)
     liste = get_object_or_404(PersonelListesi, pk=liste_id)
+    user = request.user
     # Tüm Sabit mesaileri çekiyoruz - güvenli şekilde
     try:
         # Problemli ara_dinlenme değerlerini filtrele
@@ -99,7 +100,7 @@ def personel_profil(request, personel_id, liste_id, year, month):
     month = int(month)
     
     hesaplama = hesapla_fazla_mesai(kayit, year, month)
-    mesai_tanimlari = Mesai_Tanimlari.objects.filter(GecerliMesai=True)
+    mesai_tanimlari = get_favori_mesailer(user)
 
     # Onaylı mesaileri disable et
     onayli_mesailer = Mesai.objects.filter(
@@ -122,13 +123,11 @@ def personel_profil(request, personel_id, liste_id, year, month):
     ]
     
     gunler = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
-    mesai_tanimlari = Mesai_Tanimlari.objects.all()
-
+    
     context = {
         'personel': personel,
         'sabit_mesailer' : sabit_mesailer,
         'gunler': gunler,
-        "mesai_options": mesai_tanimlari,
         'liste': liste,
         'kayit': kayit,
         'mazeret_kayitlari': mazeret_kayitlari,

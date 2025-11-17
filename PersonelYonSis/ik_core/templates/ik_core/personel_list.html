@@ -126,9 +126,17 @@
                                             {% endif %}
                                         </td>
                                         <td>
-                                            <a href="{% url 'ik_core:personel_detay' personel.pk %}" class="btn btn-info btn-sm">
-                                                <i class="bi bi-eye"></i> Detay
-                                            </a>
+                                            <div class="d-flex gap-1 flex-wrap">
+                                                <a href="{% url 'ik_core:personel_detay' personel.pk %}" class="btn btn-info btn-sm">
+                                                    <i class="bi bi-eye"></i> Detay
+                                                </a>
+                                                <a href="{% url 'ik_core:resmi_yazi' personel.pk %}" class="btn btn-success btn-sm">
+                                                    <i class="bi bi-file-earmark-text"></i> Resmi Yazı
+                                                </a>
+                                                <a href="{% url 'ik_core:teblig_islemleri' personel.pk %}" class="btn btn-primary btn-sm">
+                                                    <i class="bi bi-file-earmark-text"></i> Tebliğ
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}

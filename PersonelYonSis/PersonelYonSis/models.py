@@ -92,6 +92,21 @@ class User(AbstractBaseUser, PermissionsMixin):
             return True
 
         return False
+class Duyuru(models.Model):
+    uygulama = models.CharField(max_length=100, help_text="Örn: mercis657, ik_core, genel")
+    duyuru_metni = models.TextField()
+    olusturan = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="duyurular")
+    olusturma_tarihi = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-olusturma_tarihi']
+        verbose_name = "Duyuru"
+        verbose_name_plural = "Duyurular"
+
+    def __str__(self):
+        return f"{self.uygulama} - {self.duyuru_metni[:30]}"
+
+
 class Notification(models.Model):
     recipient = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)

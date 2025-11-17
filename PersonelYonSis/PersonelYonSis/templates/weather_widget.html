@@ -1,0 +1,78 @@
+<div class="card">
+    <div class="card-header">
+      <div id="current-datetime" class="text-muted" style="font-size:1em;"></div>
+    </div>
+    <div class="card-body">
+      <div id="current-weather" class="text-center mb-4"></div>
+      <div id="weather-container" class="d-flex justify-between text-center gap-2"></div>
+    </div>
+  </div>
+  
+  <style>
+    .weather-day { width: 18%; padding: 8px; border-radius: 8px; background: #f4f6f9; transition: 0.2s; }
+    .weather-day:hover { background: #e9ecef; }
+    .weather-icon { font-size: 32px; margin-bottom: 5px; animation: float 2s ease-in-out infinite; }
+    .current-icon { font-size: 64px; animation: float 2s ease-in-out infinite; }
+    @keyframes float { 0% { transform: translateY(0); } 50% { transform: translateY(-6px); } 100% { transform: translateY(0); } }
+  </style>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+  
+      function updateDateTime() {
+        let now = new Date();
+        document.getElementById("current-datetime").textContent = 
+          now.toLocaleDateString("tr-TR", { weekday:"long", year:"numeric", month:"long", day:"numeric" }) +
+          " "+ now.toLocaleTimeString("tr-TR");
+      }
+      updateDateTime(); setInterval(updateDateTime, 1000);
+  
+      fetch("https://api.open-meteo.com/v1/forecast?latitude=38.7300&longitude=35.4900&current=temperature_2m,weathercode&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=Europe/Istanbul")
+        .then(response => response.json())
+        .then(data => {
+          const container = document.getElementById("weather-container");
+          const currentBox = document.getElementById("current-weather");
+          container.innerHTML = "";
+  
+          const icons = {
+            0:"wi-day-sunny", 1:"wi-day-sunny", 2:"wi-day-cloudy", 3:"wi-cloudy", 45:"wi-fog", 48:"wi-fog",
+            51:"wi-sprinkle", 53:"wi-sprinkle", 55:"wi-sprinkle", 61:"wi-rain", 63:"wi-rain", 65:"wi-rain",
+            71:"wi-snow", 73:"wi-snow", 75:"wi-snow", 80:"wi-showers", 81:"wi-showers", 82:"wi-showers",
+            95:"wi-thunderstorm", 96:"wi-storm-showers", 99:"wi-storm-showers"
+          };
+  
+          let curTemp = data.current.temperature_2m;
+          let curCode = data.current.weathercode;
+          let curIcon = icons[curCode] || "wi-day-sunny";
+  
+          currentBox.innerHTML = `
+            <div class="mb-2">Şu Anki Hava Durumu</div>
+            <i class="wi ${curIcon} current-icon"></i>
+            <div style="font-size:28px; font-weight:bold;">${curTemp}°C</div>
+          `;
+  
+          for (let i = 0; i < 5; i++) {
+            let date = data.daily.time[i];
+            let max = data.daily.temperature_2m_max[i];
+            let min = data.daily.temperature_2m_min[i];
+            let code = data.daily.weathercode[i];
+            let icon = icons[code] || "wi-day-sunny";
+  
+            container.innerHTML += `
+              <div class="weather-day">
+                <div><strong>${new Date(date).toLocaleDateString("tr-TR", { weekday:"short" })}</strong></div>
+                <div class="weather-icon"><i class="wi ${icon}"></i></div>
+                <div>${max}° / ${min}°</div>
+              </div>`;
+          }
+        })
+        .catch(err => {
+          console.error("Weather error:", err);
+          document.getElementById("weather-container").innerHTML = "<p>Hava durumu alınamadı.</p>";
+        });
+  
+    });
+  </script>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.10/css/weather-icons.min.css">
+  

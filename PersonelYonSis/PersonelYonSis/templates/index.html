@@ -1,5 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
-  <h1>Hoşgeldiniz!</h1>
-  <p>Bu sizin giriş ekranınız. Zamanla gelişecek inşallah.</p>
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="h4 mb-3">Hoşgeldiniz!</h1>
+        {% include "weather_widget.html" %}
+        <p class="mb-0 text-muted">Bu sizin giriş ekranınız. Zamanla gelişecek inşallah.</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    {% include "common/duyurular.html" %}
+  </div>
+</div>
 {% endblock %}

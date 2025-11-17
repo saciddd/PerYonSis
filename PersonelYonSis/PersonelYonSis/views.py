@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate, login, logout as auth_logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from .forms import LoginForm
-from .models import Role, Permission, RolePermission, User, Notification, AuditLog
+from .models import Role, Permission, RolePermission, User, Notification, AuditLog, Duyuru
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from notifications.services import notify_role_users, notify_user
@@ -67,12 +67,74 @@ def get_user_permissions(user):
 		return RolePermission.objects.filter(Role__in=user.roles.all()).values_list('Permission__PermissionName', flat=True)
 	return []
 
+
+def build_duyuru_context(request):
+	uygulama = (request.GET.get("uygulama") or "").strip()
+	duyurular_qs = Duyuru.objects.select_related("olusturan").all()
+	if uygulama:
+		duyurular_qs = duyurular_qs.filter(uygulama=uygulama)
+
+	uygulama_listesi = (
+		Duyuru.objects.order_by("uygulama")
+		.values_list("uygulama", flat=True)
+		.distinct()
+	)
+
+	can_add_duyuru = False
+	if request.user.is_authenticated:
+		can_add_duyuru = request.user.has_permission("Genel Duyuru Ekleyebilir")
+
+	return {
+		"duyurular": list(duyurular_qs),
+		"uygulama_listesi": uygulama_listesi,
+		"aktif_uygulama": uygulama,
+		"can_add_duyuru": can_add_duyuru,
+	}
+
 def index(request):
 	if request.user.is_authenticated:
 		permissions = get_user_permissions(request.user)
-		return render(request, 'index.html', {'permissions': permissions})
+		context = {'permissions': permissions}
+		context.update(build_duyuru_context(request))
+		return render(request, 'index.html', context)
 	else:
 		return render(request, "login.html")
+
+
+@login_required
+def duyurular_list(request):
+	context = build_duyuru_context(request)
+	return render(request, "duyurular/index.html", context)
+
+
+@login_required
+@require_POST
+def duyuru_ekle(request):
+	if not request.user.has_permission("Genel Duyuru Ekleyebilir"):
+		return JsonResponse({"status": "error", "message": "Bu işlem için yetkiniz yok."}, status=403)
+
+	uygulama = (request.POST.get("uygulama") or "").strip()
+	metin = (request.POST.get("duyuru_metni") or "").strip()
+
+	if not uygulama or not metin:
+		return JsonResponse({"status": "error", "message": "Tüm alanlar zorunludur."}, status=400)
+
+	duyuru = Duyuru.objects.create(
+		uygulama=uygulama,
+		duyuru_metni=metin,
+		olusturan=request.user
+	)
+
+	return JsonResponse({
+		"status": "success",
+		"message": "Duyuru eklendi.",
+		"duyuru": {
+			"uygulama": duyuru.uygulama,
+			"duyuru_metni": duyuru.duyuru_metni,
+			"olusturan": str(duyuru.olusturan) if duyuru.olusturan else "",
+			"olusturma_tarihi": duyuru.olusturma_tarihi.strftime("%d.%m.%Y %H:%M"),
+		}
+	})
 
 def user_login(request):
 	if request.method == 'POST':

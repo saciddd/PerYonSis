@@ -136,6 +136,7 @@ urlpatterns = [
     # Yönetici Görünümleri
     path('yonetici/birim-listeleri/', views.birim_listeleri, name='birim_listeleri'),
     path('personel-listesi/<int:liste_id>/sira-kaydet/', views.personel_listesi_sira_kaydet, name='personel_listesi_sira_kaydet'),
+    path('personel-listesi/<int:liste_id>/onceki-ay-siralamasi/', views.onceki_ay_siralamasi, name='onceki_ay_siralamasi'),
 
     # İlk Liste Bildirimi
     path('ilk-liste-olustur/<int:liste_id>/', views.ilk_liste_olustur, name='ilk_liste_olustur'),

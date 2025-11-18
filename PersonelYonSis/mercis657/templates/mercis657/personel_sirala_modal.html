@@ -14,10 +14,14 @@
             <button type="button" class="btn btn-outline-secondary btn-sm" id="sirala-unvan">
               <i class="bi bi-person-badge"></i> Unvana Göre
             </button>
+            <button type="button" class="btn btn-outline-info btn-sm" id="sirala-onceki-ay">
+              <i class="bi bi-arrow-counterclockwise"></i> Önceki Ay Sıralaması
+            </button>
           </div>
           <ul id="sortable-list" class="list-group">
             {% for kayit in mevcut_personeller %}
               <li class="list-group-item d-flex align-items-center" data-kayit-id="{{ kayit.id }}"
+                  data-personel-id="{{ kayit.personel.PersonelID }}"
                   data-unvan="{{ kayit.personel.PersonelTitle|default_if_none:''|lower }}"
                   data-adsoyad="{{ kayit.personel.PersonelName|add:' '|add:kayit.personel.PersonelSurname|lower }}">
                 <span class="me-2" style="cursor:grab;">&#9776;</span>

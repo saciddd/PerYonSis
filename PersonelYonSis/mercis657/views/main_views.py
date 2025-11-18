@@ -538,3 +538,65 @@ def favori_mesai_kaydet(request):
 
     return JsonResponse({"status": "success"})
 
+@login_required
+@require_GET
+def onceki_ay_siralamasi(request, liste_id):
+    """
+    Bir önceki ayın personel sıralamasını getirir.
+    PersonelListesiKayit modelinden personelin bir önceki aya ait sira_no bilgisini döndürür.
+    """
+    liste = get_object_or_404(PersonelListesi, id=liste_id)
+    
+    # Yetki kontrolü
+    if not request.user.has_permission("ÇS 657 Tüm Birimleri Görebilir"):
+        if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
+            return HttpResponseForbidden('Yetkisiz işlem.')
+    
+    try:
+        # Önceki ayı hesapla
+        current_year = liste.yil
+        current_month = liste.ay
+        
+        if current_month == 1:
+            prev_year = current_year - 1
+            prev_month = 12
+        else:
+            prev_year = current_year
+            prev_month = current_month - 1
+        
+        # Önceki ayın listesini bul
+        prev_liste = PersonelListesi.objects.filter(
+            birim=liste.birim,
+            yil=prev_year,
+            ay=prev_month
+        ).first()
+        
+        if not prev_liste:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Önceki ay için liste bulunamadı.'
+            }, status=404)
+        
+        # Önceki ayın kayıtlarını al (personel_id -> sira_no mapping)
+        prev_kayitlar = PersonelListesiKayit.objects.filter(
+            liste=prev_liste
+        ).select_related('personel').order_by('sira_no')
+        
+        # Mapping oluştur: personel_id -> sira_no
+        siralamasi = {}
+        for kayit in prev_kayitlar:
+            if kayit.sira_no is not None:
+                siralamasi[kayit.personel.PersonelID] = kayit.sira_no
+        
+        return JsonResponse({
+            'status': 'success',
+            'siralamasi': siralamasi,
+            'prev_year': prev_year,
+            'prev_month': prev_month
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+

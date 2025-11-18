@@ -53,6 +53,72 @@ document.addEventListener('DOMContentLoaded', function () {
         items.forEach(li => list.appendChild(li));
     });
 
+    // Önceki Ay Sıralaması
+    document.getElementById('sirala-onceki-ay').addEventListener('click', function () {
+        const btn = this;
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Yükleniyor...';
+        
+        // Liste ID'yi al (saveUrl'den parse et)
+        const listeId = saveUrl.match(/\/personel-listesi\/(\d+)\//)?.[1];
+        if (!listeId) {
+            alert('Liste ID bulunamadı.');
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            return;
+        }
+        
+        fetch(`/mercis657/personel-listesi/${listeId}/onceki-ay-siralamasi/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': csrftoken
+            }
+        })
+        .then(resp => resp.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const siralamasi = data.siralamasi;
+                
+                // Mevcut kayıtları al
+                const items = Array.from(list.children);
+                
+                // Önceki ay sıralamasına göre sırala
+                items.sort((a, b) => {
+                    const personelIdA = parseInt(a.dataset.personelId) || 0;
+                    const personelIdB = parseInt(b.dataset.personelId) || 0;
+                    
+                    const siraNoA = siralamasi[personelIdA];
+                    const siraNoB = siralamasi[personelIdB];
+                    
+                    // Eğer önceki ay sıralamasında yoksa, en sona koy
+                    if (siraNoA === undefined && siraNoB === undefined) {
+                        return 0; // İkisi de yoksa, mevcut sırayı koru
+                    }
+                    if (siraNoA === undefined) return 1; // A yoksa, B'den sonra
+                    if (siraNoB === undefined) return -1; // B yoksa, A'dan sonra
+                    
+                    return siraNoA - siraNoB;
+                });
+                
+                // DOM'a uygula
+                items.forEach(li => list.appendChild(li));
+                
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            } else {
+                alert('Hata: ' + (data.message || 'Bilinmeyen hata'));
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        })
+        .catch(err => {
+            alert('Sunucu hatası: ' + err);
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        });
+    });
+
     // Kaydet butonu
     document.getElementById('siralama-kaydet').addEventListener('click', function () {
         const payload = Array.from(list.children).map((li, idx) => ({

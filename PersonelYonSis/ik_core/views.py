@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models.query import QuerySet
 from django.db.models import Q, Value as V
-from django.db.models.functions import Lower, Concat
+from django.db.models.functions import Lower, Concat, Coalesce
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.staticfiles.storage import staticfiles_storage
@@ -45,6 +45,7 @@ def personel_list(request):
     query = Q()
     tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
     ad_soyad = request.GET.get('ad_soyad', '').strip()
+    ad_soyad_norm = lower_tr(ad_soyad) if ad_soyad else ''
     telefon = request.GET.get('telefon', '').strip()
     # Çoklu unvan desteği: aynı isimle birden fazla parametre gelebilir
     unvan_list = request.GET.getlist('unvan')
@@ -52,14 +53,6 @@ def personel_list(request):
 
     if tc_kimlik_no:
         query &= Q(tc_kimlik_no__icontains=tc_kimlik_no)
-
-    if ad_soyad:
-        ad_soyad_norm = lower_tr(ad_soyad)
-        # Lower fonksiyonuyla veritabanı tarafında normalize et
-        query &= (
-            Q(ad__isnull=False) & Q(ad__icontains=ad_soyad_norm) |
-            Q(soyad__isnull=False) & Q(soyad__icontains=ad_soyad_norm)
-        )
 
     if telefon:
         query &= Q(telefon__icontains=telefon)
@@ -69,20 +62,33 @@ def personel_list(request):
     if not any([tc_kimlik_no, ad_soyad, telefon, unvan_list, durum]):
         personeller = Personel.objects.select_related('unvan', 'brans', 'kurum').order_by('-kayit_tarihi')[:10]
     else:
-        queryset = Personel.objects.annotate(
-            ad_lower=Lower('ad'),
-            soyad_lower=Lower('soyad')
-        ).filter(query).select_related('unvan', 'brans', 'kurum')
+        # Önce diğer filtreleri uygula (performans için)
+        queryset = Personel.objects.filter(query).select_related('unvan', 'brans', 'kurum')
+        
+        # Ad/soyad filtresini Python tarafında uygula (Türkçe karakter desteği için)
+        if ad_soyad_norm:
+            filtered_personeller = []
+            for p in queryset:
+                ad_normalized = lower_tr(p.ad or '')
+                soyad_normalized = lower_tr(p.soyad or '')
+                if ad_soyad_norm in ad_normalized or ad_soyad_norm in soyad_normalized:
+                    filtered_personeller.append(p)
+            queryset = filtered_personeller
 
+        # Durum filtresi (Python tarafında)
         if durum:
             # 'durum' model alanı değil (property), DB tarafında filtrelenemez.
             # Kullanıcı 'Aktif' veya 'Pasif' seçmişse, property değerinin bu kelimeyle başlamasını kabul edelim.
-            if durum in ("Aktif", "Pasif"):
-                personeller = [p for p in queryset if (p.durum or "").startswith(durum)]
+            if isinstance(queryset, list):
+                personeller = [p for p in queryset if (p.durum or "").startswith(durum)] if durum in ("Aktif", "Pasif") else [p for p in queryset if p.durum == durum]
             else:
-                personeller = [p for p in queryset if p.durum == durum]
+                if durum in ("Aktif", "Pasif"):
+                    personeller = [p for p in queryset if (p.durum or "").startswith(durum)]
+                else:
+                    personeller = [p for p in queryset if p.durum == durum]
         else:
-            personeller = queryset
+            # Eğer liste değilse listeye çevir
+            personeller = list(queryset) if not isinstance(queryset, list) else queryset
 
     unvanlar = Unvan.objects.all()
 

@@ -237,9 +237,6 @@ def update_user(request, user_id):
 		if username and username != user.Username:
 			if User.objects.filter(Username=username).exclude(UserID=user.UserID).exists():
 				errors.append('Bu kullanıcı adı zaten kullanılıyor.')
-		if email:
-			if User.objects.filter(Email=email).exclude(UserID=user.UserID).exists():
-				errors.append('Bu email adresi zaten kullanılıyor.')
 		if tckimlikno:
 			if User.objects.filter(TCKimlikNo=tckimlikno).exclude(UserID=user.UserID).exists():
 				errors.append('Bu TCKimlikNo zaten kullanılıyor.')

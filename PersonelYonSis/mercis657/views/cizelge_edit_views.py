@@ -547,6 +547,10 @@ def izinleri_mesailere_isle(request, liste_id):
                     mesai.MesaiTanim = None  # izinli günlerde mesai olmaz
                     mesai.save(update_fields=["Izin", "MesaiTanim", "SistemdekiIzin"])
                     updated_count += 1
+                elif mesai.Izin == izin_obj:
+                    mesai.SistemdekiIzin = True
+                    mesai.save(update_fields=["SistemdekiIzin"])
+                    updated_count += 1
 
         return JsonResponse({
             "status": "success",

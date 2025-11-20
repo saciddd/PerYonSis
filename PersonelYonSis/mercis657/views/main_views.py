@@ -546,12 +546,7 @@ def onceki_ay_siralamasi(request, liste_id):
     PersonelListesiKayit modelinden personelin bir önceki aya ait sira_no bilgisini döndürür.
     """
     liste = get_object_or_404(PersonelListesi, id=liste_id)
-    
-    # Yetki kontrolü
-    if not request.user.has_permission("ÇS 657 Tüm Birimleri Görebilir"):
-        if not UserBirim.objects.filter(user=request.user, birim=liste.birim).exists():
-            return HttpResponseForbidden('Yetkisiz işlem.')
-    
+        
     try:
         # Önceki ayı hesapla
         current_year = liste.yil

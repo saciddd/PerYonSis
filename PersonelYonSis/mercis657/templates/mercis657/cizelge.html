@@ -143,6 +143,12 @@
     <button type="button" class="btn btn-outline-secondary btn-sm" id="imzaCizelgeleriBtn" title="İmza Çizelgeleri Yazdır">
         <i class="bi bi-printer"></i> İmza Çizelgeleri
     </button>
+    <!-- Sağ tarafa hizalanmış Hata Kontrolü butonu -->
+    <span class="float-end">
+        <button type="button" class="btn btn-outline-danger btn-sm" id="hataKontrolBtn" title="Hata Kontrolü">
+            <i class="bi bi-exclamation-circle"></i> Hata Kontrolü
+        </button>
+    </span>
     </div>
 
     <div class="table-responsive" style="max-height: calc(100vh - 250px); overflow: auto; padding-bottom: 10px;">
@@ -320,7 +326,19 @@
                     });
             });
         }
-
+        // Hata Kontrolü butonu
+        const hataKontrolBtn = document.getElementById("hataKontrolBtn");
+        if (hataKontrolBtn) {
+            hataKontrolBtn.addEventListener("click", function() {
+                console.log("Hata Kontrolü butonu tıklandı");
+                // Henüz geliştirilmedi.    
+                Swal.fire({
+                    title: "Hata Kontrolü",
+                    text: "Hata kontrolü henüz geliştirilmedi. Biraz sabır :)",
+                    icon: "info"
+                });
+            });
+        }
         // İmza Çizelgeleri Yazdır
         const imzaBtn = document.getElementById("imzaCizelgeleriBtn");
         if (imzaBtn && window.Swal) {

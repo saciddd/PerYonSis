@@ -76,6 +76,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         })
         .then(resp => resp.json())
+        // Debug için: .then(data => { console.log(data); return data; })
+        .then(data => { console.log(data); return data; })
         .then(data => {
             if (data.status === 'success') {
                 const siralamasi = data.siralamasi;

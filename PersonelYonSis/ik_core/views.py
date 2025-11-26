@@ -67,12 +67,54 @@ def personel_list(request):
         
         # Ad/soyad filtresini Python tarafında uygula (Türkçe karakter desteği için)
         if ad_soyad_norm:
+            # Arama terimini kelimelere böl
+            arama_kelimeleri = [kelime.strip() for kelime in ad_soyad_norm.split() if kelime.strip()]
+            
             filtered_personeller = []
             for p in queryset:
                 ad_normalized = lower_tr(p.ad or '')
                 soyad_normalized = lower_tr(p.soyad or '')
-                if ad_soyad_norm in ad_normalized or ad_soyad_norm in soyad_normalized:
+                tam_ad_soyad = f"{ad_normalized} {soyad_normalized}".strip()
+                
+                eslesme = False
+                
+                if len(arama_kelimeleri) == 1:
+                    # Tek kelime: ad veya soyad içinde ara
+                    kelime = arama_kelimeleri[0]
+                    if kelime in ad_normalized or kelime in soyad_normalized:
+                        eslesme = True
+                else:
+                    # Birden fazla kelime: esnek eşleşme
+                    ilk_kelime = arama_kelimeleri[0]
+                    son_kelime = arama_kelimeleri[-1]
+                    
+                    # 1. Tüm kelimeler birleşik olarak ad veya soyad veya tam ad soyad içinde
+                    if ad_soyad_norm in ad_normalized or ad_soyad_norm in soyad_normalized or ad_soyad_norm in tam_ad_soyad:
+                        eslesme = True
+                    # 2. İlk kelime ad başlangıcında VE son kelime soyad başlangıcında
+                    elif ad_normalized.startswith(ilk_kelime) and soyad_normalized.startswith(son_kelime):
+                        eslesme = True
+                    # 3. İlk kelime ad içinde VE son kelime soyad içinde
+                    elif ilk_kelime in ad_normalized and son_kelime in soyad_normalized:
+                        eslesme = True
+                    # 4. İki kelimeden fazlaysa, ilk kelime ad başlangıcında ve tüm kelimeler ad+soyad içinde sırasıyla eşleşiyorsa
+                    elif len(arama_kelimeleri) > 2:
+                        # İlk kelime ad başlangıcında olmalı
+                        if ad_normalized.startswith(ilk_kelime):
+                            # Ad kısmında ilk kelimeyi çıkar
+                            ad_kalan = ad_normalized[len(ilk_kelime):].strip()
+                            # Ortadaki kelimeler ad veya soyad içinde, son kelime soyad başlangıcında olmalı
+                            ortadaki_eslesiyor = True
+                            for i in range(1, len(arama_kelimeleri) - 1):
+                                if arama_kelimeleri[i] not in ad_kalan and arama_kelimeleri[i] not in soyad_normalized:
+                                    ortadaki_eslesiyor = False
+                                    break
+                            if ortadaki_eslesiyor and soyad_normalized.startswith(son_kelime):
+                                eslesme = True
+                
+                if eslesme:
                     filtered_personeller.append(p)
+            
             queryset = filtered_personeller
 
         # Durum filtresi (Python tarafında)

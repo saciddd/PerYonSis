@@ -163,6 +163,29 @@
             {% endfor %}
         </colgroup>
         <thead class="table-light sticky-header">
+            <!-- Vardiya Sayıları Satırları -->
+            <tr class="vardiya-row gunduz-row">
+                <th colspan="4" class="text-center fw-bold">Gündüz</th>
+                {% for day in days %}
+                <th class="vardiya-count"
+                    data-date="{{ day.full_date }}">0</th>
+                {% endfor %}
+            </tr>
+            <tr class="vardiya-row aksam-row">
+                <th colspan="4" class="text-center fw-bold">Akşam</th>
+                {% for day in days %}
+                <th class="vardiya-count"
+                    data-date="{{ day.full_date }}">0</th>
+                {% endfor %}
+            </tr>
+            <tr class="vardiya-row gece-row">
+                <th colspan="4" class="text-center fw-bold">Gece</th>
+                {% for day in days %}
+                <th class="vardiya-count"
+                    data-date="{{ day.full_date }}">0</th>
+                {% endfor %}
+            </tr>
+            <!-- Günler Satırı -->
             <tr>
                 <th class="sticky-col-1">S/N</th>
                 <th class="sticky-col-2">Personel Adı Soyadı</th>
@@ -226,6 +249,21 @@
 
 <script>
     window.saveUrl = "{% url 'mercis657:personel_listesi_sira_kaydet' liste|default:0 %}";
+    
+    const renderedListeId = {{ liste|default:'0' }};
+    window.listeId = (renderedListeId && renderedListeId !== 0) ? renderedListeId : (document.getElementById('selectBirim') ? document.getElementById('selectBirim').value : 0);
+    // URL'leri Django reverse ile tanımla
+    window.urls = {
+        fazlaMesaiToplu: "{% url 'mercis657:fazla_mesai_hesapla_toplu' %}",
+        vardiyaTanimlari: "{% url 'mercis657:vardiya_tanimlari' %}",
+        cizelgeKontrol: "{% url 'mercis657:cizelge_kontrol' %}"
+    };
+
+    // Global mesai tanımları (Süreleri ile birlikte)
+    window.mesaiTanimlari = {};
+    {% for mesai in all_mesai_tanimlari %}
+        window.mesaiTanimlari["{{ mesai.id }}"] = {{ mesai.Sure|default:0|stringformat:"f" }};
+    {% endfor %}
 </script>
 <script src="{% static 'mercis657/js/personel_sirala.js' %}"></script>
 <!-- Personel Ekleme Modal ve Birim Yönetimi Modal -->
@@ -264,6 +302,9 @@
 
 {% block extra_js %}
 <script src="{% static 'mercis657/js/birim_kullanici_yetkileri.js' %}"></script>
+<script src="{% static 'mercis657/js/fazla_mesai_hesapla.js' %}"></script>
+<script src="{% static 'mercis657/js/vardiya_sayilari.js' %}"></script>
+<script src="{% static 'mercis657/js/cizelge_kontrol.js' %}"></script>
 <script>
     // Fazla mesai hesaplama
     document.addEventListener('DOMContentLoaded', function() {
@@ -386,6 +427,23 @@
                 document.getElementById('filterForm').submit();
             });
         }
+
+        // Sticky Header Stacking
+        function updateStickyHeaderPositions() {
+            const thead = document.querySelector('.sticky-header');
+            if (!thead) return;
+            const rows = Array.from(thead.querySelectorAll('tr'));
+            let currentTop = 0;
+            rows.forEach(row => {
+                Array.from(row.querySelectorAll('th')).forEach(cell => {
+                    cell.style.top = currentTop + 'px';
+                });
+                currentTop += row.offsetHeight;
+            });
+        }
+        // Run initially and on resize
+        updateStickyHeaderPositions();
+        window.addEventListener('resize', updateStickyHeaderPositions);
     });
 
     // Dönem veya birim değiştiğinde sorgula (sayfayı yenile)
@@ -551,9 +609,23 @@
             let bosalt = alanBosalt.checked;
             let notVal = mesaiNotuSelect.value;
 
+            // Calculate old duration before changes
+            const oldMesaiId = cell.getAttribute('data-mesai-id');
+            const oldDuration = oldMesaiId ? (window.mesaiTanimlari[oldMesaiId] || 0) : 0;
+
             cell.classList.add('modified');
 
+            // Fazla mesai ve vardiya sayılarını güncelle
+            // updateFazlaMesaiOnCellChange(cell); // Backend isteği yerine client-side hesaplama yapılacak
+            
+            if (typeof updateVardiyaOnCellChange === 'function') {
+                updateVardiyaOnCellChange(cell);
+            }
+
+            let newDuration = oldDuration; // Default to no change
+
             if (bosalt) {
+                newDuration = 0;
                 cell.querySelector('.mesai-main-value').innerText = "";
                 cell.setAttribute('data-mesai-id', "");
                 cell.setAttribute('data-izin-id', "");
@@ -571,14 +643,18 @@
                 }
                 // Mesai/İzin verilerini değiştirme!
                 cell.classList.add('has-value');
+                // newDuration remains oldDuration
             } else if (mesaiVal) {
                 let text = mesaiSelect.options[mesaiSelect.selectedIndex].text;
                 cell.querySelector('.mesai-main-value').innerText = text;
-                cell.setAttribute('data-mesai-id', mesaiVal.replace('mesai_', ''));
+                const newId = mesaiVal.replace('mesai_', '');
+                cell.setAttribute('data-mesai-id', newId);
                 cell.setAttribute('data-izin-id', "");
                 cell.setAttribute('data-mesai-notu', "");
                 cell.querySelector('.mesai-notu-badge').style.display = "none";
                 cell.classList.add('has-value');
+                
+                newDuration = window.mesaiTanimlari[newId] || 0;
             } else if (izinVal) {
                 let text = izinSelect.options[izinSelect.selectedIndex].text;
                 cell.querySelector('.mesai-main-value').innerText = text;
@@ -587,7 +663,38 @@
                 cell.setAttribute('data-mesai-notu', "");
                 cell.querySelector('.mesai-notu-badge').style.display = "none";
                 cell.classList.add('has-value');
+                
+                newDuration = 0; // İzinler için süre 0 kabul ediliyor
             }
+            
+            // Update Fazla Mesai Cell locally
+            const diff = newDuration - oldDuration;
+            if (diff !== 0) {
+                const rowId = `personel-${cell.dataset.personelId}`;
+                const fmCell = document.querySelector(`#${rowId} .fazla-mesai-cell`);
+                if (fmCell) {
+                    // Parse current value, handling '+' sign and possible empty content
+                    let currentText = fmCell.textContent.replace('+', '').trim();
+                    let currentFm = (currentText === '-' || currentText === '') ? 0 : parseFloat(currentText);
+                    if (isNaN(currentFm)) currentFm = 0;
+                    
+                    let newFm = currentFm + diff;
+                    
+                    // Format output
+                    // If result is integer, show integer, else fixed 2 decimals
+                    let displayFm = Number.isInteger(newFm) ? newFm : newFm.toFixed(2);
+                    // Remove .00 if present (optional, but cleaner)
+                    if (typeof displayFm === 'string' && displayFm.endsWith('.00')) displayFm = parseInt(displayFm);
+
+                    fmCell.textContent = `${newFm > 0 ? '+' : ''}${displayFm}`;
+                    
+                    // Update classes
+                    fmCell.classList.remove('fm-pos', 'fm-neg');
+                    if (newFm > 0) fmCell.classList.add('fm-pos');
+                    else if (newFm < 0) fmCell.classList.add('fm-neg');
+                }
+            }
+
             cell.blur();
         });
     });
@@ -1092,6 +1199,18 @@
         border-radius: 6px;
         z-index: 1;
         pointer-events: none;
+    }
+
+    .vardiya-row th {
+        z-index: 250;
+        font-size: 0.85em;
+        padding: 2px 4px;
+        background-color: #f8f9fa;
+    }
+
+    .vardiya-count {
+        text-align: center;
+        font-weight: bold;
     }
     .mesai-cell {
         position: relative;

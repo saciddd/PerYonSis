@@ -1,8 +1,8 @@
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from ..models import PersonelListesiKayit, PersonelListesi
-from ..utils import hesapla_fazla_mesai
+from ..models import PersonelListesiKayit, PersonelListesi, Personel
+from ..utils import hesapla_fazla_mesai, hesapla_fazla_mesai_sade, get_vardiya_tanimlari
 
 @login_required
 def fazla_mesai_hesapla(request):
@@ -80,4 +80,104 @@ def fazla_mesai_hesapla(request):
         return JsonResponse({
             "status": "error",
             "message": f"Hesaplama hatası: {str(e)}"
+        }, status=500)
+
+@login_required
+def fazla_mesai_hesapla_toplu(request):
+    """
+    Toplu fazla mesai hesaplama endpoint'i.
+    
+    Parameters:
+        request.POST.personel_ids (list): Personel ID listesi
+        request.POST.year (int): Yıl
+        request.POST.month (int): Ay
+        request.POST.liste_id (int): PersonelListesi ID
+    
+    Returns:
+        JsonResponse: 
+        {
+            "status": "success|error",
+            "data": [{"personel_id": id, "fazla_mesai": float}, ...],
+            "message": "error message if any"
+        }
+    """
+    try:
+        import json
+        data = json.loads(request.body) if request.body else {}
+        
+        personel_ids = data.get("personel_ids", [])
+        year = int(data.get("year"))
+        month = int(data.get("month"))
+        liste_id = int(data.get("liste_id"))
+
+        if not all([personel_ids, year, month, liste_id]):
+            raise ValidationError("Personel ID listesi, yıl, ay ve liste ID gerekli.")
+
+        liste = PersonelListesi.objects.filter(pk=liste_id).first()
+        if not liste:
+            return JsonResponse({
+                "status": "error",
+                "message": "Personel listesi bulunamadı."
+            }, status=404)
+
+        sonuc = []
+        for personel_id in personel_ids:
+            try:
+                personel = Personel.objects.filter(PersonelID=int(personel_id)).first()
+                if not personel:
+                    continue
+                
+                kayit = PersonelListesiKayit.objects.filter(
+                    liste=liste,
+                    personel=personel
+                ).first()
+                
+                if kayit:
+                    fazla_mesai = hesapla_fazla_mesai_sade(kayit, year, month)
+                    sonuc.append({
+                        "personel_id": personel.PersonelID,
+                        "fazla_mesai": float(fazla_mesai)
+                    })
+            except Exception as e:
+                print(f"fazla_mesai_hesapla_toplu: hata personel {personel_id}: {e}")
+                continue
+
+        return JsonResponse({
+            "status": "success",
+            "data": sonuc
+        })
+    except ValidationError as e:
+        return JsonResponse({
+            "status": "error",
+            "message": str(e)
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "message": f"Hesaplama hatası: {str(e)}"
+        }, status=500)
+
+
+@login_required
+def vardiya_tanimlari(request):
+    """
+    Vardiya tanımlarını döndürür.
+    
+    Returns:
+        JsonResponse: 
+        {
+            "status": "success",
+            "mesai_tanimlari": { id: { "gunduz": bool, "aksam": bool, "gece": bool } }
+        }
+    """
+    try:
+        tanimlar = get_vardiya_tanimlari()
+        return JsonResponse({
+            "status": "success",
+            "mesai_tanimlari": tanimlar
+        })
+    except Exception as e:
+        return JsonResponse({
+            "status": "error",
+            "message": f"Hata: {str(e)}"
         }, status=500)

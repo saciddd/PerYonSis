@@ -275,3 +275,167 @@ def get_favori_mesailer(user):
     if favoriler.exists():
         return [f.mesai for f in favoriler]
     return Mesai_Tanimlari.objects.all().order_by("Saat")
+
+
+def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
+    """
+    Sadeleştirilmiş fazla mesai hesaplama (bayram mesaisi hariç).
+    Anlık hesaplama için kullanılır.
+    
+    Args:
+        personel_listesi_kayit: PersonelListesiKayit instance
+        year: Yıl
+        month: Ay
+        
+    Returns:
+        Decimal: Fazla mesai değeri (saat cinsinden)
+    """
+    personel = personel_listesi_kayit.personel
+    radyasyon_calisani = personel_listesi_kayit.radyasyon_calisani
+    sabit_mesai = personel_listesi_kayit.sabit_mesai
+    
+    # Yarım zamanlı çalışma kontrolü
+    ilk_gun = date(year, month, 1)
+    yarim_zamanli_calisma = YarimZamanliCalisma.objects.filter(
+        personel=personel,
+        baslangic_tarihi__lte=ilk_gun
+    ).filter(
+        models.Q(bitis_tarihi__isnull=True) | models.Q(bitis_tarihi__gt=ilk_gun)
+    ).first()
+
+    if yarim_zamanli_calisma:
+        return Decimal('0.0')
+
+    # Aylık gün sayısı ve hafta içi günleri hesapla
+    days_in_month = calendar.monthrange(year, month)[1]
+    calisma_gunleri = 0
+    arefe_gunleri = 0
+
+    # Resmi tatilleri al
+    resmi_tatiller = ResmiTatil.objects.filter(
+        TatilTarihi__year=year,
+        TatilTarihi__month=month
+    )
+    
+    # Hafta içi günleri say
+    for day in range(1, days_in_month + 1):
+        current_date = date(year, month, day)
+        weekday = current_date.weekday()
+
+        if weekday < 5:  # Pazartesi-Cuma
+            is_resmi_tatil = resmi_tatiller.filter(TatilTarihi=current_date).exists()
+            if not is_resmi_tatil:
+                calisma_gunleri += 1
+
+            is_arefe = resmi_tatiller.filter(
+                TatilTarihi=current_date,
+                ArefeMi=True
+            ).exists()
+            if is_arefe:
+                arefe_gunleri += 1
+    
+    # Günlük çalışma saati
+    gunluk_saat = Decimal('7.0') if radyasyon_calisani else Decimal('8.0')
+
+    # Olması gereken süre hesapla
+    normal_calisma_suresi = calisma_gunleri * gunluk_saat
+    arefe_arttirimi = arefe_gunleri * Decimal('5.0')
+    olmasi_gereken_sure = normal_calisma_suresi + arefe_arttirimi
+
+    # Fiili çalışma süresini hesapla
+    fiili_calisma_suresi = Decimal('0.0')
+
+    # O ayki mesai kayıtlarını al
+    mesailer = Mesai.objects.filter(
+        Personel=personel,
+        MesaiDate__year=year,
+        MesaiDate__month=month
+    ).select_related('MesaiTanim').prefetch_related('mercis657_stoplar')
+
+    # İzin kaynaklı azaltım
+    izin_azaltimi = Decimal('0.0')
+    stop_suresi = Decimal('0.0')
+
+    for mesai in mesailer:
+        # Fiili çalışma süresine ekleme
+        if mesai.MesaiTanim and getattr(mesai.MesaiTanim, 'Sure', None):
+            if sabit_mesai and mesai.MesaiTanim.Sure > 8:
+                fiili_calisma_suresi -= sabit_mesai.ara_dinlenme
+            fiili_calisma_suresi += mesai.MesaiTanim.Sure
+
+        # STOP sürelerini düş
+        stopler = list(getattr(mesai, 'mercis657_stoplar').all())
+        for stop in stopler:
+            try:
+                stop_hours = Decimal(str(stop.Sure)) if stop.Sure is not None else Decimal('0.0')
+            except Exception:
+                stop_hours = Decimal('0.0')
+            fiili_calisma_suresi -= stop_hours
+            stop_suresi += stop_hours
+
+        # İzin azaltımı
+        izin_field = getattr(mesai, 'Izin', None)
+        mesai_tarih = getattr(mesai, 'MesaiDate', None)
+        if izin_field and mesai_tarih:
+            if mesai_tarih.weekday() < 5:  # hafta içi
+                is_resmi_tatil = resmi_tatiller.filter(TatilTarihi=mesai_tarih).exists()
+                if not is_resmi_tatil:
+                    per_day = Decimal('7.0') if radyasyon_calisani else Decimal('8.0')
+                    izin_azaltimi += per_day
+
+    # Mazeret azaltımını hesapla
+    mazeret_azaltimi = Decimal('0.0')
+    mazeret_kayitlari = MazeretKaydi.objects.filter(
+        personel=personel,
+        baslangic_tarihi__lte=date(year, month, days_in_month),
+        bitis_tarihi__gte=date(year, month, 1)
+    )
+
+    for mazeret in mazeret_kayitlari:
+        baslangic = max(mazeret.baslangic_tarihi, date(year, month, 1))
+        bitis = min(mazeret.bitis_tarihi, date(year, month, days_in_month))
+
+        mazeret_gunleri = 0
+        current_date = baslangic
+        while current_date <= bitis:
+            if current_date.weekday() < 5:  # Hafta içi
+                is_resmi_tatil = resmi_tatiller.filter(TatilTarihi=current_date).exists()
+                if not is_resmi_tatil:
+                    izinli_mi = Mesai.objects.filter(
+                        Personel=personel,
+                        MesaiDate=current_date
+                    ).exclude(Izin=False).exclude(Izin__isnull=True).exists()
+                    if not izinli_mi:
+                        mazeret_gunleri += 1
+            current_date += timedelta(days=1)
+
+        mazeret_azaltimi += mazeret_gunleri * mazeret.gunluk_azaltim_saat
+
+    # Mazeret azaltımı fiili çalışma süresine ekleniyor
+    fiili_calisma_suresi += mazeret_azaltimi
+
+    # İzin azaltımını olması gereken süreden düş
+    olmasi_gereken_sure -= izin_azaltimi
+
+    # Fazla mesai hesapla
+    fazla_mesai = fiili_calisma_suresi - olmasi_gereken_sure
+
+    return fazla_mesai
+
+
+def get_vardiya_tanimlari():
+    """
+    Tüm mesai tanımlarının vardiya bilgilerini döndürür.
+    
+    Returns:
+        dict: { mesai_id: { 'gunduz': bool, 'aksam': bool, 'gece': bool } }
+    """
+    mesai_tanimlari = Mesai_Tanimlari.objects.all()
+    result = {}
+    for mt in mesai_tanimlari:
+        result[mt.id] = {
+            'gunduz': mt.GunduzMesaisi,
+            'aksam': mt.AksamMesaisi,
+            'gece': mt.GeceMesaisi
+        }
+    return result

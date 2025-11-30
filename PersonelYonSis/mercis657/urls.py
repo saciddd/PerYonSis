@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .views import fazla_mesai_views, liste_views
-from .views import personel_yonetim_views
+from .views import personel_yonetim_views, cizelge_kontrol_views
 # from .views import main_views
 
 app_name = 'mercis657'  # Namespace tanımlaması
@@ -22,6 +22,9 @@ urlpatterns = [
     path('cizelge_kaydet', views.cizelge_kaydet, name='cizelge_kaydet'),
     path('favori-mesai-kaydet/', views.favori_mesai_kaydet, name='favori_mesai_kaydet'),
     path('fazla-mesai-hesapla', fazla_mesai_views.fazla_mesai_hesapla, name='fazla_mesai_hesapla'),
+    path('fazla-mesai-hesapla-toplu/', fazla_mesai_views.fazla_mesai_hesapla_toplu, name='fazla_mesai_hesapla_toplu'),
+    path('vardiya-tanimlari/', fazla_mesai_views.vardiya_tanimlari, name='vardiya_tanimlari'),
+    path('cizelge-kontrol/', cizelge_kontrol_views.cizelge_kontrol, name='cizelge_kontrol'),
     path('export_excel/', views.excel_export, name='export_excel'),
     path('add_mesai_tanim/', views.add_mesai_tanim, name='add_mesai_tanim'),
     path('mesai_tanim_update/', views.mesai_tanim_update, name='mesai_tanim_update'),

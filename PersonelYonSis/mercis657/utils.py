@@ -122,8 +122,8 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     for mesai in mesailer:
         # Fiili çalışma süresine ekleme (Decimal üzerinden)
         if mesai.MesaiTanim and getattr(mesai.MesaiTanim, 'Sure', None):
-            # Eğer personelin sabit_mesaisi varsa ve mesai süesi 8 saatten fazla ise sabit_mesai.ara_dinlenme süresini düş
-            if sabit_mesai and mesai.MesaiTanim.Sure > 8:
+            # Eğer personelin sabit_mesaisi varsa ve mesai süresi 8 saatten fazla ise ve hafta içi ise sabit_mesai.ara_dinlenme süresini düş
+            if sabit_mesai and mesai.MesaiTanim.Sure > 8 and mesai.MesaiDate.weekday() < 5:
                 fiili_calisma_suresi -= sabit_mesai.ara_dinlenme
             
             total_seconds = mesai.MesaiTanim.Sure # saat cinsinden
@@ -359,7 +359,7 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
     for mesai in mesailer:
         # Fiili çalışma süresine ekleme
         if mesai.MesaiTanim and getattr(mesai.MesaiTanim, 'Sure', None):
-            if sabit_mesai and mesai.MesaiTanim.Sure > 8:
+            if sabit_mesai and mesai.MesaiTanim.Sure > 8 and mesai.MesaiDate.weekday() < 5:
                 fiili_calisma_suresi -= sabit_mesai.ara_dinlenme
             fiili_calisma_suresi += mesai.MesaiTanim.Sure
 

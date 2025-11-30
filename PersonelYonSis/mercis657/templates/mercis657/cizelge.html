@@ -367,19 +367,6 @@
                     });
             });
         }
-        // Hata Kontrolü butonu
-        const hataKontrolBtn = document.getElementById("hataKontrolBtn");
-        if (hataKontrolBtn) {
-            hataKontrolBtn.addEventListener("click", function() {
-                console.log("Hata Kontrolü butonu tıklandı");
-                // Henüz geliştirilmedi.    
-                Swal.fire({
-                    title: "Hata Kontrolü",
-                    text: "Hata kontrolü henüz geliştirilmedi. Biraz sabır :)",
-                    icon: "info"
-                });
-            });
-        }
         // İmza Çizelgeleri Yazdır
         const imzaBtn = document.getElementById("imzaCizelgeleriBtn");
         if (imzaBtn && window.Swal) {

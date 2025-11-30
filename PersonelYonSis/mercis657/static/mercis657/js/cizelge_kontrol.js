@@ -152,6 +152,8 @@ function check5DayEmptyRule() {
  */
 function markErrorCells(errors) {
     errors.forEach(error => {
+        if (!error.cell_selector) return;
+
         const cell = document.querySelector(error.cell_selector);
         if (cell) {
             cell.classList.add('error-cell');
@@ -236,6 +238,9 @@ function checkCizelgeErrorsBackend() {
             const errors = data.errors || [];
             currentErrors = errors;
             
+            // Önceki işaretleri temizle
+            clearErrorMarkers();
+
             // Hataları işaretle
             markErrorCells(errors);
 
@@ -247,11 +252,33 @@ function checkCizelgeErrorsBackend() {
                     confirmButtonText: 'Tamam'
                 });
             } else {
-                const errorMessages = errors.map(e => e.message).join('<br>');
+                // Hata ve bilgi mesajlarını ayır
+                const realErrors = errors.filter(e => e.type !== 'info');
+                const infoMessages = errors.filter(e => e.type === 'info');
+                
+                let title = 'Hata Tespit Edildi';
+                let icon = 'warning';
+                
+                if (realErrors.length === 0 && infoMessages.length > 0) {
+                    title = 'Bilgilendirme';
+                    icon = 'info';
+                } else if (realErrors.length > 0 && infoMessages.length > 0) {
+                    title = 'Hata ve Bilgilendirme';
+                }
+
+                const messagesHtml = errors.map(e => {
+                    const color = e.type === 'info' ? 'text-primary' : 'text-danger';
+                    const icon = e.type === 'info' ? '<i class="bi bi-info-circle me-2"></i>' : '<i class="bi bi-exclamation-triangle me-2"></i>';
+                    return `<div class="${color} mb-2" style="font-size: 0.95rem;">${icon}${e.message}</div>`;
+                }).join('');
+
+                // initializeFazlaMesaiCalculation fonksiyonunu tekrar çalıştır
+                initializeFazlaMesaiCalculation();
+
                 Swal.fire({
-                    title: 'Hata Tespit Edildi',
-                    html: `<div class="text-start">${errorMessages}</div>`,
-                    icon: 'warning',
+                    title: title,
+                    html: `<div class="text-start">${messagesHtml}</div>`,
+                    icon: icon,
                     confirmButtonText: 'Tamam'
                 });
             }

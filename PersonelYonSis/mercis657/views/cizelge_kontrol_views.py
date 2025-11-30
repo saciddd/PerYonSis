@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from datetime import date, timedelta
-from ..models import PersonelListesi, Mesai, Mesai_Tanimlari, Izin
+from ..models import PersonelListesi, Mesai, Mesai_Tanimlari, Izin, SabitMesai, PersonelListesiKayit
 
 
 @login_required
@@ -55,6 +55,9 @@ def cizelge_kontrol(request):
         
         # 5 gün boş bırakılmamalı kontrolü
         errors.extend(_check_5_day_empty_rule(liste, year, month))
+
+        # Sabit mesai kontrolü ve güncellemesi
+        errors.extend(sabit_mesai_kontrol(liste, year, month))
 
         return JsonResponse({
             "status": "success",
@@ -187,3 +190,52 @@ def _check_5_day_empty_rule(liste, year, month):
     
     return errors
 
+
+def sabit_mesai_kontrol(liste, year, month):
+    """
+    Personelin mesai saatlerine göre sabit mesai bilgisini günceller.
+    """
+    messages = []
+    
+    # Tüm sabit mesai tanımlarını al
+    sabit_mesailer = SabitMesai.objects.all()
+    sabit_mesai_map = {sm.aralik: sm for sm in sabit_mesailer}
+    
+    if not sabit_mesai_map:
+        return messages
+        
+    kayitlar = liste.kayitlar.select_related('personel', 'sabit_mesai').all()
+    
+    for kayit in kayitlar:
+        personel = kayit.personel
+        
+        # Personelin ilgili dönemdeki mesailerini kontrol et
+        mesailer = Mesai.objects.filter(
+            Personel=personel,
+            MesaiDate__year=year,
+            MesaiDate__month=month
+        ).select_related('MesaiTanim')
+        
+        matched_sabit_mesai = None
+        
+        # Mesailer içinde sabit mesai aralığı ile eşleşen var mı?
+        for mesai in mesailer:
+            if mesai.MesaiTanim and mesai.MesaiTanim.Saat in sabit_mesai_map:
+                matched_sabit_mesai = sabit_mesai_map[mesai.MesaiTanim.Saat]
+                break
+        
+        # Eşleşme varsa ve mevcut kayıttan farklıysa güncelle
+        if matched_sabit_mesai:
+            if kayit.sabit_mesai != matched_sabit_mesai:
+                kayit.sabit_mesai = matched_sabit_mesai
+                kayit.save()
+                
+                messages.append({
+                    "type": "info",
+                    "message": f"{personel.PersonelName} {personel.PersonelSurname} isimli personelin sabit mesai kaydı {matched_sabit_mesai.aralik} olarak belirlendi",
+                    "personel_id": personel.PersonelID,
+                    "date": "",
+                    "cell_selector": ""
+                })
+    
+    return messages

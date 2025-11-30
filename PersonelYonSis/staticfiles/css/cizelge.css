@@ -1,6 +1,6 @@
 .sticky-header th {
     position: sticky;
-    top: 0;
+    /* top: 0; Handled by JS */
     background-color: #f8f9fa;
     z-index: 10;
     border-bottom: 2px solid #606468 !important;

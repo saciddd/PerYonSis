@@ -88,6 +88,7 @@
                         <th>Personel Sayısı</th>
                         <th>Onaylı</th>
                         <th>Bekleyen</th>
+                        <th>Kilitli</th>
                         <th>Normal Nobet Kodu</th>
                         <th>Bayram Nobet Kodu</th>
                         <th>Riskli Normal Nobet Kodu</th>
@@ -104,7 +105,19 @@
                         <td>{{ birim_data.birim.BirimAdi }}</td>
                         <td>{{ birim_data.personel_sayisi }}</td>
                         <td>{{ birim_data.onaylanmis_sayisi }}</td>
-                        <td>{{ birim_data.beklemede_sayisi }}</td>
+                        <!-- Beklemede sayisi 0'dan fazla ise css kullanılacak -->
+                        {% if birim_data.beklemede_sayisi > 0 %}
+                            <td class="beklemede-sayisi">{{ birim_data.beklemede_sayisi }}</td>
+                        {% else %}
+                            <td>{{ birim_data.beklemede_sayisi }}</td>
+                        {% endif %}
+                        <!-- Kilitli sayisi 0'dan fazla ise sayının yanında kilit iconu yer alacak -->
+                        <td>
+                            {% if birim_data.kilitli_sayisi > 0 %}
+                                <i class="bi bi-lock text-danger"></i>
+                            {% endif %}
+                            {{ birim_data.kilitli_sayisi }}
+                        </td>
                         {# Editable kod alanları; kontrol: kullanıcı yetkisi varsa input, yoksa readonly text #}
                         <td class="kod-cell">
                             {% if kesinlestirme_yetkisi %}
@@ -163,6 +176,12 @@
     display: inline-block;
     min-width: 100px;
     border-radius: 4px;
+}
+
+/* Beklemede sayısı kırmızı */
+.beklemede-sayisi {
+    font-weight: bold;
+    color: #dc3545 !important;
 }
 </style>
 {% endblock %}
@@ -532,11 +551,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const topluKilitAcBtn = document.getElementById('topluKilitAcBtn');
     if (topluKilitBtn) topluKilitBtn.addEventListener('click', function() {
         const donem = document.getElementById('id_donem').value;
+        const kurum = document.getElementById('id_kurum').value;
+        const idare = document.getElementById('id_idare').value;
+        const durum = document.getElementById('id_durum').value;
         if (!donem) { Swal.fire('Uyarı','Lütfen bir dönem seçin','warning'); return; }
         fetch('{% url "mercis657:kilit_toplu" %}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-            body: JSON.stringify({ donem: donem, action: 'lock' })
+            body: JSON.stringify({ donem: donem, kurum: kurum, idare: idare, durum: durum, action: 'lock' })
         }).then(r=>r.json()).then(data=>{
             if (data.status==='success') Swal.fire('Başarılı', data.message || 'Toplu kilitleme tamamlandı','success').then(()=>location.reload());
             else Swal.fire('Hata', data.message || 'İşlem başarısız','error');
@@ -544,11 +566,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     if (topluKilitAcBtn) topluKilitAcBtn.addEventListener('click', function() {
         const donem = document.getElementById('id_donem').value;
+        const kurum = document.getElementById('id_kurum').value;
+        const idare = document.getElementById('id_idare').value;
+        const durum = document.getElementById('id_durum').value;
         if (!donem) { Swal.fire('Uyarı','Lütfen bir dönem seçin','warning'); return; }
         fetch('{% url "mercis657:kilit_toplu" %}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-            body: JSON.stringify({ donem: donem, action: 'unlock' })
+            body: JSON.stringify({ donem: donem, kurum: kurum, idare: idare, durum: durum, action: 'unlock' })
         }).then(r=>r.json()).then(data=>{
             if (data.status==='success') Swal.fire('Başarılı', data.message || 'Toplu kilit açma tamamlandı','success').then(()=>location.reload());
             else Swal.fire('Hata', data.message || 'İşlem başarısız','error');

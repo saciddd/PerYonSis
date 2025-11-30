@@ -61,11 +61,11 @@ def raporlama(request):
 
             if kurum:
                 bildirimler_query = bildirimler_query.filter(
-                    PersonelListesi__birim__KurumAdi=kurum
+                    PersonelListesi__birim__Kurum__ad=kurum
                 )
             if idare:
                 bildirimler_query = bildirimler_query.filter(
-                    PersonelListesi__birim__IdareAdi=idare
+                    PersonelListesi__birim__UstBirim__ad=idare
                 )
 
             if durum == "1":
@@ -102,13 +102,15 @@ def raporlama(request):
                 if items:
                     onaylanmis = sum(1 for c in items if c.OnayDurumu == 1)
                     beklemede = sum(1 for c in items if c.OnayDurumu == 0)
+                    kilitli = sum(1 for c in items if c.MutemetKilit == True)
                     bildirimler_by_birim.append({
                         'birim': birim,
                         'bildirimler': items,
                         'personel_sayisi': len(set([getattr(c.Personel, 'PersonelID', None) for c in items])),
                         'onaylanmis_sayisi': onaylanmis,
                         'beklemede_sayisi': beklemede,
-                    })
+                        'kilitli_sayisi': kilitli,
+                        })
 
             toplam_kayit = sum(len(birim['bildirimler']) for birim in bildirimler_by_birim)
 
@@ -344,13 +346,12 @@ def update_birim_kodlari_toplu(request):
 @login_required
 def kilit_tekil(request):
     """Endpoint: Verilen birim için seçilen dönemdeki Bildirimlerin MutemetKilit alanını toggle eder.
-    Payload: {'birim_id': id, 'donem': 'YYYY-MM', 'action': optional 'lock'|'unlock'}
+    Payload: {'birim_id': id, 'donem': 'YYYY-MM'}
     """
     try:
         data = json.loads(request.body.decode('utf-8'))
         birim_id = data.get('birim_id')
         donem_str = data.get('donem')
-        action = data.get('action')
         donem = datetime.strptime(donem_str, "%Y-%m").date()
 
         bildirimler = Bildirim.objects.filter(PersonelListesi__birim__BirimID=birim_id, DonemBaslangic=donem)
@@ -359,7 +360,7 @@ def kilit_tekil(request):
 
         with transaction.atomic():
             for b in bildirimler:
-                if action == 'unlock':
+                if b.MutemetKilit == True:
                     b.MutemetKilit = False
                     b.MutemetKilitUser = None
                     b.MutemetKilitTime = None
@@ -383,10 +384,24 @@ def kilit_toplu(request):
     try:
         data = json.loads(request.body.decode('utf-8'))
         donem_str = data.get('donem')
+        kurum = data.get('kurum')
+        idare = data.get('idare')
+        durum = data.get('durum')
         action = data.get('action')
         donem = datetime.strptime(donem_str, "%Y-%m").date()
 
         bildirimler = Bildirim.objects.filter(DonemBaslangic=donem)
+        
+        if kurum:
+            bildirimler = bildirimler.filter(PersonelListesi__birim__Kurum__ad=kurum)
+        if idare:
+            bildirimler = bildirimler.filter(PersonelListesi__birim__UstBirim__ad=idare)
+        
+        # Durum kontrolü (hem string hem int gelebilir)
+        if str(durum) == "1":
+            bildirimler = bildirimler.filter(OnayDurumu=1)
+        elif str(durum) == "0":
+            bildirimler = bildirimler.filter(OnayDurumu=0)
         if not bildirimler.exists():
             return JsonResponse({'status':'error','message':'Bildirim bulunamadı'}, status=404)
 

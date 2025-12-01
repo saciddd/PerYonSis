@@ -198,6 +198,9 @@
                 <th class="{% if day.is_weekend %}weekend{% elif day.is_resmi_tatil %}resmi-tatil{% endif %}">{{ day.day_num }}</th>
                 {% endfor %}
             </tr>
+            <tr>
+                <th colspan="{{ days|length|add:5 }}" class="border-bottom"></th>
+            </tr>
         </thead>
         <tbody id="tableBody">
             {% for personel in personeller %}
@@ -1195,7 +1198,6 @@
         z-index: 250;
         font-size: 0.85em;
         padding: 2px 4px;
-        background-color: #f8f9fa;
     }
 
     .vardiya-count {

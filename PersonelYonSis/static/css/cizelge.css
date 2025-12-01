@@ -3,7 +3,7 @@
     /* top: 0; Handled by JS */
     background-color: #f8f9fa;
     z-index: 10;
-    border-bottom: 2px solid #606468 !important;
+    border: 1px solid #070707 !important;
 }
 
 /* Sticky first columns */
@@ -11,6 +11,7 @@
     position: sticky;
     background-color: #fff !important;
     z-index: 15 !important;
+    border: 1px solid #070707 !important;
 }
 
 .sticky-col-1 { /* S/N column */
@@ -56,4 +57,12 @@
 
 .fazla-mesai-negative {
     background: rgba(255,0,0,0.3) !important;
+}
+
+/* Global table border color */
+#cizelgeTable {
+    border-color: #070707 !important;
+}
+#cizelgeTable th, #cizelgeTable td {
+    border-color: #070707 !important;
 }

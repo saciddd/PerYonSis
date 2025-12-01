@@ -764,16 +764,33 @@ def update_risky_bildirim(request, birim_id):
             return JsonResponse({'status': 'error', 'message': 'Güncellenecek veri bulunamadı.'}, status=400)
 
         with transaction.atomic():
+            not_updated = []
+            updated_count = 0
             for change in changes:
                 bildirim = Bildirim.objects.filter(BildirimID=change['bildirim_id']).first()
-                if bildirim and bildirim.OnayDurumu != 1:  # Onaylanmamış bildirimler
-                    bildirim.RiskliNormalFazlaMesai = Decimal(str(change['riskli_normal']))
-                    bildirim.RiskliBayramFazlaMesai = Decimal(str(change['riskli_bayram']))
-                    bildirim.NormalFazlaMesai = Decimal(str(change['normal_mesai']))
-                    bildirim.BayramFazlaMesai = Decimal(str(change['bayram_mesai']))
+                if not bildirim:
+                    continue
+                # Eğer bildirim onaylıysa değişiklik yapılmaz, listeye ekle
+                if bildirim.OnayDurumu == 1:
+                    try:
+                        p = bildirim.Personel
+                        person_name = f"{p.PersonelName} {p.PersonelSurname}"
+                    except Exception:
+                        person_name = str(bildirim.BildirimID)
+                    not_updated.append(f"Bildirim.{person_name} isimli personelin bildirimi onaylandığı için değişiklik yapılmadı")
+                else:
+                    bildirim.RiskliNormalFazlaMesai = Decimal(str(change.get('riskli_normal', 0)))
+                    bildirim.RiskliBayramFazlaMesai = Decimal(str(change.get('riskli_bayram', 0)))
+                    bildirim.NormalFazlaMesai = Decimal(str(change.get('normal_mesai', 0)))
+                    bildirim.BayramFazlaMesai = Decimal(str(change.get('bayram_mesai', 0)))
                     bildirim.save()
+                    updated_count += 1
 
-        return JsonResponse({'status': 'success', 'message': 'Değişiklikler başarıyla kaydedildi.'})
+        resp = {'status': 'success', 'message': 'Değişiklikler başarıyla kaydedildi.'}
+        resp['updated_count'] = updated_count
+        if not_updated:
+            resp['not_updated'] = not_updated
+        return JsonResponse(resp)
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
@@ -804,20 +821,37 @@ def convert_all_to_risky(request, birim_id):
             return JsonResponse({'status': 'error', 'message': 'Personel listesi bulunamadı.'}, status=404)
 
         with transaction.atomic():
+            not_updated = []
+            updated_count = 0
             for kayit in liste.kayitlar.select_related('personel'):
                 bildirim = Bildirim.objects.filter(
                     Personel=kayit.personel,
                     DonemBaslangic=date(year, month, 1)
                 ).first()
 
-                if bildirim and bildirim.OnayDurumu != 1:  # Onaylanmamış bildirimler
+                if not bildirim:
+                    continue
+
+                if bildirim.OnayDurumu == 1:
+                    try:
+                        p = kayit.personel
+                        person_name = f"{p.PersonelName} {p.PersonelSurname}"
+                    except Exception:
+                        person_name = str(bildirim.BildirimID)
+                    not_updated.append(f"Bildirim.{person_name} isimli personelin bildirimi onaylandığı için değişiklik yapılmadı")
+                else:
                     bildirim.RiskliNormalFazlaMesai = bildirim.NormalFazlaMesai
                     bildirim.RiskliBayramFazlaMesai = bildirim.BayramFazlaMesai
                     bildirim.NormalFazlaMesai = Decimal('0.0')
                     bildirim.BayramFazlaMesai = Decimal('0.0')
                     bildirim.save()
+                    updated_count += 1
 
-        return JsonResponse({'status': 'success', 'message': 'Tüm bildirimler riskli hale çevrildi.'})
+        resp = {'status': 'success', 'message': 'Tüm bildirimler riskli hale çevrildi.'}
+        resp['updated_count'] = updated_count
+        if not_updated:
+            resp['not_updated'] = not_updated
+        return JsonResponse(resp)
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})

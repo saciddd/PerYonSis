@@ -211,16 +211,40 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                alert('Değişiklikler başarıyla kaydedildi.');
-                // Ana tabloyu yenile
-                if (typeof loadBildirimData === 'function') {
-                    loadBildirimData();
+                const updatedCount = Array.isArray(data.not_updated) ? Math.max(0, changes.length - data.not_updated.length) : changes.length;
+                let html = `<p>${updatedCount} bildirim başarıyla güncellendi.</p>`;
+                if (data.not_updated && data.not_updated.length) {
+                    html += '<p><strong>Güncellenemeyen bildirimler:</strong></p><ul>' + data.not_updated.map(i => `<li>${i}</li>`).join('') + '</ul>';
                 }
-                // Modal'ı kapat
-                const modal = bootstrap.Modal.getInstance(document.getElementById('riskliBildirimModal'));
-                window.location.reload();
+
+                // show SweetAlert summary and reload on confirm
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Güncelleme Özeti',
+                        html: html,
+                        icon: 'success',
+                        confirmButtonText: 'Tamam'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.reload();
+                        }
+                    });
+                } else {
+                    // fallback
+                    alert((updatedCount) + ' bildirim başarıyla güncellendi.\n' + (data.not_updated ? 'Güncellenemeyenler: ' + data.not_updated.join(', ') : ''));
+                    window.location.reload();
+                }
             } else {
-                alert('Kaydetme sırasında hata oluştu: ' + data.message);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Hata',
+                        text: 'Kaydetme sırasında hata oluştu: ' + data.message,
+                        icon: 'error',
+                        confirmButtonText: 'Tamam'
+                    });
+                } else {
+                    alert('Kaydetme sırasında hata oluştu: ' + data.message);
+                }
             }
         })
         .catch(error => {

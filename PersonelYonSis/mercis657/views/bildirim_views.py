@@ -576,7 +576,7 @@ def bildirim_form(request, birim_id):
             p = kayit.personel
             # get bildirim if exists
             donem_baslangic = date(year, month, 1)
-            bildirim = Bildirim.objects.filter(PersonelListesi=liste, Personel=p, DonemBaslangic=donem_baslangic, SilindiMi=False).first()
+            bildirim = Bildirim.objects.filter(Personel=p, DonemBaslangic=donem_baslangic, SilindiMi=False).first()
 
             normal = bildirim.NormalFazlaMesai if (bildirim and bildirim.NormalFazlaMesai is not None) else Decimal('0.0')
             bayram = bildirim.BayramFazlaMesai if (bildirim and bildirim.BayramFazlaMesai is not None) else Decimal('0.0')

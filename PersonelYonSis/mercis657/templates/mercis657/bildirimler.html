@@ -26,25 +26,33 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-8 text-end">
+        <div class="col-md-2">
             <br>
-            <button class="btn btn-secondary me-2" id="queryBtn">
+            <button class="btn btn-secondary" id="queryBtn">
                 <i class="bi bi-search"></i> Sorgula
             </button>
-            <button class="btn btn-success me-2" id="createAllBtn" {% if not selected_birim %}disabled{% endif %}>
+            <!-- Çizelge sayfasına git butonu -->
+            <button class="btn btn-primary me-2" id="cizelgeBtn">
+                <i class="bi bi-calendar"></i> Çizelge
+            </button>
+        </div>
+        <div class="col-md-6 text-end">
+            <div class="btn-group btn-group-sm mt-3">
+            <button class="btn btn-success" id="createAllBtn" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-plus-circle"></i> Tüm Personele Bildirim
             </button>
-            <button class="btn btn-info me-2" id="downloadFormBtn" {% if not selected_birim %}disabled{% endif %}>
+            <button class="btn btn-info" id="downloadFormBtn" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-download"></i> Bildirim Formu
             </button>
             {% if can_approve_notifications %}
-            <button class="btn btn-success me-2" id="bulkApproveBtn" {% if not selected_birim %}disabled{% endif %}>
+            <button class="btn btn-success" id="bulkApproveBtn" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-check2-all"></i> Toplu Onay
             </button>
-            <button class="btn btn-danger me-2" id="bulkRejectBtn" {% if not selected_birim %}disabled{% endif %}>
+            <button class="btn btn-danger" id="bulkRejectBtn" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-x-circle"></i> Onayları Kaldır
             </button>
             {% endif %}
+            </div>
         </div>
     </div>
 
@@ -174,6 +182,14 @@ document.addEventListener('DOMContentLoaded', function() {
         window.open(newUrl, '_self');
     });
 
+
+    // Çizelge Butonu
+    document.getElementById('cizelgeBtn').addEventListener('click', function() {
+        const birim_id = document.getElementById('selectBirim').value;
+        const donem = document.getElementById('selectDonem').value;
+        const newUrl = `{% url 'mercis657:cizelge' %}?birim_id=${birim_id}&donem=${donem}`;
+        window.open(newUrl, '_self');
+    });
     // Tüm Personele Bildirim Butonu
     document.getElementById('createAllBtn').addEventListener('click', function() {
         const selectedBirim = document.getElementById('selectBirim').value;

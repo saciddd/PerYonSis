@@ -282,6 +282,8 @@ def cizelge(request):
     except Exception:
         sabit_mesailer = []
     
+    bildirim_yetkisi = request.user.has_permission("ÇS 657 Bildirim İşlemleri")
+    
     context = {
         "personeller": personeller,
         "mesai_options": mesai_tanimlari,
@@ -306,6 +308,7 @@ def cizelge(request):
         "aciklama": liste.aciklama if liste else "",
         "mevcut_personeller": kayitlar,  # Modal için ekledik
         "ilk_liste": IlkListe.objects.filter(PersonelListesi=liste).first() if liste else None,
+        "bildirim_yetkisi": bildirim_yetkisi,
     }
     return render(request, 'mercis657/cizelge.html', context)
 

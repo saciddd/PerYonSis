@@ -96,7 +96,6 @@
         onayKaldirBtnNew.addEventListener('click', function () { ilkListeOnayKaldir(data.id); });
         onaylaBtnNew.classList.toggle("d-none", !!data.onay_durumu);
         onayKaldirBtnNew.classList.toggle("d-none", !data.onay_durumu);
-  
         // 🔹 Tablo başlığı
         let dayHeaders = data.days.map(d => {
           let classes = "";

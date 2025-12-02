@@ -110,6 +110,12 @@
     <!-- Aksiyon Butonları -->
     <div class="col-auto ms-auto">
         <div class="btn-group btn-group-sm mt-3">
+            {% if bildirim_yetkisi %}
+            <button type="button" class="btn btn-outline-primary" id="btnBildirim" title="Fazla Mesai Bildirim Sayfasına Git">
+                <i class="bi bi-envelope"></i>
+                <span>Fazla Mesai Bildirim</span>
+            </button>
+            {% endif %}
             <button type="button" class="btn btn-outline-primary" id="btnYazdir" title="Yazdır">
                 <i class="bi bi-printer"></i>
             </button>
@@ -277,6 +283,7 @@
 {% include "mercis657/cizelge_personel_ekle_modal.html" %}
 {% include "mercis657/personel_sirala_modal.html" %}
 {% include 'mercis657/partials/birim_yetkili_kullanicilar_modal.html' %}
+{% include 'mercis657/partials/ilk_liste_goruntuleme_modal.html' %}
 
 <!-- Personel Profil Modal -->
 <div id="personelProfilContainer"></div>
@@ -700,6 +707,13 @@
         yazdirModal.show();
     });
 
+    // Fazla Mesai Bildirim butonu, mercis657:bildirimler/?birim_id=1&donem=2025/12 benzeri, bildirim sayfasına git
+    document.getElementById('btnBildirim').addEventListener('click', function() {
+        const donem = document.getElementById('selectDonem').value;
+        const birimId = document.getElementById('selectBirim').value;
+        window.location.href = `/mercis657/bildirimler/?birim_id=${birimId}&donem=${donem}`;
+    }); 
+    
 
     // Yazdır modalındaki Yazdır butonu
     document.getElementById('yazdirModalBtn').addEventListener('click', function() {
@@ -1142,29 +1156,35 @@
 </script>
 <script>
     function olusturIlkListe(listeId) {
-      Swal.fire({
-        title: "İlk Liste Bildirimi Oluşturulsun mu?",
-        text: "Bu işlem yalnızca bir kez yapılabilir.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Evet, oluştur",
-        cancelButtonText: "Vazgeç"
-      }).then(result => {
-        if (result.isConfirmed) {
-          fetch(`/mercis657/ilk-liste-olustur/${listeId}/`, {
-            method: "POST",
-            headers: {"X-CSRFToken": getCookie("csrftoken")}
-          })
-          .then(r => r.json())
-          .then(data => {
+        const ilkListe = {{ ilk_liste.PersonelListesi.id }};
+        console.log("ilkListe", ilkListe);
+        if (ilkListe) {
+            openIlkListeModal(listeId);
+        } else {
             Swal.fire({
-              icon: data.status === "success" ? "success" : "error",
-              text: data.message
+                title: "İlk Liste Bildirimi Oluşturulsun mu?",
+                text: "Bu işlem yalnızca bir kez yapılabilir.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Evet, oluştur",
+                cancelButtonText: "Vazgeç"
+            }).then(result => {
+                if (result.isConfirmed) {
+                    fetch(`/mercis657/ilk-liste-olustur/${listeId}/`, {
+                        method: "POST",
+                        headers: {"X-CSRFToken": getCookie("csrftoken")}
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        Swal.fire({
+                            icon: data.status === "success" ? "success" : "error",
+                            text: data.message
+                        });
+                        if (data.status === "success") location.reload();
+                    });
+                }
             });
-            if (data.status === "success") location.reload();
-          });
         }
-      });
     }
 </script>
 <style>

@@ -98,6 +98,7 @@ def ilk_liste_detay(request, liste_id):
             v["personel_adi"] = f"ID {v['personel']} (Kayıt Yok)"
         veriler.append(v)
 
+    onay_yetkisi = request.user.has_permission('ÇS 657 İlk Liste Bildirimi Onaylama')
     data = {
         "status": "success",
         "id": ilk_liste.id,
@@ -107,6 +108,7 @@ def ilk_liste_detay(request, liste_id):
         "onay_durumu": ilk_liste.OnayDurumu,
         "veriler": veriler,
         "days": days,
+        "onay_yetkisi": onay_yetkisi,
     }
     return JsonResponse(data)
 
@@ -117,7 +119,7 @@ def ilk_liste_onayla(request, ilk_liste_id):
     except IlkListe.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'İlk liste bildirimi bulunamadı.'}, status=404)
 
-    if not request.user.has_permission('İlk Liste Bildirimi Onaylama'):
+    if not request.user.has_permission('ÇS 657 İlk Liste Bildirimi Onaylama'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
 
     ilk_liste.onayla(request.user)
@@ -130,7 +132,7 @@ def ilk_liste_onay_kaldir(request, ilk_liste_id):
     except IlkListe.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'İlk liste bildirimi bulunamadı.'}, status=404)
 
-    if not request.user.has_permission('İlk Liste Bildirimi Onaylama'):
+    if not request.user.has_permission('ÇS 657 İlk Liste Bildirimi Onaylama'):
         return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
 
     ilk_liste.onay_kaldir(request.user)

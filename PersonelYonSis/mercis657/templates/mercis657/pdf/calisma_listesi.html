@@ -7,13 +7,10 @@
   <style>
     body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size: 11px; color: #222; }
     .header { width: 100%; margin-bottom: 8px; padding-bottom: 6px; }
-    .h-left { width: 18%; vertical-align: top; }
-    .h-center { width: 64%; text-align: center; }
-    .h-right { width: 18%; text-align: right; font-size: 10px; }
-    table.grid { border-collapse: collapse; width: 100%; }
-    table.grid th, table.grid td { border: 1px solid #bbb; padding: 4px 6px; text-align: center; }
-    table.grid th { background: #f3f3f3; font-weight: 600; }
-    .name-cell { text-align: left; }
+    table.grid { border-collapse: collapse; width: 100%; table-layout: fixed; }
+    table.grid th, table.grid td { border: 1px solid #494949; padding: 2px; }
+    table.grid th { background: #f3f3f3; font-weight: bold; }
+    .name-cell { text-align: left; font-weight: bold; font-size: 12px; }
     .weekend { background: #cdcdcd; }
     .holiday { background: #e6d49d; }
     .arife { background: #abd6f7; }
@@ -34,7 +31,7 @@
         pointer-events: none;
     }
     .mesai-cell-pdf {
-        position: relative;
+        text-align: center;
     }
   </style>
 </head>
@@ -50,9 +47,9 @@
   <table class="grid">
     <thead>
       <tr>
-        <th style="width:40px">Sıra</th>
-        <th style="min-width:160px; text-align:left">Ad Soyad</th>
-        <th style="min-width:120px; text-align:left">Unvan</th>
+        <th style="width:40px;">Sıra</th>
+        <th style="width:160px;">Ad Soyad</th>
+        <th style="width:110px;">Unvan</th>
         {% for d in days %}
           {% comment %} Determine header class for weekend/holiday {% endcomment %}
           {% with c='' %}
@@ -60,20 +57,20 @@
             {% if d.day_num in arefe_gunleri %}{% with c='arife' %}{% endwith %}{% endif %}
             {% if d.is_weekend %}{% with c='weekend' %}{% endwith %}{% endif %}
           {% endwith %}
-          <th class="{{ c }}">{{ d.day_num }}</th>
+          <th class="{{ c }}" style="width:36px;">{{ d.day_num }}</th>
         {% endfor %}
-        <th style="width:90px">Fazla Mesai</th>
+        <th style="width:90px;">Fazla Mesai</th>
       </tr>
     </thead>
     <tbody>
       {% for person in personeller %}
         <tr>
-          <td>{{ forloop.counter }}</td>
+          <td style="text-align: center;">{{ forloop.counter }}</td>
           <td class="name-cell">{{ person.PersonelName }}</td>
           <td class="name-cell">{{ person.PersonelTitle|default:'-' }}</td>
           {% comment %} Expect person.mesai_data as list aligned with days; each item can be dict with Saat or IzinAd or empty {% endcomment %}
           {% for md in person.mesai_data %}
-            <td class="small mesai-cell-pdf {% if md.is_weekend %}weekend{% endif %} {% if md.is_holiday %}holiday{% endif %} {% if md.is_arife %}arife{% endif %}">
+            <td class="small mesai-cell-pdf {% if md.is_weekend %}weekend{% endif %} {% if md.is_holiday %}holiday{% endif %} {% if md.is_arife %}arife{% endif %}" style="font-weight: bold;">
               <span class="mesai-notu-badge" {% if not md.MesaiNotu %}style="display:none"{% endif %}>{{ md.MesaiNotu }}</span>
               <span>
                 {% if md.IzinAd %}
@@ -84,7 +81,7 @@
               </span>
             </td>
           {% endfor %}
-          <td>
+          <td style="text-align: center;">
             {% if person.hesaplama and person.hesaplama.fazla_mesai is not None %}
               {{ person.hesaplama.fazla_mesai|floatformat:0 }}
             {% else %}

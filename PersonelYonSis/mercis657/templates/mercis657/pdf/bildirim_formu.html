@@ -5,15 +5,15 @@
   <meta charset="utf-8">
   <title>{{ form_adi|default:"Çalışma Listesi" }}</title>
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #222; font-weight: bold;}
+    body { font-family: DejaVu Sans, Arial, Helvetica, sans-serif; font-size: 12px; color: #222; }
     .header { width: 100%; margin-bottom: 8px; padding-bottom: 6px; }
-    .h-left { width: 18%; vertical-align: top; }
-    .h-center { width: 64%; text-align: center; }
-    .h-right { width: 18%; text-align: right; font-size: 10px; }
-    table.grid { border-collapse: collapse; width: 100%; }
-    table.grid th, table.grid td { border: 1px solid #585858; padding: 1px; text-align: center; }
-    table.grid th { background: #f3f3f3; font-weight: 600; }
-    .name-cell { text-align: left; }
+    table.grid { border-collapse: collapse; width: 100%; table-layout: fixed; }
+    table.grid th, table.grid td { border: 1px solid #494949; padding: 2px; }
+    table.grid th { background: #f3f3f3; height: 20px; }
+    table.grid tr {
+      height: 40px;
+    }
+    .name-cell { text-align: left; font-size: 12px; }
     .weekend { background: #cdcdcd; }
     .holiday { background: #e6d49d; }
     .arife { background: #abd6f7; }
@@ -21,12 +21,12 @@
     .footer-note { margin-top: 8px; font-size: 10px; color: #666; }
     @media print { .page-break { page-break-after: always; } }
     .mesai-notu-badge {
-        position: absolute;
+        /* position: absolute;
         top: 2px;
-        right: 4px;
+        right: 4px; */
         font-size: 0.75em;
         font-weight: bold;
-        background: rgba(180,180,180,0.35);
+        background: rgba(180, 180, 180, 0.1);
         color: #000000;
         padding: 1px 5px;
         border-radius: 6px;
@@ -34,7 +34,8 @@
         pointer-events: none;
     }
     .mesai-cell-pdf {
-        position: relative;
+        text-align: center;
+        font-size: 10px;
     }
   </style>
 </head>
@@ -53,16 +54,15 @@
 {% else %}
   <table class="grid">
     <thead>
-      <tr>
-        <th style="width:40px">Sıra</th>
-        <th style="min-width:160px; text-align:left">Ad Soyad</th>
-        <th style="min-width:100px; text-align:left">T.C. Kimlik No</th>
-        <th style="min-width:120px; text-align:left">Unvan</th>
-        <!-- Mesai Alt Başlıklar -->
-        <th class="bg-light">Normal</th>
-        <th class="bg-light">Bayram</th>
-        <th class="bg-light">Riskli N.</th>
-        <th class="bg-light">Riskli B.</th>
+      <tr style="text-align:center">
+        <th style="width:30px">Sıra</th>
+        <th style="width:140px;">Ad Soyad</th>
+        <th style="width:90px;">T.C. Kimlik No</th>
+        <th style="width:80px;">Unvan</th>
+        <th style="width:40px;">Normal</th>
+        <th style="width:40px;">Bayram</th>
+        <th style="width:40px;">Riskli N.</th>
+        <th style="width:40px;">Riskli B.</th>
         {% for d in days %}
           {% comment %} Determine header class for weekend/holiday {% endcomment %}
           {% with c='' %}
@@ -70,22 +70,22 @@
             {% if d.day_num in arefe_gunleri %}{% with c='arife' %}{% endwith %}{% endif %}
             {% if d.is_weekend %}{% with c='weekend' %}{% endwith %}{% endif %}
           {% endwith %}
-          <th class="{{ c }}">{{ d.day_num }}</th>
+          <th class="{{ c }}" style="width:34px;">{{ d.day_num }}</th>
         {% endfor %}
-        <th style="width:90px">Sistem Onayı</th>
+        <th style="width:80px">Sistem Onayı</th>
       </tr>
     </thead>
     <tbody>
       {% for person in personeller %}
         <tr>
-          <td>{{ forloop.counter }}</td>
-          <td>{{ person.PersonelName }} {{ person.PersonelSurname }}</td>
-          <td class="name-cell">{{ person.PersonelTCKN }}</td>
-          <td class="name-cell">{{ person.PersonelTitle|default:'-' }}</td>
-            <td class="text-end">{{ person.normal_fazla_mesai|floatformat:0 }}</td>
-            <td class="text-end">{{ person.bayram_fazla_mesai|floatformat:0 }}</td>
-            <td class="text-end">{{ person.riskli_normal|floatformat:0 }}</td>
-            <td class="text-end">{{ person.riskli_bayram|floatformat:0 }}</td>
+          <td style="text-align:center">{{ forloop.counter }}</td>
+          <td style="text-align:left; font-weight: bold">{{ person.PersonelName }} {{ person.PersonelSurname }}</td>
+          <td style="text-align:left; font-weight: bold; text-align:center">{{ person.PersonelTCKN }}</td>
+          <td style="text-align:left; font-weight: bold">{{ person.PersonelTitle|default:'-' }}</td>
+            <td style="text-align:center">{{ person.normal_fazla_mesai|floatformat:0 }}</td>
+            <td style="text-align:center">{{ person.bayram_fazla_mesai|floatformat:0 }}</td>
+            <td style="text-align:center">{{ person.riskli_normal|floatformat:0 }}</td>
+            <td style="text-align:center">{{ person.riskli_bayram|floatformat:0 }}</td>
           {% comment %} Expect person.mesai_data as list aligned with days; each item can be dict with Saat or IzinAd or empty {% endcomment %}
           {% for md in person.mesai_data %}
             <td class="small mesai-cell-pdf {% if md.is_weekend %}weekend{% endif %} {% if md.is_holiday %}holiday{% endif %} {% if md.is_arife %}arife{% endif %}">

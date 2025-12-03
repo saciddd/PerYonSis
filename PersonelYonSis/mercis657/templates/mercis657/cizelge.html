@@ -707,12 +707,14 @@
         yazdirModal.show();
     });
 
-    // Fazla Mesai Bildirim butonu, mercis657:bildirimler/?birim_id=1&donem=2025/12 benzeri, bildirim sayfasına git
-    document.getElementById('btnBildirim').addEventListener('click', function() {
-        const donem = document.getElementById('selectDonem').value;
-        const birimId = document.getElementById('selectBirim').value;
-        window.location.href = `/mercis657/bildirimler/?birim_id=${birimId}&donem=${donem}`;
-    }); 
+    // Fazla Mesai Bildirim butonu varsa, mercis657:bildirimler/?birim_id=1&donem=2025/12 benzeri, bildirim sayfasına git
+    if (document.getElementById('btnBildirim')) {
+        document.getElementById('btnBildirim').addEventListener('click', function() {
+            const donem = document.getElementById('selectDonem').value;
+            const birimId = document.getElementById('selectBirim').value;
+            window.location.href = `/mercis657/bildirimler/?birim_id=${birimId}&donem=${donem}`;
+        }); 
+    }
     
 
     // Yazdır modalındaki Yazdır butonu
@@ -1156,7 +1158,7 @@
 </script>
 <script>
     function olusturIlkListe(listeId) {
-        const ilkListe = {{ ilk_liste.PersonelListesi.id }};
+        const ilkListe = {{ ilk_liste.PersonelListesi.id|default:0 }};
         console.log("ilkListe", ilkListe);
         if (ilkListe) {
             openIlkListeModal(listeId);

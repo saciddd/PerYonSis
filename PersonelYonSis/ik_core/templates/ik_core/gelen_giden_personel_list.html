@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gelen - Giden Personel Listesi{% endblock %}
+
+{% block extra_css %}
+<!-- DataTables CSS -->
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.bootstrap5.min.css"/>
+
+<style>
+    .btn-group-toggle .btn.active {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+    .status-badge {
+        font-size: 0.85em;
+        padding: 5px 10px;
+        border-radius: 20px;
+    }
+    .status-active { background-color: #4fa54f; color: #0f5132; }
+    .status-passive { background-color: #9b8d60; color: #664d03; }
+    .status-left { background-color: #8d6669; color: #842029; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h2 class="mb-0">
+                {% if filter_type == 'gelen' %}
+                    <i class="bi bi-person-plus-fill text-success me-2"></i>Gelen Personeller
+                {% else %}
+                    <i class="bi bi-person-dash-fill text-danger me-2"></i>Giden Personeller
+                {% endif %}
+            </h2>
+            
+            <div class="btn-group" role="group" aria-label="Filtre Seçimi">
+                <a href="?filter_type=gelen" class="btn btn-outline-primary {% if filter_type == 'gelen' %}active{% endif %}">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Gelen Personeller
+                </a>
+                <a href="?filter_type=giden" class="btn btn-outline-primary {% if filter_type == 'giden' %}active{% endif %}">
+                    <i class="bi bi-box-arrow-left me-1"></i> Giden Personeller
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="personelTable" class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Başlayış Tarihi</th>
+                            <th>Ayrılış Tarihi</th>
+                            <th>TC Kimlik No</th>
+                            <th>Ad Soyad</th>
+                            <th>Unvan</th>
+                            <th>Branş</th>
+                            <th>Telefon</th>
+                            <th>Çalıştığı Bina</th>
+                            <th>Çalıştığı Birim</th>
+                            <th>Durum</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for personel in personeller %}
+                            {% with son_birim=personel.personelbirim_set.all.0 %}
+                            <tr>
+                                <td data-sort="{{ personel.goreve_baslama_tarihi|date:'Y-m-d' }}">
+                                    {{ personel.goreve_baslama_tarihi|date:"d.m.Y"|default:"-" }}
+                                </td>
+                                <td data-sort="{{ personel.ayrilma_tarihi|date:'Y-m-d' }}">
+                                    {{ personel.ayrilma_tarihi|date:"d.m.Y"|default:"-" }}
+                                </td>
+                                <td>{{ personel.tc_kimlik_no }}</td>
+                                <td class="fw-bold">
+                                    <a href="{% url 'ik_core:personel_detay' personel.pk %}" class="text-decoration-none text-dark">
+                                        {{ personel.ad_soyad }}
+                                    </a>
+                                </td>
+                                <td>{{ personel.unvan.ad|default:"-" }}</td>
+                                <td>{{ personel.brans.ad|default:"-" }}</td>
+                                <td>{{ personel.telefon|default:"-" }}</td>
+                                <td>
+                                    {% if son_birim %}{{ son_birim.birim.bina.ad }}{% else %}Tanımsız{% endif %}
+                                </td>
+                                <td>
+                                    {% if son_birim %}{{ son_birim.birim.ad }}{% else %}Tanımsız{% endif %}
+                                </td>
+                                <td>
+                                    {% if personel.durum == 'Aktif' %}
+                                        <span class="badge status-badge status-active">Aktif</span>
+                                    {% elif personel.durum == 'Pasif' %}
+                                        <span class="badge status-badge status-passive">Pasif</span>
+                                    {% else %}
+                                        <span class="badge status-badge status-left">Kurumdan Ayrıldı</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endwith %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- DataTables & Plugins -->
+<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/dataTables.buttons.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.bootstrap5.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.html5.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/buttons/2.2.2/js/buttons.print.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('#personelTable').DataTable({
+        "pageLength": 25,
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/tr.json"
+        },
+        "dom": '<"d-flex justify-content-between align-items-center mb-3"Bf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
+        "buttons": [
+            {
+                extend: 'excelHtml5',
+                text: '<i class="bi bi-file-earmark-excel me-1"></i> Excel',
+                className: 'btn btn-success btn-sm',
+                exportOptions: {
+                    columns: ':visible'
+                }
+            },
+            {
+                extend: 'copyHtml5',
+                text: '<i class="bi bi-clipboard me-1"></i> Kopyala',
+                className: 'btn btn-secondary btn-sm',
+                exportOptions: {
+                    columns: ':visible'
+                }
+            },
+            {
+                extend: 'csvHtml5',
+                text: '<i class="bi bi-file-earmark-text me-1"></i> CSV',
+                className: 'btn btn-info btn-sm text-white',
+                exportOptions: {
+                    columns: ':visible'
+                }
+            }
+        ],
+        "order": [[ {% if filter_type == 'gelen' %}0{% else %}1{% endif %}, "desc" ]] // Gelen için Başlayış (0), Giden için Ayrılış (1)
+    });
+});
+</script>
+{% endblock %}

@@ -27,10 +27,11 @@ class Menu:
             MenuItem('Sistem Logları', 'audit_log_list', 'bi bi-octagon', 'Yeni Yetki Tanımlama', parent_menu='Yönetim Paneli'),
             # İnsan Kaynakları Modülü ve Alt Menüleri
             MenuItem('İK Modülü', '#', 'bi bi-person-lines-fill', 'İK Modülü', is_parent=True),
-            MenuItem('Personel Tanımları', 'ik_core:personel_list', 'bi bi-octagon', 'İK Modülü', parent_menu='İK Modülü'),
-            MenuItem('Geçici Görevler', 'ik_core:gecici_gorevler', 'bi bi-octagon', 'İK Modülü', parent_menu='İK Modülü'),
-            MenuItem('Tanımlamalar', 'ik_core:tanimlamalar', 'bi bi-octagon', 'İK Modülü', parent_menu='İK Modülü'),
-            MenuItem('Birim Yönetimi', 'ik_core:birim_yonetimi', 'bi bi-octagon', 'İK Modülü', parent_menu='İK Modülü'),
+            MenuItem('Personel Tanımları', 'ik_core:personel_list', 'bi bi-octagon', 'İK Modülü Personel Yönetimi', parent_menu='İK Modülü'),
+            MenuItem('Geçici Görevler', 'ik_core:gecici_gorevler', 'bi bi-octagon', 'İK Modülü Geçici Görevler', parent_menu='İK Modülü'),
+            MenuItem('Tanımlamalar', 'ik_core:tanimlamalar', 'bi bi-octagon', 'İK Modülü Tanımlamalar', parent_menu='İK Modülü'),
+            MenuItem('Birim Yönetimi', 'ik_core:birim_yonetimi', 'bi bi-octagon', 'İK Modülü Tanımlamalar', parent_menu='İK Modülü'),
+            MenuItem('Gelen-Giden Personeller', 'ik_core:gelen_giden_personel_list', 'bi bi-octagon', 'İK Modülü Gelen-Giden Personeller', parent_menu='İK Modülü'),
             # İzin Modülü ve Alt Menüleri
             MenuItem('İzin Modülü', '#', 'bi bi-calendar-check', 'İzin Modülü', is_parent=True),
             MenuItem('İzin Tanımları', 'kullanici_tanimlari', 'bi bi-octagon', 'İzin Modülü', parent_menu='İzin Modülü'),

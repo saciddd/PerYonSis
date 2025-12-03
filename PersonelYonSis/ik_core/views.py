@@ -25,6 +25,9 @@ from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET
 from django.forms import ModelForm
 from .models.Teblig import TebligImzasi, TebligMetni
+from django.utils import timezone
+from django.db.models import OuterRef, Exists
+from datetime import date
 
 # Türkçe lower/upper normalize edici yardımcı
 def lower_tr(text: str) -> str:
@@ -1013,4 +1016,36 @@ def gorevlendirme_yazisi(request, personel_birim_id):
         
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'PDF oluşturulurken hata: {str(e)}'})
+
+@login_required
+def gelen_giden_personel_list(request):
+    filter_type = request.GET.get('filter_type', 'gelen')
     
+    # Property üzerinden filtreleme istendiği için tüm kayıtları çekip Python'da işliyoruz.
+    qs = Personel.objects.select_related('unvan', 'brans').prefetch_related(
+        'personelbirim_set',
+        'personelbirim_set__birim',
+        'personelbirim_set__birim__bina'
+    )
+    
+    personeller = []
+    for p in qs:
+        p_durum = p.durum
+        if filter_type == 'gelen':
+            if p_durum == 'Aktif':
+                personeller.append(p)
+        else: # giden
+            if p_durum in ['Pasif', 'Kurumdan Ayrıldı']:
+                personeller.append(p)
+    
+    # Sıralama
+    if filter_type == 'gelen':
+        personeller.sort(key=lambda x: x.goreve_baslama_tarihi or date.min, reverse=True)
+    else:
+        personeller.sort(key=lambda x: x.ayrilma_tarihi or date.min, reverse=True)
+
+    context = {
+        'personeller': personeller,
+        'filter_type': filter_type,
+    }
+    return render(request, 'ik_core/gelen_giden_personel_list.html', context)

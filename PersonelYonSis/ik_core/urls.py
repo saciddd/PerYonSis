@@ -6,6 +6,7 @@ app_name = 'ik_core'
 
 urlpatterns = [
     path('personeller/', views.personel_list, name='personel_list'),
+    path('gelen-giden-personel/', views.gelen_giden_personel_list, name='gelen_giden_personel_list'),
     path('personel/ekle/', views.personel_ekle, name='personel_ekle'),
     path('personel/<int:pk>/', views.personel_detay, name='personel_detay'),
     path('personel/<int:pk>/duzenle/', views.personel_duzenle, name='personel_duzenle'),

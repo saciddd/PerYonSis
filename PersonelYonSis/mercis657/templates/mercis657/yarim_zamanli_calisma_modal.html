@@ -38,7 +38,7 @@
                 <td>
                   <select class="form-select mesai-select" data-gun="{{ gun }}">
                     <option value="">—</option>
-                    {% for m in mesai_options %}
+                    {% for m in mesai_tanimlari %}
                       <option value="{{ m.id }}" data-sure="{{ m.Sure|floatformat:2|dot_decimal }}">
                       {{ m.Saat }} ({{ m.Sure|floatformat:2|dot_decimal }} saat)
                     </option>

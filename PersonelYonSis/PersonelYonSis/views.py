@@ -5,7 +5,8 @@ from django.contrib.auth import authenticate, login, logout as auth_logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from .forms import LoginForm
-from .models import Role, Permission, RolePermission, User, Notification, AuditLog, Duyuru
+from .models import Role, Permission, RolePermission, User, Notification, AuditLog, Duyuru, Istek
+from django.utils.timezone import now
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from notifications.services import notify_role_users, notify_user
@@ -67,7 +68,6 @@ def get_user_permissions(user):
 		return RolePermission.objects.filter(Role__in=user.roles.all()).values_list('Permission__PermissionName', flat=True)
 	return []
 
-
 def build_duyuru_context(request):
 	uygulama = (request.GET.get("uygulama") or "").strip()
 	duyurular_qs = Duyuru.objects.select_related("olusturan").all()
@@ -93,19 +93,64 @@ def build_duyuru_context(request):
 
 def index(request):
 	if request.user.is_authenticated:
+		if request.method == 'POST' and 'istek_ekle' in request.POST:
+			istek_metni = request.POST.get('istek_metni')
+			if istek_metni:
+				Istek.objects.create(
+					istek=istek_metni,
+					talep_eden=request.user
+				)
+				messages.success(request, 'İsteğiniz başarıyla kaydedildi.')
+				return redirect('index')
+			else:
+				messages.error(request, 'İstek metni boş olamaz.')
+
 		permissions = get_user_permissions(request.user)
-		context = {'permissions': permissions}
+		istekler = Istek.objects.all().order_by('-talep_tarihi')
+		
+		context = {
+			'permissions': permissions,
+			'istekler': istekler
+		}
 		context.update(build_duyuru_context(request))
 		return render(request, 'index.html', context)
 	else:
 		return render(request, "login.html")
 
+@login_required
+def istek_sil(request, istek_id):
+	istek = get_object_or_404(Istek, id=istek_id)
+	if istek.talep_eden == request.user:
+		istek.delete()
+		messages.success(request, 'İstek başarıyla silindi.')
+	else:
+		messages.error(request, 'Bu isteği silme yetkiniz yok.')
+	return redirect('index')
+
+@login_required
+def istek_guncelle(request, istek_id):
+	istek = get_object_or_404(Istek, id=istek_id)
+	if request.user.has_permission("İstek Durumu Güncelleme"):
+		if request.method == 'POST':
+			yeni_durum = request.POST.get('durum')
+			if yeni_durum:
+				istek.tamamlanma_durumu = yeni_durum
+				if yeni_durum == 'Tamamlandı':
+					istek.tamamlanma_tarihi = now()
+				else:
+					istek.tamamlanma_tarihi = None
+				istek.save()
+				messages.success(request, 'İstek durumu güncellendi.')
+			else:
+				messages.error(request, 'Durum seçilmedi.')
+	else:
+		messages.error(request, 'Bu işlem için yetkiniz yok.')
+	return redirect('index')
 
 @login_required
 def duyurular_list(request):
 	context = build_duyuru_context(request)
 	return render(request, "duyurular/index.html", context)
-
 
 @login_required
 @require_POST

@@ -149,3 +149,25 @@ class AuditLog(models.Model):
     def __str__(self):
         user_str = str(self.user) if self.user else "Anonim"
         return f"[{self.timestamp:%Y-%m-%d %H:%M:%S}] {user_str} {self.action} {self.model_name}({self.object_id})"
+
+class Istek(models.Model):
+    DURUM_CHOICES = [
+        ('Beklemede', 'Beklemede'),
+        ('İşlemde', 'İşlemde'),
+        ('Tamamlandı', 'Tamamlandı'),
+        ('İptal', 'İptal'),
+    ]
+
+    istek = models.TextField()
+    talep_eden = models.ForeignKey(User, on_delete=models.CASCADE, related_name='istekler')
+    talep_tarihi = models.DateTimeField(auto_now_add=True)
+    tamamlanma_durumu = models.CharField(max_length=20, choices=DURUM_CHOICES, default='Beklemede')
+    tamamlanma_tarihi = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-talep_tarihi']
+        verbose_name = "İstek"
+        verbose_name_plural = "İstekler"
+
+    def __str__(self):
+        return f"{self.talep_eden} - {self.istek[:30]}"

@@ -28,6 +28,13 @@ class Idareci(models.Model):
     def __str__(self):
         return self.ad
 
+class Bina(models.Model):
+    ad = models.CharField(max_length=100)
+    aktif = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.ad
+
 class Birim(models.Model):
     BirimID = models.AutoField(primary_key=True)
     BirimAdi = models.CharField(max_length=100)
@@ -40,6 +47,7 @@ class Birim(models.Model):
     Kurum = models.ForeignKey(Kurum, on_delete=models.SET_NULL, null=True, blank=True)
     UstBirim = models.ForeignKey(UstBirim, on_delete=models.SET_NULL, null=True, blank=True)
     Idareci = models.ForeignKey(Idareci, on_delete=models.SET_NULL, null=True, blank=True)
+    Bina = models.ForeignKey(Bina, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return self.BirimAdi
@@ -380,3 +388,14 @@ class UserMesaiFavori(models.Model):
 
     def __str__(self):
         return f"{self.user} → {self.mesai.Saat}"
+
+class MesaiKontrol(models.Model):
+    mesai = models.ForeignKey('Mesai', on_delete=models.CASCADE, related_name='mesai_kontrolleri')
+    kontrol = models.BooleanField(default=False)
+    kontrol_tarihi = models.DateTimeField(auto_now_add=True)
+    kontrol_yapan = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
+    class Meta:
+        verbose_name = 'Mesai Kontrol'
+        verbose_name_plural = 'Mesai Kontrolleri'
+        unique_together = ('mesai',)

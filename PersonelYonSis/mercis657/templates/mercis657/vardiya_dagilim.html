@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Vardiya Dağılımı ve Kontrol</h5>
+                </div>
+                <div class="card-body">
+                    <form id="filterForm" class="row g-3">
+                        <div class="col-md-2">
+                            <label for="kurum" class="form-label">Kurum</label>
+                            <select id="kurum" class="form-select">
+                                <option value="">Tümü</option>
+                                {% for k in kurumlar %}
+                                <option value="{{ k.id }}">{{ k.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="ust_birim" class="form-label">Üst Birim</label>
+                            <select id="ust_birim" class="form-select">
+                                <option value="">Tümü</option>
+                                {% for ub in ust_birimler %}
+                                <option value="{{ ub.id }}">{{ ub.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="idareci" class="form-label">İdareci</label>
+                            <select id="idareci" class="form-select">
+                                <option value="">Tümü</option>
+                                {% for i in idareciler %}
+                                <option value="{{ i.id }}">{{ i.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="bina" class="form-label">Bina</label>
+                            <select id="bina" class="form-select">
+                                <option value="">Tümü</option>
+                                {% for b in binalar %}
+                                <option value="{{ b.id }}">{{ b.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="tarih" class="form-label">Tarih</label>
+                            <input type="date" id="tarih" class="form-control" value="{{ bugun }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Vardiya Tipi</label>
+                            <div class="d-flex gap-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="vardiya" id="v_gunduz" value="gunduz" checked>
+                                    <label class="form-check-label" for="v_gunduz">Gündüz</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="vardiya" id="v_aksam" value="aksam">
+                                    <label class="form-check-label" for="v_aksam">Akşam</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="vardiya" id="v_gece" value="gece">
+                                    <label class="form-check-label" for="v_gece">Gece</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="button" id="btnSorgula" class="btn btn-primary">
+                                <i class="bi bi-search me-1"></i> Sorgula
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Butonlar sağa yapışık ve birleşik -->
+    <div class="d-flex justify-content-end gap-2 mb-2">
+        <div class="btn-group">
+            <button id="btnTopluIslem" class="btn btn-primary" disabled>
+                <i class="bi bi-card-checklist"></i> Toplu İşlem
+            </button>
+            <button id="btnKaydet" class="btn btn-success" disabled>
+                <i class="bi bi-save"></i> Kaydet
+            </button>
+        </div>
+    </div>
+
+    <div id="sonucAlani" class="row">
+        <!-- Sonuçlar buraya yüklenecek -->
+    </div>
+</div>
+
+<!-- Kontrol Formu Modal -->
+<div class="modal fade" id="kontrolModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Toplu Kontrol İşlemi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Görüntülenen tüm kayıtlar için seçim yapınız:</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success" onclick="topluIsaretle(true)">
+                        <i class="bi bi-check me-2"></i> Herkes Görev Yerinde (Evet)
+                    </button>
+                    <button class="btn btn-danger" onclick="topluIsaretle(false)">
+                        <i class="bi bi-times me-2"></i> Kimse Görev Yerinde Değil (Hayır)
+                    </button>
+                    <button class="btn btn-secondary" onclick="topluIsaretle(null)">
+                        <i class="bi bi-eraser me-2"></i> Seçimleri Temizle
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnSorgula = document.getElementById('btnSorgula');
+    const btnKaydet = document.getElementById('btnKaydet');
+    const btnTopluIslem = document.getElementById('btnTopluIslem');
+    const sonucAlani = document.getElementById('sonucAlani');
+    
+    // CSRF Token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    btnSorgula.addEventListener('click', function() {
+        const filters = {
+            kurum_id: document.getElementById('kurum').value,
+            ust_birim_id: document.getElementById('ust_birim').value,
+            idareci_id: document.getElementById('idareci').value,
+            bina_id: document.getElementById('bina').value,
+            tarih: document.getElementById('tarih').value,
+            vardiya: document.querySelector('input[name="vardiya"]:checked').value
+        };
+
+        sonucAlani.innerHTML = '<div class="col-12 text-center"><div class="spinner-border text-primary" role="status"></div></div>';
+        btnKaydet.disabled = true;
+        btnTopluIslem.disabled = true;
+
+        fetch('{% url "mercis657:vardiya_dagilim_search" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(filters)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                renderResults(data.results);
+            } else {
+                alert('Hata: ' + data.message);
+                sonucAlani.innerHTML = '';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            sonucAlani.innerHTML = '<div class="col-12 text-center text-danger">Bir hata oluştu.</div>';
+        });
+    });
+
+    function renderResults(results) {
+        if (results.length === 0) {
+            sonucAlani.innerHTML = '<div class="col-12"><div class="alert alert-info">Kayıt bulunamadı.</div></div>';
+            return;
+        }
+
+        let html = '<div class="col-12"><div class="table-responsive"><table class="table table-bordered table-hover">';
+        html += '<thead class="table-light"><tr><th>Bina / Birim</th><th>Personel</th><th>Unvan</th><th>Mesai</th><th class="text-center" style="width: 200px;">Görev Yerinde mi?</th></tr></thead><tbody>';
+
+        results.forEach(binaGroup => {
+            html += `<tr class="table-secondary"><td colspan="5"><strong>${binaGroup.bina}</strong></td></tr>`;
+            
+            binaGroup.birimler.forEach(birimGroup => {
+                html += `<tr class="table-info"><td colspan="5" class="ps-4"><em>${birimGroup.ad}</em></td></tr>`;
+                
+                birimGroup.personeller.forEach(p => {
+                    const checkedEvet = p.kontrol === true ? 'checked' : '';
+                    const checkedHayir = p.kontrol === false ? 'checked' : '';
+                    
+                    html += `
+                    <tr data-mesai-id="${p.mesai_id}">
+                        <td></td>
+                        <td>${p.personel_ad}</td>
+                        <td>${p.unvan}</td>
+                        <td><span>${p.mesai_saat}</span></td>
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check kontrol-radio" name="kontrol_${p.mesai_id}" id="k_e_${p.mesai_id}" value="true" ${checkedEvet}>
+                                <label class="btn btn-outline-success btn-sm" for="k_e_${p.mesai_id}">Evet</label>
+
+                                <input type="radio" class="btn-check kontrol-radio" name="kontrol_${p.mesai_id}" id="k_h_${p.mesai_id}" value="false" ${checkedHayir}>
+                                <label class="btn btn-outline-danger btn-sm" for="k_h_${p.mesai_id}">Hayır</label>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+            });
+        });
+
+        html += '</tbody></table></div></div>';
+        sonucAlani.innerHTML = html;
+        btnKaydet.disabled = false;
+        btnTopluIslem.disabled = false;
+    }
+
+    btnTopluIslem.addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('kontrolModal'));
+        modal.show();
+    });
+
+    window.topluIsaretle = function(val) {
+        const radios = document.querySelectorAll('.kontrol-radio');
+        radios.forEach(r => {
+            if (val === null) {
+                r.checked = false;
+            } else {
+                // value string olarak 'true'/'false' geliyor, val boolean
+                if (r.value === val.toString()) {
+                    r.checked = true;
+                }
+            }
+        });
+        bootstrap.Modal.getInstance(document.getElementById('kontrolModal')).hide();
+    };
+
+    btnKaydet.addEventListener('click', function() {
+        const updates = [];
+        const rows = document.querySelectorAll('tr[data-mesai-id]');
+        
+        rows.forEach(row => {
+            const mesaiId = row.dataset.mesaiId;
+            const checkedRadio = row.querySelector(`input[name="kontrol_${mesaiId}"]:checked`);
+            
+            if (checkedRadio) {
+                updates.push({
+                    mesai_id: mesaiId,
+                    kontrol: checkedRadio.value === 'true'
+                });
+            }
+        });
+
+        if (updates.length === 0) {
+            alert('Kaydedilecek değişiklik yok.');
+            return;
+        }
+
+        btnKaydet.disabled = true;
+        btnKaydet.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Kaydediliyor...';
+
+        fetch('{% url "mercis657:vardiya_dagilim_kaydet" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify({ updates: updates })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Kayıtlar başarıyla güncellendi.');
+            } else {
+                alert('Hata: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Bir hata oluştu.');
+        })
+        .finally(() => {
+            btnKaydet.disabled = false;
+            btnKaydet.innerHTML = '<i class="bi bi-save me-1"></i> Kaydet';
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -47,6 +47,7 @@ class Menu:
             # Nöbet Defteri Modülü ve Alt Menüleri
             MenuItem('Nöbet Defteri Modülü', '#', 'bi bi-journal-check', 'Nöbet Defteri Modülü', is_parent=True),
             MenuItem('Nöbet Defteri', 'nobet_defteri:liste', 'bi bi-octagon', parent_menu='Nöbet Defteri Modülü'),
+            MenuItem('Vardiya Dağılımı 657', 'mercis657:vardiya_dagilim', 'bi bi-octagon', 'ÇS 657 Vardiya Dağılımı Sayfası', parent_menu='Nöbet Defteri Modülü'),
             MenuItem('Tekniker Ziyaretleri', 'nobet_defteri:tekniker_ziyaretleri', 'bi bi-octagon', parent_menu='Nöbet Defteri Modülü'),
             MenuItem('Kontrol Formu Soruları', 'nobet_defteri:kontrol_soru_list', 'bi bi-octagon', 'Nöbet Defteri Soruları Düzenleme', parent_menu='Nöbet Defteri Modülü'),
             # Çizelge 657 ve Alt Menüleri
@@ -57,6 +58,7 @@ class Menu:
             MenuItem('Birim Yönetimi', 'mercis657:birim_yonetim', 'bi bi-octagon', 'ÇS 657 Birim Yönetimi Sayfası', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Çizelge Yönetimi', 'mercis657:birim_listeleri', 'bi bi-octagon', 'ÇS 657 Birim Yönetimi Sayfası', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Personel Yönetimi', 'mercis657:personel_yonetim', 'bi bi-octagon', 'ÇS 657 Personel Yönetimi Sayfası', parent_menu='Çizelge Sistemi 657'),
+            MenuItem('Vardiya Dağılımı', 'mercis657:vardiya_dagilim', 'bi bi-octagon', 'ÇS 657 Vardiya Dağılımı Sayfası', parent_menu='Çizelge Sistemi 657'),
             MenuItem('Tanımlamalar', 'mercis657:tanimlamalar', 'bi bi-octagon', 'ÇS 657 Mesai Tanımlama', parent_menu='Çizelge Sistemi 657'),
             # Çizelge 696 ve Alt Menüleri
             MenuItem('Çizelge Sistemi 696', '#', 'bi bi-calendar-week', 'ÇS 696 Çizelge Sayfası', is_parent=True),

@@ -37,6 +37,34 @@ class OzelDurum(models.Model):
     def __str__(self):
         return self.ad
 
+class KisaUnvan(models.Model):
+    ad = models.CharField(max_length=100, unique=True, verbose_name="Kısa Ünvan / Grup")
+    ust_birim = models.ForeignKey('ik_core.UstBirim', on_delete=models.SET_NULL, null=True, verbose_name="Bağlı Olduğu Üst Birim", blank=True)
+    
+    def __str__(self):
+        if self.ust_birim:
+             return f"{self.ad} - {self.ust_birim.ad}"
+        return self.ad
+
+    class Meta:
+        verbose_name = "Kısa Ünvan"
+        verbose_name_plural = "Kısa Ünvanlar"
+
+class UnvanBransEslestirme(models.Model):
+    unvan = models.ForeignKey(Unvan, on_delete=models.CASCADE)
+    brans = models.ForeignKey(Brans, on_delete=models.SET_NULL, null=True, blank=True)
+    kisa_unvan = models.ForeignKey(KisaUnvan, on_delete=models.CASCADE, verbose_name="Kısa Ünvan")
+
+    def __str__(self):
+        if self.brans:
+            return f"{self.unvan.ad} - {self.brans.ad}"
+        return self.unvan.ad
+
+    class Meta:
+        unique_together = ('unvan', 'brans')
+        verbose_name = "Ünvan Branş Eşleştirme"
+        verbose_name_plural = "Ünvan Branş Eşleştirmeleri"
+
 class Personel(models.Model):
     # Kişi bilgileri
     tc_kimlik_no = models.CharField(max_length=11, unique=True)
@@ -44,6 +72,7 @@ class Personel(models.Model):
     soyad = models.CharField(max_length=50)
     unvan = models.ForeignKey(Unvan, on_delete=models.SET_NULL, null=True)
     brans = models.ForeignKey(Brans, on_delete=models.SET_NULL, null=True)
+    unvan_brans_eslestirme = models.ForeignKey(UnvanBransEslestirme, on_delete=models.SET_NULL, null=True, verbose_name="Ünvan Branş Eşleştirme", blank=True)
     sicil_no = models.CharField(max_length=30, blank=True, null=True)
     dogum_tarihi = models.DateField(null=True, blank=True)
     cinsiyet = models.CharField(max_length=6, choices=[('Erkek', 'Erkek'), ('Kadin', 'Kadın')], blank=True, null=True)
@@ -193,6 +222,58 @@ class Personel(models.Model):
     #         return self.memur_devreden_izin + self.memur_hak_ettigi_izin - ... # mevcut yıl kullandığı izinler
     #     else:
     #         return ... # YillikIzinHakedis modeline göre hesaplanacak
+
+    @property
+    def son_mercis657_listesi(self):
+        try:
+            from mercis657.models import PersonelListesiKayit, Personel as MercisPersonel
+            
+            # TCKN ile mercis657 personelini bul
+            if not self.tc_kimlik_no:
+                return None
+
+            mercis_personel = MercisPersonel.objects.filter(PersonelTCKN=self.tc_kimlik_no).first()
+            if not mercis_personel:
+                return None
+                
+            latest_kayit = PersonelListesiKayit.objects.filter(personel=mercis_personel).order_by('-liste__yil', '-liste__ay').select_related('liste__birim').first()
+
+            if latest_kayit:
+                return {
+                    'yil': latest_kayit.liste.yil,
+                    'ay': latest_kayit.liste.ay,
+                    'birim': latest_kayit.liste.birim.BirimAdi,
+                    'birim_id': latest_kayit.liste.birim.BirimID,
+                }
+            return None
+        except Exception as e:
+            return None
+
+    @property
+    def son_hizmet_sunum_bildirimi(self):
+        try:
+            from hizmet_sunum_app.models import HizmetSunumCalismasi, Personel as HizmetPersonel
+            
+            # TCKN ile hizmet sunum personelini bul
+            if not self.tc_kimlik_no:
+                return None
+
+            hizmet_personel = HizmetPersonel.objects.filter(TCKimlikNo=self.tc_kimlik_no).first()
+            if not hizmet_personel:
+                return None
+                
+            latest_calisma = HizmetSunumCalismasi.objects.filter(PersonelId=hizmet_personel).order_by('-Donem').select_related('CalisilanBirimId').first()
+
+            if latest_calisma:
+                return {
+                    'yil': latest_calisma.Donem.year,
+                    'ay': latest_calisma.Donem.month,
+                    'birim': latest_calisma.CalisilanBirimId.BirimAdi,
+                    'birim_id': latest_calisma.CalisilanBirimId.BirimId,
+                }
+            return None
+        except Exception as e:
+            return None
 
     def __str__(self):
         return self.ad_soyad

@@ -2,92 +2,138 @@
 {% block content %}
 <div class="container">
     <h3>Unvan ve Branş Tanımları</h3>
+    
+    <!-- Datalist for KisaUnvan Autocomplete -->
+    <datalist id="kisaUnvanList">
+        {% for ku in tum_kisa_unvanlar %}
+            <option value="{{ ku.ad }}" data-ust-birim-id="{{ ku.ust_birim.id }}"></option>
+        {% endfor %}
+    </datalist>
+
     <div class="row">
-        <div class="col-md-5">
+        <!-- UNVANLAR TABLOSU -->
+        <div class="col-md-6">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5>Unvanlar</h5>
-                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#unvanEkleModal">
+                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#unvanEkleModal">
                     <i class="bi bi-plus-square me-1"></i>Unvan Ekle
                 </button>
             </div>
             
-            <!-- Arama Kutusu -->
             <div class="mb-3">
                 <div class="input-group">
-                    <span class="input-group-text">
-                        <i class="bi bi-search"></i>
-                    </span>
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
                     <input type="text" class="form-control" id="unvanArama" placeholder="Unvan ara...">
                 </div>
             </div>
-            <table class="table table-bordered table-sm" id="unvanTablosu">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Unvan Adı</th>
-                        <th>Sınıf</th>
-                        <th>Branşlar</th>
-                        <th>Seç</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for unvan in unvanlar %}
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ unvan.ad }}</td>
-                        <td>{{ unvan.sinif }}</td>
-                        <td>{{ unvan.brans_set.count }}</td>
-                        <td>
-                            <a href="?unvan_id={{ unvan.id }}" class="btn btn-sm btn-dark">
-                                <i class="bi bi-arrow-return-right me-1"></i>Branşlar
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center">Unvan kaydı yok.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle" id="unvanTablosu">
+                    <thead>
+                        <tr>
+                            <th>Unvan Adı</th>
+                            <th style="width: 50px;">Snf</th>
+                            <th style="width: 50px;">Brn</th>
+                            <th>Kısaltma & Üst Birim</th>
+                            <th style="width: 50px;">Dty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for unvan in unvanlar %}
+                        <tr>
+                            <td>{{ unvan.ad }}</td>
+                            <td>{{ unvan.sinif }}</td>
+                            <td class="text-center">{{ unvan.brans_sayisi }}</td>
+                            <td>
+                                {% if unvan.brans_sayisi > 0 %}
+                                    <small class="text-muted fst-italic">Branş detayında tanımlanır</small>
+                                {% else %}
+                                    <!-- İnputlar yan yana -->
+                                    <div class="d-flex flex-row gap-1">
+                                        <!-- Kısaltma Input -->
+                                        <input type="text" 
+                                               class="form-control form-control-sm kisa-unvan-input {% if not unvan.genel_eslestirme %}border-danger{% endif %}" 
+                                               list="kisaUnvanList" 
+                                               placeholder="Kısaltma/Grup"
+                                               value="{{ unvan.genel_eslestirme.kisa_unvan.ad|default:'' }}"
+                                               data-unvan-id="{{ unvan.id }}">
+                                        
+                                        <!-- Üst Birim Select -->
+                                        <select class="form-select form-select-sm ust-birim-select" data-unvan-id="{{ unvan.id }}">
+                                            <option value="">-- Birim Seç --</option>
+                                            {% for birim in tum_ust_birimler %}
+                                            <option value="{{ birim.id }}" {% if unvan.genel_eslestirme.kisa_unvan.ust_birim.id == birim.id %}selected{% endif %}>
+                                                {{ birim.ad }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="?unvan_id={{ unvan.id }}" class="btn btn-sm btn-outline-dark py-0" title="Branşları Gör">
+                                    <i class="bi bi-arrow-right"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center">Unvan kaydı yok.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <div class="col-md-7">
+
+        <!-- BRANŞLAR TABLOSU -->
+        <div class="col-md-6">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h5>
-                    {% if selected_unvan %}
-                        "{{ selected_unvan.ad }}" Unvanına Bağlı Branşlar
-                    {% else %}
-                        Branşlar
-                    {% endif %}
+                    {% if selected_unvan %}"{{ selected_unvan.ad }}" Branşları{% else %}Branşlar{% endif %}
                 </h5>
                 {% if selected_unvan %}
-                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#bransEkleModal" data-unvan-id="{{ selected_unvan.id }}" data-unvan-ad="{{ selected_unvan.ad }}">
+                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#bransEkleModal" data-unvan-id="{{ selected_unvan.id }}" data-unvan-ad="{{ selected_unvan.ad }}">
                     <i class="bi bi-plus-square me-1"></i>Branş Ekle
                 </button>
                 {% endif %}
             </div>
-            <table class="table table-bordered table-sm">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Branş Adı</th>
-                        <th>Unvan</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for brans in branslar %}
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ brans.ad }}</td>
-                        <td>{{ brans.unvan.ad }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="3" class="text-center">Branş kaydı yok.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Branş Adı</th>
+                            <th>Kısaltma & Üst Birim</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for brans in branslar %}
+                        <tr>
+                            <td>{{ brans.ad }}</td>
+                            <td>
+                                <div class="d-flex flex-row gap-1">
+                                    <input type="text" 
+                                           class="form-control form-control-sm kisa-unvan-input {% if not brans.eslestirme %}border-danger{% endif %}" 
+                                           list="kisaUnvanList" 
+                                           placeholder="Kısaltma/Grup"
+                                           value="{{ brans.eslestirme.kisa_unvan.ad|default:'' }}"
+                                           data-unvan-id="{{ brans.unvan.id }}"
+                                           data-brans-id="{{ brans.id }}">
+                                    
+                                    <select class="form-select form-select-sm ust-birim-select" data-unvan-id="{{ brans.unvan.id }}" data-brans-id="{{ brans.id }}">
+                                        <option value="">-- Birim Seç --</option>
+                                        {% for birim in tum_ust_birimler %}
+                                        <option value="{{ birim.id }}" {% if brans.eslestirme.kisa_unvan.ust_birim.id == birim.id %}selected{% endif %}>
+                                            {{ birim.ad }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" class="text-center">{% if selected_unvan %}Bu unvana ait branş yok.{% else %}Branşları görmek için soldan unvan seçiniz.{% endif %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -98,7 +144,24 @@
 
 <!-- JavaScript -->
 <script>
-// Unvan arama fonksiyonu
+// CSRF Token Helper
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+const csrftoken = getCookie('csrftoken');
+
+// Unvan arama
 document.getElementById('unvanArama').addEventListener('keyup', function() {
     const aramaMetni = this.value.toLowerCase();
     const tablo = document.getElementById('unvanTablosu');
@@ -106,8 +169,9 @@ document.getElementById('unvanArama').addEventListener('keyup', function() {
     
     for (let i = 0; i < satirlar.length; i++) {
         const satir = satirlar[i];
-        const unvanAdi = satir.cells[1].textContent.toLowerCase();
-        const sinif = satir.cells[2].textContent.toLowerCase();
+        if (satir.cells.length < 2) continue; // Empty row check
+        const unvanAdi = satir.cells[0].textContent.toLowerCase();
+        const sinif = satir.cells[1].textContent.toLowerCase();
         
         if (unvanAdi.includes(aramaMetni) || sinif.includes(aramaMetni)) {
             satir.style.display = '';
@@ -117,13 +181,19 @@ document.getElementById('unvanArama').addEventListener('keyup', function() {
     }
 });
 
-// Seçili unvanı branş modalına set etme fonksiyonu
+// Modal Logic
 function setSelectedUnvan(unvanId, unvanAdi) {
-    document.getElementById('id_brans-unvan').value = unvanAdi;
-    document.getElementById('hidden_brans-unvan').value = unvanId;
+    const bransUnvanInput = document.getElementById('id_brans-unvan');
+    if(bransUnvanInput) bransUnvanInput.value = unvanAdi;
+    // Hidden field varsayımı (Django formunda unvan fieldi hidden ise value set etmeliyiz)
+    // Eğer standart Django modelform ise select render eder. Burada modal partial içeriğini bilmediğimden genel mantığı koruyorum.
+    // Ancak id_brans-unvan genellikle select'tir. Option seçtirmek gerekebilir.
+    const bransUnvanSelect = document.querySelector('#id_brans-unvan');
+    if(bransUnvanSelect && bransUnvanSelect.tagName === 'SELECT') {
+        bransUnvanSelect.value = unvanId;
+    }
 }
 
-// Branş ekle butonuna tıklandığında unvan bilgilerini set et
 document.addEventListener('DOMContentLoaded', function() {
     const bransEkleBtn = document.querySelector('[data-unvan-id]');
     if (bransEkleBtn) {
@@ -133,52 +203,161 @@ document.addEventListener('DOMContentLoaded', function() {
             setSelectedUnvan(unvanId, unvanAdi);
         });
     }
+    
+    // Auto-fill UstBirim when KisaUnvan is selected from list
+    const kisaUnvanList = document.getElementById('kisaUnvanList');
+    
+    document.querySelectorAll('.kisa-unvan-input').forEach(input => {
+        input.addEventListener('input', function() {
+            const val = this.value;
+            // Check if value exists in datalist
+            const option = Array.from(kisaUnvanList.options).find(opt => opt.value === val);
+            
+            const parentDiv = this.closest('div');
+            const selectBox = parentDiv.querySelector('.ust-birim-select');
+            
+            if (option) {
+                // Existing KisaUnvan -> Auto Select UstBirim
+                const ustBirimId = option.getAttribute('data-ust-birim-id');
+                if (ustBirimId && ustBirimId !== 'None') {
+                    selectBox.value = ustBirimId;
+                    // Auto-save logic triggers here? Or wait for blur?
+                    // Let's trigger save on blur to be safe.
+                }
+            } else {
+                // New KisaUnvan -> User must select
+                // Maybe highlight the select box?
+                selectBox.classList.add('border-warning');
+            }
+        });
+        
+        input.addEventListener('change', function() { // on blur/enter
+             saveMapping(this);
+        });
+    });
+
+    document.querySelectorAll('.ust-birim-select').forEach(select => {
+        select.addEventListener('change', function() {
+            const parentDiv = this.closest('div');
+            const textInput = parentDiv.querySelector('.kisa-unvan-input');
+            saveMapping(textInput); // Use the text input as the main anchor
+        });
+    });
 });
 
-// Form validasyonu
-document.getElementById('unvanEkleForm').addEventListener('submit', function(e) {
-    const unvanAdi = document.getElementById('id_unvan-ad').value.trim();
-    const sinif = document.getElementById('id_unvan-sinif').value;
+function saveMapping(textInput) {
+    const val = textInput.value.trim();
+    if(!val) return; // Don't save empty (unless we want to clear?)
     
-    if (!unvanAdi) {
-        e.preventDefault();
-        document.getElementById('id_unvan-ad').classList.add('is-invalid');
-    } else {
-        document.getElementById('id_unvan-ad').classList.remove('is-invalid');
+    const parentDiv = textInput.closest('div');
+    const selectBox = parentDiv.querySelector('.ust-birim-select');
+    const ustBirimId = selectBox.value;
+    
+    // Validation: New KisaUnvan needs Ust Birim
+    const datalist = document.getElementById('kisaUnvanList');
+    const exists = Array.from(datalist.options).find(opt => opt.value === val);
+    
+    if(!exists && !ustBirimId) {
+        alert("Yeni bir kısaltma/grup tanımlıyorsunuz. Lütfen bağlı olduğu üst birimi de seçiniz.");
+        selectBox.focus();
+        return;
     }
     
-    if (!sinif) {
-        e.preventDefault();
-        document.getElementById('id_unvan-sinif').classList.add('is-invalid');
-    } else {
-        document.getElementById('id_unvan-sinif').classList.remove('is-invalid');
-    }
-});
+    const payload = {
+        unvan_id: textInput.getAttribute('data-unvan-id'),
+        brans_id: textInput.getAttribute('data-brans-id'),
+        kisa_unvan_ad: val,
+        ust_birim_id: ustBirimId
+    };
+    
+    fetch('{% url "ik_core:unvan_eslestirme_kaydet" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.success) {
+            textInput.classList.remove('border-danger');
+            textInput.classList.add('border-success');
+            selectBox.classList.remove('border-warning');
+            setTimeout(() => textInput.classList.remove('border-success'), 2000);
+            
+            // Update datalist if new
+            if(!exists && data.kisa_unvan_ad) {
+                 const newOpt = document.createElement('option');
+                 newOpt.value = data.kisa_unvan_ad;
+                 newOpt.setAttribute('data-ust-birim-id', data.ust_birim_id);
+                 datalist.appendChild(newOpt);
+            }
+        } else {
+            alert("Hata: " + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
 
-document.getElementById('bransEkleForm').addEventListener('submit', function(e) {
-    const bransAdi = document.getElementById('id_brans-ad').value.trim();
-    
-    if (!bransAdi) {
-        e.preventDefault();
-        document.getElementById('id_brans-ad').classList.add('is-invalid');
-    } else {
-        document.getElementById('id_brans-ad').classList.remove('is-invalid');
-    }
-});
+// Form validasyonu (Original Logic Restored)
+const unvanForm = document.getElementById('unvanEkleForm');
+if (unvanForm) {
+    unvanForm.addEventListener('submit', function(e) {
+        const unvanAdi = document.getElementById('id_unvan-ad').value.trim();
+        const sinif = document.getElementById('id_unvan-sinif').value;
+        
+        if (!unvanAdi) {
+            e.preventDefault();
+            document.getElementById('id_unvan-ad').classList.add('is-invalid');
+        } else {
+            document.getElementById('id_unvan-ad').classList.remove('is-invalid');
+        }
+        
+        if (!sinif) {
+            e.preventDefault();
+            document.getElementById('id_unvan-sinif').classList.add('is-invalid');
+        } else {
+            document.getElementById('id_unvan-sinif').classList.remove('is-invalid');
+        }
+    });
+}
+
+const bransForm = document.getElementById('bransEkleForm');
+if (bransForm) {
+    bransForm.addEventListener('submit', function(e) {
+        const bransAdi = document.getElementById('id_brans-ad').value.trim();
+        
+        if (!bransAdi) {
+            e.preventDefault();
+            document.getElementById('id_brans-ad').classList.add('is-invalid');
+        } else {
+            document.getElementById('id_brans-ad').classList.remove('is-invalid');
+        }
+    });
+}
 
 // Modal temizleme
-document.getElementById('unvanEkleModal').addEventListener('hidden.bs.modal', function() {
-    document.getElementById('unvanEkleForm').reset();
-    document.querySelectorAll('#unvanEkleForm .is-invalid').forEach(el => {
-        el.classList.remove('is-invalid');
+const unvanModal = document.getElementById('unvanEkleModal');
+if(unvanModal){
+    unvanModal.addEventListener('hidden.bs.modal', function() {
+        if(unvanForm) unvanForm.reset();
+        document.querySelectorAll('#unvanEkleForm .is-invalid').forEach(el => {
+            el.classList.remove('is-invalid');
+        });
     });
-});
+}
 
-document.getElementById('bransEkleModal').addEventListener('hidden.bs.modal', function() {
-    document.getElementById('bransEkleForm').reset();
-    document.querySelectorAll('#bransEkleForm .is-invalid').forEach(el => {
-        el.classList.remove('is-invalid');
+const bransModal = document.getElementById('bransEkleModal');
+if(bransModal){
+    bransModal.addEventListener('hidden.bs.modal', function() {
+        if(bransForm) bransForm.reset();
+        document.querySelectorAll('#bransEkleForm .is-invalid').forEach(el => {
+            el.classList.remove('is-invalid');
+        });
     });
-});
+}
 </script>
 {% endblock %}

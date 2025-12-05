@@ -20,6 +20,7 @@ urlpatterns = [
     path('tanimlamalar/', views.tanimlamalar, name='tanimlamalar'),
     path('personel_kontrol/', views.personel_kontrol, name='personel_kontrol'),
     path('get_brans_by_unvan/', views.get_brans_by_unvan, name='get_brans_by_unvan'),
+    path('unvan_eslestirme_kaydet/', views.unvan_eslestirme_kaydet, name='unvan_eslestirme_kaydet'),
     path('personel/<int:pk>/mazeret-sil/', views.mazeret_sil, name='mazeret_sil'),
     # Geçici Görevler
     path('gecici-gorevler/', views.gecici_gorevler, name='gecici_gorevler'),

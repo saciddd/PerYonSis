@@ -1,5 +1,18 @@
 from django.contrib import admin
 from .models import UstBirim, Bina, Birim, PersonelBirim
+from .models.personel import KisaUnvan, UnvanBransEslestirme
+
+@admin.register(KisaUnvan)
+class KisaUnvanAdmin(admin.ModelAdmin):
+    list_display = ['ad', 'ust_birim']
+    search_fields = ['ad']
+    list_filter = ['ust_birim']
+
+@admin.register(UnvanBransEslestirme)
+class UnvanBransEslestirmeAdmin(admin.ModelAdmin):
+    list_display = ['kisa_unvan', 'unvan', 'brans']
+    search_fields = ['kisa_unvan__ad', 'unvan__ad', 'brans__ad']
+    list_filter = ['kisa_unvan']
 
 @admin.register(UstBirim)
 class UstBirimAdmin(admin.ModelAdmin):

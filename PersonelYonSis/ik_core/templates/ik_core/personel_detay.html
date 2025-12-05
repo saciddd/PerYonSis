@@ -839,6 +839,32 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="info-label">Son Mercis657 Listesi</div>
+                                            <span class="editable-display info-value">
+                                                {% if personel.son_mercis657_listesi %}
+                                                    <b>{{ personel.son_mercis657_listesi.yil }}/{{ personel.son_mercis657_listesi.ay }}</b> - {{ personel.son_mercis657_listesi.birim }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="info-label">Son Hizmet Sunum Bildirimi</div>
+                                            <span class="editable-display info-value">
+                                                {% if personel.son_hizmet_sunum_bildirimi %}
+                                                    <b>{{ personel.son_hizmet_sunum_bildirimi.yil }}/{{ personel.son_hizmet_sunum_bildirimi.ay }}</b> - {{ personel.son_hizmet_sunum_bildirimi.birim }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         

@@ -353,14 +353,27 @@ def kurum_tanimlari(request):
         form = KurumForm()
     return render(request, 'ik_core/kurum_tanimlari.html', {'kurumlar': kurumlar, 'form': form})
 
+from django.db.models import Count
+from .models.personel import KisaUnvan, UnvanBransEslestirme
+
 def unvan_branstanimlari(request):
-    unvanlar = Unvan.objects.all()
+    unvanlar = Unvan.objects.annotate(brans_sayisi=Count('brans')).prefetch_related('unvanbranseslestirme_set__kisa_unvan__ust_birim')
+    
+    # Unvanlar için genel eşleştirmeyi (branşsız) bulup objeye ekleyelim
+    for u in unvanlar:
+        # DB'den gelen seti Python tarafında filtreliyoruz
+        u.genel_eslestirme = next((e for e in u.unvanbranseslestirme_set.all() if e.brans is None), None)
+
     selected_unvan_id = request.GET.get('unvan_id')
     selected_unvan = None
     branslar = Brans.objects.none()
+    
     if selected_unvan_id:
         selected_unvan = get_object_or_404(Unvan, id=selected_unvan_id)
-        branslar = Brans.objects.filter(unvan=selected_unvan)
+        branslar = Brans.objects.filter(unvan=selected_unvan).select_related('unvan').prefetch_related('unvanbranseslestirme_set__kisa_unvan__ust_birim')
+        for b in branslar:
+            b.eslestirme = next((e for e in b.unvanbranseslestirme_set.all()), None)
+
     if request.method == 'POST':
         if 'unvan_ekle' in request.POST:
             unvan_form = UnvanForm(request.POST, prefix='unvan')
@@ -377,15 +390,72 @@ def unvan_branstanimlari(request):
     else:
         unvan_form = UnvanForm(prefix='unvan')
         brans_form = BransForm(prefix='brans')
+        
+    # Tüm KisaUnvan ve UstBirim listeleri (datalist ve dropdown için)
+    tum_kisa_unvanlar = KisaUnvan.objects.select_related('ust_birim').all()
+    tum_ust_birimler = UstBirim.objects.all().order_by('ad')
+
     return render(request, 'ik_core/unvan_branstanimlari.html', {
         'unvanlar': unvanlar,
         'selected_unvan': selected_unvan,
         'branslar': branslar,
         'unvan_form': unvan_form,
         'brans_form': brans_form,
+        'tum_kisa_unvanlar': tum_kisa_unvanlar,
+        'tum_ust_birimler': tum_ust_birimler,
     })
 
+@login_required
+@require_POST
+def unvan_eslestirme_kaydet(request):
+    """
+    AJAX: Unvan veya Branş için KisaUnvan ve UstBirim eşleştirmesini kaydeder.
+    """
+    try:
+        import json
+        data = json.loads(request.body)
+        
+        unvan_id = data.get('unvan_id')
+        brans_id = data.get('brans_id')
+        kisa_unvan_ad = data.get('kisa_unvan_ad', '').strip()
+        ust_birim_id = data.get('ust_birim_id')
+        
+        if not unvan_id or not kisa_unvan_ad:
+            return JsonResponse({'success': False, 'message': 'Eksik bilgi.'})
+
+        # 1. KisaUnvan Bul veya Oluştur
+        kisa_unvan, created = KisaUnvan.objects.get_or_create(ad=kisa_unvan_ad)
+        
+        # Eğer yeni oluşturulduysa veya ust_birim güncellenmek (istenirse burası opsiyonel yapılabilir)
+        # Kullanıcının seçimi varsa güncelleyelim.
+        if ust_birim_id:
+            ust_birim = get_object_or_404(UstBirim, pk=ust_birim_id)
+            if kisa_unvan.ust_birim != ust_birim:
+                kisa_unvan.ust_birim = ust_birim
+                kisa_unvan.save()
+        
+        # 2. Eşleştirmeyi Yap
+        unvan = get_object_or_404(Unvan, pk=unvan_id)
+        brans = get_object_or_404(Brans, pk=brans_id) if brans_id else None
+        
+        eslestirme, _ = UnvanBransEslestirme.objects.update_or_create(
+            unvan=unvan,
+            brans=brans,
+            defaults={'kisa_unvan': kisa_unvan}
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'kisa_unvan_ad': kisa_unvan.ad,
+            'ust_birim_id': kisa_unvan.ust_birim.id if kisa_unvan.ust_birim else None,
+            'ust_birim_ad': kisa_unvan.ust_birim.ad if kisa_unvan.ust_birim else ''
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
 def tanimlamalar(request):
+
     return render(request, 'ik_core/tanimlamalar.html')
 
 # =====================

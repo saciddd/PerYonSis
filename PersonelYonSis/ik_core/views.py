@@ -11,7 +11,7 @@ from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib import messages # Import messages framework
 from django.contrib.auth.decorators import login_required
-from .models.personel import Personel, KisaUnvan, Brans, Kurum, OzelDurum, UnvanBransEslestirme # Import OzelDurum
+from .models.personel import Personel, KisaUnvan, Brans, Kurum, OzelDurum, UnvanBransEslestirme, Unvan
 from .models.GeciciGorev import GeciciGorev
 from .models import UstBirim, Bina, Birim, PersonelBirim
 # Import value lists needed

@@ -40,6 +40,19 @@ class OzelDurum(models.Model):
 class KisaUnvan(models.Model):
     ad = models.CharField(max_length=100, unique=True, verbose_name="Kısa Ünvan / Grup")
     ust_birim = models.ForeignKey('ik_core.UstBirim', on_delete=models.SET_NULL, null=True, verbose_name="Bağlı Olduğu Üst Birim", blank=True)
+
+    @property
+    def isci_unvani(self):
+        # İlişkili tüm unvanları kontrol et
+        # Reverse relation default name: unvanbranseslestirme_set
+        for eslesme in self.unvanbranseslestirme_set.all():
+            unvan_ad = eslesme.unvan.ad
+            if unvan_ad:
+                # Türkçe karakter duyarlı küçük harfe çevirme
+                unvan_ad_lower = unvan_ad.replace('İ', 'i').replace('I', 'ı').lower()
+                if "işçi" in unvan_ad_lower:
+                    return True
+        return False
     
     def __str__(self):
         if self.ust_birim:
@@ -135,6 +148,14 @@ class Personel(models.Model):
         if self.dogum_tarihi:
             today = date.today()
             return today.year - self.dogum_tarihi.year - ((today.month, today.day) < (self.dogum_tarihi.month, self.dogum_tarihi.day))
+        return None
+
+    @property
+    def kisa_unvan(self):
+        # unvan_brans_eslestirme tablosunda personelin unvan ve brans değerleriyle eşleşen kisa_unvan değerini döndürür
+        eslesme = UnvanBransEslestirme.objects.filter(unvan=self.unvan, brans=self.brans).first()
+        if eslesme:
+            return eslesme.kisa_unvan.ad
         return None
 
     @property

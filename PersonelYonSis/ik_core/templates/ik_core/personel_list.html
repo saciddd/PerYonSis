@@ -2,7 +2,6 @@
 {% load static %}
 {% block title %}Personel Listesi{% endblock %}
 {% block extra_css %}
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
     .table-responsive {
         max-height: 600px;
@@ -52,13 +51,15 @@
                 <input type="text" class="form-control" id="telefon" name="telefon" value="{{ arama.telefon }}">
             </div>
             <div class="col-md-2">
-                <label for="unvan" class="form-label">Unvan</label>
-                <select id="unvan" name="unvan" class="form-select select2" multiple>
-                    {% for unvan in unvanlar %}
-                        <option value="{{ unvan.id }}" {% if arama.unvan and unvan.id|stringformat:"s" in arama.unvan %}selected{% endif %}>{{ unvan.ad }}</option>
-                    {% endfor %}
-                </select>
+                <label for="kisa_unvan" class="form-label">Kısa Unvan</label>
+                <button type="button" class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center" data-bs-toggle="modal" data-bs-target="#kisaUnvanModal" style="font-size: 0.85rem; padding: 4px 8px; border-color: #ced4da; height: 35px;">
+                    <span id="kisaUnvanSelectBtnLabel" class="text-truncate">Seçiniz...</span>
+                    <span id="kisaUnvanSelectBtnBadge" class="badge bg-primary rounded-pill d-none ms-1">0</span>
+                    <i class="bi bi-chevron-down ms-1 small text-muted"></i>
+                </button>
             </div>
+            {% include 'ik_core/partials/kisa_unvan_modal.html' %}
+            <!-- partial included above -->
             <div class="col-md-2">
                 <label for="durum" class="form-label">Durum</label>
                 <select id="durum" name="durum" class="form-select">
@@ -97,8 +98,7 @@
                                         <th>Ad</th>
                                         <th>Soyad</th>
                                         <th>Telefon</th>
-                                        <th>Unvan</th>
-                                        <th>Branş</th>
+                                        <th>Kısa Unvan</th>
                                         <th>Başlangıç Tarihi</th>
                                         <th>Durum</th>
                                         <th>İşlemler</th>
@@ -111,8 +111,7 @@
                                         <td>{{ personel.ad }}</td>
                                         <td>{{ personel.soyad }}</td>
                                         <td>{{ personel.telefon|default:"-" }}</td>
-                                        <td>{{ personel.unvan.ad|default:"-" }}</td>
-                                        <td>{{ personel.brans.ad|default:"-" }}</td>
+                                        <td>{{ personel.kisa_unvan|default:"-" }}</td>
                                         <td>{{ personel.goreve_baslama_tarihi|date:"d.m.Y" }}</td>
                                         <td>
                                             {% if personel.durum == "Aktif" %}
@@ -161,15 +160,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
-    $('.select2').select2({ 
-        width: '100%',
-        placeholder: 'Seçiniz...',
-        allowClear: true
-    });
-
     $('#personelAramaForm').on('submit', function() {
         // normal submit
     });

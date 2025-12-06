@@ -11,7 +11,7 @@ from django.urls import reverse, reverse_lazy
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib import messages # Import messages framework
 from django.contrib.auth.decorators import login_required
-from .models.personel import Personel, Unvan, Brans, Kurum, OzelDurum # Import OzelDurum
+from .models.personel import Personel, KisaUnvan, Brans, Kurum, OzelDurum, UnvanBransEslestirme # Import OzelDurum
 from .models.GeciciGorev import GeciciGorev
 from .models import UstBirim, Bina, Birim, PersonelBirim
 # Import value lists needed
@@ -51,7 +51,7 @@ def personel_list(request):
     ad_soyad_norm = lower_tr(ad_soyad) if ad_soyad else ''
     telefon = request.GET.get('telefon', '').strip()
     # Çoklu unvan desteği: aynı isimle birden fazla parametre gelebilir
-    unvan_list = request.GET.getlist('unvan')
+    kisa_unvan_list = request.GET.getlist('kisa_unvan')
     durum = request.GET.get('durum', '')
 
     if tc_kimlik_no:
@@ -59,14 +59,28 @@ def personel_list(request):
 
     if telefon:
         query &= Q(telefon__icontains=telefon)
-    if unvan_list:
-        query &= Q(unvan_id__in=unvan_list)
+    if kisa_unvan_list:
+        # DB'de filtreleme yapmak için: Seçilen Kısa Unvan'lara ait Unvan-Branş eşleşmelerini bul
+        eslesmeler = UnvanBransEslestirme.objects.filter(kisa_unvan_id__in=kisa_unvan_list).values_list('unvan_id', 'brans_id')
+        
+        kisa_unvan_query = Q()
+        for u_id, b_id in eslesmeler:
+            if b_id:
+                kisa_unvan_query |= Q(unvan_id=u_id, brans_id=b_id)
+            else:
+                kisa_unvan_query |= Q(unvan_id=u_id, brans__isnull=True)
+        
+        if kisa_unvan_query:
+            query &= kisa_unvan_query
+        else:
+            # Eşleşme yoksa boş döndür
+            query &= Q(pk__in=[])
 
-    if not any([tc_kimlik_no, ad_soyad, telefon, unvan_list, durum]):
-        personeller = Personel.objects.select_related('unvan', 'brans', 'kurum').order_by('-kayit_tarihi')[:10]
+    if not any([tc_kimlik_no, ad_soyad, telefon, kisa_unvan_list, durum]):
+        personeller = Personel.objects.select_related('unvan', 'kurum').order_by('-kayit_tarihi')[:10]
     else:
         # Önce diğer filtreleri uygula (performans için)
-        queryset = Personel.objects.filter(query).select_related('unvan', 'brans', 'kurum')
+        queryset = Personel.objects.filter(query).select_related('unvan', 'kurum')
         
         # Ad/soyad filtresini Python tarafında uygula (Türkçe karakter desteği için)
         if ad_soyad_norm:
@@ -135,17 +149,17 @@ def personel_list(request):
             # Eğer liste değilse listeye çevir
             personeller = list(queryset) if not isinstance(queryset, list) else queryset
 
-    unvanlar = Unvan.objects.all()
+    kisa_unvanlar = KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad')
 
     return render(request, 'ik_core/personel_list.html', {
         'personeller': personeller,
         'personel_sayisi': personeller.count() if isinstance(personeller, QuerySet) else len(personeller),
-        'unvanlar': unvanlar,
+        'kisa_unvanlar': kisa_unvanlar,
         'arama': {
             'tc_kimlik_no': tc_kimlik_no,
             'ad_soyad': ad_soyad,
             'telefon': telefon,
-            'unvan': unvan_list,
+            'kisa_unvan': kisa_unvan_list,
             'durum': durum,
         }
     })

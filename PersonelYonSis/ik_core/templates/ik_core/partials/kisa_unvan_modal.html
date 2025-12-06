@@ -1,0 +1,160 @@
+<!-- Kısa Unvan Seçim Modalı -->
+<div class="modal fade" id="kisaUnvanModal" tabindex="-1" aria-labelledby="kisaUnvanModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable" style="max-width:98vw;">
+        <div class="modal-content">
+            <div class="modal-header bg-light py-2">
+                <h5 class="modal-title" id="kisaUnvanModalLabel">Kısa Unvan Seçimi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-2">
+                {% regroup kisa_unvanlar by ust_birim as birim_list %}
+                
+                {% for birim in birim_list %}
+                    <div class="mb-2 group-container">
+                        <h6 class="border-bottom pb-1 mb-1 text-primary fw-bold d-flex align-items-center bg-light ps-2 justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <div class="form-check m-0">
+                                    <input class="form-check-input group-checkbox" type="checkbox" id="group_chk_{{ forloop.counter }}">
+                                    <label class="form-check-label" style="font-size: 13pt;" for="group_chk_{{ forloop.counter }}">
+                                        {% if birim.grouper %}{{ birim.grouper.ad }}{% else %}Diğer{% endif %}
+                                    </label>
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGroup{{ forloop.counter }}" aria-expanded="true" aria-controls="collapseGroup{{ forloop.counter }}">
+                                <i class="bi bi-chevron-down fs-5"></i>
+                            </button>
+                        </h6>
+                        <div class="collapse show" id="collapseGroup{{ forloop.counter }}">
+                            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-1">
+                                {% for kisa_unvan in birim.list %}
+                                    <div class="col">
+                                        <div class="form-check">
+                                            {# Checkbox form="personelAramaForm" niteliği ile ana formun bir parçası gibi davranır #}
+                                            <input class="form-check-input kisa-unvan-checkbox {% if kisa_unvan.isci_unvani %}isci-unvan{% endif %}" 
+                                                type="checkbox" 
+                                                name="kisa_unvan" 
+                                                value="{{ kisa_unvan.id }}" 
+                                                id="chk_kb_{{ kisa_unvan.id }}"
+                                                form="personelAramaForm"
+                                                {% if arama.kisa_unvan and kisa_unvan.id|stringformat:"s" in arama.kisa_unvan %}checked{% endif %}>
+                                            <label class="form-check-label text-truncate w-100" style="font-size: 12pt; {% if kisa_unvan.isci_unvani %}color: red;{% endif %}" for="chk_kb_{{ kisa_unvan.id }}" title="{{ kisa_unvan.ad }}">
+                                                {{ kisa_unvan.ad }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="modal-footer bg-light">
+                <div class="d-flex justify-content-between w-100 align-items-center">
+                    <div>
+                        <span id="selectedCountBadge" class="badge bg-primary rounded-pill">0</span> seçim yapıldı
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-danger" id="btnIscileriSec">
+                            <i class="bi bi-person-badge"></i> İşçileri Seç
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btnTemizle">
+                            <i class="bi bi-trash"></i> Seçimi Temizle
+                        </button>
+                        <button type="button" class="btn btn-success px-4" data-bs-dismiss="modal">
+                            <i class="bi bi-check-lg"></i> Tamam
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.kisa-unvan-checkbox');
+    const groupCheckboxes = document.querySelectorAll('.group-checkbox');
+    const badge = document.getElementById('selectedCountBadge');
+    const btnTemizle = document.getElementById('btnTemizle');
+    const btnIscileriSec = document.getElementById('btnIscileriSec');
+    const btnSelectLabel = document.getElementById('kisaUnvanSelectBtnLabel');
+    const btnSelectBadge = document.getElementById('kisaUnvanSelectBtnBadge');
+
+    function updateCount() {
+        const checkedCount = document.querySelectorAll('.kisa-unvan-checkbox:checked').length;
+        badge.textContent = checkedCount;
+        
+        if (btnSelectLabel) {
+            if (checkedCount > 0) {
+                btnSelectLabel.textContent = 'Kısa Unvan Seçildi';
+                if (btnSelectBadge) {
+                    btnSelectBadge.textContent = checkedCount;
+                    btnSelectBadge.classList.remove('d-none');
+                }
+            } else {
+                btnSelectLabel.textContent = 'Seçiniz...';
+                if (btnSelectBadge) {
+                    btnSelectBadge.classList.add('d-none');
+                }
+            }
+        }
+    }
+    
+    // Grup checkbox mantığı
+    groupCheckboxes.forEach(gcb => {
+        gcb.addEventListener('change', function() {
+            const container = this.closest('.group-container');
+            const childCheckboxes = container.querySelectorAll('.kisa-unvan-checkbox');
+            childCheckboxes.forEach(cb => {
+                cb.checked = this.checked;
+            });
+            updateCount();
+        });
+    });
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateCount);
+    });
+
+    if (btnTemizle) {
+        btnTemizle.addEventListener('click', function() {
+            checkboxes.forEach(cb => cb.checked = false);
+            groupCheckboxes.forEach(gcb => gcb.checked = false);
+            updateCount();
+        });
+    }
+
+    if (btnIscileriSec) {
+        btnIscileriSec.addEventListener('click', function() {
+            const isciCheckboxes = document.querySelectorAll('.isci-unvan');
+            isciCheckboxes.forEach(cb => {
+                cb.checked = true;
+                // Eğer grup içindeki tüm elemanlar seçildiyse grup checkboxını da seçili yap
+                const container = cb.closest('.group-container');
+                if(container){
+                    const groupCb = container.querySelector('.group-checkbox');
+                    const siblings = container.querySelectorAll('.kisa-unvan-checkbox');
+                    const allChecked = Array.from(siblings).every(sibling => sibling.checked);
+                    if (groupCb && allChecked) groupCb.checked = true;
+                }
+            });
+            updateCount();
+        });
+    }
+
+    // İlk yüklemede sayıyı güncelle ve grup checkboxlarını kontrol et
+    // Eğer gruptaki hepsi seçiliyse grup checkbox'ı da seçili olsun (opsiyonel ama şık olur)
+    groupCheckboxes.forEach(gcb => {
+        const container = gcb.closest('.group-container');
+        const childCheckboxes = container.querySelectorAll('.kisa-unvan-checkbox');
+        const allChecked = Array.from(childCheckboxes).every(cb => cb.checked);
+        const anyChecked = Array.from(childCheckboxes).some(cb => cb.checked);
+        
+        if (childCheckboxes.length > 0 && allChecked) {
+             gcb.checked = true;
+        }
+    });
+
+    updateCount();
+});
+</script>

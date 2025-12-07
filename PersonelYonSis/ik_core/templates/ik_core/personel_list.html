@@ -81,8 +81,8 @@
             <div class="card">
                 <div class="card-header d-flex align-items-center" style="gap: 1rem;">
                     <h3 class="card-title mb-0 flex-grow-1">Personel Listesi</h3>
-                    <button type="button" id="exportExcelBtn" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#exportModal">
+                        <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar (XLSX)
                     </button>
                     <a href="{% url 'ik_core:personel_ekle' %}" class="btn btn-success btn-sm d-flex align-items-center">
                         <i class="bi bi-plus-lg me-1"></i> Personel Ekle
@@ -156,6 +156,50 @@
             </div>
         </div>
     </div>
+    <!-- Excel Export Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{% url 'ik_core:personel_export_xlsx' %}" method="post" id="exportForm">
+                    {% csrf_token %}
+                    <div class="modal-header">
+                        <h5 class="modal-title">Excel'e Aktar</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Dışa aktarmak istediğiniz alanları seçiniz:</p>
+                        <div class="row">
+                            {% for key, label in export_fields %}
+                            <div class="col-6 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="fields" value="{{ key }}" id="field_{{ key }}"
+                                        {% if key in 'tc_kimlik_no,ad,soyad,unvan,durum' %}checked{% endif %}>
+                                    <label class="form-check-label" for="field_{{ key }}">
+                                        {{ label }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <!-- Current Filters (Hidden) -->
+                        <input type="hidden" name="tc_kimlik_no" value="{{ arama.tc_kimlik_no }}">
+                        <input type="hidden" name="ad_soyad" value="{{ arama.ad_soyad }}">
+                        <input type="hidden" name="telefon" value="{{ arama.telefon }}">
+                        <input type="hidden" name="durum" value="{{ arama.durum }}">
+                        {% for ku in arama.kisa_unvan %}
+                        <input type="hidden" name="kisa_unvan" value="{{ ku }}">
+                        {% endfor %}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-download"></i> İndir
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -166,30 +210,7 @@ $(document).ready(function() {
         // normal submit
     });
 
-    // Excel'e Aktar (CSV)
-    $('#exportExcelBtn').on('click', function () {
-        const table = document.getElementById('personellerTable');
-        if (!table) return;
-        let csv = [];
-        for (let r = 0; r < table.rows.length; r++) {
-            const row = [];
-            for (let c = 0; c < table.rows[r].cells.length; c++) {
-                // "İşlemler" sütununu dışarıda bırak (son sütun)
-                if (c === table.rows[r].cells.length - 1) continue;
-                let text = table.rows[r].cells[c].innerText.replace(/\n/g, ' ').trim();
-                text = '"' + text.replace(/"/g, '""') + '"';
-                row.push(text);
-            }
-            csv.push(row.join(','));
-        }
-        const blob = new Blob(["\uFEFF" + csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'personeller.csv';
-        a.click();
-        URL.revokeObjectURL(url);
-    });
+    // Excel Export Logic moved to Modal Form submission
 });
 </script>
 {% endblock %}

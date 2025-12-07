@@ -45,14 +45,57 @@ def lower_tr(text: str) -> str:
 
 @login_required
 def personel_list(request):
+    personeller = _get_filtered_personel_list(request.GET)
+    kisa_unvanlar = KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad')
+
+    # Export için alan seçenekleri
+    export_fields = [
+        ('tc_kimlik_no', 'T.C. Kimlik No'),
+        ('ad', 'Ad'),
+        ('soyad', 'Soyad'),
+        ('yas', 'Yaş'),
+        ('dogum_tarihi', 'Doğum Tarihi'),
+        ('cinsiyet', 'Cinsiyet'),
+        ('telefon', 'Telefon'),
+        ('kisa_unvan', 'Kısa Unvan'),
+        ('baslangic_tarihi', 'Başlangıç Tarihi'),
+        ('durum', 'Durum'),
+        ('unvan', 'Unvan'),
+        ('brans', 'Branş'),
+        ('sicil_no', 'Sicil No'),
+        ('kurum', 'Kurum'),
+        ('kadro_yeri', 'Kadro Yeri'),
+        ('fiili_gorev_yeri', 'Fiili Görev Yeri'),
+        ('tahsil_durumu', 'Öğrenim Durumu'),
+        ('memuriyet_durumu', 'Memuriyet Durumu'),
+        ('ozel_durumu', 'Özel Durumu'),
+        ('son_mercis657_listesi', 'Son Mercis657 Listesi'),
+        ('son_hizmet_sunum_bildirimi', 'Son Hizmet Sunum Bildirimi'),
+    ]
+
+    return render(request, 'ik_core/personel_list.html', {
+        'personeller': personeller,
+        'personel_sayisi': len(personeller),
+        'kisa_unvanlar': kisa_unvanlar,
+        'export_fields': export_fields,
+        'arama': {
+            'tc_kimlik_no': request.GET.get('tc_kimlik_no', ''),
+            'ad_soyad': request.GET.get('ad_soyad', ''),
+            'telefon': request.GET.get('telefon', ''),
+            'kisa_unvan': request.GET.getlist('kisa_unvan'),
+            'durum': request.GET.get('durum', ''),
+        }
+    })
+
+
+def _get_filtered_personel_list(data, limit_limitless=True):
     query = Q()
-    tc_kimlik_no = request.GET.get('tc_kimlik_no', '').strip()
-    ad_soyad = request.GET.get('ad_soyad', '').strip()
+    tc_kimlik_no = data.get('tc_kimlik_no', '').strip()
+    ad_soyad = data.get('ad_soyad', '').strip()
     ad_soyad_norm = lower_tr(ad_soyad) if ad_soyad else ''
-    telefon = request.GET.get('telefon', '').strip()
-    # Çoklu unvan desteği: aynı isimle birden fazla parametre gelebilir
-    kisa_unvan_list = request.GET.getlist('kisa_unvan')
-    durum = request.GET.get('durum', '')
+    telefon = data.get('telefon', '').strip()
+    kisa_unvan_list = data.getlist('kisa_unvan')
+    durum = data.get('durum', '')
 
     if tc_kimlik_no:
         query &= Q(tc_kimlik_no__icontains=tc_kimlik_no)
@@ -76,93 +119,153 @@ def personel_list(request):
             # Eşleşme yoksa boş döndür
             query &= Q(pk__in=[])
 
-    if not any([tc_kimlik_no, ad_soyad, telefon, kisa_unvan_list, durum]):
-        personeller = Personel.objects.select_related('unvan', 'kurum').order_by('-kayit_tarihi')[:10]
-    else:
-        # Önce diğer filtreleri uygula (performans için)
-        queryset = Personel.objects.filter(query).select_related('unvan', 'kurum')
-        
-        # Ad/soyad filtresini Python tarafında uygula (Türkçe karakter desteği için)
-        if ad_soyad_norm:
-            # Arama terimini kelimelere böl
-            arama_kelimeleri = [kelime.strip() for kelime in ad_soyad_norm.split() if kelime.strip()]
-            
-            filtered_personeller = []
-            for p in queryset:
-                ad_normalized = lower_tr(p.ad or '')
-                soyad_normalized = lower_tr(p.soyad or '')
-                tam_ad_soyad = f"{ad_normalized} {soyad_normalized}".strip()
-                
-                eslesme = False
-                
-                if len(arama_kelimeleri) == 1:
-                    # Tek kelime: ad veya soyad içinde ara
-                    kelime = arama_kelimeleri[0]
-                    if kelime in ad_normalized or kelime in soyad_normalized:
-                        eslesme = True
-                else:
-                    # Birden fazla kelime: esnek eşleşme
-                    ilk_kelime = arama_kelimeleri[0]
-                    son_kelime = arama_kelimeleri[-1]
-                    
-                    # 1. Tüm kelimeler birleşik olarak ad veya soyad veya tam ad soyad içinde
-                    if ad_soyad_norm in ad_normalized or ad_soyad_norm in soyad_normalized or ad_soyad_norm in tam_ad_soyad:
-                        eslesme = True
-                    # 2. İlk kelime ad başlangıcında VE son kelime soyad başlangıcında
-                    elif ad_normalized.startswith(ilk_kelime) and soyad_normalized.startswith(son_kelime):
-                        eslesme = True
-                    # 3. İlk kelime ad içinde VE son kelime soyad içinde
-                    elif ilk_kelime in ad_normalized and son_kelime in soyad_normalized:
-                        eslesme = True
-                    # 4. İki kelimeden fazlaysa, ilk kelime ad başlangıcında ve tüm kelimeler ad+soyad içinde sırasıyla eşleşiyorsa
-                    elif len(arama_kelimeleri) > 2:
-                        # İlk kelime ad başlangıcında olmalı
-                        if ad_normalized.startswith(ilk_kelime):
-                            # Ad kısmında ilk kelimeyi çıkar
-                            ad_kalan = ad_normalized[len(ilk_kelime):].strip()
-                            # Ortadaki kelimeler ad veya soyad içinde, son kelime soyad başlangıcında olmalı
-                            ortadaki_eslesiyor = True
-                            for i in range(1, len(arama_kelimeleri) - 1):
-                                if arama_kelimeleri[i] not in ad_kalan and arama_kelimeleri[i] not in soyad_normalized:
-                                    ortadaki_eslesiyor = False
-                                    break
-                            if ortadaki_eslesiyor and soyad_normalized.startswith(son_kelime):
-                                eslesme = True
-                
-                if eslesme:
-                    filtered_personeller.append(p)
-            
-            queryset = filtered_personeller
+    if limit_limitless and not any([tc_kimlik_no, ad_soyad, telefon, kisa_unvan_list, durum]):
+        return list(Personel.objects.select_related('unvan', 'kurum').order_by('-kayit_tarihi')[:10])
 
-        # Durum filtresi (Python tarafında)
-        if durum:
-            # 'durum' model alanı değil (property), DB tarafında filtrelenemez.
-            # Kullanıcı 'Aktif' veya 'Pasif' seçmişse, property değerinin bu kelimeyle başlamasını kabul edelim.
-            if isinstance(queryset, list):
-                personeller = [p for p in queryset if (p.durum or "").startswith(durum)] if durum in ("Aktif", "Pasif") else [p for p in queryset if p.durum == durum]
+    # Önce diğer filtreleri uygula (performans için)
+    queryset = Personel.objects.filter(query).select_related('unvan', 'kurum', 'brans', 'kadro_yeri', 'fiili_gorev_yeri')
+    
+    personeller = list(queryset) # QuerySet'i listeye çevir (Python tarafı filtreleme için)
+
+    # Ad/soyad filtresini Python tarafında uygula (Türkçe karakter desteği için)
+    if ad_soyad_norm:
+        arama_kelimeleri = [kelime.strip() for kelime in ad_soyad_norm.split() if kelime.strip()]
+        filtered_results = []
+        for p in personeller:
+            ad_normalized = lower_tr(p.ad or '')
+            soyad_normalized = lower_tr(p.soyad or '')
+            tam_ad_soyad = f"{ad_normalized} {soyad_normalized}".strip()
+            eslesme = False
+            
+            if len(arama_kelimeleri) == 1:
+                kelime = arama_kelimeleri[0]
+                if kelime in ad_normalized or kelime in soyad_normalized:
+                    eslesme = True
             else:
-                if durum in ("Aktif", "Pasif"):
-                    personeller = [p for p in queryset if (p.durum or "").startswith(durum)]
-                else:
-                    personeller = [p for p in queryset if p.durum == durum]
+                ilk_kelime = arama_kelimeleri[0]
+                son_kelime = arama_kelimeleri[-1]
+                if ad_soyad_norm in ad_normalized or ad_soyad_norm in soyad_normalized or ad_soyad_norm in tam_ad_soyad:
+                    eslesme = True
+                elif ad_normalized.startswith(ilk_kelime) and soyad_normalized.startswith(son_kelime):
+                    eslesme = True
+                elif ilk_kelime in ad_normalized and son_kelime in soyad_normalized:
+                    eslesme = True
+                elif len(arama_kelimeleri) > 2:
+                    if ad_normalized.startswith(ilk_kelime):
+                        ad_kalan = ad_normalized[len(ilk_kelime):].strip()
+                        ortadaki_eslesiyor = True
+                        for i in range(1, len(arama_kelimeleri) - 1):
+                            if arama_kelimeleri[i] not in ad_kalan and arama_kelimeleri[i] not in soyad_normalized:
+                                ortadaki_eslesiyor = False
+                                break
+                        if ortadaki_eslesiyor and soyad_normalized.startswith(son_kelime):
+                            eslesme = True
+            
+            if eslesme:
+                filtered_results.append(p)
+        personeller = filtered_results
+
+    # Durum filtresi (Python tarafında)
+    if durum:
+        if durum in ("Aktif", "Pasif"):
+            personeller = [p for p in personeller if (p.durum or "").startswith(durum)]
         else:
-            # Eğer liste değilse listeye çevir
-            personeller = list(queryset) if not isinstance(queryset, list) else queryset
+            personeller = [p for p in personeller if p.durum == durum]
+            
+    return personeller
 
-    kisa_unvanlar = KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad')
 
-    return render(request, 'ik_core/personel_list.html', {
-        'personeller': personeller,
-        'personel_sayisi': personeller.count() if isinstance(personeller, QuerySet) else len(personeller),
-        'kisa_unvanlar': kisa_unvanlar,
-        'arama': {
-            'tc_kimlik_no': tc_kimlik_no,
-            'ad_soyad': ad_soyad,
-            'telefon': telefon,
-            'kisa_unvan': kisa_unvan_list,
-            'durum': durum,
-        }
-    })
+@login_required
+def personel_export_xlsx(request):
+    import openpyxl
+    from openpyxl.utils import get_column_letter
+
+    # Seçili alanları al (checkbox name="fields")
+    selected_fields = request.POST.getlist('fields')
+    if not selected_fields:
+        # Default fields if none selected
+        selected_fields = ['tc_kimlik_no', 'ad', 'soyad', 'unvan', 'durum']
+
+    # Filtrelenmiş listeyi al (limit_limitless=False -> tüm kayıtlar)
+    personeller = _get_filtered_personel_list(request.POST, limit_limitless=False)
+
+    # Alan Tanımları
+    FIELD_MAP = {
+        'tc_kimlik_no': 'T.C. Kimlik No',
+        'ad': 'Ad',
+        'soyad': 'Soyad',
+        'telefon': 'Telefon',
+        'kisa_unvan': 'Kısa Unvan',
+        'baslangic_tarihi': 'Başlangıç Tarihi',
+        'durum': 'Durum',
+        # Ekstra alanlar
+        'unvan': 'Unvan',
+        'brans': 'Branş',
+        'sicil_no': 'Sicil No',
+        'kurum': 'Kurum',
+        'kadro_yeri': 'Kadro Yeri',
+        'fiili_gorev_yeri': 'Fiili Görev Yeri',
+        'yas': 'Yaş',
+        'dogum_tarihi': 'Doğum Tarihi',
+        'cinsiyet': 'Cinsiyet',
+        'tahsil_durumu': 'Öğrenim Durumu',
+        'memuriyet_durumu': 'Memuriyet Durumu',
+        'ozel_durumu': 'Özel Durumu',
+        'son_mercis657_listesi': 'Son Mercis657 Listesi',
+        'son_hizmet_sunum_bildirimi': 'Son Hizmet Sunum Bildirimi',
+    }
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Personel Listesi"
+
+    # Başlıklar
+    headers = [FIELD_MAP.get(f, f) for f in selected_fields]
+    ws.append(headers)
+
+    # Veriler
+    for p in personeller:
+        row = []
+        for field in selected_fields:
+            val = ""
+            if field == 'tc_kimlik_no': val = p.tc_kimlik_no
+            elif field == 'ad': val = p.ad
+            elif field == 'soyad': val = p.soyad
+            elif field == 'telefon': val = p.telefon
+            elif field == 'kisa_unvan': val = p.kisa_unvan
+            elif field == 'baslangic_tarihi': val = p.goreve_baslama_tarihi
+            elif field == 'durum': val = p.durum
+            elif field == 'unvan': val = p.unvan.ad if p.unvan else ""
+            elif field == 'brans': val = p.brans.ad if p.brans else ""
+            elif field == 'sicil_no': val = p.sicil_no
+            elif field == 'kurum': val = p.kurum.ad if p.kurum else ""
+            elif field == 'kadro_yeri': val = p.kadro_yeri.ad if p.kadro_yeri else ""
+            elif field == 'fiili_gorev_yeri': val = p.fiili_gorev_yeri.ad if p.fiili_gorev_yeri else ""
+            elif field == 'dogum_tarihi': val = p.dogum_tarihi
+            elif field == 'yas': val = p.yas
+            elif field == 'cinsiyet': val = p.cinsiyet
+            elif field == 'tahsil_durumu': val = p.tahsil_durumu
+            elif field == 'memuriyet_durumu': val = p.memuriyet_durumu
+            elif field == 'ozel_durumu':
+                val = ", ".join([od.ad for od in p.ozel_durumu.all()]) if p.pk else ""
+            elif field == 'son_mercis657_listesi': 
+                m = p.son_mercis657_listesi
+                val = f"{m['yil']}/{m['ay']} {m['birim']}" if m else "-"
+            elif field == 'son_hizmet_sunum_bildirimi': 
+                h = p.son_hizmet_sunum_bildirimi
+                val = f"{h['yil']}/{h['ay']} {h['birim']}" if h else "-"
+            row.append(val)
+        ws.append(row)
+    
+    # Sütun Genişlikleri Ayarla
+    for i, column_cells in enumerate(ws.columns, 1):
+        length = max(len(str(cell.value) or "") for cell in column_cells)
+        ws.column_dimensions[get_column_letter(i)].width = length + 2
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=Personel_Listesi.xlsx'
+    wb.save(response)
+    return response
 
 @login_required
 def personel_kontrol(request):

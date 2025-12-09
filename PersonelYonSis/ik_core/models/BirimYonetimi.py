@@ -31,6 +31,7 @@ class Birim(models.Model):
     bina = models.ForeignKey(Bina, on_delete=models.CASCADE, verbose_name="Bina")
     ust_birim = models.ForeignKey(UstBirim, on_delete=models.CASCADE, verbose_name="Üst Birim")
     ad = models.CharField(max_length=50, verbose_name="Birim Adı")
+    birim_tipi = models.CharField(max_length=50, verbose_name="Birim Tipi")
     
     class Meta:
         verbose_name = "Birim"

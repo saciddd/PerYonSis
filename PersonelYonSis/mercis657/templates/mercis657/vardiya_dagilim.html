@@ -2,6 +2,9 @@
 {% load static %}
 
 {% block content %}
+<style>
+/* Previous print styles removed as we switched to server-side PDF generation */
+</style>
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col-12">
@@ -81,6 +84,9 @@
     <!-- Butonlar sağa yapışık ve birleşik -->
     <div class="d-flex justify-content-end gap-2 mb-2">
         <div class="btn-group">
+            <button id="btnYazdir" class="btn btn-secondary" disabled>
+                <i class="bi bi-printer"></i> Yazdır
+            </button>
             <button id="btnTopluIslem" class="btn btn-primary" disabled>
                 <i class="bi bi-card-checklist"></i> Toplu İşlem
             </button>
@@ -129,6 +135,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnSorgula = document.getElementById('btnSorgula');
     const btnKaydet = document.getElementById('btnKaydet');
     const btnTopluIslem = document.getElementById('btnTopluIslem');
+    const btnYazdir = document.getElementById('btnYazdir');
     const sonucAlani = document.getElementById('sonucAlani');
     
     // CSRF Token
@@ -161,6 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
         sonucAlani.innerHTML = '<div class="col-12 text-center"><div class="spinner-border text-primary" role="status"></div></div>';
         btnKaydet.disabled = true;
         btnTopluIslem.disabled = true;
+        btnYazdir.disabled = true;
 
         fetch('{% url "mercis657:vardiya_dagilim_search" %}', {
             method: 'POST',
@@ -191,7 +199,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        let html = '<div class="col-12"><div class="table-responsive"><table class="table table-bordered table-hover">';
+        let html = '<div class="col-12"><div class="table-responsive"><table class="table table-bordered table-hover table-sm">';
         html += '<thead class="table-light"><tr><th>Bina / Birim</th><th>Personel</th><th>Unvan</th><th>Mesai</th><th class="text-center" style="width: 200px;">Görev Yerinde mi?</th></tr></thead><tbody>';
 
         results.forEach(binaGroup => {
@@ -228,7 +236,21 @@ document.addEventListener('DOMContentLoaded', function() {
         sonucAlani.innerHTML = html;
         btnKaydet.disabled = false;
         btnTopluIslem.disabled = false;
+        btnYazdir.disabled = false;
     }
+
+    btnYazdir.addEventListener('click', function() {
+        const params = new URLSearchParams({
+            kurum_id: document.getElementById('kurum').value,
+            ust_birim_id: document.getElementById('ust_birim').value,
+            idareci_id: document.getElementById('idareci').value,
+            bina_id: document.getElementById('bina').value,
+            tarih: document.getElementById('tarih').value,
+            vardiya: document.querySelector('input[name="vardiya"]:checked').value
+        });
+        const url = '{% url "mercis657:vardiya_dagilim_pdf" %}?' + params.toString();
+        window.open(url, '_blank');
+    });
 
     btnTopluIslem.addEventListener('click', function() {
         const modal = new bootstrap.Modal(document.getElementById('kontrolModal'));

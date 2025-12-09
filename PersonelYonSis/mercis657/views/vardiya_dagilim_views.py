@@ -1,11 +1,13 @@
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.template.loader import render_to_string
 from ..models import Kurum, UstBirim, Idareci, Bina, Mesai, MesaiKontrol, PersonelListesiKayit
 import json
 from datetime import datetime
+import pdfkit
 
 @login_required
 def vardiya_dagilim(request):
@@ -178,3 +180,133 @@ def vardiya_dagilim_kaydet(request):
         
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+@login_required
+def vardiya_dagilim_pdf(request):
+    """
+    Seçili filtrelerle PDF rapor oluşturur.
+    GET params: kurum_id, ust_birim_id, idareci_id, bina_id, tarih, vardiya
+    """
+    try:
+        kurum_id = request.GET.get('kurum_id')
+        ust_birim_id = request.GET.get('ust_birim_id')
+        idareci_id = request.GET.get('idareci_id')
+        bina_id = request.GET.get('bina_id')
+        tarih = request.GET.get('tarih')
+        vardiya_tipi = request.GET.get('vardiya')
+        
+        if not tarih:
+            tarih = datetime.now().strftime('%Y-%m-%d')
+
+        # --- Filtreleme Mantığı (Search ile aynı) ---
+        mesai_qs = Mesai.objects.filter(
+            MesaiDate=tarih,
+            MesaiTanim__isnull=False,
+            Izin__isnull=True
+        ).select_related(
+            'Personel', 
+            'MesaiTanim'
+        ).prefetch_related('mesai_kontrolleri')
+
+        if vardiya_tipi == 'gunduz':
+            mesai_qs = mesai_qs.filter(MesaiTanim__GunduzMesaisi=True)
+        elif vardiya_tipi == 'aksam':
+            mesai_qs = mesai_qs.filter(MesaiTanim__AksamMesaisi=True)
+        elif vardiya_tipi == 'gece':
+            mesai_qs = mesai_qs.filter(MesaiTanim__GeceMesaisi=True)
+
+        kayit_qs = PersonelListesiKayit.objects.filter(
+            liste__yil=int(tarih.split('-')[0]),
+            liste__ay=int(tarih.split('-')[1])
+        ).select_related('liste__birim', 'liste__birim__Bina', 'personel')
+
+        if kurum_id:
+            kayit_qs = kayit_qs.filter(liste__birim__Kurum_id=kurum_id)
+        if ust_birim_id:
+            kayit_qs = kayit_qs.filter(liste__birim__UstBirim_id=ust_birim_id)
+        if idareci_id:
+            kayit_qs = kayit_qs.filter(liste__birim__Idareci_id=idareci_id)
+        if bina_id:
+            kayit_qs = kayit_qs.filter(liste__birim__Bina_id=bina_id)
+
+        personel_ids = kayit_qs.values_list('personel_id', flat=True)
+        mesai_qs = mesai_qs.filter(Personel_id__in=personel_ids)
+
+        grouped_data = {}
+        personel_birim_map = {}
+        for kayit in kayit_qs:
+            birim = kayit.liste.birim
+            bina_ad = birim.Bina.ad if birim.Bina else "Diğer"
+            personel_birim_map[kayit.personel_id] = {
+                'bina': bina_ad,
+                'birim': birim.BirimAdi,
+                'unvan': kayit.personel.PersonelTitle or ""
+            }
+
+        for mesai in mesai_qs:
+            p_info = personel_birim_map.get(mesai.Personel_id)
+            if not p_info:
+                continue 
+
+            bina = p_info['bina']
+            birim = p_info['birim']
+            
+            if bina not in grouped_data:
+                grouped_data[bina] = {}
+            if birim not in grouped_data[bina]:
+                grouped_data[bina][birim] = []
+
+            kontrol_kaydi = mesai.mesai_kontrolleri.first()
+            kontrol_durumu = kontrol_kaydi.kontrol if kontrol_kaydi else None
+
+            grouped_data[bina][birim].append({
+                'mesai_id': mesai.MesaiID,
+                'personel_ad': f"{mesai.Personel.PersonelName} {mesai.Personel.PersonelSurname}",
+                'unvan': p_info['unvan'],
+                'mesai_saat': mesai.MesaiTanim.Saat,
+                'kontrol': kontrol_durumu
+            })
+
+        sorted_binas = sorted(grouped_data.keys())
+        final_results = []
+        for bina in sorted_binas:
+            birimler = grouped_data[bina]
+            sorted_birims = sorted(birimler.keys())
+            birim_list = []
+            for birim_adi in sorted_birims:
+                birim_list.append({
+                    'ad': birim_adi,
+                    'personeller': birimler[birim_adi]
+                })
+            final_results.append({
+                'bina': bina,
+                'birimler': birim_list
+            })
+        
+        # --- PDF Oluşturma ---
+        context = {
+            'results': final_results,
+            'tarih': tarih,
+            'vardiya': vardiya_tipi
+        }
+        html_string = render_to_string('mercis657/pdf/vardiya_dagilim_pdf.html', context)
+        
+        config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+        options = {
+            'page-size': 'A4',
+            'encoding': "UTF-8",
+            'footer-center': '[page] / [topage]',
+            'footer-font-size': '10',
+            'margin-bottom': '15mm',
+            'margin-top': '15mm',
+            'orientation': 'Portrait'
+        }
+
+        pdf = pdfkit.from_string(html_string, False, configuration=config, options=options)
+        
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'inline; filename="vardiya_dagilim_{tarih}.pdf"'
+        return response
+
+    except Exception as e:
+        return HttpResponse(f"Hata oluştu: {str(e)}")

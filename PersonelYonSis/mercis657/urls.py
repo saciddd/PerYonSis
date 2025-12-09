@@ -151,4 +151,5 @@ urlpatterns = [
     path('vardiya-dagilim/', views.vardiya_dagilim, name='vardiya_dagilim'),
     path('vardiya-dagilim/search/', views.vardiya_dagilim_search, name='vardiya_dagilim_search'),
     path('vardiya-dagilim/kaydet/', views.vardiya_dagilim_kaydet, name='vardiya_dagilim_kaydet'),
+    path('vardiya-dagilim/pdf/', views.vardiya_dagilim_pdf, name='vardiya_dagilim_pdf'),
 ]

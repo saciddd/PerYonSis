@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Vardiya Dağılımı ve Kontrol</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 1cm;
+        }
+        body {
+            font-family: "Times New Roman", sans-serif; /* pdfkit often needs a specific font for proper char rendering */
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h3 {
+            margin: 0;
+            padding: 0;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .header p {
+            margin: 5px 0 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        table, th, td {
+            border: 1px solid #777;
+        }
+        th, td {
+            padding: 4px;
+            text-align: left;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #f2f2f2;
+            text-align: center;
+            font-weight: bold;
+        }
+        .bina-row {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        .birim-row {
+            background-color: #d1ecf1;
+            font-style: italic;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            color: #555;
+            border-top: 1px solid #ccc;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h3>Vardiya Dağılımı ve Kontrol</h3>
+        <p><strong>Tarih:</strong> {{ tarih }} | <strong>Vardiya:</strong> {{ vardiya|title }}</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 5%;">Sıra</th>
+                <th>Bina / Birim</th>
+                <th>Personel</th>
+                <th>Unvan</th>
+                <th>Mesai</th>
+                <th style="width: 15%;">Görev Yerinde mi?</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for bina_group in results %}
+                <tr class="bina-row">
+                    <td colspan="6">{{ bina_group.bina }}</td>
+                </tr>
+                {% for birim_group in bina_group.birimler %}
+                    <tr class="birim-row">
+                        <td></td>
+                        <td colspan="5">{{ birim_group.ad }}</td>
+                    </tr>
+                    {% for p in birim_group.personeller %}
+                        <tr style="height: 30px;">
+                            <td style="text-align: center;">{{ forloop.counter }}</td>
+                            <td></td>
+                            <td>{{ p.personel_ad }}</td>
+                            <td>{{ p.unvan }}</td>
+                            <td style="text-align: center;">{{ p.mesai_saat }}</td>
+                            <td style="text-align: center;">
+                                {% if p.kontrol is True %}
+                                    Evet
+                                {% elif p.kontrol is False %}
+                                    Hayır
+                                {% else %}
+                                    ☐ Evet / ☐ Hayır
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+            {% if not results %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 20px;">Kayıt bulunamadı.</td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+    
+    <script>
+        // wkhtmltopdf injects vars via query string if enabled, but simpler is standard page numbering via CSS or footer arg.
+        // pdfkit uses options for header/footer, but inline HTML footer with "substitution" also works in some versions.
+        // Actually, simple JS substitution for page numbers works better with the 'footer-html' option, 
+        // but since we are generating a single body, we usually rely on the tool's built-in footer support or CSS counters.
+        // However, user specifically asked for "en alt orta kısma sayfa no da ekle (1/5 biçiminde)".
+        // Standard CSS page numbers in @page are limited in browser support but wkhtmltopdf supports built-in flags.
+        // We will pass header/footer options in Python instead for reliable page numbering.
+    </script>
+</body>
+</html>

@@ -283,8 +283,8 @@
                         <label for="mudurYrdDuzenle" class="form-label">Müdür Yardımcısı</label>
                         <select class="form-select" id="mudurYrdDuzenle" name="MudurYrd">
                             <option value="">Seçiniz...</option>
-                            {% for m in mudur_yrdler %}
-                                <option value="{{ m.id }}">{{ m.ad }}</option>
+                            {% for idareci in idareciler %}
+                                <option value="{{ idareci.id }}">{{ idareci.ad }}</option>
                             {% endfor %}
                         </select>
                     </div>

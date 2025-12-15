@@ -139,7 +139,7 @@ def raporlama(request):
         # İlk sayfa yüklemesi veya dönem seçilmemişse
         info_message = "Lütfen bir dönem ve isteğe bağlı kriterlerinizi seçerek raporlayın."
 
-    kesinlestirme_yetkisi = request.user.has_permission('HSA Bildirim Kesinleştirme')
+    kod_duzenleme_yetkisi = request.user.has_permission('ÇS 657 Birim Kodlarını Düzenleyebilir')
     context = {
         # 'form': form, # Form kaldırıldı
         'bildirimler_by_birim': bildirimler_by_birim,
@@ -156,7 +156,7 @@ def raporlama(request):
         'error_message': error_message,
         'info_message': info_message,
         'toplam_kayit': toplam_kayit,
-        'kesinlestirme_yetkisi': kesinlestirme_yetkisi,
+        'kod_duzenleme_yetkisi': kod_duzenleme_yetkisi,
     }
     return render(request, 'mercis657/raporlama.html', context)
 
@@ -302,7 +302,7 @@ def update_birim_kodlari_toplu(request):
             return JsonResponse({'status':'error','message':'Güncellenecek veri bulunamadı'}, status=400)
 
         # Permission check: kullanıcı birim bilgilerini düzenleyebilmeli
-        if not request.user.has_perm('mercis657.birim_bilgilerini_duzenleyebilir'):
+        if not request.user.has_permission('ÇS 657 Birim Kodlarını Düzenleyebilir'):
             return JsonResponse({'status':'error','message':'Yetkiniz yok'}, status=403)
 
         updated_count = 0

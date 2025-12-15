@@ -120,28 +120,28 @@
                         </td>
                         {# Editable kod alanları; kontrol: kullanıcı yetkisi varsa input, yoksa readonly text #}
                         <td class="kod-cell">
-                            {% if kesinlestirme_yetkisi %}
+                            {% if kod_duzenleme_yetkisi %}
                                 <input type="text" name="NormalNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.NormalNobetKodu|default_if_none:'' }}" />
                             {% else %}
                                 <span class="kod-readonly {% if not birim_data.birim.NormalNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.NormalNobetKodu|default:'-' }}</span>
                             {% endif %}
                         </td>
                         <td class="kod-cell">
-                            {% if kesinlestirme_yetkisi %}
+                            {% if kod_duzenleme_yetkisi %}
                                 <input type="text" name="BayramNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.BayramNobetKodu|default_if_none:'' }}" />
                             {% else %}
                                 <span class="kod-readonly {% if not birim_data.birim.BayramNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.BayramNobetKodu|default:'-' }}</span>
                             {% endif %}
                         </td>
                         <td class="kod-cell">
-                            {% if kesinlestirme_yetkisi %}
+                            {% if kod_duzenleme_yetkisi %}
                                 <input type="text" name="RiskliNormalNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.RiskliNormalNobetKodu|default_if_none:'' }}" />
                             {% else %}
                                 <span class="kod-readonly {% if not birim_data.birim.RiskliNormalNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.RiskliNormalNobetKodu|default:'-' }}</span>
                             {% endif %}
                         </td>
                         <td class="kod-cell">
-                            {% if kesinlestirme_yetkisi %}
+                            {% if kod_duzenleme_yetkisi %}
                                 <input type="text" name="RiskliBayramNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.RiskliBayramNobetKodu|default_if_none:'' }}" />
                             {% else %}
                                 <span class="kod-readonly {% if not birim_data.birim.RiskliBayramNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.RiskliBayramNobetKodu|default:'-' }}</span>

@@ -61,8 +61,6 @@ def izin_guncelle(request, pk):
         # çakışma kontrolleri (kendisi hariç)
         if Izin.objects.filter(ad__iexact=ad).exclude(pk=izin.pk).exists():
             return JsonResponse({'status': 'error', 'message': 'Bu ad başka bir kayıtta kullanılıyor.'})
-        if kod is not None and Izin.objects.filter(kod=kod).exclude(pk=izin.pk).exists():
-            return JsonResponse({'status': 'error', 'message': 'Bu kod başka bir kayıtta kullanılıyor.'})
 
         izin.ad = ad
         izin.kod = kod

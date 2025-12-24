@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-3">
+  <style>
+    #printArea { font-family: "Times New Roman", Times, serif; font-size: 12pt; }
+    #printArea pre { font-family: inherit; font-size: inherit; }
+    #printArea .info-table td { padding: 2px 6px; vertical-align: top; }
+    #printArea .info-label { font-weight: 600; }
+  </style>
+  <div class="row">
+    <div class="col-md-4">
+      <div class="d-flex justify-content-end mb-2">
+        <button class="btn btn-success" onclick="printArea()">Kaydet ve Yazdır</button>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">İmza</label>
+        <div class="input-group">
+          <select id="ddlImza" class="form-select" onchange="updatePreview()">
+            <option value="">Seçiniz</option>
+            {% for i in imzalar %}
+              <option value="{{ i.id }}" data-metin="{{ i.metin|escapejs }}">{{ i.ad }}</option>
+            {% endfor %}
+          </select>
+          <a class="btn btn-outline-secondary" href="{% url 'ik_core:imza_tanimlari' %}"><i class="bi bi-gear"></i></a>
+        </div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Belge</label>
+        <div class="input-group">
+          <select id="ddlBelge" class="form-select" onchange="loadDurumBelgesi()">
+            <option value="">Seçiniz</option>
+            {% for t in durum_belgeleri %}
+              <option value="{{ t.id }}">{{ t.ad }}</option>
+            {% endfor %}
+          </select>
+          <a class="btn btn-outline-secondary" href="{% url 'ik_core:durum_belgesi_tanimlari' %}"><i class="bi bi-gear"></i></a>
+        </div>
+      </div>
+      <div class="mb-2">
+        <label class="form-label">Metin</label>
+        <textarea id="DurumBelgesiMetin" class="form-control" rows="8" oninput="debouncedMetinChanged()" placeholder="Metin yüklemek için soldan seçiniz..."></textarea>
+      </div>
+      <hr/>
+      <div class="small">
+        <div><strong>Personel Adı Soyadı:</strong> {{ personel.ad }} {{ personel.soyad }}</div>
+        <div><strong>Sicil No:</strong> {{ personel.sicil_no }}</div>
+        <div><strong>Unvan:</strong> {{ personel.unvan }}</div>
+        <div><strong>Branş:</strong> {{ personel.brans }}</div>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div class="border border-secondary shadow-sm p-3 mb-5 bg-white rounded">
+        <div id="printArea">
+          <table class="info-table">
+            <tr><td class="info-label">Ad Soyad</td><td>{{ personel.ad }} {{ personel.soyad }}</td></tr>
+            <tr><td class="info-label">T.C. Kimlik No</td><td>{{ personel.tc_kimlik_no }}</td></tr>
+            <tr><td class="info-label">Doğum Tarihi</td><td>{{ personel.dogum_tarihi|date:"d.m.Y" }}</td></tr>
+            <tr><td class="info-label">Kadro Yeri</td><td>{{ personel.kadro_yeri }}</td></tr>
+            <tr><td class="info-label">Fiili Görev Yeri</td><td>{{ personel.fiili_gorev_yeri }}</td></tr>
+            <tr><td class="info-label">Unvan</td><td>{{ personel.unvan }}</td></tr>
+            <tr><td class="info-label">Branş</td><td>{{ personel.brans }}</td></tr>
+            <tr><td class="info-label">Sicil No</td><td>{{ personel.sicil_no }}</td></tr>
+            <tr><td class="info-label">Emekli Sicil No</td><td>{{ personel.emekli_sicil_no }}</td></tr>
+            <tr><td class="info-label">Tahsil Durumu</td><td>{{ personel.get_tahsil_durumu_display }}</td></tr>
+            <tr><td class="info-label">Memuriyete Başlama Tarihi</td><td>{{ personel.memuriyete_baslama_tarihi|date:"d.m.Y" }}</td></tr>
+            <tr><td class="info-label">Kurum Başlama Tarihi</td><td>{{ personel.goreve_baslama_tarihi|date:"d.m.Y" }}</td></tr>
+          </table>
+
+          <div style="height:2em"></div>
+          <div id="metinGosterim" style="white-space:pre-line; min-height:4em;">durum_belgesi.metin</div>
+
+          <div style="height:3em"></div>
+          <div class="text-end">
+            <pre id="imzaMetin" style="white-space:pre-line">&nbsp;</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let metinUpdateTimer = null;
+
+function updatePreview(){
+  const selImza = document.getElementById('ddlImza');
+  const raw = selImza.selectedOptions[0]?.dataset?.metin || '';
+  const decoded = raw
+    .replace(/\\u000D/gi, '\\r')
+    .replace(/\\u000A/gi, '\\n')
+    .replace(/\\n/g, '\\n');
+  document.getElementById('imzaMetin').textContent = decoded;
+}
+
+async function loadDurumBelgesi(){
+  const id = document.getElementById('ddlBelge').value;
+  if(!id) return;
+  try {
+    const res = await fetch('{% url "ik_core:durum_belgesi_get" 0 %}'.replace('/0/','/'+id+'/'));
+    if(!res.ok) return;
+    const data = await res.json();
+    document.getElementById('DurumBelgesiMetin').value = data.metin || '';
+    updateMetinPreview();
+    updatePreview();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function updateMetinPreview(){
+  const val = document.getElementById('DurumBelgesiMetin')?.value || '';
+  const target = document.getElementById('metinGosterim');
+  if(target){ target.textContent = val || ' '; }
+}
+
+function debouncedMetinChanged(){
+  updateMetinPreview();
+  if(metinUpdateTimer){ clearTimeout(metinUpdateTimer); }
+  metinUpdateTimer = setTimeout(saveMetinIfSelected, 600);
+}
+
+async function saveMetinIfSelected(){
+  const id = document.getElementById('ddlBelge').value;
+  if(!id) return;
+
+  const formData = new FormData();
+  const ad = document.getElementById('ddlBelge').selectedOptions[0]?.textContent || '';
+  formData.append('ad', ad);
+  formData.append('metin', document.getElementById('DurumBelgesiMetin').value || '');
+
+  const url = '{% url "ik_core:durum_belgesi_guncelle" 0 %}'.replace('/0/','/'+id+'/');
+  await fetch(url, {method:'POST', headers:{'X-CSRFToken': '{{ csrf_token }}'}, body: formData});
+}
+
+function printArea(){
+  const contentEl = document.getElementById('printArea');
+  if(!contentEl) return;
+
+  const clone = contentEl.cloneNode(true);
+  const metinDiv = clone.querySelector('#metinGosterim');
+  if(metinDiv){
+    metinDiv.style.whiteSpace = 'pre-wrap';
+    metinDiv.textContent = document.getElementById('DurumBelgesiMetin')?.value || '';
+  }
+
+  const generatePDF = () => {
+    const opt = {
+      margin:       [20,10,10,10], // mm
+      filename:     'durum_belgesi.pdf',
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    window.html2pdf().set(opt).from(clone).outputPdf('blob').then(function(blob){
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    }).catch(function(e){ console.error(e); alert('PDF oluşturulurken hata: ' + e); });
+  };
+
+  if(window.html2pdf){
+    generatePDF();
+  } else {
+    const scriptUrl = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js';
+    const s = document.createElement('script');
+    s.src = scriptUrl;
+    s.onload = generatePDF;
+    s.onerror = function(){ alert('PDF kütüphanesi yüklenemedi.'); };
+    document.head.appendChild(s);
+  }
+}
+
+updatePreview();
+updateMetinPreview();
+</script>
+{% endblock %}
+

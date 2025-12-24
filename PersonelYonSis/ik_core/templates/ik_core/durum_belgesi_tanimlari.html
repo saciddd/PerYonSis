@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<div class="container mt-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5>Durum Belgesi Tanımları</h5>
+    <button class="btn btn-primary" onclick="openDurumBelgesiModal()">Durum Belgesi Ekle</button>
+  </div>
+  <table class="table table-sm table-striped">
+    <thead>
+      <tr>
+        <th>Ad</th>
+        <th>Metin</th>
+        <th style="width:90px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in durum_belgeleri %}
+      <tr data-id="{{ t.id }}">
+        <td>{{ t.ad }}</td>
+        <td><div style="white-space:pre-line; text-align:center; max-height:4.5em; overflow:auto;">{{ t.metin }}</div></td>
+        <td class="text-end">
+          <button class="btn btn-sm btn-outline-secondary" onclick="openDurumBelgesiModal({{ t.id }}, '{{ t.ad|escapejs }}', `{{ t.metin|escapejs }}`)"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteDurumBelgesi({{ t.id }})"><i class="bi bi-trash"></i></button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="text-center">Kayıt yok</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include 'ik_core/partials/_durum_belgesi_modal.html' %}
+{% endblock %}
+{% block extra_js %}
+<script>
+function openDurumBelgesiModal(id, ad, metin){
+  document.getElementById('durum_belgesi_id').value = id || '';
+  document.getElementById('durum_belgesi_ad').value = ad || '';
+  document.getElementById('durum_belgesi_metin').value = metin || '';
+
+  const modalEl = document.getElementById('durum_belgesiModal');
+  if(window.bootstrap && bootstrap.Modal){
+    if(!modalEl._bsModal) modalEl._bsModal = new bootstrap.Modal(modalEl);
+    modalEl._bsModal.show();
+  } else {
+    modalEl.classList.add('show');
+    modalEl.style.display = 'block';
+    modalEl.setAttribute('aria-modal','true');
+    modalEl.removeAttribute('aria-hidden');
+    if(!document.getElementById('durumBelgesiModalBackdrop')){
+      const bg = document.createElement('div');
+      bg.id = 'durumBelgesiModalBackdrop';
+      bg.className = 'modal-backdrop fade show';
+      document.body.appendChild(bg);
+    }
+  }
+}
+function closeDurumBelgesiModal(){
+  const modalEl = document.getElementById('durum_belgesiModal');
+  if(window.bootstrap && bootstrap.Modal){
+    try{ modalEl._bsModal.hide(); }catch(e){ /* ignore */ }
+  } else {
+    modalEl.classList.remove('show');
+    modalEl.style.display = 'none';
+    modalEl.removeAttribute('aria-modal');
+    modalEl.setAttribute('aria-hidden','true');
+    const bg = document.getElementById('durumBelgesiModalBackdrop');
+    if(bg) bg.remove();
+  }
+}
+async function saveDurumBelgesi(){
+  const form = document.getElementById('durum_belgesiForm');
+  const formData = new FormData(form);
+  const id = (document.getElementById('durum_belgesi_id').value || '').toString().trim();
+
+  const url = id
+    ? '{% url "ik_core:durum_belgesi_guncelle" 0 %}'.replace('/0/','/'+id+'/')
+    : '{% url "ik_core:durum_belgesi_ekle" %}';
+
+  try {
+    const res = await fetch(url, { method: 'POST', headers: {'X-CSRFToken': '{{ csrf_token }}'}, body: formData });
+    if(res.ok){
+      location.reload();
+    } else {
+      console.error('Kaydetme hatası detay:', await res.text());
+      alert('Kaydetme hatası');
+    }
+  } catch (e) {
+    console.error(e);
+    alert('Kaydetme hatası');
+  }
+}
+async function deleteDurumBelgesi(id){
+  if(!confirm('Silmek istiyor musunuz?')) return;
+  const res = await fetch('{% url "ik_core:durum_belgesi_sil" 0 %}'.replace('/0/','/'+id+'/'), {method:'POST', headers:{'X-CSRFToken': '{{ csrf_token }}'}});
+  if(res.ok){ location.reload(); }
+  else { alert('Silme hatası'); }
+}
+</script>
+{% endblock %}
+

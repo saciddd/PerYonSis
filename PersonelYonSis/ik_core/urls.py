@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, resmi_yazi_views
+from . import views, resmi_yazi_views, durum_belgesi_views
 from ik_core.api import views as api_views
 
 app_name = 'ik_core'
@@ -43,6 +43,13 @@ urlpatterns = [
     path('resmi-yazi-guncelle/<int:yazi_id>/', resmi_yazi_views.resmi_yazi_guncelle, name='resmi_yazi_guncelle'),
     path('resmi-yazi-sil/<int:yazi_id>/', resmi_yazi_views.resmi_yazi_sil, name='resmi_yazi_sil'),
     path('resmi-yazi-get/<int:pk>/', resmi_yazi_views.resmi_yazi_get, name='resmi_yazi_get'),
+    # Durum Belgesi
+    path('durum-belgesi/<int:personel_id>/', durum_belgesi_views.durum_belgesi_olustur, name='durum_belgesi'),
+    path('durum-belgesi-tanimlari/', durum_belgesi_views.durum_belgesi_tanimlari, name='durum_belgesi_tanimlari'),
+    path('durum-belgesi-ekle/', durum_belgesi_views.durum_belgesi_ekle, name='durum_belgesi_ekle'),
+    path('durum-belgesi-guncelle/<int:belge_id>/', durum_belgesi_views.durum_belgesi_guncelle, name='durum_belgesi_guncelle'),
+    path('durum-belgesi-sil/<int:belge_id>/', durum_belgesi_views.durum_belgesi_sil, name='durum_belgesi_sil'),
+    path('durum-belgesi-get/<int:pk>/', durum_belgesi_views.durum_belgesi_get, name='durum_belgesi_get'),
     # Birim yönetimi
     path('birim-yonetimi/', views.birim_yonetimi, name='birim_yonetimi'),
     path('bina-ekle/', views.bina_ekle, name='bina_ekle'),

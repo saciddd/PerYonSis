@@ -52,6 +52,9 @@
     <div class="col-md-8">
       <div class="border border-secondary shadow-sm p-3 mb-5 bg-white rounded">
         <div id="printArea">
+          <br>
+          <div style="height: 4em;"></div>
+          <br>
           <table class="info-table">
             <tr><td class="info-label">Ad Soyad</td><td>{{ personel.ad }} {{ personel.soyad }}</td></tr>
             <tr><td class="info-label">T.C. Kimlik No</td><td>{{ personel.tc_kimlik_no }}</td></tr>
@@ -71,8 +74,10 @@
           <div id="metinGosterim" style="white-space:pre-line; min-height:4em;">durum_belgesi.metin</div>
 
           <div style="height:3em"></div>
-          <div class="text-end">
-            <pre id="imzaMetin" style="white-space:pre-line">&nbsp;</pre>
+          <div class="row text-center mt-2">
+            <div class="col"></div>
+            <div class="col"></div>
+            <div class="col"><pre id="imzaMetin" style="white-space:pre-line">&nbsp;</pre></div>
           </div>
         </div>
       </div>
@@ -87,10 +92,11 @@ let metinUpdateTimer = null;
 function updatePreview(){
   const selImza = document.getElementById('ddlImza');
   const raw = selImza.selectedOptions[0]?.dataset?.metin || '';
+  // Decode escape sequences like \u000D\u000A and \n so line breaks render
   const decoded = raw
-    .replace(/\\u000D/gi, '\\r')
-    .replace(/\\u000A/gi, '\\n')
-    .replace(/\\n/g, '\\n');
+    .replace(/\\u000D/gi, '\r')
+    .replace(/\\u000A/gi, '\n')
+    .replace(/\\n/g, '\n');
   document.getElementById('imzaMetin').textContent = decoded;
 }
 
@@ -147,9 +153,9 @@ function printArea(){
 
   const generatePDF = () => {
     const opt = {
-      margin:       [20,10,10,10], // mm
+      margin:       [50,10,10,10], // mm
       filename:     'durum_belgesi.pdf',
-      image:        { type: 'jpeg', quality: 0.98 },
+      image:        { type: 'jpeg', quality: 1 },
       html2canvas:  { scale: 2, useCORS: true },
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };

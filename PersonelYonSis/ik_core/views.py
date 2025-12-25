@@ -405,6 +405,8 @@ def personel_detay(request, pk):
                 messages.error(request, f"Ayrılış bilgileri kaydedilirken hata oluştu: {e}")
             return redirect('ik_core:personel_detay', pk=pk)
 
+    personel_ismi_degistirme_yetkisi = request.user.has_perm('İK Modülü Personel İsmi Değiştirme')
+
     context = {
         'personel': personel,
         'form': form,  # PersonelForm instance'ını context'e ekle
@@ -425,8 +427,34 @@ def personel_detay(request, pk):
         'ust_birimler': ust_birimler,
         'binalar': binalar,
         'teblig_imzalari': teblig_imzalari,
+        'personel_ismi_degistirme_yetkisi': personel_ismi_degistirme_yetkisi,
     }
     return render(request, 'ik_core/personel_detay.html', context)
+
+@require_POST
+@login_required
+def personel_isim_degistir(request, personel_id):
+    if not request.user.has_perm('İK Modülü Personel İsmi Değiştirme'):
+        messages.error(request, "Bu işlem için yetkiniz bulunmamaktadır.")
+        return redirect('ik_core:personel_detay', pk=personel_id)
+    
+    personel = get_object_or_404(Personel, pk=personel_id)
+    yeni_ad = request.POST.get('ad', '').strip()
+    yeni_soyad = request.POST.get('soyad', '').strip()
+    
+    if not yeni_ad or not yeni_soyad:
+        messages.error(request, "Ad ve soyad alanları boş bırakılamaz.")
+        return redirect('ik_core:personel_detay', pk=personel_id)
+    
+    eski_ad = personel.ad
+    eski_soyad = personel.soyad
+    
+    personel.ad = yeni_ad
+    personel.soyad = yeni_soyad
+    personel.save(update_fields=['ad', 'soyad'])
+    
+    messages.success(request, f"Personel ismi '{eski_ad} {eski_soyad}' den '{yeni_ad} {yeni_soyad}' olarak güncellendi.")
+    return redirect('ik_core:personel_detay', pk=personel_id)
 
 @require_POST
 def gecici_gorev_ekle(request, personel_id):

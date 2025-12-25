@@ -10,6 +10,7 @@ urlpatterns = [
     path('gelen-giden-personel/', views.gelen_giden_personel_list, name='gelen_giden_personel_list'),
     path('personel/ekle/', views.personel_ekle, name='personel_ekle'),
     path('personel/<int:pk>/', views.personel_detay, name='personel_detay'),
+    path('personel/<int:personel_id>/isim-degistir/', views.personel_isim_degistir, name='personel_isim_degistir'),
     path('personel/<int:pk>/duzenle/', views.personel_duzenle, name='personel_duzenle'),
     path('personel/<int:pk>/ilisik-kesme/', views.ilisik_kesme_formu, name='ilisik_kesme_formu'),
     path('personel/<int:pk>/ayrilis-kaydet/', views.ayrilis_kaydet, name='ayrilis_kaydet'),

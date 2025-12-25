@@ -1,0 +1,28 @@
+<!-- İsim Değiştirme Modal -->
+<div class="modal fade" id="isimDegistirModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Personel İsim Değiştirme</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="isimDegistirForm" method="post" action="{% url 'ik_core:personel_isim_degistir' personel.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="ad" class="form-label">Ad</label>
+                        <input type="text" class="form-control" id="ad" name="ad" value="{{ personel.ad }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="soyad" class="form-label">Soyad</label>
+                        <input type="text" class="form-control" id="soyad" name="soyad" value="{{ personel.soyad }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

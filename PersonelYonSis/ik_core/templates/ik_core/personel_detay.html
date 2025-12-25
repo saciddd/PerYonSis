@@ -402,7 +402,13 @@
                                 </div>
                             </div>
                             <div>
-                                <h3 class="personel-name mb-1">{{ personel.ad }} {{ personel.soyad }} ({{ personel.kisa_unvan }})</h3>
+                                <h3 class="personel-name mb-1">{{ personel.ad }} {{ personel.soyad }} ({{ personel.kisa_unvan }})
+                                    {% if personel_ismi_degistirme_yetkisi %}
+                                        <button type="button" class="btn btn-sm btn-outline-primary ms-2" data-bs-toggle="modal" data-bs-target="#isimDegistirModal">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                    {% endif %}
+                                </h3>
                                 <div class="d-flex flex-wrap align-items-center personel-info">
                                     {% if personel.durum == "Aktif" %}
                                         <span class="status-badge status-active me-2 mb-1">{{ personel.durum }}</span>
@@ -1627,4 +1633,5 @@
 <!-- Modal Include'ları -->
 {% include 'ik_core/partials/yeni_birim_belirle_modal.html' %}
 {% include 'ik_core/partials/birim_gecmisi_modal.html' %}
+{% include 'ik_core/partials/isim_degistir_modal.html' %}
 {% endblock %}

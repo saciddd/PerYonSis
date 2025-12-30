@@ -527,7 +527,10 @@ def izinleri_mesailere_isle(request, liste_id):
             izin_obj = get_or_create_izin_turu(izin_turu)
 
             try:
-                personel = Personel.objects.get(PersonelTCKN=tckn)
+                # Personel listede mevcut mu kontrol et, varsa bu personeli kullan
+                personel_listesi_kayit = liste.kayitlar.filter(personel__PersonelTCKN=tckn).first()
+                if personel_listesi_kayit:
+                    personel = personel_listesi_kayit.personel
             except Personel.DoesNotExist:
                 continue  # Django’da personeli yoksa atla
 

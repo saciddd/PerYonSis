@@ -531,8 +531,8 @@ def izinleri_mesailere_isle(request, liste_id):
                 personel_listesi_kayit = liste.kayitlar.filter(personel__PersonelTCKN=tckn).first()
                 if personel_listesi_kayit:
                     personel = personel_listesi_kayit.personel
-            except Personel.DoesNotExist:
-                continue  # Django’da personeli yoksa atla
+            except personel_listesi_kayit.DoesNotExist:
+                continue  # Personel listede mevcut değilse atla
 
             start_date = datetime.strptime(str(baslangic_tarihi), "%Y-%m-%d").date()
             end_date = datetime.strptime(str(bitis_tarihi), "%Y-%m-%d").date() - timedelta(days=1)

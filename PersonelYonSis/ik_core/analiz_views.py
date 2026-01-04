@@ -3,7 +3,7 @@ from django.db.models import Count, Q, F, Window
 from django.db.models.functions import RowNumber
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
-from .models.personel import Personel, KisaUnvan, UnvanBransEslestirme, Unvan, Brans
+from .models.personel import Personel, KisaUnvan, UnvanBransEslestirme
 from .models.BirimYonetimi import Birim, UstBirim, PersonelBirim
 from datetime import date
 import json
@@ -22,62 +22,75 @@ def unvan_analiz_view(request):
     durum_filter = request.GET.getlist('durum', [])
     kisa_unvan_filter = request.GET.getlist('kisa_unvan', [])
     kadro_durumu_filter = request.GET.get('kadro_durumu', '')
+    
+    # İlk açılışta varsayılan olarak sadece aktif personeller
+    if not durum_filter and not kisa_unvan_filter and not kadro_durumu_filter:
+        durum_filter = ['Aktif']
 
     # Base Queryset
     personeller = Personel.objects.all()
 
-    # Apply Filters
-    if durum_filter:
-        # Implement logic for 'Durum' property filtering
-        # Since 'durum' is a property, we might need to filter in Python or use specific logic
-        # For efficiency, we can try to approximate or filter in python if dataset is small enough (< few thousands)
-        # RFC says "Server-side pagination" implies large data, but property filtering is tough.
-        # However, checking the property logic:
-        # "Aktif" checks ayrilma_tarihi and gecicigorev.
-        # We can implement Q objects for database filtering where possible.
-        q_objs = Q()
-        today = date.today()
-        
-        # This is a simplification. Fully replicating the property logic in ORM is complex.
-        # We will try to filter the most reliable parts in ORM.
-        if 'Kurumdan Ayrıldı' in durum_filter:
-            q_objs |= Q(kadrolu_personel=True, ayrilma_tarihi__lte=today)
-        
-        # "Aktif" vs "Pasif" logic requires checking GeciciGorev which is complex relations.
-        # For now, we will fetch and filter in python for complex properties if needed, 
-        # or rely on basic attributes.
-        # Let's try basic attributes first.
-        pass
-
-    # Note: Filtering by property 'durum' is expensive in DB. 
-    # For now, let's filter what we can.
-    
-    if kisa_unvan_filter:
-        personeller = personeller.filter(unvan_brans_eslestirme__kisa_unvan__id__in=kisa_unvan_filter)
-
+    # Apply Filters - Önce DB filtreleri (performans için)
     if kadro_durumu_filter:
         if kadro_durumu_filter == 'Kadrolu':
             personeller = personeller.filter(kadrolu_personel=True)
         elif kadro_durumu_filter == 'Geçici Gelen':
             personeller = personeller.filter(kadrolu_personel=False)
+    
+    if kisa_unvan_filter:
+        # DB'de filtreleme yapmak için: Seçilen Kısa Unvan'lara ait Unvan-Branş eşleşmelerini bul
+        eslesmeler = UnvanBransEslestirme.objects.filter(kisa_unvan_id__in=kisa_unvan_filter).values_list('unvan_id', 'brans_id')
+        
+        kisa_unvan_query = Q()
+        for u_id, b_id in eslesmeler:
+            if b_id:
+                kisa_unvan_query |= Q(unvan_id=u_id, brans_id=b_id)
+            else:
+                kisa_unvan_query |= Q(unvan_id=u_id, brans__isnull=True)
+        
+        if kisa_unvan_query:
+            personeller = personeller.filter(kisa_unvan_query)
+        else:
+            # Eşleşme yoksa boş döndür
+            personeller = personeller.filter(pk__in=[])
 
-    # We need to filter by 'durum' property. 
-    # Since we can't easily filter by property in ORM, we'll iterate.
-    # But for aggregation, we need QuerySet.
-    # Optimization: Helper function to get IDs of personels matching status
+    # Durum filtresi (property olduğu için Python tarafında)
+    # Önce DB filtrelerini uygulayıp sonra durum filtresini uyguluyoruz (daha verimli)
     if durum_filter:
+        # QuerySet'i listeye çevir ve durum property'sine göre filtrele
+        # gecicigorev_set'i prefetch et çünkü durum property'si bunu kullanıyor
+        personeller_list = list(personeller.select_related('unvan', 'brans').prefetch_related('gecicigorev_set'))
         valid_ids = []
-        for p in personeller:
-             if p.durum in durum_filter:
-                 valid_ids.append(p.id)
-        personeller = personeller.filter(id__in=valid_ids)
+        for p in personeller_list:
+            if p.durum in durum_filter:
+                valid_ids.append(p.id)
+        personeller = Personel.objects.filter(id__in=valid_ids)
 
     # Aggregations
-    # 1. Kısa Ünvan Dağılımı
-    kisa_unvan_dagilim = personeller.values(
-        'unvan_brans_eslestirme__kisa_unvan__id', 
-        'unvan_brans_eslestirme__kisa_unvan__ad'
-    ).annotate(total=Count('id')).order_by('-total')
+    # 1. Kısa Ünvan Dağılımı - kisa_unvan property'sine göre
+    # Python tarafında hesaplama yapmalıyız çünkü property DB'de değil
+    personeller_list_for_dagilim = personeller.select_related('unvan', 'brans')
+    kisa_unvan_dagilim_dict = {}
+    
+    # Kısa unvan ID'lerini önceden bulalım (performans için)
+    kisa_unvan_ad_to_id = {ku.ad: ku.id for ku in KisaUnvan.objects.all()}
+    
+    for p in personeller_list_for_dagilim:
+        ku_ad = p.kisa_unvan
+        if ku_ad:
+            if ku_ad not in kisa_unvan_dagilim_dict:
+                kisa_unvan_dagilim_dict[ku_ad] = 0
+            kisa_unvan_dagilim_dict[ku_ad] += 1
+    
+    # Format for template: list of dicts (template uyumluluğu için)
+    kisa_unvan_dagilim = []
+    for ku_ad, count in sorted(kisa_unvan_dagilim_dict.items(), key=lambda x: x[1], reverse=True):
+        ku_id = kisa_unvan_ad_to_id.get(ku_ad, None)
+        kisa_unvan_dagilim.append({
+            'kisa_unvan_ad': ku_ad,
+            'kisa_unvan_id': ku_id,
+            'total': count
+        })
 
     # 2. Birim - Kısa Ünvan Kırılımı
     # We need current unit of each personel.
@@ -95,8 +108,11 @@ def unvan_analiz_view(request):
     
     # Optimize: prefetch related
     personeller_list = personeller.select_related(
-        'unvan_brans_eslestirme__kisa_unvan',
+        'unvan', 'brans'
     ).prefetch_related('personelbirim_set', 'personelbirim_set__birim')
+
+    # Kısa unvan ID'lerini önceden bulalım (performans için)
+    kisa_unvan_ad_to_id = {ku.ad: ku.id for ku in KisaUnvan.objects.all()}
 
     for p in personeller_list:
         # Get Current Birim
@@ -108,14 +124,13 @@ def unvan_analiz_view(request):
             birim_id = 'unknown'
             birim_ad = 'Tanımsız Birim'
             
-        kisa_unvan = p.kisa_unvan # Property that returns string name
-        # We need ID for better tracking, use relation
-        if p.unvan_brans_eslestirme:
-            ku_id = p.unvan_brans_eslestirme.kisa_unvan.id
-            ku_ad = p.unvan_brans_eslestirme.kisa_unvan.ad
+        # kisa_unvan property'sini kullan
+        ku_ad = p.kisa_unvan
+        if ku_ad and ku_ad in kisa_unvan_ad_to_id:
+            ku_id = kisa_unvan_ad_to_id[ku_ad]
         else:
             ku_id = 'unknown'
-            ku_ad = 'Tanımsız Ünvan'
+            ku_ad = ku_ad if ku_ad else 'Tanımsız Ünvan'
             
         if birim_id not in matrix_data:
             matrix_data[birim_id] = {'birim_ad': birim_ad, 'counts': {}, 'total': 0}
@@ -151,19 +166,17 @@ def unvan_analiz_view(request):
         
     matrix_rows.sort(key=lambda x: x['total'], reverse=True)
 
-    # Initial Kisa Unvan List for Modal
-    active_kisa_unvans = KisaUnvan.objects.filter(
-        id__in=personeller.values_list('unvan_brans_eslestirme__kisa_unvan_id', flat=True)
-    ).distinct().order_by('ad')
-    
-    # All Kisa Unvans for filter dropdown (regardless of current filter)
-    all_kisa_unvans_db = KisaUnvan.objects.all().order_by('ad')
+    # personel_list.html'deki gibi ust_birim'e göre sırala
+    kisa_unvanlar = KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad')
 
     context = {
         'kisa_unvan_dagilim': kisa_unvan_dagilim,
         'matrix_rows': matrix_rows,
         'matrix_headers': sorted_kisa_unvans,
-        'all_kisa_unvans': all_kisa_unvans_db, # For modal filter
+        'kisa_unvanlar': kisa_unvanlar, # For modal filter - personel_list.html ile uyumlu
+        'arama': {
+            'kisa_unvan': [str(x) for x in kisa_unvan_filter], # Modal template'i için
+        },
         'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
         'selected_durum': durum_filter,
         'selected_kadro_durumu': kadro_durumu_filter,
@@ -178,35 +191,61 @@ def birim_analiz_view(request):
     # Initialize Filters
     durum_filter = request.GET.getlist('durum', [])
     ust_birim_filter = request.GET.getlist('ust_birim', [])
-    kisa_unvan_filter = request.GET.getlist('kisa_unvan', []) # Can be used as authority filter logic if mapped
+    kisa_unvan_filter = request.GET.getlist('kisa_unvan', [])
     kadro_durumu_filter = request.GET.get('kadro_durumu', '')
+    
+    # İlk açılışta varsayılan olarak sadece aktif personeller
+    if not durum_filter and not ust_birim_filter and not kisa_unvan_filter and not kadro_durumu_filter:
+        durum_filter = ['Aktif']
 
     personeller = Personel.objects.all()
     
-    # Apply Filters (Reuse logic or refactor to helper)
+    # Apply Filters - Önce DB filtreleri (performans için)
     if kadro_durumu_filter:
         if kadro_durumu_filter == 'Kadrolu':
             personeller = personeller.filter(kadrolu_personel=True)
         elif kadro_durumu_filter == 'Geçici Gelen':
-             personeller = personeller.filter(kadrolu_personel=False)
+            personeller = personeller.filter(kadrolu_personel=False)
 
     if kisa_unvan_filter:
-        personeller = personeller.filter(unvan_brans_eslestirme__kisa_unvan__id__in=kisa_unvan_filter)
+        # DB'de filtreleme yapmak için: Seçilen Kısa Unvan'lara ait Unvan-Branş eşleşmelerini bul
+        eslesmeler = UnvanBransEslestirme.objects.filter(kisa_unvan_id__in=kisa_unvan_filter).values_list('unvan_id', 'brans_id')
+        
+        kisa_unvan_query = Q()
+        for u_id, b_id in eslesmeler:
+            if b_id:
+                kisa_unvan_query |= Q(unvan_id=u_id, brans_id=b_id)
+            else:
+                kisa_unvan_query |= Q(unvan_id=u_id, brans__isnull=True)
+        
+        if kisa_unvan_query:
+            personeller = personeller.filter(kisa_unvan_query)
+        else:
+            # Eşleşme yoksa boş döndür
+            personeller = personeller.filter(pk__in=[])
 
+    # Durum filtresi (property olduğu için Python tarafında)
+    # Önce DB filtrelerini uygulayıp sonra durum filtresini uyguluyoruz (daha verimli)
     if durum_filter:
+        # QuerySet'i listeye çevir ve durum property'sine göre filtrele
+        # gecicigorev_set'i prefetch et çünkü durum property'si bunu kullanıyor
+        personeller_list = list(personeller.select_related('unvan', 'brans').prefetch_related('gecicigorev_set'))
         valid_ids = []
-        for p in personeller:
-             if p.durum in durum_filter:
-                 valid_ids.append(p.id)
-        personeller = personeller.filter(id__in=valid_ids)
+        for p in personeller_list:
+            if p.durum in durum_filter:
+                valid_ids.append(p.id)
+        personeller = Personel.objects.filter(id__in=valid_ids)
 
     # Birim filtering needs to happen on the valid person set.
     # Since filter is "Birimin Bağlı Olduğu Üst Birim", we need to check current unit's parent.
     
     # Fetch data
     personeller_list = personeller.select_related(
-        'unvan_brans_eslestirme__kisa_unvan',
+        'unvan', 'brans'
     ).prefetch_related('personelbirim_set', 'personelbirim_set__birim', 'personelbirim_set__birim__ust_birim')
+    
+    # Kısa unvan ID'lerini önceden bulalım (performans için)
+    kisa_unvan_ad_to_id = {ku.ad: ku.id for ku in KisaUnvan.objects.all()}
     
     # Aggregations
     # Tab 1: Üst Birim -> Birim Dağılımı
@@ -249,8 +288,12 @@ def birim_analiz_view(request):
         ust_birim_data[ub_id]['birimler'][b_id]['count'] += 1
         ust_birim_data[ub_id]['total'] += 1
         
-        # Data for Tab 2
-        ku_id = p.unvan_brans_eslestirme.kisa_unvan.id if p.unvan_brans_eslestirme else 'unknown'
+        # Data for Tab 2 - kisa_unvan property'sini kullan
+        ku_ad = p.kisa_unvan
+        if ku_ad and ku_ad in kisa_unvan_ad_to_id:
+            ku_id = kisa_unvan_ad_to_id[ku_ad]
+        else:
+            ku_id = 'unknown'
         
         if b_id not in birim_unvan_data:
             birim_unvan_data[b_id] = {'ad': b_ad, 'unvanlar': {}, 'total': 0}
@@ -265,13 +308,18 @@ def birim_analiz_view(request):
     
     # View Filters
     ust_birimler = UstBirim.objects.all().order_by('ad')
-    all_kisa_unvans = KisaUnvan.objects.all().order_by('ad')
+    # personel_list.html'deki gibi ust_birim'e göre sırala
+    kisa_unvanlar = KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad')
 
     context = {
         'ust_birim_data': ust_birim_data,
         'birim_unvan_data': birim_unvan_data,
         'ust_birimler': ust_birimler,
-        'all_kisa_unvans': all_kisa_unvans,
+        'kisa_unvanlar': kisa_unvanlar, # For modal filter - personel_list.html ile uyumlu
+        'all_kisa_unvans': kisa_unvanlar, # Tab 2 için backward compatibility
+        'arama': {
+            'kisa_unvan': [str(x) for x in kisa_unvan_filter], # Modal template'i için
+        },
         'selected_durum': durum_filter,
         'selected_ust_birim': selected_ust_birim_ids,
         'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
@@ -300,7 +348,7 @@ def personel_list_modal_view(request):
     global_kisa_unvan = request.GET.getlist('kisa_unvan', []) # From global filter
 
     personeller = Personel.objects.all().select_related(
-        'unvan', 'brans', 'unvan_brans_eslestirme', 'unvan_brans_eslestirme__kisa_unvan'
+        'unvan', 'brans'
     ).prefetch_related('personelbirim_set', 'personelbirim_set__birim', 'ozel_durumu')
 
     # Apply Global Filters
@@ -311,7 +359,21 @@ def personel_list_modal_view(request):
              personeller = personeller.filter(kadrolu_personel=False)
 
     if global_kisa_unvan:
-        personeller = personeller.filter(unvan_brans_eslestirme__kisa_unvan__id__in=global_kisa_unvan)
+        # DB'de filtreleme yapmak için: Seçilen Kısa Unvan'lara ait Unvan-Branş eşleşmelerini bul
+        eslesmeler = UnvanBransEslestirme.objects.filter(kisa_unvan_id__in=global_kisa_unvan).values_list('unvan_id', 'brans_id')
+        
+        kisa_unvan_query = Q()
+        for u_id, b_id in eslesmeler:
+            if b_id:
+                kisa_unvan_query |= Q(unvan_id=u_id, brans_id=b_id)
+            else:
+                kisa_unvan_query |= Q(unvan_id=u_id, brans__isnull=True)
+        
+        if kisa_unvan_query:
+            personeller = personeller.filter(kisa_unvan_query)
+        else:
+            # Eşleşme yoksa boş döndür
+            personeller = personeller.filter(pk__in=[])
         
     if durum_filter:
         valid_ids = []
@@ -322,7 +384,21 @@ def personel_list_modal_view(request):
         
     # Apply Specific Filters (from cell click)
     if kisa_unvan_id and kisa_unvan_id != 'unknown':
-        personeller = personeller.filter(unvan_brans_eslestirme__kisa_unvan__id=kisa_unvan_id)
+        # DB'de filtreleme yapmak için: Seçilen Kısa Unvan'a ait Unvan-Branş eşleşmelerini bul
+        eslesmeler = UnvanBransEslestirme.objects.filter(kisa_unvan_id=kisa_unvan_id).values_list('unvan_id', 'brans_id')
+        
+        kisa_unvan_query = Q()
+        for u_id, b_id in eslesmeler:
+            if b_id:
+                kisa_unvan_query |= Q(unvan_id=u_id, brans_id=b_id)
+            else:
+                kisa_unvan_query |= Q(unvan_id=u_id, brans__isnull=True)
+        
+        if kisa_unvan_query:
+            personeller = personeller.filter(kisa_unvan_query)
+        else:
+            # Eşleşme yoksa boş döndür
+            personeller = personeller.filter(pk__in=[])
         
     # Checking Birim / UstBirim involves fetching current unit
     if birim_id or ust_birim_id:

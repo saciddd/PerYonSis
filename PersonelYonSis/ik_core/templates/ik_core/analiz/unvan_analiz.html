@@ -107,13 +107,13 @@
                             <tbody>
                                 {% for item in kisa_unvan_dagilim %}
                                 <tr>
-                                    <td class="fw-bold">{{ item.unvan_brans_eslestirme__kisa_unvan__ad|default:"Tanımsız" }}</td>
+                                    <td class="fw-bold">{{ item.kisa_unvan_ad|default:"Tanımsız" }}</td>
                                     <td class="text-center">
                                         <span class="badge bg-primary rounded-pill fs-6">{{ item.total }}</span>
                                     </td>
                                     <td>
                                         <button class="btn btn-sm btn-outline-info w-100 detail-btn" 
-                                                data-kisa-unvan-id="{{ item.unvan_brans_eslestirme__kisa_unvan__id }}">
+                                                data-kisa-unvan-id="{{ item.kisa_unvan_id }}">
                                             <i class="bi bi-list"></i> Liste
                                         </button>
                                     </td>
@@ -228,32 +228,37 @@
         
         const kisaUnvanModal = document.getElementById('kisaUnvanModal');
         if(kisaUnvanModal) {
-            // Listen for save/apply
-            const applyBtn = kisaUnvanModal.querySelector('.btn-primary'); // Assuming there is one
+            // Listen for save/apply - Tamam butonu btn-success class'ına sahip
+            const applyBtn = kisaUnvanModal.querySelector('.btn-success');
             if(applyBtn){
-                applyBtn.addEventListener('click', function(){
+                applyBtn.addEventListener('click', function(e){
+                    e.preventDefault();
+                    e.stopPropagation();
                     // Logic to collect checked checkboxes and update #hiddenKisaUnvanInputs
-                    const checkboxes = kisaUnvanModal.querySelectorAll('input[type="checkbox"]:checked');
+                    const checkboxes = kisaUnvanModal.querySelectorAll('input[type="checkbox"][name="kisa_unvan"]:checked');
                     const container = document.getElementById('hiddenKisaUnvanInputs');
-                    container.innerHTML = '';
-                    let count = 0;
-                    checkboxes.forEach(cb => {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'kisa_unvan';
-                        input.value = cb.value;
-                        container.appendChild(input);
-                        count++;
-                    });
-                    
-                    document.getElementById('kisaUnvanSelectBtnLabel').innerText = count > 0 ? count + ' Seçili' : 'Seçiniz...';
-                    const badge = document.getElementById('kisaUnvanSelectBtnBadge');
-                    badge.innerText = count;
-                    badge.classList.toggle('d-none', count === 0);
-                    
-                    // Close modal
-                     const bsModal = bootstrap.Modal.getInstance(kisaUnvanModal);
-                     if (bsModal) bsModal.hide();
+                    if(container) {
+                        container.innerHTML = '';
+                        let count = 0;
+                        checkboxes.forEach(cb => {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'kisa_unvan';
+                            input.value = cb.value;
+                            container.appendChild(input);
+                            count++;
+                        });
+                        
+                        const labelEl = document.getElementById('kisaUnvanSelectBtnLabel');
+                        if(labelEl) {
+                            labelEl.innerText = count > 0 ? count + ' Seçili' : 'Seçiniz...';
+                        }
+                        const badge = document.getElementById('kisaUnvanSelectBtnBadge');
+                        if(badge) {
+                            badge.innerText = count;
+                            badge.classList.toggle('d-none', count === 0);
+                        }
+                    }
                 });
             }
         }

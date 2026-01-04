@@ -49,7 +49,7 @@
 
                     <!-- Kisa Unvan Filter -->
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">Kısa Unvan / Makam</label>
+                        <label class="form-label small fw-bold">Kısa Unvan</label>
                         <button type="button" class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center text-start" data-bs-toggle="modal" data-bs-target="#kisaUnvanModal" style="font-size: 0.85rem; padding: 4px 8px; border-color: #ced4da; min-height: 31px;">
                             <span id="kisaUnvanSelectBtnLabel" class="text-truncate">
                                 {% if selected_kisa_unvans %}
@@ -221,29 +221,36 @@
         // --- Kisa Unvan Modal Sync (Reuse) ---
         const kisaUnvanModal = document.getElementById('kisaUnvanModal');
         if(kisaUnvanModal) {
-            const applyBtn = kisaUnvanModal.querySelector('.btn-primary'); // Assuming there is one
+            // Tamam butonu btn-success class'ına sahip
+            const applyBtn = kisaUnvanModal.querySelector('.btn-success');
             if(applyBtn){
-                applyBtn.addEventListener('click', function(){
-                    const checkboxes = kisaUnvanModal.querySelectorAll('input[type="checkbox"]:checked');
+                applyBtn.addEventListener('click', function(e){
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const checkboxes = kisaUnvanModal.querySelectorAll('input[type="checkbox"][name="kisa_unvan"]:checked');
                     const container = document.getElementById('hiddenKisaUnvanInputs');
-                    container.innerHTML = '';
-                    let count = 0;
-                    checkboxes.forEach(cb => {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'kisa_unvan';
-                        input.value = cb.value;
-                        container.appendChild(input);
-                        count++;
-                    });
-                    
-                    document.getElementById('kisaUnvanSelectBtnLabel').innerText = count > 0 ? count + ' Seçili' : 'Seçiniz...';
-                    const badge = document.getElementById('kisaUnvanSelectBtnBadge');
-                    badge.innerText = count;
-                    badge.classList.toggle('d-none', count === 0);
-                    
-                     const bsModal = bootstrap.Modal.getInstance(kisaUnvanModal);
-                     if (bsModal) bsModal.hide();
+                    if(container) {
+                        container.innerHTML = '';
+                        let count = 0;
+                        checkboxes.forEach(cb => {
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'kisa_unvan';
+                            input.value = cb.value;
+                            container.appendChild(input);
+                            count++;
+                        });
+                        
+                        const labelEl = document.getElementById('kisaUnvanSelectBtnLabel');
+                        if(labelEl) {
+                            labelEl.innerText = count > 0 ? count + ' Seçili' : 'Seçiniz...';
+                        }
+                        const badge = document.getElementById('kisaUnvanSelectBtnBadge');
+                        if(badge) {
+                            badge.innerText = count;
+                            badge.classList.toggle('d-none', count === 0);
+                        }
+                    }
                 });
             }
         }

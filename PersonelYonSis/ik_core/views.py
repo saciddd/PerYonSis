@@ -642,7 +642,6 @@ def teblig_tanimlari(request):
         'form': form,
     })
 
-
 @login_required
 @require_POST
 def teblig_imzasi_ekle(request):

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Personel Analiz Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3 mb-2 text-gray-800">Personel Analiz</h1>
+            <p class="mb-4">Personel verilerini ünvan ve birim perspektiflerinden analiz edin.</p>
+        </div>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        <!-- Ünvan Bazlı Analiz Kartı -->
+        <div class="col-md-5 col-lg-4">
+            <a href="{% url 'ik_core:unvan_analiz' %}" class="card h-100 text-decoration-none shadow-sm hover-shadow transition-all border-0">
+                <div class="card-body text-center p-5">
+                    <div class="icon-box mb-4 text-primary">
+                        <i class="bi bi-person-badge fs-1"></i>
+                    </div>
+                    <h3 class="card-title h4 text-dark">Ünvan Bazlı Analiz</h3>
+                    <p class="card-text text-muted mt-3">
+                        Personel dağılımını kısa ünvanlara göre inceleyin. Kadro durumu ve ünvan grupları bazında detaylı raporlar.
+                    </p>
+                </div>
+            </a>
+        </div>
+
+        <!-- Birim Bazlı Analiz Kartı -->
+        <div class="col-md-5 col-lg-4">
+            <a href="{% url 'ik_core:birim_analiz' %}" class="card h-100 text-decoration-none shadow-sm hover-shadow transition-all border-0">
+                <div class="card-body text-center p-5">
+                    <div class="icon-box mb-4 text-success">
+                        <i class="bi bi-building fs-1"></i>
+                    </div>
+                    <h3 class="card-title h4 text-dark">Birim Bazlı Analiz</h3>
+                    <p class="card-text text-muted mt-3">
+                        Organizasyon şeması üzerinden personel takibi. Üst birim ve bina bazlı yerleşim analizleri.
+                    </p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+    }
+    .transition-all {
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}

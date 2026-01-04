@@ -28,6 +28,7 @@ class Menu:
             # İnsan Kaynakları Modülü ve Alt Menüleri
             MenuItem('İK Modülü', '#', 'bi bi-person-lines-fill', 'İK Modülü', is_parent=True),
             MenuItem('Personel Tanımları', 'ik_core:personel_list', 'bi bi-octagon', 'İK Modülü Personel Yönetimi', parent_menu='İK Modülü'),
+            MenuItem('Personel Analiz', 'ik_core:analiz_dashboard', 'bi bi-octagon', parent_menu='İK Modülü'),
             MenuItem('Geçici Görevler', 'ik_core:gecici_gorevler', 'bi bi-octagon', 'İK Modülü Geçici Görevler', parent_menu='İK Modülü'),
             MenuItem('Tanımlamalar', 'ik_core:tanimlamalar', 'bi bi-octagon', 'İK Modülü Tanımlamalar', parent_menu='İK Modülü'),
             MenuItem('Birim Yönetimi', 'ik_core:birim_yonetimi', 'bi bi-octagon', 'İK Modülü Tanımlamalar', parent_menu='İK Modülü'),

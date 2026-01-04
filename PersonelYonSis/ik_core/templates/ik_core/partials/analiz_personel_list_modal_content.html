@@ -1,0 +1,62 @@
+<div class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center bg-light">
+    <div>
+        <span class="fw-bold text-primary">{{ personeller|length }}</span> Personel Listeleniyor
+    </div>
+    {% comment %}
+    Export buttons could go here. 
+    Implementation note: Need to forward all current GET params to an export endpoint.
+    {% endcomment %}
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped table-hover mb-0" style="font-size: 0.9rem;">
+        <thead class="table-light sticky-top" style="top: 0; z-index: 10;">
+            <tr>
+                <th>Ad Soyad</th>
+                <th>Telefon</th>
+                <th>Yaş</th>
+                <th>Ünvan / Branş</th>
+                <th>Kadro Durumu</th>
+                <th>Özel Durumlar</th>
+                <th>Durum</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in personeller %}
+            <tr>
+                <td>
+                    <div class="fw-bold">{{ p.ad_soyad }}</div>
+                    <div class="small text-muted">{{ p.tc_kimlik_no }}</div>
+                </td>
+                <td>{{ p.telefon|default:"-" }}</td>
+                <td>{{ p.yas|default:"-" }}</td>
+                <td>
+                    <div>{{ p.unvan.ad|default:"-" }}</div>
+                    <div class="small text-muted">{{ p.brans.ad|default:"" }}</div>
+                </td>
+                <td>
+                    {% if p.kadrolu_personel %}
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success">Kadrolu</span>
+                    {% else %}
+                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Geçici Gelen</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% for oz in p.ozel_durumu.all %}
+                        <span class="badge bg-info text-dark mb-1">{{ oz.ad }}</span>
+                    {% empty %}
+                        <span class="text-muted small">-</span>
+                    {% endfor %}
+                </td>
+                <td>
+                    <span class="badge bg-secondary">{{ p.durum }}</span>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-4 text-muted">Personel bulunamadı.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

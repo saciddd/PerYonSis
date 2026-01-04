@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, resmi_yazi_views, durum_belgesi_views
+from . import views, resmi_yazi_views, durum_belgesi_views, analiz_views
 from ik_core.api import views as api_views
 
 app_name = 'ik_core'
@@ -59,6 +59,11 @@ urlpatterns = [
     path('get-birimler-by-bina/', views.get_birimler_by_bina, name='get_birimler_by_bina'),
     path('personel-birim-ekle/', views.personel_birim_ekle, name='personel_birim_ekle'),
     path('gorevlendirme-yazisi/<int:personel_birim_id>/', views.gorevlendirme_yazisi, name='gorevlendirme_yazisi'),
+    # Analiz Sayfaları
+    path('analiz/', analiz_views.dashboard_view, name='analiz_dashboard'),
+    path('analiz/unvan/', analiz_views.unvan_analiz_view, name='unvan_analiz'),
+    path('analiz/birim/', analiz_views.birim_analiz_view, name='birim_analiz'),
+    path('analiz/modal/personel-list/', analiz_views.personel_list_modal_view, name='analiz_personel_list_modal'),
     # API endpoints
     path('api/personel_aktar/', api_views.filemaker_personel_aktar, name='filemaker_personel_aktar'),
 

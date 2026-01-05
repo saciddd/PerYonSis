@@ -18,22 +18,34 @@
 
     <!-- Filtreler -->
     <div class="card mb-4">
-        <div class="card-header bg-light">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center" id="filtersToggleBtn" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse" aria-expanded="true" aria-controls="filtersCollapse">
             <h6 class="mb-0 fw-bold"><i class="bi bi-funnel"></i> Filtreler</h6>
         </div>
-        <div class="card-body">
+        <div class="collapse show" id="filtersCollapse">
+            <div class="card-body">
             <form method="get" id="filterForm">
                 <div class="row g-3">
                     <!-- Durum Filter -->
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Personel Durumu</label>
-                        <select name="durum" class="form-select form-select-sm" multiple size="4">
-                            <option value="Aktif" {% if "Aktif" in selected_durum %}selected{% endif %}>Aktif</option>
-                            <option value="Pasif" {% if "Pasif" in selected_durum %}selected{% endif %}>Pasif</option>
-                            <option value="Kurumdan Ayrıldı" {% if "Kurumdan Ayrıldı" in selected_durum %}selected{% endif %}>Kurumdan Ayrıldı</option>
-                            <option value="Asıl Kurumuna Döndü" {% if "Asıl Kurumuna Döndü" in selected_durum %}selected{% endif %}>Asıl Kurumuna Döndü</option>
-                        </select>
-                        <div class="form-text x-small text-muted">Birden fazla seçim için CTRL'ye basılı tutun.</div>
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="durum" value="Aktif" id="durum_aktif" {% if "Aktif" in selected_durum %}checked{% endif %}>
+                                <label class="form-check-label" for="durum_aktif">Aktif</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="durum" value="Pasif" id="durum_pasif" {% if "Pasif" in selected_durum %}checked{% endif %}>
+                                <label class="form-check-label" for="durum_pasif">Pasif</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="durum" value="Kurumdan Ayrıldı" id="durum_ayrildi" {% if "Kurumdan Ayrıldı" in selected_durum %}checked{% endif %}>
+                                <label class="form-check-label" for="durum_ayrildi">Kurumdan Ayrıldı</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="durum" value="Asıl Kurumuna Döndü" id="durum_dondu" {% if "Asıl Kurumuna Döndü" in selected_durum %}checked{% endif %}>
+                                <label class="form-check-label" for="durum_dondu">Asıl Kurumuna Döndü</label>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Kisa Unvan Filter -->
@@ -79,6 +91,7 @@
             </form>
         </div>
     </div>
+</div>
 
     <!-- Analiz Sekmeleri -->
     <ul class="nav nav-tabs mb-3" id="analizTabs" role="tablist">
@@ -93,6 +106,14 @@
     <div class="tab-content" id="analizTabsContent">
         <!-- Tab 1: Dağılım -->
         <div class="tab-pane fade show active" id="tab-dagilim" role="tabpanel">
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-outline-primary btn-sm me-2" onclick="exportToPDF('tab-dagilim')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF Yazdır
+                </button>
+                <button class="btn btn-outline-success btn-sm" onclick="exportToExcel('tab-dagilim')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel Aktar
+                </button>
+            </div>
             <div class="card shadow-sm">
                 <div class="card-body">
                     <div class="table-responsive">
@@ -101,21 +122,14 @@
                                 <tr>
                                     <th>Kısa Ünvan</th>
                                     <th class="text-center" style="width: 150px;">Personel Sayısı</th>
-                                    <th style="width: 100px;">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in kisa_unvan_dagilim %}
-                                <tr>
+                                <tr class="clickable-row detail-btn" data-kisa-unvan-id="{{ item.kisa_unvan_id }}" style="cursor: pointer;">
                                     <td class="fw-bold">{{ item.kisa_unvan_ad|default:"Tanımsız" }}</td>
                                     <td class="text-center">
                                         <span class="badge bg-primary rounded-pill fs-6">{{ item.total }}</span>
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-info w-100 detail-btn" 
-                                                data-kisa-unvan-id="{{ item.kisa_unvan_id }}">
-                                            <i class="bi bi-list"></i> Liste
-                                        </button>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -132,6 +146,14 @@
 
         <!-- Tab 2: Matriks -->
         <div class="tab-pane fade" id="tab-kirilim" role="tabpanel">
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-outline-primary btn-sm me-2" onclick="exportToPDF('tab-kirilim')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF Yazdır
+                </button>
+                <button class="btn btn-outline-success btn-sm" onclick="exportToExcel('tab-kirilim')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel Aktar
+                </button>
+            </div>
              <div class="card shadow-sm">
                 <div class="card-body">
                     <div class="table-responsive" style="max-height: 700px; overflow: auto;">
@@ -150,7 +172,7 @@
                             <tbody>
                                 {% for row in matrix_rows %}
                                 <tr>
-                                    <td class="text-start fw-bold position-sticky start-0 bg-white" style="left: 0;">{{ row.birim_ad }}</td>
+                                    <td class="text-start fw-bold position-sticky start-0 bg-white detail-btn" data-birim-id="{{ row.birim_id }}" style="left: 0; cursor: pointer;">{{ row.birim_ad }}</td>
                                     {% for col in row.cols %}
                                     <td class="{% if col.count > 0 %}table-info clickable-cell{% endif %}" 
                                         {% if col.count > 0 %}
@@ -214,8 +236,23 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- Filters Collapse Icon Toggle ---
+        const filtersCollapse = document.getElementById('filtersCollapse');
+        if(filtersCollapse) {
+            filtersCollapse.addEventListener('show.bs.collapse', function () {
+                const icon = document.querySelector('#filtersToggleBtn i');
+                if(icon) icon.className = 'bi bi-chevron-up';
+            });
+            filtersCollapse.addEventListener('hide.bs.collapse', function () {
+                const icon = document.querySelector('#filtersToggleBtn i');
+                if(icon) icon.className = 'bi bi-chevron-down';
+            });
+        }
         
         // Handle filter modal sync (if existing partial logic isn't enough)
         // Since we are reusing the partial, we need to ensure it updates our form inputs.
@@ -271,6 +308,23 @@
             body.innerHTML = '<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary" role="status"></div></div>';
             detailModal.show();
             
+            // Add export buttons to modal footer
+            const footer = document.querySelector('#personelListModal .modal-footer .d-flex > div:last-child');
+            if (footer && !footer.querySelector('.export-btn')) {
+                const pdfBtn = document.createElement('button');
+                pdfBtn.className = 'btn btn-outline-primary btn-sm me-2 export-btn';
+                pdfBtn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> PDF';
+                pdfBtn.onclick = () => exportModalToPDF();
+                
+                const excelBtn = document.createElement('button');
+                excelBtn.className = 'btn btn-outline-success btn-sm me-2 export-btn';
+                excelBtn.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Excel';
+                excelBtn.onclick = () => exportModalToExcel();
+                
+                footer.insertBefore(excelBtn, footer.firstChild);
+                footer.insertBefore(pdfBtn, footer.firstChild);
+            }
+            
             // Collect global filters
             const form = document.getElementById('filterForm');
             const formData = new FormData(form);
@@ -295,8 +349,12 @@
         // Listen for clicks on Table 1 buttons
         document.querySelectorAll('.detail-btn').forEach(btn => {
             btn.addEventListener('click', function() {
+                const birimId = this.dataset.birimId;
                 const kuId = this.dataset.kisaUnvanId;
-                openDetailModal({ 'kisa_unvan_id': kuId });
+                let params = {};
+                if(birimId) params['birim_id'] = birimId;
+                if(kuId) params['kisa_unvan_id'] = kuId;
+                openDetailModal(params);
             });
         });
 
@@ -308,6 +366,168 @@
                 openDetailModal({ 'birim_id': birimId, 'kisa_unvan_id': kuId });
             });
         });
+
+        // Export functions
+        window.exportToPDF = function(tabId) {
+            const element = document.getElementById(tabId);
+            if (!element) {
+                alert('Tab bulunamadı');
+                return;
+            }
+            
+            html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgWidth = 210; // A4 width in mm
+                const pageHeight = 295; // A4 height in mm
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                
+                let position = 0;
+                
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                pdf.save('unvan_analiz_' + tabId + '.pdf');
+            }).catch(err => {
+                console.error('PDF oluşturma hatası:', err);
+                alert('PDF oluşturulamadı');
+            });
+        }
+
+        window.exportToExcel = function(tabId) {
+            const element = document.getElementById(tabId);
+            if (!element) {
+                alert('Tab bulunamadı');
+                return;
+            }
+            
+            // Find table in the tab
+            const table = element.querySelector('table');
+            if (!table) {
+                alert('Tablo bulunamadı');
+                return;
+            }
+            
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const row = [], cols = rows[i].querySelectorAll('td, th');
+                
+                for (let j = 0; j < cols.length; j++) {
+                    let text = cols[j].innerText.replace(/"/g, '""');
+                    row.push('"' + text + '"');
+                }
+                
+                csv.push(row.join(','));
+            }
+            
+            // Download CSV
+            const csvContent = '\uFEFF' + csv.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'unvan_analiz_' + tabId + '.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Modal export functions
+        window.exportModalToPDF = function() {
+            const modalBody = document.getElementById('personelListModalBody');
+            if (!modalBody) {
+                alert('Modal bulunamadı');
+                return;
+            }
+            
+            html2canvas(modalBody, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgWidth = 210;
+                const pageHeight = 295;
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                
+                let position = 0;
+                
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                pdf.save('personel_listesi.pdf');
+            }).catch(err => {
+                console.error('PDF oluşturma hatası:', err);
+                alert('PDF oluşturulamadı');
+            });
+        }
+
+        window.exportModalToExcel = function() {
+            const modalBody = document.getElementById('personelListModalBody');
+            if (!modalBody) {
+                alert('Modal bulunamadı');
+                return;
+            }
+            
+            const table = modalBody.querySelector('table');
+            if (!table) {
+                alert('Tablo bulunamadı');
+                return;
+            }
+            
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const row = [], cols = rows[i].querySelectorAll('td, th');
+                
+                for (let j = 0; j < cols.length; j++) {
+                    let text = cols[j].innerText.replace(/"/g, '""');
+                    row.push('"' + text + '"');
+                }
+                
+                csv.push(row.join(','));
+            }
+            
+            const csvContent = '\uFEFF' + csv.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'personel_listesi.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     });
 </script>
 {% endblock %}

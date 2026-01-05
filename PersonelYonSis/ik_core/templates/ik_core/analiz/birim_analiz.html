@@ -18,33 +18,47 @@
 
     <!-- Filtreler -->
     <div class="card mb-4">
-        <div class="card-header bg-light">
+        <div class="card-header bg-light d-flex justify-content-between align-items-end" id="filtersToggleBtn" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse" aria-expanded="true" aria-controls="filtersCollapse">
             <h6 class="mb-0 fw-bold"><i class="bi bi-funnel"></i> Filtreler</h6>
         </div>
-        <div class="card-body">
+        <div class="collapse show" id="filtersCollapse">
+            <div class="card-body">
             <form method="get" id="filterForm">
                 <div class="row g-3">
                     <!-- Durum Filter -->
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Personel Durumu</label>
-                        <select name="durum" class="form-select form-select-sm" multiple size="4">
-                            <option value="Aktif" {% if "Aktif" in selected_durum %}selected{% endif %}>Aktif</option>
-                            <option value="Pasif" {% if "Pasif" in selected_durum %}selected{% endif %}>Pasif</option>
-                            <option value="Kurumdan Ayrıldı" {% if "Kurumdan Ayrıldı" in selected_durum %}selected{% endif %}>Kurumdan Ayrıldı</option>
-                            <option value="Asıl Kurumuna Döndü" {% if "Asıl Kurumuna Döndü" in selected_durum %}selected{% endif %}>Asıl Kurumuna Döndü</option>
-                        </select>
-                         <div class="form-text x-small text-muted">Çoklu seçim: CTRL</div>
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="durum" value="Aktif" id="durum_aktif" {% if "Aktif" in selected_durum %}checked{% endif %}>
+                                <label class="form-check-label" for="durum_aktif">Aktif</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="durum" value="Pasif" id="durum_pasif" {% if "Pasif" in selected_durum %}checked{% endif %}>
+                                <label class="form-check-label" for="durum_pasif">Pasif</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="durum" value="Kurumdan Ayrıldı" id="durum_ayrildi" {% if "Kurumdan Ayrıldı" in selected_durum %}checked{% endif %}>
+                                <label class="form-check-label" for="durum_ayrildi">Kurumdan Ayrıldı</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="durum" value="Asıl Kurumuna Döndü" id="durum_dondu" {% if "Asıl Kurumuna Döndü" in selected_durum %}checked{% endif %}>
+                                <label class="form-check-label" for="durum_dondu">Asıl Kurumuna Döndü</label>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Ust Birim Filter -->
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Üst Birim</label>
-                        <select name="ust_birim" class="form-select form-select-sm" multiple size="4">
+                        <div>
                             {% for ub in ust_birimler %}
-                                <option value="{{ ub.id }}" {% if ub.id in selected_ust_birim %}selected{% endif %}>{{ ub.ad }}</option>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="ust_birim" value="{{ ub.id }}" id="ust_birim_{{ ub.id }}" {% if ub.id in selected_ust_birim %}checked{% endif %}>
+                                <label class="form-check-label" for="ust_birim_{{ ub.id }}">{{ ub.ad }}</label>
+                            </div>
                             {% endfor %}
-                        </select>
-                         <div class="form-text x-small text-muted">Çoklu seçim: CTRL</div>
+                        </div>
                     </div>
 
                     <!-- Kisa Unvan Filter -->
@@ -86,6 +100,7 @@
             </form>
         </div>
     </div>
+</div>
 
     <!-- Analiz Sekmeleri -->
     <ul class="nav nav-tabs mb-3" id="analizTabs" role="tablist">
@@ -93,13 +108,21 @@
             <button class="nav-link active" id="tab-ustbirim-tab" data-bs-toggle="tab" data-bs-target="#tab-ustbirim" type="button" role="tab">Üst Birim → Birim Dağılımı</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-birimunvan-tab" data-bs-toggle="tab" data-bs-target="#tab-birimunvan" type="button" role="tab">Birim → Ünvan Dağılımı</button>
+            <button class="nav-link" id="tab-birimunvan-tab" data-bs-toggle="tab" data-bs-target="#tab-birimunvan" type="button" role="tab">Birim Tipi → Birim Ünvan Dağılımı</button>
         </li>
     </ul>
 
     <div class="tab-content" id="analizTabsContent">
         <!-- Tab 1: Üst Birim Dağılımı -->
         <div class="tab-pane fade show active" id="tab-ustbirim" role="tabpanel">
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-outline-primary btn-sm me-2" onclick="exportToPDF('tab-ustbirim')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF Yazdır
+                </button>
+                <button class="btn btn-outline-success btn-sm" onclick="exportToExcel('tab-ustbirim')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel Aktar
+                </button>
+            </div>
              <div class="row">
                  {% for ub_id, ub_data in ust_birim_data.items %}
                  <div class="col-md-6 mb-4">
@@ -112,7 +135,7 @@
                              <table class="table table-hover table-sm mb-0">
                                  <tbody>
                                      {% for bid, bdata in ub_data.birimler.items %}
-                                     <tr>
+                                     <tr class="clickable-row" data-birim-id="{{ bid }}" style="cursor: pointer;">
                                          <td class="ps-3">{{ bdata.ad }}</td>
                                          <td class="text-end pe-3" style="width: 100px;">
                                               <button class="btn btn-sm btn-link text-decoration-none fw-bold detail-btn" 
@@ -133,59 +156,71 @@
              </div>
         </div>
 
-        <!-- Tab 2: Birim Ünvan Dağılımı -->
+        <!-- Tab 2: Birim Tipi → Birim Ünvan Dağılımı -->
         <div class="tab-pane fade" id="tab-birimunvan" role="tabpanel">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover w-100 table-sm" style="font-size: 0.9rem;">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Birim</th>
-                                    <th>Ünvanlar / Personel Sayıları</th>
-                                    <th class="text-center" style="width: 80px;">Toplam</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for bid, data in birim_unvan_data.items %}
-                                <tr>
-                                    <td class="fw-bold align-middle">{{ data.ad }}</td>
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            {% for ku_id, count in data.unvanlar.items %}
-                                                {% comment %}
-                                                    Efficient lookup here refers to 'all_kisa_unvans' passed in context. 
-                                                    Ideally we map IDs to names in View to avoid loop here. 
-                                                    For MVP we iterate or use a template filter. 
-                                                    Let's use a simple lookup if possible or assume view passed mapped data.
-                                                    Actually, I left it as ID in view. 
-                                                    I'll just show 'ID: Count' or fix view. 
-                                                    FIX: Javascript or View fix is better. 
-                                                    Let's Fix View Logic internally? No, I'll filter in template loop.
-                                                {% endcomment %}
-                                                <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 detail-btn p-1 px-2"
-                                                        data-birim-id="{{ bid }}"
-                                                        data-kisa-unvan-id="{{ ku_id }}">
-                                                    {% for ku in all_kisa_unvans %}
-                                                        {% if ku.id == ku_id %}
-                                                            <span>{{ ku.ad }}</span>
-                                                        {% endif %}
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-outline-primary btn-sm me-2" onclick="exportToPDF('tab-birimunvan')">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF Yazdır
+                </button>
+                <button class="btn btn-outline-success btn-sm" onclick="exportToExcel('tab-birimunvan')">
+                    <i class="bi bi-file-earmark-excel"></i> Excel Aktar
+                </button>
+            </div>
+            <div class="accordion" id="birimTipiAccordion">
+                {% for birim_tipi, tipi_data in birim_tipi_data.items %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ forloop.counter }}">
+                            <strong>{{ birim_tipi }}</strong>
+                            <span class="badge bg-primary ms-2">{{ tipi_data.total }} Personel</span>
+                        </button>
+                    </h2>
+                    <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#birimTipiAccordion">
+                        <div class="accordion-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover mb-0 table-sm" style="font-size: 0.9rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Birim</th>
+                                            <th>Ünvanlar / Personel Sayıları</th>
+                                            <th class="text-center" style="width: 80px;">Toplam</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for bid, data in tipi_data.birimler.items %}
+                                        <tr>
+                                            <td class="fw-bold align-middle clickable-row" data-birim-id="{{ bid }}" style="cursor: pointer;">{{ data.ad }}</td>
+                                            <td>
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    {% for ku_id, count in data.unvanlar.items %}
+                                                        <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 detail-btn p-1 px-2"
+                                                                data-birim-id="{{ bid }}"
+                                                                data-kisa-unvan-id="{{ ku_id }}">
+                                                            {% for ku in all_kisa_unvans %}
+                                                                {% if ku.id == ku_id %}
+                                                                    <span>{{ ku.ad }}</span>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                             {% if ku_id == 'unknown' %}<span>Tanımsız</span>{% endif %}
+                                                            <span class="badge bg-secondary">{{ count }}</span>
+                                                        </button>
                                                     {% endfor %}
-                                                     {% if ku_id == 'unknown' %}<span>Tanımsız</span>{% endif %}
-                                                    <span class="badge bg-secondary">{{ count }}</span>
-                                                </button>
-                                            {% endfor %}
-                                        </div>
-                                    </td>
-                                    <td class="text-center align-middle fw-bold">{{ data.total }}</td>
-                                </tr>
-                                {% empty %}
-                                 <tr><td colspan="3" class="text-center py-4">Veri bulunamadı.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                     </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center align-middle fw-bold">{{ data.total }}</td>
+                                        </tr>
+                                        {% empty %}
+                                         <tr><td colspan="3" class="text-center py-4">Bu birim tipinde veri bulunamadı.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                {% empty %}
+                <div class="text-center py-5 text-muted">Veri bulunamadı.</div>
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -215,8 +250,23 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        
+        // --- Filters Collapse Icon Toggle ---
+        const filtersCollapse = document.getElementById('filtersCollapse');
+        if(filtersCollapse) {
+            filtersCollapse.addEventListener('show.bs.collapse', function () {
+                const icon = document.querySelector('#filtersToggleBtn i');
+                if(icon) icon.className = 'bi bi-chevron-up';
+            });
+            filtersCollapse.addEventListener('hide.bs.collapse', function () {
+                const icon = document.querySelector('#filtersToggleBtn i');
+                if(icon) icon.className = 'bi bi-chevron-down';
+            });
+        }
         
         // --- Kisa Unvan Modal Sync (Reuse) ---
         const kisaUnvanModal = document.getElementById('kisaUnvanModal');
@@ -263,6 +313,23 @@
             body.innerHTML = '<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary" role="status"></div></div>';
             detailModal.show();
             
+            // Add export buttons to modal footer
+            const footer = document.querySelector('#personelListModal .modal-footer .d-flex > div:last-child');
+            if (footer && !footer.querySelector('.export-btn')) {
+                const pdfBtn = document.createElement('button');
+                pdfBtn.className = 'btn btn-outline-primary btn-sm me-2 export-btn';
+                pdfBtn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> PDF';
+                pdfBtn.onclick = () => exportModalToPDF();
+                
+                const excelBtn = document.createElement('button');
+                excelBtn.className = 'btn btn-outline-success btn-sm me-2 export-btn';
+                excelBtn.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Excel';
+                excelBtn.onclick = () => exportModalToExcel();
+                
+                footer.insertBefore(excelBtn, footer.firstChild);
+                footer.insertBefore(pdfBtn, footer.firstChild);
+            }
+            
             // Collect global filters
             const form = document.getElementById('filterForm');
             const formData = new FormData(form);
@@ -297,6 +364,178 @@
                 openDetailModal(params);
             });
         });
+
+        // Listen for clickable rows
+        document.querySelectorAll('.clickable-row').forEach(row => {
+            row.addEventListener('click', function() {
+                const birimId = this.dataset.birimId;
+                openDetailModal({ 'birim_id': birimId });
+            });
+        });
+
+        // Export functions
+        window.exportToPDF = function(tabId) {
+            const element = document.getElementById(tabId);
+            if (!element) {
+                alert('Tab bulunamadı');
+                return;
+            }
+            
+            html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgWidth = 210; // A4 width in mm
+                const pageHeight = 295; // A4 height in mm
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                
+                let position = 0;
+                
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                pdf.save('birim_analiz_' + tabId + '.pdf');
+            }).catch(err => {
+                console.error('PDF oluşturma hatası:', err);
+                alert('PDF oluşturulamadı');
+            });
+        }
+
+        window.exportToExcel = function(tabId) {
+            const element = document.getElementById(tabId);
+            if (!element) {
+                alert('Tab bulunamadı');
+                return;
+            }
+            
+            // Find table in the tab
+            const table = element.querySelector('table');
+            if (!table) {
+                alert('Tablo bulunamadı');
+                return;
+            }
+            
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const row = [], cols = rows[i].querySelectorAll('td, th');
+                
+                for (let j = 0; j < cols.length; j++) {
+                    let text = cols[j].innerText.replace(/"/g, '""');
+                    // Remove badges and buttons text
+                    text = text.replace(/\d+\s*$/, '').trim();
+                    row.push('"' + text + '"');
+                }
+                
+                csv.push(row.join(','));
+            }
+            
+            // Download CSV
+            const csvContent = csv.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'birim_analiz_' + tabId + '.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Modal export functions
+        function exportModalToPDF() {
+            const modalBody = document.getElementById('personelListModalBody');
+            if (!modalBody) {
+                alert('Modal bulunamadı');
+                return;
+            }
+            
+            html2canvas(modalBody, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgWidth = 210;
+                const pageHeight = 295;
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                let heightLeft = imgHeight;
+                
+                let position = 0;
+                
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                pdf.save('personel_listesi.pdf');
+            }).catch(err => {
+                console.error('PDF oluşturma hatası:', err);
+                alert('PDF oluşturulamadı');
+            });
+        }
+
+        function exportModalToExcel() {
+            const modalBody = document.getElementById('personelListModalBody');
+            if (!modalBody) {
+                alert('Modal bulunamadı');
+                return;
+            }
+            
+            const table = modalBody.querySelector('table');
+            if (!table) {
+                alert('Tablo bulunamadı');
+                return;
+            }
+            
+            let csv = [];
+            const rows = table.querySelectorAll('tr');
+            
+            for (let i = 0; i < rows.length; i++) {
+                const row = [], cols = rows[i].querySelectorAll('td, th');
+                
+                for (let j = 0; j < cols.length; j++) {
+                    let text = cols[j].innerText.replace(/"/g, '""');
+                    row.push('"' + text + '"');
+                }
+                
+                csv.push(row.join(','));
+            }
+            
+            const csvContent = csv.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'personel_listesi.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     });
 </script>
 {% endblock %}

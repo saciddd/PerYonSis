@@ -251,8 +251,8 @@ def birim_analiz_view(request):
     # Tab 1: Üst Birim -> Birim Dağılımı
     ust_birim_data = {}
     
-    # Tab 2: Birim -> Ünvan Dağılımı (Similar to Matrix in Unvan Analiz)
-    birim_unvan_data = {}
+    # Tab 2: Birim Tipi -> Birim -> Ünvan Dağılımı
+    birim_tipi_data = {}
     
     # Filter by Ust Birim here in Python loop if complex, or ID list
     selected_ust_birim_ids = [int(x) for x in ust_birim_filter]
@@ -288,21 +288,26 @@ def birim_analiz_view(request):
         ust_birim_data[ub_id]['birimler'][b_id]['count'] += 1
         ust_birim_data[ub_id]['total'] += 1
         
-        # Data for Tab 2 - kisa_unvan property'sini kullan
+        # Data for Tab 2 - birim_tipi'ne göre gruplandır
+        birim_tipi = birim.birim_tipi or 'Tanımsız'
         ku_ad = p.kisa_unvan
         if ku_ad and ku_ad in kisa_unvan_ad_to_id:
             ku_id = kisa_unvan_ad_to_id[ku_ad]
         else:
             ku_id = 'unknown'
         
-        if b_id not in birim_unvan_data:
-            birim_unvan_data[b_id] = {'ad': b_ad, 'unvanlar': {}, 'total': 0}
+        if birim_tipi not in birim_tipi_data:
+            birim_tipi_data[birim_tipi] = {'birimler': {}, 'total': 0}
             
-        if ku_id not in birim_unvan_data[b_id]['unvanlar']:
-            birim_unvan_data[b_id]['unvanlar'][ku_id] = 0
+        if b_id not in birim_tipi_data[birim_tipi]['birimler']:
+            birim_tipi_data[birim_tipi]['birimler'][b_id] = {'ad': b_ad, 'unvanlar': {}, 'total': 0}
             
-        birim_unvan_data[b_id]['unvanlar'][ku_id] += 1
-        birim_unvan_data[b_id]['total'] += 1
+        if ku_id not in birim_tipi_data[birim_tipi]['birimler'][b_id]['unvanlar']:
+            birim_tipi_data[birim_tipi]['birimler'][b_id]['unvanlar'][ku_id] = 0
+            
+        birim_tipi_data[birim_tipi]['birimler'][b_id]['unvanlar'][ku_id] += 1
+        birim_tipi_data[birim_tipi]['birimler'][b_id]['total'] += 1
+        birim_tipi_data[birim_tipi]['total'] += 1
 
     # Only include filtered people in context if needed, but we aggregated already.
     
@@ -313,7 +318,7 @@ def birim_analiz_view(request):
 
     context = {
         'ust_birim_data': ust_birim_data,
-        'birim_unvan_data': birim_unvan_data,
+        'birim_tipi_data': birim_tipi_data,
         'ust_birimler': ust_birimler,
         'kisa_unvanlar': kisa_unvanlar, # For modal filter - personel_list.html ile uyumlu
         'all_kisa_unvans': kisa_unvanlar, # Tab 2 için backward compatibility
@@ -405,14 +410,15 @@ def personel_list_modal_view(request):
         target_pids = []
         for p in personeller:
             current_pb = p.personelbirim_set.order_by('-gecis_tarihi', '-creation_timestamp').first()
-            if not current_pb:
-                continue
             
-            if birim_id:
-                if str(current_pb.birim.id) == str(birim_id):
+            if birim_id == 'unknown':
+                if not current_pb:
+                    target_pids.append(p.id)
+            elif birim_id:
+                if current_pb and str(current_pb.birim.id) == str(birim_id):
                     target_pids.append(p.id)
             elif ust_birim_id:
-                if str(current_pb.birim.ust_birim.id) == str(ust_birim_id):
+                if current_pb and str(current_pb.birim.ust_birim.id) == str(ust_birim_id):
                     target_pids.append(p.id)
         
         personeller = personeller.filter(id__in=target_pids)

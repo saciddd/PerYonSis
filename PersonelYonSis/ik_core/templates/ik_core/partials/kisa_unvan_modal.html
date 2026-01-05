@@ -1,34 +1,31 @@
 <!-- Kısa Unvan Seçim Modalı -->
 <div class="modal fade" id="kisaUnvanModal" tabindex="-1" aria-labelledby="kisaUnvanModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable" style="max-width:98vw;">
-        <div class="modal-content">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content d-flex flex-column">
             <div class="modal-header bg-light py-2">
                 <h5 class="modal-title" id="kisaUnvanModalLabel">Kısa Unvan Seçimi</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
             </div>
-            <div class="modal-body p-2">
+            <div class="modal-body flex-grow-1 p-2" style="overflow-y: auto;">
                 {% regroup kisa_unvanlar by ust_birim as birim_list %}
                 
-                {% for birim in birim_list %}
-                    <div class="mb-2 group-container">
-                        <h6 class="border-bottom pb-1 mb-1 text-primary fw-bold d-flex align-items-center bg-light ps-2 justify-content-between">
-                            <div class="d-flex align-items-center">
-                                <div class="form-check m-0">
-                                    <input class="form-check-input group-checkbox" type="checkbox" id="group_chk_{{ forloop.counter }}">
-                                    <label class="form-check-label" style="font-size: 13pt;" for="group_chk_{{ forloop.counter }}">
-                                        {% if birim.grouper %}{{ birim.grouper.ad }}{% else %}Diğer{% endif %}
-                                    </label>
-                                </div>
-                            </div>
-                            <button class="btn btn-sm btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#collapseGroup{{ forloop.counter }}" aria-expanded="true" aria-controls="collapseGroup{{ forloop.counter }}">
-                                <i class="bi bi-chevron-down fs-5"></i>
-                            </button>
-                        </h6>
-                        <div class="collapse show" id="collapseGroup{{ forloop.counter }}">
-                            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-1">
-                                {% for kisa_unvan in birim.list %}
-                                    <div class="col">
-                                        <div class="form-check">
+                <div class="row g-2 h-100 width: 100%;">
+                    {% for birim in birim_list %}
+                        <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                            <div class="group-container h-100 border rounded bg-white">
+                                <h6 class="border-bottom pb-1 mb-1 text-primary fw-bold d-flex align-items-center bg-light ps-2 justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <div class="form-check m-0">
+                                            <input class="form-check-input group-checkbox" type="checkbox" id="group_chk_{{ forloop.counter }}">
+                                            <label class="form-check-label" style="font-size: 13pt;" for="group_chk_{{ forloop.counter }}">
+                                                {% if birim.grouper %}{{ birim.grouper.ad }}{% else %}Diğer{% endif %}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </h6>
+                                <div class="kisa-unvan-list px-2 pb-2" style="overflow-y: auto;">
+                                    {% for kisa_unvan in birim.list %}
+                                        <div class="form-check mb-1">
                                             {# Checkbox form="personelAramaForm" niteliği ile ana formun bir parçası gibi davranır #}
                                             <input class="form-check-input kisa-unvan-checkbox {% if kisa_unvan.isci_unvani %}isci-unvan{% endif %}" 
                                                 type="checkbox" 
@@ -41,12 +38,12 @@
                                                 {{ kisa_unvan.ad }}
                                             </label>
                                         </div>
-                                    </div>
-                                {% endfor %}
+                                    {% endfor %}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                {% endfor %}
+                    {% endfor %}
+                </div>
             </div>
             <div class="modal-footer bg-light">
                 <div class="d-flex justify-content-between w-100 align-items-center">

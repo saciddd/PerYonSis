@@ -80,8 +80,14 @@ WSGI_APPLICATION = 'PersonelYonSis.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',  # Veritabanı dosyasının yolu
+        # 'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': BASE_DIR / 'db.sqlite3',  # Veritabanı dosyasının yolu
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'personelyonsis',
+        'USER': 'postgres',
+        'PASSWORD': 'aclKDH0945*+!0x+',
+        'HOST': '10.38.12.59',  # veya sunucu IP’si
+        'PORT': '5432',
     }
 }
 

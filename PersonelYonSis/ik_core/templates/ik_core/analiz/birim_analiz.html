@@ -108,7 +108,7 @@
             <button class="nav-link active" id="tab-ustbirim-tab" data-bs-toggle="tab" data-bs-target="#tab-ustbirim" type="button" role="tab">Üst Birim → Birim Dağılımı</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-birimunvan-tab" data-bs-toggle="tab" data-bs-target="#tab-birimunvan" type="button" role="tab">Birim Tipi → Birim Ünvan Dağılımı</button>
+            <button class="nav-link" id="tab-birimunvan-tab" data-bs-toggle="tab" data-bs-target="#tab-birimunvan" type="button" role="tab">Bina → Birim Tipi → Birim Ünvan Dağılımı</button>
         </li>
     </ul>
 
@@ -156,7 +156,7 @@
              </div>
         </div>
 
-        <!-- Tab 2: Birim Tipi → Birim Ünvan Dağılımı -->
+        <!-- Tab 2: Bina → Birim Tipi → Birim Ünvan Dağılımı -->
         <div class="tab-pane fade" id="tab-birimunvan" role="tabpanel">
             <div class="d-flex justify-content-end mb-3">
                 <button class="btn btn-outline-primary btn-sm me-2" onclick="exportToPDF('tab-birimunvan')">
@@ -166,54 +166,71 @@
                     <i class="bi bi-file-earmark-excel"></i> Excel Aktar
                 </button>
             </div>
-            <div class="accordion" id="birimTipiAccordion">
-                {% for birim_tipi, tipi_data in birim_tipi_data.items %}
+            <div class="accordion" id="binaAccordion">
+                {% for bina_ad, bina_tipi_data in bina_data.items %}
                 <div class="accordion-item">
-                    <h2 class="accordion-header" id="heading{{ forloop.counter }}">
-                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ forloop.counter }}">
-                            <strong>{{ birim_tipi }}</strong>
-                            <span class="badge bg-primary ms-2">{{ tipi_data.total }} Personel</span>
+                    <h2 class="accordion-header" id="headingBina{{ forloop.counter }}">
+                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBina{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapseBina{{ forloop.counter }}">
+                            <strong>{{ bina_ad }}</strong>
+                            <span class="badge bg-primary ms-2">{{ bina_tipi_data|length }} Birim Tipi</span>
                         </button>
                     </h2>
-                    <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#birimTipiAccordion">
+                    <div id="collapseBina{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="headingBina{{ forloop.counter }}" data-bs-parent="#binaAccordion">
                         <div class="accordion-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-hover mb-0 table-sm" style="font-size: 0.9rem;">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Birim</th>
-                                            <th>Ünvanlar / Personel Sayıları</th>
-                                            <th class="text-center" style="width: 80px;">Toplam</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for bid, data in tipi_data.birimler.items %}
-                                        <tr>
-                                            <td class="fw-bold align-middle clickable-row" data-birim-id="{{ bid }}" style="cursor: pointer;">{{ data.ad }}</td>
-                                            <td>
-                                                <div class="d-flex flex-wrap gap-2">
-                                                    {% for ku_id, count in data.unvanlar.items %}
-                                                        <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 detail-btn p-1 px-2"
-                                                                data-birim-id="{{ bid }}"
-                                                                data-kisa-unvan-id="{{ ku_id }}">
-                                                            {% for ku in all_kisa_unvans %}
-                                                                {% if ku.id == ku_id %}
-                                                                    <span>{{ ku.ad }}</span>
-                                                                {% endif %}
-                                                            {% endfor %}
-                                                             {% if ku_id == 'unknown' %}<span>Tanımsız</span>{% endif %}
-                                                            <span class="badge bg-secondary">{{ count }}</span>
-                                                        </button>
+                            <div class="accordion" id="birimTipiAccordion{{ forloop.counter }}">
+                                {% for birim_tipi, tipi_data in bina_tipi_data.items %}
+                                <div class="accordion-item">
+                                    <h3 class="accordion-header" id="headingTipi{{ forloop.parentloop.counter }}{{ forloop.counter }}">
+                                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTipi{{ forloop.parentloop.counter }}{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapseTipi{{ forloop.parentloop.counter }}{{ forloop.counter }}">
+                                        <strong>{{ birim_tipi }}</strong>
+                                        <span class="badge bg-secondary ms-2">{{ tipi_data.total }} Personel</span>
+                                    </button>
+                                </h3>
+                                <div id="collapseTipi{{ forloop.parentloop.counter }}{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="headingTipi{{ forloop.parentloop.counter }}{{ forloop.counter }}" data-bs-parent="#birimTipiAccordion{{ forloop.parentloop.counter }}">
+                                    <div class="accordion-body p-0">
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered table-hover mb-0 table-sm" style="font-size: 0.9rem;">
+                                                <thead class="table-light">
+                                                    <tr>
+                                                        <th>Birim</th>
+                                                        <th>Ünvanlar / Personel Sayıları</th>
+                                                        <th class="text-center" style="width: 80px;">Toplam</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for bid, data in tipi_data.birimler.items %}
+                                                    <tr>
+                                                        <td class="fw-bold align-middle clickable-row" data-birim-id="{{ bid }}" style="cursor: pointer;">{{ data.ad }}</td>
+                                                        <td>
+                                                            <div class="d-flex flex-wrap gap-2">
+                                                                {% for ku_id, count in data.unvanlar.items %}
+                                                                    <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 detail-btn p-1 px-2"
+                                                                            data-birim-id="{{ bid }}"
+                                                                            data-kisa-unvan-id="{{ ku_id }}">
+                                                                        {% for ku in all_kisa_unvans %}
+                                                                            {% if ku.id == ku_id %}
+                                                                                <span>{{ ku.ad }}</span>
+                                                                            {% endif %}
+                                                                        {% endfor %}
+                                                                         {% if ku_id == 'unknown' %}<span>Tanımsız</span>{% endif %}
+                                                                        <span class="badge bg-secondary">{{ count }}</span>
+                                                                    </button>
+                                                                {% endfor %}
+                                                            </div>
+                                                        </td>
+                                                        <td class="text-center align-middle fw-bold">{{ data.total }}</td>
+                                                    </tr>
+                                                    {% empty %}
+                                                     <tr><td colspan="3" class="text-center py-4">Bu birim tipinde veri bulunamadı.</td></tr>
                                                     {% endfor %}
-                                                </div>
-                                            </td>
-                                            <td class="text-center align-middle fw-bold">{{ data.total }}</td>
-                                        </tr>
-                                        {% empty %}
-                                         <tr><td colspan="3" class="text-center py-4">Bu birim tipinde veri bulunamadı.</td></tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="text-center py-5 text-muted">Bu binada birim tipi bulunamadı.</div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -229,23 +246,8 @@
 <!-- Kisa Unvan Modal (Filter) -->
 {% include 'ik_core/partials/kisa_unvan_modal.html' %}
 
-<!-- Personel List Modal (Detail) -->
-<div class="modal fade" id="personelListModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title">Personel Listesi</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-0" id="personelListModalBody">
-                 <!-- Loaded via AJAX -->
-            </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-            </div>
-        </div>
-    </div>
-</div>
+{% include 'ik_core/partials/personel_list_modal.html' %}
+{% include 'ik_core/partials/yeni_birim_belirle_modal.html' %}
 
 {% endblock %}
 
@@ -344,11 +346,45 @@
                 .then(response => response.text())
                 .then(html => {
                     body.innerHTML = html;
+                    attachEventListeners();
                 })
                 .catch(err => {
                     body.innerHTML = '<div class="alert alert-danger m-3">Veri yüklenirken hata oluştu.</div>';
                     console.error(err);
                 });
+        }
+
+        // Function to attach event listeners to buttons in modal content
+        function attachEventListeners() {
+            document.querySelectorAll('.set-yeni-birim-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    console.log('Set Yeni Birim clicked for personel id:', this.dataset.personelId);
+                    const pid = this.dataset.personelId;
+                    const hidden = document.getElementById('id_yeni_birim-personel_id');
+                    if (hidden) {
+                        hidden.value = pid;
+                    }
+                    // close personelListModal first
+                    const personelModalEl = document.getElementById('personelListModal');
+                    if (personelModalEl) {
+                        const personelModal = bootstrap.Modal.getInstance(personelModalEl);
+                        if (personelModal) {
+                            personelModal.hide();
+                            console.log('Closed personelListModal for personel id:', pid);
+                            // wait for modal to fully close before opening new one
+                            setTimeout(() => {
+                                const modalEl = document.getElementById('yeniBirimBelirleModal');
+                                if (modalEl) {
+                                    const modal = new bootstrap.Modal(modalEl);
+                                    modal.show();
+                                } else {
+                                    console.warn('Yeni Birim Belirle modal bulunamadı. Lütfen partial include edin.');
+                                }
+                            }, 300); // adjust delay if needed
+                        }
+                    }
+                });
+            });
         }
 
         // Listen for clicks

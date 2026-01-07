@@ -206,32 +206,8 @@
 <!-- Kisa Unvan Modal (Filter) -->
 {% include 'ik_core/partials/kisa_unvan_modal.html' %}
 
-<!-- Personel List Modal (Detail) -->
-<div class="modal fade" id="personelListModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title">Personel Listesi</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body p-0" id="personelListModalBody">
-                <div class="d-flex justify-content-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Yükleniyor...</span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer bg-light d-flex justify-content-between">
-                <div class="text-muted small">
-                     <!-- Info can go here -->
-                </div>
-                <div>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{% include 'ik_core/partials/personel_list_modal.html' %}
+{% include 'ik_core/partials/yeni_birim_belirle_modal.html' %}
 
 {% endblock %}
 
@@ -339,11 +315,45 @@
                 .then(response => response.text())
                 .then(html => {
                     body.innerHTML = html;
+                    attachEventListeners();
                 })
                 .catch(err => {
                     body.innerHTML = '<div class="alert alert-danger m-3">Veri yüklenirken hata oluştu.</div>';
                     console.error(err);
                 });
+        }
+
+        // Function to attach event listeners to buttons in modal content
+        function attachEventListeners() {
+            document.querySelectorAll('.set-yeni-birim-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    console.log('Set Yeni Birim clicked for personel id:', this.dataset.personelId);
+                    const pid = this.dataset.personelId;
+                    const hidden = document.getElementById('id_yeni_birim-personel_id');
+                    if (hidden) {
+                        hidden.value = pid;
+                    }
+                    // close personelListModal first
+                    const personelModalEl = document.getElementById('personelListModal');
+                    if (personelModalEl) {
+                        const personelModal = bootstrap.Modal.getInstance(personelModalEl);
+                        if (personelModal) {
+                            personelModal.hide();
+                            console.log('Closed personelListModal for personel id:', pid);
+                            // wait for modal to fully close before opening new one
+                            setTimeout(() => {
+                                const modalEl = document.getElementById('yeniBirimBelirleModal');
+                                if (modalEl) {
+                                    const modal = new bootstrap.Modal(modalEl);
+                                    modal.show();
+                                } else {
+                                    console.warn('Yeni Birim Belirle modal bulunamadı. Lütfen partial include edin.');
+                                }
+                            }, 300); // adjust delay if needed
+                        }
+                    }
+                });
+            });
         }
 
         // Listen for clicks on Table 1 buttons

@@ -4,7 +4,7 @@ from django.db.models.functions import RowNumber
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from .models.personel import Personel, KisaUnvan, UnvanBransEslestirme
-from .models.BirimYonetimi import Birim, UstBirim, PersonelBirim
+from .models.BirimYonetimi import Birim, UstBirim, PersonelBirim, Bina
 from datetime import date
 import json
 
@@ -174,6 +174,8 @@ def unvan_analiz_view(request):
         'matrix_rows': matrix_rows,
         'matrix_headers': sorted_kisa_unvans,
         'kisa_unvanlar': kisa_unvanlar, # For modal filter - personel_list.html ile uyumlu
+        'ust_birimler': UstBirim.objects.all().order_by('ad'),
+        'binalar': Bina.objects.all().order_by('ad'),
         'arama': {
             'kisa_unvan': [str(x) for x in kisa_unvan_filter], # Modal template'i için
         },
@@ -251,8 +253,8 @@ def birim_analiz_view(request):
     # Tab 1: Üst Birim -> Birim Dağılımı
     ust_birim_data = {}
     
-    # Tab 2: Birim Tipi -> Birim -> Ünvan Dağılımı
-    birim_tipi_data = {}
+    # Tab 2: Bina -> Birim Tipi -> Birim -> Ünvan Dağılımı
+    bina_data = {}
     
     # Filter by Ust Birim here in Python loop if complex, or ID list
     selected_ust_birim_ids = [int(x) for x in ust_birim_filter]
@@ -288,7 +290,8 @@ def birim_analiz_view(request):
         ust_birim_data[ub_id]['birimler'][b_id]['count'] += 1
         ust_birim_data[ub_id]['total'] += 1
         
-        # Data for Tab 2 - birim_tipi'ne göre gruplandır
+        # Data for Tab 2 - bina -> birim_tipi'ne göre gruplandır
+        bina_ad = birim.bina.ad if birim.bina else 'Tanımsız'
         birim_tipi = birim.birim_tipi or 'Tanımsız'
         ku_ad = p.kisa_unvan
         if ku_ad and ku_ad in kisa_unvan_ad_to_id:
@@ -296,18 +299,21 @@ def birim_analiz_view(request):
         else:
             ku_id = 'unknown'
         
-        if birim_tipi not in birim_tipi_data:
-            birim_tipi_data[birim_tipi] = {'birimler': {}, 'total': 0}
+        if bina_ad not in bina_data:
+            bina_data[bina_ad] = {}
             
-        if b_id not in birim_tipi_data[birim_tipi]['birimler']:
-            birim_tipi_data[birim_tipi]['birimler'][b_id] = {'ad': b_ad, 'unvanlar': {}, 'total': 0}
+        if birim_tipi not in bina_data[bina_ad]:
+            bina_data[bina_ad][birim_tipi] = {'birimler': {}, 'total': 0}
             
-        if ku_id not in birim_tipi_data[birim_tipi]['birimler'][b_id]['unvanlar']:
-            birim_tipi_data[birim_tipi]['birimler'][b_id]['unvanlar'][ku_id] = 0
+        if b_id not in bina_data[bina_ad][birim_tipi]['birimler']:
+            bina_data[bina_ad][birim_tipi]['birimler'][b_id] = {'ad': b_ad, 'unvanlar': {}, 'total': 0}
             
-        birim_tipi_data[birim_tipi]['birimler'][b_id]['unvanlar'][ku_id] += 1
-        birim_tipi_data[birim_tipi]['birimler'][b_id]['total'] += 1
-        birim_tipi_data[birim_tipi]['total'] += 1
+        if ku_id not in bina_data[bina_ad][birim_tipi]['birimler'][b_id]['unvanlar']:
+            bina_data[bina_ad][birim_tipi]['birimler'][b_id]['unvanlar'][ku_id] = 0
+            
+        bina_data[bina_ad][birim_tipi]['birimler'][b_id]['unvanlar'][ku_id] += 1
+        bina_data[bina_ad][birim_tipi]['birimler'][b_id]['total'] += 1
+        bina_data[bina_ad][birim_tipi]['total'] += 1
 
     # Only include filtered people in context if needed, but we aggregated already.
     
@@ -318,10 +324,11 @@ def birim_analiz_view(request):
 
     context = {
         'ust_birim_data': ust_birim_data,
-        'birim_tipi_data': birim_tipi_data,
+        'bina_data': bina_data,
         'ust_birimler': ust_birimler,
         'kisa_unvanlar': kisa_unvanlar, # For modal filter - personel_list.html ile uyumlu
         'all_kisa_unvans': kisa_unvanlar, # Tab 2 için backward compatibility
+        'binalar': Bina.objects.all().order_by('ad'),
         'arama': {
             'kisa_unvan': [str(x) for x in kisa_unvan_filter], # Modal template'i için
         },

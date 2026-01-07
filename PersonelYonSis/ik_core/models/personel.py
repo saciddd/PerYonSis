@@ -1,6 +1,9 @@
 from PersonelYonSis.FMConnection.KDHIzin import sync_personel_to_filemaker
 from django.db import models
 from datetime import date
+
+from ik_core.models.BirimYonetimi import PersonelBirim
+
 from .valuelists import (
     TESKILAT_DEGERLERI, 
     EGITIM_DEGERLERI, 
@@ -243,6 +246,15 @@ class Personel(models.Model):
     #         return self.memur_devreden_izin + self.memur_hak_ettigi_izin - ... # mevcut yıl kullandığı izinler
     #     else:
     #         return ... # YillikIzinHakedis modeline göre hesaplanacak
+
+    # Personelin en son çalıştığı birim bilgisini al
+    @property
+    def son_birim_kaydi(self):
+
+        latest_kayit = PersonelBirim.objects.filter(personel=self).order_by('-gecis_tarihi').select_related('birim').first()
+        if latest_kayit:
+            return latest_kayit.birim.ad
+        return None
 
     @property
     def son_mercis657_listesi(self):

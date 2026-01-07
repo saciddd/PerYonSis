@@ -13,12 +13,15 @@
         <thead class="table-light sticky-top" style="top: 0; z-index: 10;">
             <tr>
                 <th>Ad Soyad</th>
+                <th>Birim</th>
                 <th>Telefon</th>
                 <th>Yaş</th>
                 <th>Ünvan / Branş</th>
+                <th>Son Bildirimler</th>
                 <th>Kadro Durumu</th>
                 <th>Özel Durumlar</th>
                 <th>Durum</th>
+                <th>İşlemler</th>
             </tr>
         </thead>
         <tbody>
@@ -28,11 +31,24 @@
                     <div class="fw-bold">{{ p.ad_soyad }}</div>
                     <div class="small text-muted">{{ p.tc_kimlik_no }}</div>
                 </td>
+                <td>{{ p.son_birim_kaydi|default:"-" }}</td>
                 <td>{{ p.telefon|default:"-" }}</td>
                 <td>{{ p.yas|default:"-" }}</td>
                 <td>
                     <div>{{ p.unvan.ad|default:"-" }}</div>
                     <div class="small text-muted">{{ p.brans.ad|default:"" }}</div>
+                </td>
+                <td>
+                    <div class="small">
+                        {% if p.son_mercis657_listesi %}
+                            <div><b>{{ p.son_mercis657_listesi.yil }}/{{ p.son_mercis657_listesi.ay }}</b> - {{ p.son_mercis657_listesi.birim }}</div>
+                        {% else %}
+                            <div class="text-muted">-</div>
+                        {% endif %}
+                        {% if p.son_hizmet_sunum_bildirimi %}
+                            <div class="small text-muted">{{ p.son_hizmet_sunum_bildirimi.yil }}/{{ p.son_hizmet_sunum_bildirimi.ay }} - {{ p.son_hizmet_sunum_bildirimi.birim }}</div>
+                        {% endif %}
+                    </div>
                 </td>
                 <td>
                     {% if p.kadrolu_personel %}
@@ -51,10 +67,13 @@
                 <td>
                     <span class="badge bg-secondary">{{ p.durum }}</span>
                 </td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-sm btn-outline-primary set-yeni-birim-btn" data-personel-id="{{ p.id }}">Birim Değiştir</button>
+                </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7" class="text-center py-4 text-muted">Personel bulunamadı.</td>
+                <td colspan="9" class="text-center py-4 text-muted">Personel bulunamadı.</td>
             </tr>
             {% endfor %}
         </tbody>

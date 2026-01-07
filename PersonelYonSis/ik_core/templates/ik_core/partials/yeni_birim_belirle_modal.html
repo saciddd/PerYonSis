@@ -7,6 +7,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="yeniBirimBelirleForm">
+                <input type="hidden" name="personel_id" id="id_yeni_birim-personel_id" value="">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -68,9 +69,13 @@
 // Yeni birim belirleme form submit
 document.getElementById('yeniBirimBelirleForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(this);
-    formData.append('personel_id', {{ personel.id }});
+    // read personel_id from hidden input; caller should set it before opening modal
+    const pid = document.getElementById('id_yeni_birim-personel_id');
+    if (pid && pid.value) {
+        formData.set('personel_id', pid.value);
+    }
     
     fetch('{% url "ik_core:personel_birim_ekle" %}', {
         method: 'POST',

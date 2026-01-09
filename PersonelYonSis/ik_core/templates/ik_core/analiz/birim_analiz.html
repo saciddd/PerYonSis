@@ -64,22 +64,27 @@
                     <!-- Kisa Unvan Filter -->
                     <div class="col-md-3">
                         <label class="form-label small fw-bold">Kısa Unvan</label>
-                        <button type="button" class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center text-start" data-bs-toggle="modal" data-bs-target="#kisaUnvanModal" style="font-size: 0.85rem; padding: 4px 8px; border-color: #ced4da; min-height: 31px;">
+                        <button type="button"
+                            class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center text-start"
+                            data-bs-toggle="modal" data-bs-target="#kisaUnvanModal"
+                            style="font-size: 0.85rem; padding: 4px 8px; border-color: #ced4da; min-height: 31px;">
                             <span id="kisaUnvanSelectBtnLabel" class="text-truncate">
                                 {% if selected_kisa_unvans %}
-                                    {{ selected_kisa_unvans|length }} Seçili
+                                {{ selected_kisa_unvans|length }} Seçili
                                 {% else %}
-                                    Seçiniz...
+                                Seçiniz...
                                 {% endif %}
                             </span>
-                             <span id="kisaUnvanSelectBtnBadge" class="badge bg-primary rounded-pill {% if not selected_kisa_unvans %}d-none{% endif %} ms-1">
-                                 {{ selected_kisa_unvans|length }}
-                             </span>
+                            <span id="kisaUnvanSelectBtnBadge"
+                                class="badge bg-primary rounded-pill {% if not selected_kisa_unvans %}d-none{% endif %} ms-1">
+                                {{ selected_kisa_unvans|length }}
+                            </span>
                             <i class="bi bi-chevron-down ms-1 small text-muted"></i>
                         </button>
-                         <div id="hiddenKisaUnvanInputs">
+                        <!-- Inputs for selected items will be handled by the modal JS logic -->
+                        <div id="hiddenKisaUnvanInputs">
                             {% for id in selected_kisa_unvans %}
-                                <input type="hidden" name="kisa_unvan" value="{{ id }}">
+                            <input type="hidden" name="kisa_unvan" value="{{ id }}">
                             {% endfor %}
                         </div>
                     </div>
@@ -228,9 +233,10 @@
                                         </div>
                                     </div>
                                 </div>
-                                {% empty %}
-                                <div class="text-center py-5 text-muted">Bu binada birim tipi bulunamadı.</div>
-                                {% endfor %}
+                            </div>
+                            {% empty %}
+                            <div class="text-center py-5 text-muted">Bu binada birim tipi bulunamadı.</div>
+                            {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -254,6 +260,8 @@
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="{% static 'js/excel_export_helper.js' %}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         
@@ -272,16 +280,17 @@
         
         // --- Kisa Unvan Modal Sync (Reuse) ---
         const kisaUnvanModal = document.getElementById('kisaUnvanModal');
-        if(kisaUnvanModal) {
-            // Tamam butonu btn-success class'ına sahip
+        if (kisaUnvanModal) {
+            // Listen for save/apply - Tamam butonu btn-success class'ına sahip
             const applyBtn = kisaUnvanModal.querySelector('.btn-success');
-            if(applyBtn){
-                applyBtn.addEventListener('click', function(e){
+            if (applyBtn) {
+                applyBtn.addEventListener('click', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
+                    // Logic to collect checked checkboxes and update #hiddenKisaUnvanInputs
                     const checkboxes = kisaUnvanModal.querySelectorAll('input[type="checkbox"][name="kisa_unvan"]:checked');
                     const container = document.getElementById('hiddenKisaUnvanInputs');
-                    if(container) {
+                    if (container) {
                         container.innerHTML = '';
                         let count = 0;
                         checkboxes.forEach(cb => {
@@ -292,13 +301,13 @@
                             container.appendChild(input);
                             count++;
                         });
-                        
+
                         const labelEl = document.getElementById('kisaUnvanSelectBtnLabel');
-                        if(labelEl) {
+                        if (labelEl) {
                             labelEl.innerText = count > 0 ? count + ' Seçili' : 'Seçiniz...';
                         }
                         const badge = document.getElementById('kisaUnvanSelectBtnBadge');
-                        if(badge) {
+                        if (badge) {
                             badge.innerText = count;
                             badge.classList.toggle('d-none', count === 0);
                         }
@@ -450,47 +459,9 @@
             });
         }
 
-        window.exportToExcel = function(tabId) {
-            const element = document.getElementById(tabId);
-            if (!element) {
-                alert('Tab bulunamadı');
-                return;
-            }
-            
-            // Find table in the tab
-            const table = element.querySelector('table');
-            if (!table) {
-                alert('Tablo bulunamadı');
-                return;
-            }
-            
-            let csv = [];
-            const rows = table.querySelectorAll('tr');
-            
-            for (let i = 0; i < rows.length; i++) {
-                const row = [], cols = rows[i].querySelectorAll('td, th');
-                
-                for (let j = 0; j < cols.length; j++) {
-                    let text = cols[j].innerText.replace(/"/g, '""');
-                    // Remove badges and buttons text
-                    text = text.replace(/\d+\s*$/, '').trim();
-                    row.push('"' + text + '"');
-                }
-                
-                csv.push(row.join(','));
-            }
-            
-            // Download CSV
-            const csvContent = csv.join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', 'birim_analiz_' + tabId + '.csv');
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        window.exportToExcel = function (tabId) {
+            // tabId corresponds to the container div ID, we need to pass a meaningful filename
+            ExcelExport.exportTable(tabId, 'unvan_analiz_' + tabId);
         }
 
         // Modal export functions
@@ -534,43 +505,13 @@
             });
         }
 
-        function exportModalToExcel() {
+        window.exportModalToExcel = function () {
             const modalBody = document.getElementById('personelListModalBody');
-            if (!modalBody) {
-                alert('Modal bulunamadı');
-                return;
+            if (modalBody) {
+                ExcelExport.exportTable(modalBody, 'personel_listesi');
+            } else {
+                alert('Modal içeriği bulunamadı.');
             }
-            
-            const table = modalBody.querySelector('table');
-            if (!table) {
-                alert('Tablo bulunamadı');
-                return;
-            }
-            
-            let csv = [];
-            const rows = table.querySelectorAll('tr');
-            
-            for (let i = 0; i < rows.length; i++) {
-                const row = [], cols = rows[i].querySelectorAll('td, th');
-                
-                for (let j = 0; j < cols.length; j++) {
-                    let text = cols[j].innerText.replace(/"/g, '""');
-                    row.push('"' + text + '"');
-                }
-                
-                csv.push(row.join(','));
-            }
-            
-            const csvContent = csv.join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', 'personel_listesi.csv');
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
     });
 </script>

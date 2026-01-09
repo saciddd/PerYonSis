@@ -7,7 +7,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="yeniBirimBelirleForm">
-                <input type="hidden" name="personel_id" id="id_yeni_birim-personel_id" value="">
+                <input type="hidden" name="personel_id" id="id_yeni_birim-personel_id" value="{{ personel.id|default:'' }}">
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">

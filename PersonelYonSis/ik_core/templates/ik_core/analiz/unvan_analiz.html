@@ -10,7 +10,7 @@
             <h1 class="h3 mb-0 text-gray-800">Ünvan Bazlı Analiz</h1>
         </div>
         <div class="col-auto">
-             <a href="{% url 'ik_core:analiz_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+            <a href="{% url 'ik_core:analiz_dashboard' %}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left"></i> Geri Dön
             </a>
         </div>
@@ -18,88 +18,100 @@
 
     <!-- Filtreler -->
     <div class="card mb-4">
-        <div class="card-header bg-light d-flex justify-content-between align-items-center" id="filtersToggleBtn" type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse" aria-expanded="true" aria-controls="filtersCollapse">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center" id="filtersToggleBtn"
+            type="button" data-bs-toggle="collapse" data-bs-target="#filtersCollapse" aria-expanded="true"
+            aria-controls="filtersCollapse">
             <h6 class="mb-0 fw-bold"><i class="bi bi-funnel"></i> Filtreler</h6>
         </div>
         <div class="collapse show" id="filtersCollapse">
             <div class="card-body">
-            <form method="get" id="filterForm">
-                <div class="row g-3">
-                    <!-- Durum Filter -->
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Personel Durumu</label>
-                        <div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="durum" value="Aktif" id="durum_aktif" {% if "Aktif" in selected_durum %}checked{% endif %}>
-                                <label class="form-check-label" for="durum_aktif">Aktif</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="durum" value="Pasif" id="durum_pasif" {% if "Pasif" in selected_durum %}checked{% endif %}>
-                                <label class="form-check-label" for="durum_pasif">Pasif</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="durum" value="Kurumdan Ayrıldı" id="durum_ayrildi" {% if "Kurumdan Ayrıldı" in selected_durum %}checked{% endif %}>
-                                <label class="form-check-label" for="durum_ayrildi">Kurumdan Ayrıldı</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="durum" value="Asıl Kurumuna Döndü" id="durum_dondu" {% if "Asıl Kurumuna Döndü" in selected_durum %}checked{% endif %}>
-                                <label class="form-check-label" for="durum_dondu">Asıl Kurumuna Döndü</label>
+                <form method="get" id="filterForm">
+                    <div class="row g-3">
+                        <!-- Durum Filter -->
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Personel Durumu</label>
+                            <div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="durum" value="Aktif"
+                                        id="durum_aktif" {% if "Aktif" in selected_durum %}checked{% endif %}>
+                                    <label class="form-check-label" for="durum_aktif">Aktif</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="durum" value="Pasif"
+                                        id="durum_pasif" {% if "Pasif" in selected_durum %}checked{% endif %}>
+                                    <label class="form-check-label" for="durum_pasif">Pasif</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="durum"
+                                        value="Kurumdan Ayrıldı" id="durum_ayrildi" {% if "Kurumdan Ayrıldı" in selected_durum %}checked{% endif %}>
+                                    <label class="form-check-label" for="durum_ayrildi">Kurumdan Ayrıldı</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="durum"
+                                        value="Asıl Kurumuna Döndü" id="durum_dondu" {% if "Asıl Kurumuna Döndü" in selected_durum %}checked{% endif %}>
+                                    <label class="form-check-label" for="durum_dondu">Asıl Kurumuna Döndü</label>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Kisa Unvan Filter -->
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Kısa Unvan</label>
-                         <button type="button" class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center text-start" data-bs-toggle="modal" data-bs-target="#kisaUnvanModal" style="font-size: 0.85rem; padding: 4px 8px; border-color: #ced4da; min-height: 31px;">
-                            <span id="kisaUnvanSelectBtnLabel" class="text-truncate">
-                                {% if selected_kisa_unvans %}
+                        <!-- Kisa Unvan Filter -->
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Kısa Unvan</label>
+                            <button type="button"
+                                class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center text-start"
+                                data-bs-toggle="modal" data-bs-target="#kisaUnvanModal"
+                                style="font-size: 0.85rem; padding: 4px 8px; border-color: #ced4da; min-height: 31px;">
+                                <span id="kisaUnvanSelectBtnLabel" class="text-truncate">
+                                    {% if selected_kisa_unvans %}
                                     {{ selected_kisa_unvans|length }} Seçili
-                                {% else %}
+                                    {% else %}
                                     Seçiniz...
-                                {% endif %}
-                            </span>
-                             <span id="kisaUnvanSelectBtnBadge" class="badge bg-primary rounded-pill {% if not selected_kisa_unvans %}d-none{% endif %} ms-1">
-                                 {{ selected_kisa_unvans|length }}
-                             </span>
-                            <i class="bi bi-chevron-down ms-1 small text-muted"></i>
-                        </button>
-                        <!-- Inputs for selected items will be handled by the modal JS logic -->
-                        <div id="hiddenKisaUnvanInputs">
-                            {% for id in selected_kisa_unvans %}
+                                    {% endif %}
+                                </span>
+                                <span id="kisaUnvanSelectBtnBadge"
+                                    class="badge bg-primary rounded-pill {% if not selected_kisa_unvans %}d-none{% endif %} ms-1">
+                                    {{ selected_kisa_unvans|length }}
+                                </span>
+                                <i class="bi bi-chevron-down ms-1 small text-muted"></i>
+                            </button>
+                            <!-- Inputs for selected items will be handled by the modal JS logic -->
+                            <div id="hiddenKisaUnvanInputs">
+                                {% for id in selected_kisa_unvans %}
                                 <input type="hidden" name="kisa_unvan" value="{{ id }}">
-                            {% endfor %}
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Kadro Durumu Filter -->
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Kadro Durumu</label>
+                            <select name="kadro_durumu" class="form-select form-select-sm">
+                                <option value="">Tümü</option>
+                                <option value="Kadrolu" {% if selected_kadro_durumu == "Kadrolu" %}selected{% endif %}>Kadrolu</option>
+                                <option value="Geçici Gelen" {% if selected_kadro_durumu == "Geçici Gelen" %}selected{% endif %}>Geçici Gelen</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary btn-sm w-100">
+                                <i class="bi bi-search"></i> Uygula
+                            </button>
                         </div>
                     </div>
-
-                    <!-- Kadro Durumu Filter -->
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Kadro Durumu</label>
-                        <select name="kadro_durumu" class="form-select form-select-sm">
-                            <option value="">Tümü</option>
-                            <option value="Kadrolu" {% if selected_kadro_durumu == "Kadrolu" %}selected{% endif %}>Kadrolu</option>
-                            <option value="Geçici Gelen" {% if selected_kadro_durumu == "Geçici Gelen" %}selected{% endif %}>Geçici Gelen</option>
-                        </select>
-                    </div>
-
-                     <div class="col-md-3 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary btn-sm w-100">
-                            <i class="bi bi-search"></i> Uygula
-                        </button>
-                    </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
-</div>
 
     <!-- Analiz Sekmeleri -->
     <ul class="nav nav-tabs mb-3" id="analizTabs" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="tab-dagilim-tab" data-bs-toggle="tab" data-bs-target="#tab-dagilim" type="button" role="tab">Kısa Ünvan Dağılımı</button>
+            <button class="nav-link active" id="tab-dagilim-tab" data-bs-toggle="tab" data-bs-target="#tab-dagilim"
+                type="button" role="tab">Kısa Ünvan Dağılımı</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-kirilim-tab" data-bs-toggle="tab" data-bs-target="#tab-kirilim" type="button" role="tab">Birim - Kısa Ünvan Kırılımı</button>
+            <button class="nav-link" id="tab-kirilim-tab" data-bs-toggle="tab" data-bs-target="#tab-kirilim"
+                type="button" role="tab">Birim - Kısa Ünvan Kırılımı</button>
         </li>
     </ul>
 
@@ -126,7 +138,8 @@
                             </thead>
                             <tbody>
                                 {% for item in kisa_unvan_dagilim %}
-                                <tr class="clickable-row detail-btn" data-kisa-unvan-id="{{ item.kisa_unvan_id }}" style="cursor: pointer;">
+                                <tr class="clickable-row detail-btn" data-kisa-unvan-id="{{ item.kisa_unvan_id }}"
+                                    style="cursor: pointer;">
                                     <td class="fw-bold">{{ item.kisa_unvan_ad|default:"Tanımsız" }}</td>
                                     <td class="text-center">
                                         <span class="badge bg-primary rounded-pill fs-6">{{ item.total }}</span>
@@ -154,15 +167,18 @@
                     <i class="bi bi-file-earmark-excel"></i> Excel Aktar
                 </button>
             </div>
-             <div class="card shadow-sm">
+            <div class="card shadow-sm">
                 <div class="card-body">
                     <div class="table-responsive" style="max-height: 700px; overflow: auto;">
-                        <table class="table table-bordered table-hover text-center table-sm align-middle mb-0" style="font-size: 0.85rem;">
+                        <table class="table table-bordered table-hover text-center table-sm align-middle mb-0"
+                            style="font-size: 0.85rem;">
                             <thead class="table-light position-sticky top-0 shadow-sm" style="z-index: 5;">
                                 <tr>
-                                    <th class="text-start bg-light position-sticky start-0" style="min-width: 200px; left: 0; z-index: 6;">Birim</th>
+                                    <th class="text-start bg-light position-sticky start-0"
+                                        style="min-width: 200px; left: 0; z-index: 6;">Birim</th>
                                     {% for ku_id, ku_ad in matrix_headers %}
-                                    <th style="min-width: 100px; writing-mode: vertical-rl; transform: rotate(180deg);" class="py-2">
+                                    <th style="min-width: 100px; writing-mode: vertical-rl; transform: rotate(180deg);"
+                                        class="py-2">
                                         <div class="fw-normal text-start">{{ ku_ad }}</div>
                                     </th>
                                     {% endfor %}
@@ -172,20 +188,10 @@
                             <tbody>
                                 {% for row in matrix_rows %}
                                 <tr>
-                                    <td class="text-start fw-bold position-sticky start-0 bg-white detail-btn" data-birim-id="{{ row.birim_id }}" style="left: 0; cursor: pointer;">{{ row.birim_ad }}</td>
+                                    <td class="text-start fw-bold position-sticky start-0 bg-white detail-btn"
+                                        data-birim-id="{{ row.birim_id }}" style="left: 0; cursor: pointer;">{{ row.birim_ad }}</td>
                                     {% for col in row.cols %}
-                                    <td class="{% if col.count > 0 %}table-info clickable-cell{% endif %}" 
-                                        {% if col.count > 0 %}
-                                        style="cursor: pointer;"
-                                        data-birim-id="{{ row.birim_id }}"
-                                        data-kisa-unvan-id="{{ col.ku_id }}"
-                                        {% endif %}>
-                                        {% if col.count > 0 %}
-                                            <span class="fw-bold text-primary">{{ col.count }}</span>
-                                        {% else %}
-                                            <span class="text-muted text-opacity-25">-</span>
-                                        {% endif %}
-                                    </td>
+                                    <td class="{% if col.count > 0 %}table-info clickable-cell{% endif %}" {% if col.count > 0 %} style="cursor: pointer;" data-birim-id="{{ row.birim_id }}" data-kisa-unvan-id="{{ col.ku_id }}" {% endif %}> {% if col.count > 0 %}<span class="fw-bold text-primary">{{ col.count }}</span>{% else %}<span class="text-muted text-opacity-25">-</span>{% endif %}</td>
                                     {% endfor %}
                                     <td class="fw-bold bg-light position-sticky end-0">{{ row.total }}</td>
                                 </tr>
@@ -214,43 +220,45 @@
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="{% static 'js/excel_export_helper.js' %}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        
+    document.addEventListener('DOMContentLoaded', function () {
+
         // --- Filters Collapse Icon Toggle ---
         const filtersCollapse = document.getElementById('filtersCollapse');
-        if(filtersCollapse) {
+        if (filtersCollapse) {
             filtersCollapse.addEventListener('show.bs.collapse', function () {
                 const icon = document.querySelector('#filtersToggleBtn i');
-                if(icon) icon.className = 'bi bi-chevron-up';
+                if (icon) icon.className = 'bi bi-chevron-up';
             });
             filtersCollapse.addEventListener('hide.bs.collapse', function () {
                 const icon = document.querySelector('#filtersToggleBtn i');
-                if(icon) icon.className = 'bi bi-chevron-down';
+                if (icon) icon.className = 'bi bi-chevron-down';
             });
         }
-        
+
         // Handle filter modal sync (if existing partial logic isn't enough)
         // Since we are reusing the partial, we need to ensure it updates our form inputs.
         // The existing partial likely has its own JS. Let's inspect passing params or if we need to manually hook.
         // Assuming partial updates '#kisaUnvanSelectBtnLabel' and we need to handle the input updating.
-        
+
         // However, the existing 'kisa_unvan_modal.html' likely works with specific IDs. 
         // I should have checked the partial content but I can't overwrite it easily without breaking other pages.
         // I will trust that I can hook into its save button or similar.
-        
+
         const kisaUnvanModal = document.getElementById('kisaUnvanModal');
-        if(kisaUnvanModal) {
+        if (kisaUnvanModal) {
             // Listen for save/apply - Tamam butonu btn-success class'ına sahip
             const applyBtn = kisaUnvanModal.querySelector('.btn-success');
-            if(applyBtn){
-                applyBtn.addEventListener('click', function(e){
+            if (applyBtn) {
+                applyBtn.addEventListener('click', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
                     // Logic to collect checked checkboxes and update #hiddenKisaUnvanInputs
                     const checkboxes = kisaUnvanModal.querySelectorAll('input[type="checkbox"][name="kisa_unvan"]:checked');
                     const container = document.getElementById('hiddenKisaUnvanInputs');
-                    if(container) {
+                    if (container) {
                         container.innerHTML = '';
                         let count = 0;
                         checkboxes.forEach(cb => {
@@ -261,13 +269,13 @@
                             container.appendChild(input);
                             count++;
                         });
-                        
+
                         const labelEl = document.getElementById('kisaUnvanSelectBtnLabel');
-                        if(labelEl) {
+                        if (labelEl) {
                             labelEl.innerText = count > 0 ? count + ' Seçili' : 'Seçiniz...';
                         }
                         const badge = document.getElementById('kisaUnvanSelectBtnBadge');
-                        if(badge) {
+                        if (badge) {
                             badge.innerText = count;
                             badge.classList.toggle('d-none', count === 0);
                         }
@@ -278,12 +286,12 @@
 
         // --- Detail Modal Logic ---
         const detailModal = new bootstrap.Modal(document.getElementById('personelListModal'));
-        
+
         function openDetailModal(params) {
             const body = document.getElementById('personelListModalBody');
             body.innerHTML = '<div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary" role="status"></div></div>';
             detailModal.show();
-            
+
             // Add export buttons to modal footer
             const footer = document.querySelector('#personelListModal .modal-footer .d-flex > div:last-child');
             if (footer && !footer.querySelector('.export-btn')) {
@@ -291,26 +299,26 @@
                 pdfBtn.className = 'btn btn-outline-primary btn-sm me-2 export-btn';
                 pdfBtn.innerHTML = '<i class="bi bi-file-earmark-pdf"></i> PDF';
                 pdfBtn.onclick = () => exportModalToPDF();
-                
+
                 const excelBtn = document.createElement('button');
                 excelBtn.className = 'btn btn-outline-success btn-sm me-2 export-btn';
                 excelBtn.innerHTML = '<i class="bi bi-file-earmark-excel"></i> Excel';
                 excelBtn.onclick = () => exportModalToExcel();
-                
+
                 footer.insertBefore(excelBtn, footer.firstChild);
                 footer.insertBefore(pdfBtn, footer.firstChild);
             }
-            
+
             // Collect global filters
             const form = document.getElementById('filterForm');
             const formData = new FormData(form);
             const searchParams = new URLSearchParams(formData);
-            
+
             // Merge specific params
             for (const key in params) {
                 searchParams.append(key, params[key]);
             }
-            
+
             fetch("{% url 'ik_core:analiz_personel_list_modal' %}?" + searchParams.toString())
                 .then(response => response.text())
                 .then(html => {
@@ -326,7 +334,7 @@
         // Function to attach event listeners to buttons in modal content
         function attachEventListeners() {
             document.querySelectorAll('.set-yeni-birim-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function () {
                     console.log('Set Yeni Birim clicked for personel id:', this.dataset.personelId);
                     const pid = this.dataset.personelId;
                     const hidden = document.getElementById('id_yeni_birim-personel_id');
@@ -358,19 +366,19 @@
 
         // Listen for clicks on Table 1 buttons
         document.querySelectorAll('.detail-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
+            btn.addEventListener('click', function () {
                 const birimId = this.dataset.birimId;
                 const kuId = this.dataset.kisaUnvanId;
                 let params = {};
-                if(birimId) params['birim_id'] = birimId;
-                if(kuId) params['kisa_unvan_id'] = kuId;
+                if (birimId) params['birim_id'] = birimId;
+                if (kuId) params['kisa_unvan_id'] = kuId;
                 openDetailModal(params);
             });
         });
 
         // Listen for clicks on Matrix cells
         document.querySelectorAll('.clickable-cell').forEach(cell => {
-            cell.addEventListener('click', function() {
+            cell.addEventListener('click', function () {
                 const birimId = this.dataset.birimId;
                 const kuId = this.dataset.kisaUnvanId;
                 openDetailModal({ 'birim_id': birimId, 'kisa_unvan_id': kuId });
@@ -378,13 +386,13 @@
         });
 
         // Export functions
-        window.exportToPDF = function(tabId) {
+        window.exportToPDF = function (tabId) {
             const element = document.getElementById(tabId);
             if (!element) {
                 alert('Tab bulunamadı');
                 return;
             }
-            
+
             html2canvas(element, {
                 scale: 2,
                 useCORS: true,
@@ -393,24 +401,24 @@
                 const imgData = canvas.toDataURL('image/png');
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
-                
+
                 const imgWidth = 210; // A4 width in mm
                 const pageHeight = 295; // A4 height in mm
                 const imgHeight = canvas.height * imgWidth / canvas.width;
                 let heightLeft = imgHeight;
-                
+
                 let position = 0;
-                
+
                 pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
                 heightLeft -= pageHeight;
-                
+
                 while (heightLeft >= 0) {
                     position = heightLeft - imgHeight;
                     pdf.addPage();
                     pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
                     heightLeft -= pageHeight;
                 }
-                
+
                 pdf.save('unvan_analiz_' + tabId + '.pdf');
             }).catch(err => {
                 console.error('PDF oluşturma hatası:', err);
@@ -418,55 +426,19 @@
             });
         }
 
-        window.exportToExcel = function(tabId) {
-            const element = document.getElementById(tabId);
-            if (!element) {
-                alert('Tab bulunamadı');
-                return;
-            }
-            
-            // Find table in the tab
-            const table = element.querySelector('table');
-            if (!table) {
-                alert('Tablo bulunamadı');
-                return;
-            }
-            
-            let csv = [];
-            const rows = table.querySelectorAll('tr');
-            
-            for (let i = 0; i < rows.length; i++) {
-                const row = [], cols = rows[i].querySelectorAll('td, th');
-                
-                for (let j = 0; j < cols.length; j++) {
-                    let text = cols[j].innerText.replace(/"/g, '""');
-                    row.push('"' + text + '"');
-                }
-                
-                csv.push(row.join(','));
-            }
-            
-            // Download CSV
-            const csvContent = '\uFEFF' + csv.join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', 'unvan_analiz_' + tabId + '.csv');
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        window.exportToExcel = function (tabId) {
+            // tabId corresponds to the container div ID, we need to pass a meaningful filename
+            ExcelExport.exportTable(tabId, 'unvan_analiz_' + tabId);
         }
 
         // Modal export functions
-        window.exportModalToPDF = function() {
+        window.exportModalToPDF = function () {
             const modalBody = document.getElementById('personelListModalBody');
             if (!modalBody) {
                 alert('Modal bulunamadı');
                 return;
             }
-            
+
             html2canvas(modalBody, {
                 scale: 2,
                 useCORS: true,
@@ -475,24 +447,24 @@
                 const imgData = canvas.toDataURL('image/png');
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
-                
+
                 const imgWidth = 210;
                 const pageHeight = 295;
                 const imgHeight = canvas.height * imgWidth / canvas.width;
                 let heightLeft = imgHeight;
-                
+
                 let position = 0;
-                
+
                 pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
                 heightLeft -= pageHeight;
-                
+
                 while (heightLeft >= 0) {
                     position = heightLeft - imgHeight;
                     pdf.addPage();
                     pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
                     heightLeft -= pageHeight;
                 }
-                
+
                 pdf.save('personel_listesi.pdf');
             }).catch(err => {
                 console.error('PDF oluşturma hatası:', err);
@@ -500,43 +472,13 @@
             });
         }
 
-        window.exportModalToExcel = function() {
+        window.exportModalToExcel = function () {
             const modalBody = document.getElementById('personelListModalBody');
-            if (!modalBody) {
-                alert('Modal bulunamadı');
-                return;
+            if (modalBody) {
+                ExcelExport.exportTable(modalBody, 'personel_listesi');
+            } else {
+                alert('Modal içeriği bulunamadı.');
             }
-            
-            const table = modalBody.querySelector('table');
-            if (!table) {
-                alert('Tablo bulunamadı');
-                return;
-            }
-            
-            let csv = [];
-            const rows = table.querySelectorAll('tr');
-            
-            for (let i = 0; i < rows.length; i++) {
-                const row = [], cols = rows[i].querySelectorAll('td, th');
-                
-                for (let j = 0; j < cols.length; j++) {
-                    let text = cols[j].innerText.replace(/"/g, '""');
-                    row.push('"' + text + '"');
-                }
-                
-                csv.push(row.join(','));
-            }
-            
-            const csvContent = '\uFEFF' + csv.join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', 'personel_listesi.csv');
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
     });
 </script>

@@ -1,0 +1,549 @@
+{% extends 'base.html' %}
+{% load custom_filters_696 %}
+
+{% block title %}696 Çizelge İşlemleri{% endblock %}
+
+{% block extra_css %}
+<!-- DataTables CSS
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css"> -->
+<link href="https://cdn.datatables.net/v/dt/dt-2.1.8/fc-5.0.3/fh-4.0.1/datatables.min.css" rel="stylesheet">
+<!-- DataTables Export Buttons CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.dataTables.min.css">
+<style>
+    #cizelgeTable {
+        font-size: 12px;
+    }
+
+    #cizelgeTable thead th {
+        text-align: center;
+    }
+
+    /* Haftasonu sütunlarını tamamen renklendirme */
+    .weekend {
+        background-color: #919191 !important;
+        color: #0f0f0f;
+    }
+
+    /* Haftasonu hücrelerini renklendirme */
+    .weekend-cell {
+        background-color: #919191 !important;
+        color: #0f0f0f;
+    }
+
+    /* Değişiklik yapılan hücrelerin rengi */
+    .changed-cell {
+        background-color: #d09ce4 !important;
+        transition: background-color 0.3s;
+    }
+
+    #cizelgeTable tbody tr {
+        height: 40px;
+    }
+
+    #cizelgeTable td {
+        padding: 2px;
+    }
+
+    #cizelgeTable td.mesai-cell:hover {
+        opacity: 0.8;
+        cursor: pointer;
+    }
+
+    #cizelgeTable tbody tr:hover {
+        background-color: #f0f8ff;
+    }
+
+    #cizelgeTable td:hover {
+        background-color: #b8b8b8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Debug bilgileri -->
+{% if debug %}
+<div class="debug-info" style="background: #f8f9fa; padding: 10px; margin: 10px; border: 1px solid #ddd;">
+    <h4>Debug Bilgileri:</h4>
+    <pre>
+    Personel Sayısı: {{ personeller|length }}
+    Mesai Tanımları: {{ mesai_tanimlari|length }}
+    Gün Sayısı: {{ day_nums|length }}
+    Current Year: {{ current_year }}
+    Current Month: {{ current_month }}
+    </pre>
+</div>
+{% endif %}
+
+<!-- CSRF Token -->
+{% csrf_token %}
+
+<div class="container-fluid mt-3">
+    <!-- Üst kısımda Geri Dön butonu, Yenile Butonu ve Mesai Girişi -->
+    <div class="row mb-4">
+        <div class="col-md-1">
+            <button onclick="history.back()" class="btn btn-secondary">← Geri Dön</button>
+        </div>
+        <div class="col-md-2">
+            ! Dikkat bu sayfa hızlı bir şekilde ilk listeleri oluşturmak içindir. Tüm özellikler aktif değildir.
+        </div>
+        <div class="col-md-2">
+            <label for="mesaiSelection">Mesai Seçimi (Mesai Girişi)</label>
+            <select id="mesaiSelection" class="form-control">
+                <option value="">Mesai Seçin</option>
+                {% for mesai in mesai_tanimlari %}
+                <option value="{{ mesai.Saat }}">{{ mesai.Saat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="izinSelection">İzin Seçimi (İzin Girişi)</label>
+            <select id="izinSelection" class="form-control">
+                <option value="">İzin Seçin</option>
+                {% for izin in IZIN_TURLERI %}
+                <option value="{{ izin }}">{{ izin }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="clearField">
+                <label class="form-check-label" for="clearField">
+                    Alanı Boşalt
+                </label>
+            </div>
+            <button class="btn btn-success" id="saveButton">Kaydet</button>
+    </div>
+
+
+    <!-- Tablo öncesi debug bilgisi -->
+    <div class="table-debug-info">
+        {% if personeller %}
+            <p>Toplam {{ personeller|length }} personel verisi yüklendi.</p>
+        {% else %}
+            <p style="color: red;">Personel verisi bulunamadı!</p>
+        {% endif %}
+    </div>
+
+    <!-- Çizelge Tablosu -->
+    <table id="cizelgeTable" class="table table-bordered table-hover">
+        <thead class="table-light">
+            <!-- Vardiya Sayıları Satırları -->
+            <tr class="vardiya-row gunduz-row">
+                <th colspan="3" class="text-center fw-bold">Gündüz</th>
+                {% for day in days %}
+                <th class="vardiya-count" data-date="{{ day.full_date }}">0</th>
+                {% endfor %}
+            </tr>
+            <tr class="vardiya-row aksam-row">
+                <th colspan="3" class="text-center fw-bold">Akşam</th>
+                {% for day in days %}
+                <th class="vardiya-count" data-date="{{ day.full_date }}">0</th>
+                {% endfor %}
+            </tr>
+            <tr class="vardiya-row gece-row">
+                <th colspan="3" class="text-center fw-bold">Gece</th>
+                {% for day in days %}
+                <th class="vardiya-count" data-date="{{ day.full_date }}">0</th>
+                {% endfor %}
+            </tr>
+
+            <tr>
+                <th>Sıra</th>
+                <th>Personel Adı</th>
+                <th>Açıklama</th>
+                {% for day in days %}
+                <th class="{% if day.is_weekend %}weekend{% endif %}">{{ day.display }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for personel in personeller %}
+            <tr>
+                <td>{{ personel.ListeSirasi }}</td>
+                <td>{{ personel.PersonelAdiSoyadi }}</td>
+                <td>{{ personel.PersonelAciklama }}</td>
+                {% for day in days %}
+                <td class="mesai-cell {% if day.is_weekend %}weekend-cell{% endif %}" 
+                    data-record-id="{{ personel.mesai_data|get_record_id:day.num }}" 
+                    data-date="{{ day.full_date }}">
+                    {{ personel.mesai_data|get_item:day.num|default:"--" }}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Progress Modal -->
+    <div class="modal fade" id="progressModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Kayıt İşlemi Devam Ediyor</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" 
+                             aria-valuenow="0" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100" 
+                             style="width: 0%">
+                            0%
+                        </div>
+                    </div>
+                    <div class="mt-2 text-center" id="progressStatus">
+                        İşlenen: 0 / 0
+                    </div>
+                    <div class="mt-2 text-center" id="estimatedTime">
+                        Tahmini kalan süre: --:--
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Yenileme Modal -->
+    <div class="modal fade" id="sessionModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Oturum Yenileme Gerekli</h5>
+                </div>
+                <div class="modal-body">
+                    <form id="sessionForm">
+                        <div class="mb-3">
+                            <label for="sessionTC" class="form-label">TC Kimlik No</label>
+                            <input type="text" class="form-control" id="sessionTC" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="sessionPassword" class="form-label">Şifre</label>
+                            <input type="password" class="form-control" id="sessionPassword" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="sessionSubmit">Giriş Yap</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- container-fluid end -->
+
+<script>
+    // Mesai tanımlarını JS'e aktar
+    window.mesaiTanimlari = {};
+    {% for mesai in mesai_tanimlari %}
+        window.mesaiTanimlari["{{ mesai.Saat }}"] = {
+            gunduz: {{ mesai.GunduzMesaisi|yesno:"true,false" }},
+            aksam: {{ mesai.AksamMesaisi|yesno:"true,false" }},
+            gece: {{ mesai.GeceMesaisi|yesno:"true,false" }}
+        };
+    {% endfor %}
+</script>
+
+<script>
+    $(document).ready(function () {
+        // CSRF token for AJAX requests
+        const csrftoken = $('[name=csrfmiddlewaretoken]').val();
+
+        // Mesai renklerini yükle
+        let mesaiColors = {};
+        
+        // JSON dosyasını yükle
+        $.getJSON('/static/js/mesai_colors.json', function(data) {
+            mesaiColors = data;
+            // Mevcut hücrelere renkleri uygula
+            applyMesaiColors();
+        });
+        
+        // Hücrelere renk uygulama fonksiyonu
+        function applyMesaiColors() {
+            $('.mesai-cell').each(function() {
+                const mesaiValue = $(this).text().trim();
+                // Basit stil temizliği (eski kodun üzerine yazılmasını önlemek için)
+                // Ama vardiya_sayilari.js ile çakışabilir mi? 
+                // applyMesaiColors metin rengi veriyor, vardiya sayıları arka plan veriyor (header için).
+                // Buradaki 'this' bir body cell. Vardiya renklendirme header cell için. Sorun yok.
+                
+                if (mesaiColors[mesaiValue]) {
+                    $(this).css({
+                        'background-color': mesaiColors[mesaiValue].color,
+                        'color': mesaiColors[mesaiValue].text_color
+                    });
+                }
+            });
+        }
+
+        var table = $('#cizelgeTable').DataTable({
+            autoWidth: false,
+            fixedColumns: true,
+            searching: true,
+            ordering: true,
+            paging: false,
+            info: true,
+            lengthChange: true,
+            dom: '<"float-end"f>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+            language: {
+                "search": "Ara:",
+                "lengthMenu": "_MENU_ kayıt göster",
+                "info": "_TOTAL_ kayıttan _START_ - _END_ arası gösteriliyor",
+                "infoEmpty": "Kayıt bulunamadı",
+                "infoFiltered": "(_MAX_ kayıt içerisinden filtrelendi)",
+                "zeroRecords": "Eşleşen kayıt bulunamadı",
+            },
+            columnDefs: [
+                { width: '60px', targets: 0, className: 'dt-head-left' },
+                { width: '120px', targets: 1, className: 'dt-head-left' },
+                { width: '120px', targets: 2, className: 'dt-head-left' },
+                { width: '40px', targets: '_all', className: 'dt-head-center' }
+            ],
+            order: [[0, 'asc']]
+        });
+
+        var changes = {};
+        var selectedMesai = '';
+        var selectedIzin = '';
+
+        // Mesai seçimi değiştiğinde
+        $('#mesaiSelection').change(function() {
+            selectedMesai = $(this).val();
+            if (selectedMesai) {
+                $('#izinSelection').val('');
+                selectedIzin = '';
+            }
+        });
+
+        // İzin seçimi değiştiğinde
+        $('#izinSelection').change(function() {
+            selectedIzin = $(this).val();
+            if (selectedIzin) {
+                $('#mesaiSelection').val('');
+                selectedMesai = '';
+            }
+        });
+
+        // Hücre tıklama olayı
+        $('.mesai-cell').click(function() {
+            let isClearMode = $('#clearField').is(':checked');
+            
+            if (!isClearMode && !selectedMesai && !selectedIzin) {
+                alert('Lütfen mesai veya izin seçimi yapınız');
+                return;
+            }
+
+            let recordId = $(this).data('record-id');
+            let date = $(this).data('date');
+            
+            // Boşalt modu aktifse "--" değerini, değilse seçili mesai veya izni kullan
+            let newValue = isClearMode ? "--" : (selectedMesai || selectedIzin);
+            $(this).text(newValue);
+            
+            // Yeni değere göre stili güncelle
+            if (mesaiColors[newValue]) {
+                $(this).css({
+                    'color': mesaiColors[newValue].text_color,
+                    'font-weight': mesaiColors[newValue].font_weight,
+                    'background-color': mesaiColors[newValue].color // Arka plan rengini de geri yükle
+                });
+            } else {
+                 $(this).css({
+                    'color': '',
+                    'font-weight': '',
+                    'background-color': '' 
+                 });
+            }
+            
+            // Değişiklik yapılan hücreyi işaretle
+            $(this).addClass('changed-cell');
+            
+            changes[recordId + '_' + date] = {
+                'id': recordId,
+                'value': newValue
+            };
+            
+            // Vardiya sayılarını güncelle
+            if (typeof updateVardiyaCountForDay === 'function') {
+                updateVardiyaCountForDay(date);
+            }
+            
+            console.log("Değişiklik kaydedildi:", changes[recordId + '_' + date]);
+        });
+
+        // Progress bar yönetimi için değişkenler
+        let startTime;
+        let totalItems;
+        let processedItems;
+
+        // Progress bar güncelleme fonksiyonu
+        function updateProgress(current, total) {
+            const percent = (current / total) * 100;
+            const progressBar = $('.progress-bar');
+            progressBar.css('width', percent + '%');
+            progressBar.text(Math.round(percent) + '%');
+            
+            $('#progressStatus').text(`İşlenen: ${current} / ${total}`);
+            
+            if (startTime) {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                const itemsPerSecond = current / elapsedTime;
+                const remainingItems = total - current;
+                const estimatedSeconds = remainingItems / itemsPerSecond;
+                
+                const minutes = Math.floor(estimatedSeconds / 60);
+                const seconds = Math.round(estimatedSeconds % 60);
+                $('#estimatedTime').text(
+                    `Tahmini kalan süre: ${minutes}:${seconds.toString().padStart(2, '0')}`
+                );
+            }
+        }
+
+        // Yeniden giriş işlemi için değişkenler
+        let pendingChanges = null;
+        let retryCount = 0;
+        const MAX_RETRY = 3;
+
+        // Session yenileme fonksiyonu
+        async function refreshSession() {
+            return new Promise((resolve, reject) => {
+                $('#sessionModal').modal('show');
+                
+                $('#sessionSubmit').one('click', async function() {
+                    const tc = $('#sessionTC').val();
+                    const password = $('#sessionPassword').val();
+                    
+                    try {
+                        const response = await $.ajax({
+                            url: "{% url 'mercis696:refresh_session' %}",
+                            type: 'POST',
+                            data: {
+                                tc: tc,
+                                password: password,
+                                csrfmiddlewaretoken: csrftoken
+                            }
+                        });
+                        
+                        if (response.success) {
+                            $('#sessionModal').modal('hide');
+                            resolve(true);
+                        } else {
+                            alert('Giriş bilgileri hatalı!');
+                            reject(new Error('Invalid credentials'));
+                        }
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            });
+        }
+
+        // Kaydetme işlemini güncelleyelim
+        async function saveChanges(changes) {
+            const progressModal = $('#progressModal');
+            progressModal.modal('show');
+            
+            startTime = Date.now();
+            totalItems = Object.keys(changes).length;
+            processedItems = 0;
+            
+            updateProgress(0, totalItems);
+            
+            for (const [key, change] of Object.entries(changes)) {
+                try {
+                    const response = await $.ajax({
+                        url: "{% url 'mercis696:cizelge_kaydet' %}",
+                        type: 'POST',
+                        data: JSON.stringify({ [key]: change }),
+                        contentType: 'application/json',
+                        headers: { 'X-CSRFToken': csrftoken }
+                    });
+                    
+                    if (response.status === 'error') {
+                        // Session hatası veya diğer hatalar için kontrol
+                        if (response.message.includes('Oturum bilgisi bulunamadı') || 
+                            response.message.includes('username')) {
+                            // Session hatası durumunda
+                            pendingChanges = Object.fromEntries(
+                                Object.entries(changes).slice(
+                                    Object.keys(changes).indexOf(key)
+                                )
+                            );
+                            progressModal.modal('hide');
+                            
+                            try {
+                                await refreshSession();
+                                // Başarılı giriş sonrası kalan değişiklikleri kaydet
+                                await saveChanges(pendingChanges);
+                                return;
+                            } catch (error) {
+                                if (++retryCount >= MAX_RETRY) {
+                                    alert('Maksimum deneme sayısına ulaşıldı. Lütfen sayfayı yenileyip tekrar deneyin.');
+                                    return;
+                                }
+                                continue;
+                            }
+                        } else {
+                            // Diğer hatalar için
+                            console.error('Kayıt hatası:', response.message);
+                            alert(`Kayıt hatası: ${response.message}`);
+                            continue;
+                        }
+                    }
+                    
+                    processedItems++;
+                    updateProgress(processedItems, totalItems);
+                    
+                } catch (error) {
+                    console.error('Kayıt hatası:', error);
+                }
+            }
+            
+            if (processedItems === totalItems) {
+                setTimeout(() => {
+                    progressModal.modal('hide');
+                    $('.changed-cell').removeClass('changed-cell');
+                    alert('Tüm değişiklikler başarıyla kaydedildi');
+                    changes = {};
+                }, 500);
+            }
+        }
+
+        // Kaydet butonunu güncelleyelim
+        $('#saveButton').click(function() {
+            if (Object.keys(changes).length === 0) {
+                alert('Değişiklik yapılmadı');
+                return;
+            }
+            
+            retryCount = 0;
+            saveChanges(changes);
+        });
+
+        // ...rest of existing code...
+    });
+</script>
+
+{% block extra_js %}
+
+<!--DataTables JS-->
+<script src="https://cdn.datatables.net/2.1.8/js/dataTables.js"></script>
+<script src="https://cdn.datatables.net/fixedcolumns/5.0.3/js/dataTables.fixedColumns.js"></script>
+<script src="https://cdn.datatables.net/fixedheader/4.0.1/js/dataTables.fixedHeader.js"></script>
+<!-- DataTables Export Buttons JS -->
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.print.min.js"></script>
+<script src="https://cdn.datatables.net/scroller/2.4.3/js/dataTables.scroller.js"></script>
+<!-- JSZip for Excel export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+<!-- pdfmake for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>
+
+
+{% load static %}
+<script src="{% static 'mercis696/js/vardiya_sayilari_696.js' %}"></script>
+{% endblock %}
+
+{% endblock %}

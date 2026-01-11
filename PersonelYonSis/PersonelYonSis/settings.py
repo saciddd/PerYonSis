@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'hizmet_sunum_app',
     'ik_core',
     'nobet_defteri',
+    'mercis696',
 ]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

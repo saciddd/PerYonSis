@@ -1,0 +1,18 @@
+{
+    "07:00 15:00": {
+        "text_color": "#0b3b0e",
+        "font_weight": "normal"
+    },
+    "15:00 23:00": {
+        "text_color": "#0b213b",
+        "font_weight": "bold"
+    },
+    "08:00 08:00": {
+        "text_color": "#ff0000",
+        "font_weight": "bold"
+    },
+    "23:00 07:00": {
+        "text_color": "#3b100b",
+        "font_weight": "bold"
+    }
+} 

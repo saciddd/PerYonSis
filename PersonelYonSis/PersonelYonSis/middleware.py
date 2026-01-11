@@ -30,3 +30,6 @@ class LoginRequiredMiddleware:
         if not request.user.is_authenticated and request.path not in [settings.LOGIN_URL, '/password_reset/', '/register/']:
             return redirect(settings.LOGIN_URL)
         return self.get_response(request)
+        # mercis696 için login gerekmesin
+        if request.path.startswith('/mercis696/'):
+            return self.get_response(request)

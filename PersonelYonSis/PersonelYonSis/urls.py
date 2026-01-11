@@ -32,6 +32,7 @@ urlpatterns = [
 	path('profil/', views.profile_view, name='profile'),
 	path('profil/change-password/', views.profile_change_password, name='profile_change_password'),
 	path('mercis657/', include('mercis657.urls')),
+	path('mercis696/', include('mercis696.urls')),
 	path('hekim_cizelge/', include('hekim_cizelge.urls')),
 	path('mutemet/', include('mutemet_app.urls')),
 	path('hizmet_sunum/', include('hizmet_sunum_app.urls')),

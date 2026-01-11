@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}Çizelge Oluştur{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    
+    .schedule-container {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .schedule-form {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 500px;
+    }
+    
+    .schedule-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .schedule-header h2 {
+        color: #333;
+        font-weight: 500;
+        font-size: 24px;
+    }
+    
+    .form-control {
+        height: 45px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    
+    .form-control:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .btn-create {
+        height: 45px;
+        font-size: 14px;
+        background-color: #0d6efd;
+        border: none;
+        width: 100%;
+        margin-top: 20px;
+    }
+    
+    .btn-create:hover {
+        background-color: #0b5ed7;
+    }
+    
+    .form-label {
+        font-size: 14px;
+        color: #555;
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="schedule-container">
+    <div class="schedule-form">
+        <div class="schedule-header">
+            <h2>Çalışma Çizelgesi Oluştur</h2>
+        </div>
+        
+        <form method="GET" action="{% url 'mercis696:schedule_edit' %}" id="scheduleForm">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="unit_id" class="form-label">Birim Seçimi</label>
+                <select name="unit_id" id="unit_id" class="form-control" required>
+                    <option value="">Birim Seçiniz</option>
+                    {% for unit in authorized_units %}
+                        <option value="{{ unit.id }}">{{ unit.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="start_date" class="form-label">Başlangıç Tarihi</label>
+                <input type="date" id="start_date" name="start_date" 
+                       class="form-control"
+                       value="{{ today|date:'Y-m-d' }}" required>
+            </div>
+            <div class="mb-4">
+                <label for="end_date" class="form-label">Bitiş Tarihi</label>
+                <input type="date" id="end_date" name="end_date" 
+                       class="form-control"
+                       value="{{ today|date:'Y-m-d' }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-create">Çizelge Oluştur</button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById('scheduleForm').addEventListener('submit', function(e) {
+    var startDate = new Date(document.getElementById('start_date').value);
+    var endDate = new Date(document.getElementById('end_date').value);
+    var diffDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays > 31 || diffDays < 0) {
+        e.preventDefault();
+        alert('Lütfen geçerli bir tarih aralığı seçin (maksimum 31 gün)!');
+    }
+});
+</script>
+{% endblock %}

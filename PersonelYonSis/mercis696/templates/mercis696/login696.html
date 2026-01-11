@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Mercis Giriş{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    
+    .login-container {
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .login-form {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 400px;
+    }
+    
+    .login-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .login-header img {
+        max-width: 200px;
+        margin-bottom: 20px;
+    }
+    
+    .login-header h4 {
+        color: #333;
+        font-weight: 500;
+    }
+    
+    .form-control {
+        height: 45px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    
+    .form-control:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    .btn-login {
+        height: 45px;
+        font-size: 14px;
+        background-color: #0d6efd;
+        border: none;
+        width: 100%;
+    }
+    
+    .btn-login:hover {
+        background-color: #0b5ed7;
+    }
+    
+    .form-label {
+        font-size: 14px;
+        color: #555;
+        font-weight: 500;
+    }
+    
+    .alert {
+        font-size: 14px;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-form">
+        <div class="login-header">
+            <img src="/static/img/mercislocal.png" alt="Logo" class="img-fluid">
+            <h4>Mercis 696 Uygulamasına Giriş</h4>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-danger" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="username" class="form-label">TC Kimlik No</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="username" 
+                       name="username" 
+                       required 
+                       autocomplete="off"
+                       pattern="\d{11}"
+                       title="TC Kimlik No 11 haneli olmalıdır">
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Şifre</label>
+                <input type="password" 
+                       class="form-control" 
+                       id="password" 
+                       name="password" 
+                       required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-login">Giriş Yap</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // TC Kimlik No için sadece rakam girişine izin ver
+    document.getElementById('username').addEventListener('input', function(e) {
+        this.value = this.value.replace(/[^0-9]/g, '');
+        if (this.value.length > 11) {
+            this.value = this.value.slice(0, 11);
+        }
+    });
+</script>
+{% endblock %}

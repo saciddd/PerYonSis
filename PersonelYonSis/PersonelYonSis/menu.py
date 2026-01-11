@@ -63,7 +63,7 @@ class Menu:
             MenuItem('Tanımlamalar', 'mercis657:tanimlamalar', 'bi bi-octagon', 'ÇS 657 Mesai Tanımlama', parent_menu='Çizelge Sistemi 657'),
             # Çizelge 696 ve Alt Menüleri
             MenuItem('Çizelge Sistemi 696', '#', 'bi bi-calendar-week', 'ÇS 696 Çizelge Sayfası', is_parent=True),
-            MenuItem('Mercis 696', 'mercis696/', 'bi bi-octagon', 'ÇS 696 Çizelge Sayfası', parent_menu='Çizelge Sistemi 696'), #696 sistemi oluşturulunca değiştirilecek
+            MenuItem('Mercis 696', 'mercis696:login_view', 'bi bi-octagon', 'ÇS 696 Çizelge Sayfası', parent_menu='Çizelge Sistemi 696'), #696 sistemi oluşturulunca değiştirilecek
             # Hizmet Sunum Alanı ve Alt Menüleri
             MenuItem('Hizmet Sunum Alanı', '#', 'bi bi-house', 'Hizmet Sunum Alanı Bildirim', is_parent=True),
             MenuItem('Bildirim İşlemleri', 'hizmet_sunum_app:bildirim', 'bi bi-octagon', 'Hizmet Sunum Alanı Bildirim', parent_menu='Hizmet Sunum Alanı'),

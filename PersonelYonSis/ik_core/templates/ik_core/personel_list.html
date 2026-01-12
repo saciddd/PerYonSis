@@ -102,6 +102,7 @@
                                         <th>Kısa Unvan</th>
                                         <th>Başlangıç Tarihi</th>
                                         <th>Durum</th>
+                                        <th>Birim Bilgileri</th>
                                         <th>İşlemler</th>
                                     </tr>
                                 </thead>
@@ -124,6 +125,13 @@
                                             {% else %}
                                                 <span class="badge bg-secondary">{{ personel.durum }}</span>
                                             {% endif %}
+                                        </td>
+                                        <td style="margin: 0; padding: 0;">
+                                            <span class="badge text-dark">Birim: {% if personel.son_birim_kaydi %}{{ personel.son_birim_kaydi }}{% else %}-{% endif %}
+                                            {% if personel.son_mercis657_listesi %}
+                                                <p style="padding: 0; margin: 0;">Bulunduğu Son Liste: {{ personel.son_mercis657_listesi.yil }}/{{ personel.son_mercis657_listesi.ay }}-{{ personel.son_mercis657_listesi.birim }}</p>
+                                            {% else %}-{% endif %}
+                                            </span>
                                         </td>
                                         <td>
                                             <div class="d-flex gap-1 flex-wrap">

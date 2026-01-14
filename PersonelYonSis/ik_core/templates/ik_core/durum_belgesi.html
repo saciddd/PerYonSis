@@ -58,16 +58,16 @@
           <table class="info-table">
             <tr><td class="info-label">Ad Soyad</td><td>{{ personel.ad }} {{ personel.soyad }}</td></tr>
             <tr><td class="info-label">T.C. Kimlik No</td><td>{{ personel.tc_kimlik_no }}</td></tr>
-            <tr><td class="info-label">Doğum Tarihi</td><td>{{ personel.dogum_tarihi|date:"d.m.Y" }}</td></tr>
-            <tr><td class="info-label">Kadro Yeri</td><td>{{ personel.kadro_yeri }}</td></tr>
-            <tr><td class="info-label">Fiili Görev Yeri</td><td>{{ personel.fiili_gorev_yeri }}</td></tr>
-            <tr><td class="info-label">Unvan</td><td>{{ personel.unvan }}</td></tr>
-            <tr><td class="info-label">Branş</td><td>{{ personel.brans }}</td></tr>
-            <tr><td class="info-label">Sicil No</td><td>{{ personel.sicil_no }}</td></tr>
-            <tr><td class="info-label">Emekli Sicil No</td><td>{{ personel.emekli_sicil_no }}</td></tr>
-            <tr><td class="info-label">Tahsil Durumu</td><td>{{ personel.get_tahsil_durumu_display }}</td></tr>
-            <tr><td class="info-label">Memuriyete Başlama Tarihi</td><td>{{ personel.memuriyete_baslama_tarihi|date:"d.m.Y" }}</td></tr>
-            <tr><td class="info-label">Kurum Başlama Tarihi</td><td>{{ personel.goreve_baslama_tarihi|date:"d.m.Y" }}</td></tr>
+            <tr><td class="info-label">Doğum Tarihi</td><td> {% if personel.dogum_tarihi %}{{ personel.dogum_tarihi|date:"d.m.Y" }}{% else %}-{% endif %}</td></tr>
+            <tr><td class="info-label">Kadro Yeri</td><td> {% if personel.kadro_yeri %}{{ personel.kadro_yeri }}{% else %}-{% endif %}</td></tr>
+            <tr><td class="info-label">Fiili Görev Yeri</td><td> {% if personel.fiili_gorev_yeri %}{{ personel.fiili_gorev_yeri }}{% else %}-{% endif %}</td></tr>
+            <tr><td class="info-label">Unvan</td><td> {% if personel.unvan %}{{ personel.unvan }}{% else %}-{% endif %}</td></tr>
+            <tr><td class="info-label">Branş</td><td> {% if personel.brans %}{{ personel.brans }}{% else %}-{% endif %}</td></tr>
+            <tr><td class="info-label">Sicil No</td><td> {% if personel.sicil_no %}{{ personel.sicil_no }}{% else %}-{% endif %}</td></tr>
+            <tr><td class="info-label">Emekli Sicil No</td><td> {% if personel.emekli_sicil_no %}{{ personel.emekli_sicil_no }}{% else %}-{% endif %}</td></tr>
+            <tr><td class="info-label">Tahsil Durumu</td><td> {% if personel.get_tahsil_durumu_display %}{{ personel.get_tahsil_durumu_display }}{% else %}-{% endif %}</td></tr>
+            <tr><td class="info-label">Memuriyete Başlama Tarihi</td><td> {% if personel.memuriyete_baslama_tarihi %}{{ personel.memuriyete_baslama_tarihi|date:"d.m.Y" }}{% else %}-{% endif %}</td></tr>
+            <tr><td class="info-label">Kurum Başlama Tarihi</td><td> {% if personel.goreve_baslama_tarihi %}{{ personel.goreve_baslama_tarihi|date:"d.m.Y" }}{% else %}-{% endif %}</td></tr>
           </table>
 
           <div style="height:2em"></div>

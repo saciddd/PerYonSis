@@ -12,7 +12,7 @@
             padding: 0;
         }
         .header {
-            margin-top: 5cm;
+            margin-top: 10cm;
             text-align: center;
             margin-bottom: 2cm;
         }
@@ -49,6 +49,8 @@
 </head>
 <body>
     <div class="header">
+        <br/>
+        <br/>
         <div class="person-name">Sayın {{ personel_birim.personel.ad }} {{ personel_birim.personel.soyad }}</div>
         <div class="person-title">{{ personel_birim.personel.unvan.ad|default:"" }}</div>
     </div>

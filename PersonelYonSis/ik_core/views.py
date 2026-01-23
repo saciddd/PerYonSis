@@ -1210,7 +1210,7 @@ def gorevlendirme_yazisi(request, personel_birim_id):
         options = {
             'page-size': 'A4',
             'orientation': 'Portrait',
-            'margin-top': '5cm',
+            'margin-top': '7cm',
             'margin-right': '1.5cm',
             'margin-bottom': '1.1cm',
             'margin-left': '1.5cm',

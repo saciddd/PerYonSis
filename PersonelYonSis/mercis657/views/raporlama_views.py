@@ -319,7 +319,7 @@ def update_birim_kodlari_toplu(request):
                     birim = Birim.objects.get(BirimID=birim_id)
                     
                     # Update allowed fields
-                    for field in ['NormalNobetKodu','BayramNobetKodu','RiskliNormalNobetKodu','RiskliBayramNobetKodu']:
+                    for field in ['NormalNobetKodu','BayramNobetKodu','RiskliNormalNobetKodu','RiskliBayramNobetKodu','NormalGeceNobetKodu','BayramGeceNobetKodu','RiskliNormalGeceNobetKodu','RiskliBayramGeceNobetKodu']:
                         if field in change:
                             val = change[field]
                             setattr(birim, field, val)

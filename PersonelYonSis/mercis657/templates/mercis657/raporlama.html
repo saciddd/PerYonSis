@@ -85,14 +85,18 @@
                         <th>Kurum</th>
                         <th>Üst Birim</th>
                         <th>Birim Adı</th>
-                        <th>Personel Sayısı</th>
+                        <th>Personel</th>
                         <th>Onaylı</th>
                         <th>Bekleyen</th>
                         <th>Kilitli</th>
-                        <th>Normal Nobet Kodu</th>
-                        <th>Bayram Nobet Kodu</th>
-                        <th>Riskli Normal Nobet Kodu</th>
-                        <th>Riskli Bayram Nobet Kodu</th>
+                        <th class="kod-header-day">Normal Nobet Kodu</th>
+                        <th class="kod-header-day">Bayram Nobet Kodu</th>
+                        <th class="kod-header-day">Riskli Normal Nobet Kodu</th>
+                        <th class="kod-header-day">Riskli Bayram Nobet Kodu</th>
+                        <th class="kod-header-night">Normal Gece Nobet Kodu</th>
+                        <th class="kod-header-night">Bayram Gece Nobet Kodu</th>
+                        <th class="kod-header-night">Riskli Normal Gece Nobet Kodu</th>
+                        <th class="kod-header-night">Riskli Bayram Gece Nobet Kodu</th>
                         <th>İşlemler</th>
                     </tr>
                 </thead>
@@ -119,32 +123,60 @@
                             {{ birim_data.kilitli_sayisi }}
                         </td>
                         {# Editable kod alanları; kontrol: kullanıcı yetkisi varsa input, yoksa readonly text #}
-                        <td class="kod-cell">
+                        <td class="kod-cell kod-cell-day">
                             {% if kod_duzenleme_yetkisi %}
                                 <input type="text" name="NormalNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.NormalNobetKodu|default_if_none:'' }}" />
                             {% else %}
                                 <span class="kod-readonly {% if not birim_data.birim.NormalNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.NormalNobetKodu|default:'-' }}</span>
                             {% endif %}
                         </td>
-                        <td class="kod-cell">
+                        <td class="kod-cell kod-cell-day">
                             {% if kod_duzenleme_yetkisi %}
                                 <input type="text" name="BayramNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.BayramNobetKodu|default_if_none:'' }}" />
                             {% else %}
                                 <span class="kod-readonly {% if not birim_data.birim.BayramNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.BayramNobetKodu|default:'-' }}</span>
                             {% endif %}
                         </td>
-                        <td class="kod-cell">
+                        <td class="kod-cell kod-cell-day">
                             {% if kod_duzenleme_yetkisi %}
                                 <input type="text" name="RiskliNormalNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.RiskliNormalNobetKodu|default_if_none:'' }}" />
                             {% else %}
                                 <span class="kod-readonly {% if not birim_data.birim.RiskliNormalNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.RiskliNormalNobetKodu|default:'-' }}</span>
                             {% endif %}
                         </td>
-                        <td class="kod-cell">
+                        <td class="kod-cell kod-cell-day">
                             {% if kod_duzenleme_yetkisi %}
                                 <input type="text" name="RiskliBayramNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.RiskliBayramNobetKodu|default_if_none:'' }}" />
                             {% else %}
                                 <span class="kod-readonly {% if not birim_data.birim.RiskliBayramNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.RiskliBayramNobetKodu|default:'-' }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="kod-cell kod-cell-night">
+                            {% if kod_duzenleme_yetkisi %}
+                                <input type="text" name="NormalGeceNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.NormalGeceNobetKodu|default_if_none:'' }}" />
+                            {% else %}
+                                <span class="kod-readonly {% if not birim_data.birim.NormalGeceNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.NormalGeceNobetKodu|default:'-' }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="kod-cell kod-cell-night">
+                            {% if kod_duzenleme_yetkisi %}
+                                <input type="text" name="BayramGeceNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.BayramGeceNobetKodu|default_if_none:'' }}" />
+                            {% else %}
+                                <span class="kod-readonly {% if not birim_data.birim.BayramGeceNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.BayramGeceNobetKodu|default:'-' }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="kod-cell kod-cell-night">
+                            {% if kod_duzenleme_yetkisi %}
+                                <input type="text" name="RiskliNormalGeceNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.RiskliNormalGeceNobetKodu|default_if_none:'' }}" />
+                            {% else %}
+                                <span class="kod-readonly {% if not birim_data.birim.RiskliNormalGeceNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.RiskliNormalGeceNobetKodu|default:'-' }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="kod-cell kod-cell-night">
+                            {% if kod_duzenleme_yetkisi %}
+                                <input type="text" name="RiskliBayramGeceNobetKodu" class="form-control form-control-sm kod-input" value="{{ birim_data.birim.RiskliBayramGeceNobetKodu|default_if_none:'' }}" />
+                            {% else %}
+                                <span class="kod-readonly {% if not birim_data.birim.RiskliBayramGeceNobetKodu %}text-danger{% endif %}">{{ birim_data.birim.RiskliBayramGeceNobetKodu|default:'-' }}</span>
                             {% endif %}
                         </td>
                         <td>
@@ -182,6 +214,28 @@
 .beklemede-sayisi {
     font-weight: bold;
     color: #dc3545 !important;
+}
+
+/* Gündüz (Normal) Nöbet Kolonları */
+.kod-header-day {
+    background-color: #e0f2f1 !important; /* Çok açık teal/yeşilimsi */
+    color: #004d40;
+    text-align: center;
+    vertical-align: middle;
+}
+.kod-cell-day {
+    background-color: #ebfada !important; /* Çok açık yeşil */
+}
+
+/* Gece Nöbet Kolonları */
+.kod-header-night {
+    background-color: #cfd8dc !important; /* Blue-grey */
+    color: #37474f;
+    text-align: center;
+    vertical-align: middle;
+}
+.kod-cell-night {
+    background-color: #c5cdd1 !important; /* Çok açık blue-grey */
 }
 </style>
 {% endblock %}

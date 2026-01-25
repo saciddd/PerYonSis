@@ -42,6 +42,10 @@ class Birim(models.Model):
     BayramNobetKodu = models.PositiveIntegerField(null=True, blank=True)
     RiskliNormalNobetKodu = models.PositiveIntegerField(null=True, blank=True)
     RiskliBayramNobetKodu = models.PositiveIntegerField(null=True, blank=True)
+    NormalGeceNobetKodu = models.PositiveIntegerField(null=True, blank=True)
+    BayramGeceNobetKodu = models.PositiveIntegerField(null=True, blank=True)
+    RiskliNormalGeceNobetKodu = models.PositiveIntegerField(null=True, blank=True)
+    RiskliBayramGeceNobetKodu = models.PositiveIntegerField(null=True, blank=True)
     Pasif = models.BooleanField(default=False)
 
     Kurum = models.ForeignKey(Kurum, on_delete=models.SET_NULL, null=True, blank=True)
@@ -166,6 +170,11 @@ class Mesai_Tanimlari(models.Model):
         max_digits=4, decimal_places=2, null=True, blank=True,
         help_text="Mesai süresi saat cinsinden (örn: 9.5)"
     )
+    GeceCalismaSure = models.DecimalField(
+        max_digits=4, decimal_places=2,
+        null=True, blank=True,
+        help_text="20:00–08:00 arası gece çalışma süresi saat cinsinden (örn: 9.5)"
+    )
     Renk = models.CharField(max_length=7, null=True)
 
     def calculate_sure(self):
@@ -194,6 +203,54 @@ class Mesai_Tanimlari(models.Model):
         """'HH:MM' formatında bir saat dilimini timedelta olarak döndürür."""
         hours, minutes = map(int, time_str.split(':'))
         return timedelta(hours=hours, minutes=minutes)
+    
+    def save(self, *args, **kwargs):
+        self.Sure = self.calculate_sure()
+        self.GeceCalismaSure = self.calculate_gece_suresi()
+        super().save(*args, **kwargs)
+
+    def calculate_gece_suresi(self):
+        """
+        20:00–08:00 arası gece çalışma süresini saat cinsinden hesaplar.
+        Ara dinlenme hesaba katılmaz.
+        """
+        if not self.Saat:
+            return Decimal("0.00")
+            
+        start_str, end_str = self.Saat.split(' ')
+        start = self._parse_time(start_str)
+        end = self._parse_time(end_str)
+
+        # Mesai ertesi güne sarkıyorsa
+        if self.SonrakiGuneSarkiyor or end <= start:
+            end += timedelta(hours=24)
+
+        # Gece aralıkları
+        # 1. Günün başındaki gece (00:00 - 08:00)
+        win1_start = timedelta(hours=0)
+        win1_end = timedelta(hours=8)
+
+        # 2. Akşam başlayan gece (20:00 - 08:00 ertesi gün => 20 - 32)
+        win2_start = timedelta(hours=20)
+        win2_end = timedelta(hours=32)
+
+        def overlap(a_start, a_end, b_start, b_end):
+            """İki zaman aralığının kesişim süresi (timedelta)"""
+            latest_start = max(a_start, b_start)
+            earliest_end = min(a_end, b_end)
+            return max(timedelta(0), earliest_end - latest_start)
+
+        gece_sure = timedelta(0)
+
+        gece_sure += overlap(start, end, win1_start, win1_end)
+        gece_sure += overlap(start, end, win2_start, win2_end)
+
+        hours = Decimal(gece_sure.total_seconds() / 3600).quantize(Decimal("0.01"))
+
+        if hours < 0:
+            hours = Decimal("0.00")
+
+        return hours
 
     def __str__(self):
         return f"{self.Saat} ({self.Sure} saat)"

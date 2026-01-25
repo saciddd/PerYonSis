@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
+import re
 from django.db.models.query import QuerySet
 from django.db.models import Q, Value as V
 from django.db.models.functions import Lower, Concat, Coalesce
@@ -84,6 +85,8 @@ def personel_list(request):
             'telefon': request.GET.get('telefon', ''),
             'kisa_unvan': request.GET.getlist('kisa_unvan'),
             'durum': request.GET.get('durum', ''),
+            'tc_list': request.GET.get('tc_list', ''),
+            'ad_soyad_list': request.GET.get('ad_soyad_list', ''),
         }
     })
 
@@ -99,6 +102,16 @@ def _get_filtered_personel_list(data, limit_limitless=True):
 
     if tc_kimlik_no:
         query &= Q(tc_kimlik_no__icontains=tc_kimlik_no)
+
+    # Toplu Arama (TC Listesi)
+    tc_list_str = data.get('tc_list', '').strip()
+    if tc_list_str:
+        tcs = [t.strip() for t in re.split(r'[,\n\r]+', tc_list_str) if t.strip()]
+        if tcs:
+            query &= Q(tc_kimlik_no__in=tcs)
+            # Toplu aramada limit olmamalı
+            limit_limitless = False
+
 
     if telefon:
         query &= Q(telefon__icontains=telefon)
@@ -119,7 +132,7 @@ def _get_filtered_personel_list(data, limit_limitless=True):
             # Eşleşme yoksa boş döndür
             query &= Q(pk__in=[])
 
-    if limit_limitless and not any([tc_kimlik_no, ad_soyad, telefon, kisa_unvan_list, durum]):
+    if limit_limitless and not any([tc_kimlik_no, ad_soyad, telefon, kisa_unvan_list, durum, tc_list_str, data.get('ad_soyad_list')]):
         return list(Personel.objects.select_related('unvan', 'kurum').order_by('-kayit_tarihi')[:10])
 
     # Önce diğer filtreleri uygula (performans için)
@@ -164,6 +177,30 @@ def _get_filtered_personel_list(data, limit_limitless=True):
             if eslesme:
                 filtered_results.append(p)
         personeller = filtered_results
+
+    # Toplu İsim Arama
+    ad_soyad_list_str = data.get('ad_soyad_list', '').strip()
+    if ad_soyad_list_str:
+        name_list = [n.strip() for n in re.split(r'[,\n\r]+', ad_soyad_list_str) if n.strip()]
+        if name_list:
+            filtered_results = []
+            for p in personeller:
+                ad_normalized = lower_tr(p.ad or '')
+                soyad_normalized = lower_tr(p.soyad or '')
+                tam_ad_soyad = f"{ad_normalized} {soyad_normalized}".strip()
+                
+                matched_any = False
+                for search_name in name_list:
+                    search_norm = lower_tr(search_name)
+                    # Basit 'contains' kontrolü yapıyoruz toplu aramada
+                    if search_norm in tam_ad_soyad:
+                        matched_any = True
+                        break
+                
+                if matched_any:
+                    filtered_results.append(p)
+            personeller = filtered_results
+
 
     # Durum filtresi (Python tarafında)
     if durum:

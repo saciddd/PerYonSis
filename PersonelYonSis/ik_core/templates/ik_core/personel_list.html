@@ -37,41 +37,59 @@
 <div class="container-fluid">
     <!-- Arama Formu -->
     <form method="get" class="mb-3" id="personelAramaForm">
-        <div class="row g-2 align-items-end">
-            <div class="col-md-2">
-                <label for="tc_kimlik_no" class="form-label">T.C. Kimlik No</label>
-                <input type="text" class="form-control" id="tc_kimlik_no" name="tc_kimlik_no" value="{{ arama.tc_kimlik_no }}">
+        <div class="row">
+            <div class="col-md-8 d-flex align-items-end gap-2">
+                <div class="col-md-2">
+                    <label for="tc_kimlik_no" class="form-label">T.C. Kimlik No</label>
+                    <input type="text" class="form-control" id="tc_kimlik_no" name="tc_kimlik_no" value="{{ arama.tc_kimlik_no }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="ad_soyad" class="form-label">Ad Soyad</label>
+                    <input type="text" class="form-control" id="ad_soyad" name="ad_soyad" value="{{ arama.ad_soyad }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="telefon" class="form-label">Telefon</label>
+                    <input type="text" class="form-control" id="telefon" name="telefon" value="{{ arama.telefon }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="kisa_unvan" class="form-label">Kısa Unvan</label>
+                    <button type="button" class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center" data-bs-toggle="modal" data-bs-target="#kisaUnvanModal" style="font-size: 0.85rem; padding: 4px 8px; border-color: #ced4da; height: 35px;">
+                        <span id="kisaUnvanSelectBtnLabel" class="text-truncate">Seçiniz...</span>
+                        <span id="kisaUnvanSelectBtnBadge" class="badge bg-primary rounded-pill d-none ms-1">0</span>
+                        <i class="bi bi-chevron-down ms-1 small text-muted"></i>
+                    </button>
+                </div>
+                {% include 'ik_core/partials/kisa_unvan_modal.html' %}
+                <!-- partial included above -->
+                <div class="col-md-3">
+                    <label for="durum" class="form-label">Durum</label>
+                    <select id="durum" name="durum" class="form-select">
+                        <option value="">Tümü</option>
+                        <option value="Aktif" {% if arama.durum == "Aktif" %}selected{% endif %}>Aktif</option>
+                        <option value="Pasif" {% if arama.durum == "Pasif" %}selected{% endif %}>Pasif</option>
+                        <option value="Kurumdan Ayrıldı" {% if arama.durum == "Kurumdan Ayrıldı" %}selected{% endif %}>Kurumdan Ayrıldı</option>
+                        <option value="Asıl Kurumuna Döndü" {% if arama.durum == "Asıl Kurumuna Döndü" %}selected{% endif %}>Asıl Kurumuna Döndü</option>
+                    </select>
+                </div>
             </div>
-            <div class="col-md-2">
-                <label for="ad_soyad" class="form-label">Ad Soyad</label>
-                <input type="text" class="form-control" id="ad_soyad" name="ad_soyad" value="{{ arama.ad_soyad }}">
-            </div>
-            <div class="col-md-2">
-                <label for="telefon" class="form-label">Telefon</label>
-                <input type="text" class="form-control" id="telefon" name="telefon" value="{{ arama.telefon }}">
-            </div>
-            <div class="col-md-2">
-                <label for="kisa_unvan" class="form-label">Kısa Unvan</label>
-                <button type="button" class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center" data-bs-toggle="modal" data-bs-target="#kisaUnvanModal" style="font-size: 0.85rem; padding: 4px 8px; border-color: #ced4da; height: 35px;">
-                    <span id="kisaUnvanSelectBtnLabel" class="text-truncate">Seçiniz...</span>
-                    <span id="kisaUnvanSelectBtnBadge" class="badge bg-primary rounded-pill d-none ms-1">0</span>
-                    <i class="bi bi-chevron-down ms-1 small text-muted"></i>
-                </button>
-            </div>
-            {% include 'ik_core/partials/kisa_unvan_modal.html' %}
-            <!-- partial included above -->
-            <div class="col-md-2">
-                <label for="durum" class="form-label">Durum</label>
-                <select id="durum" name="durum" class="form-select">
-                    <option value="">Tümü</option>
-                    <option value="Aktif" {% if arama.durum == "Aktif" %}selected{% endif %}>Aktif</option>
-                    <option value="Pasif" {% if arama.durum == "Pasif" %}selected{% endif %}>Pasif</option>
-                    <option value="Kurumdan Ayrıldı" {% if arama.durum == "Kurumdan Ayrıldı" %}selected{% endif %}>Kurumdan Ayrıldı</option>
-                    <option value="Asıl Kurumuna Döndü" {% if arama.durum == "Asıl Kurumuna Döndü" %}selected{% endif %}>Asıl Kurumuna Döndü</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-primary w-100">Ara</button>
+            <div class="col-md-4">
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <input type="hidden" name="tc_list" id="hidden_tc_list" value="{{ arama.tc_list|default:'' }}">
+                    <input type="hidden" name="ad_soyad_list" id="hidden_ad_soyad_list" value="{{ arama.ad_soyad_list|default:'' }}">
+                    
+                    <button type="submit" class="btn btn-primary" style="min-width: 100px;">
+                        <i class="bi bi-search"></i> Ara
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="pasteAndSearch('tc')">
+                        <i class="bi bi-clipboard-check"></i> Kopyalanan T.C. Bul
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="pasteAndSearch('name')">
+                        <i class="bi bi-clipboard-text"></i> Kopyalanan İsmi Bul
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#bulkSearchModal">
+                        <i class="bi bi-collection"></i> Toplu Ara
+                    </button>
+                </div>
             </div>
         </div>
     </form>
@@ -209,6 +227,41 @@
             </div>
         </div>
     </div>
+
+    <!-- Toplu Arama Modal -->
+    <div class="modal fade" id="bulkSearchModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Toplu Arama</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Aramak istediğiniz T.C. Kimlik veya İsim listesini aşağıya yapıştırın. Her satırda bir kayıt olmalıdır.</p>
+                    <textarea class="form-control mb-3" id="bulkSearchInput" rows="10" placeholder="Listeyi buraya yapıştırın..."></textarea>
+                    <div class="d-flex justify-content-between">
+                         <div class="btn-group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="pasteToBulk()">
+                                <i class="bi bi-clipboard"></i> Yapıştır
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearBulk()">
+                                <i class="bi bi-eraser"></i> Temizle
+                            </button>
+                         </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary" onclick="bulkSearch('tc')">
+                        <i class="bi bi-search"></i> T.C.'leri Bul
+                    </button>
+                    <button type="button" class="btn btn-info text-white" onclick="bulkSearch('name')">
+                        <i class="bi bi-search"></i> İsimleri Bul
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -221,5 +274,72 @@ $(document).ready(function() {
 
     // Excel Export Logic moved to Modal Form submission
 });
+</script>
+<script>
+    // Panodan okuma ve arama
+    async function pasteAndSearch(type) {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (!text || !text.trim()) {
+                alert('Panoda metin bulunamadı.');
+                return;
+            }
+            
+            // Diğer filtreleri temizleyelim ki net sonuç alalım
+            document.getElementById('tc_kimlik_no').value = '';
+            document.getElementById('ad_soyad').value = '';
+            document.getElementById('hidden_tc_list').value = '';
+            document.getElementById('hidden_ad_soyad_list').value = '';
+            
+            if (type === 'tc') {
+                document.getElementById('tc_kimlik_no').value = text.trim();
+            } else if (type === 'name') {
+                document.getElementById('ad_soyad').value = text.trim();
+            }
+            
+            document.getElementById('personelAramaForm').submit();
+        } catch (err) {
+            console.error(err);
+            alert('Panodan okuma izni verilmedi veya desteklenmiyor. Lütfen manuel yapıştırın.\n\nHata: ' + err);
+        }
+    }
+
+    // Modal işlemleri
+    async function pasteToBulk() {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text) {
+                document.getElementById('bulkSearchInput').value = text;
+            }
+        } catch (err) {
+             alert('Panodan okuma başarısız: ' + err);
+        }
+    }
+
+    function clearBulk() {
+        document.getElementById('bulkSearchInput').value = '';
+    }
+
+    function bulkSearch(type) {
+        const text = document.getElementById('bulkSearchInput').value;
+        if (!text.trim()) {
+            alert('Lütfen liste giriniz.');
+            return;
+        }
+
+        // Ana formdaki alanları temizle
+        document.getElementById('tc_kimlik_no').value = '';
+        document.getElementById('ad_soyad').value = '';
+        document.getElementById('hidden_tc_list').value = '';
+        document.getElementById('hidden_ad_soyad_list').value = '';
+
+        if (type === 'tc') {
+            document.getElementById('hidden_tc_list').value = text;
+        } else {
+            document.getElementById('hidden_ad_soyad_list').value = text;
+        }
+        
+        document.getElementById('personelAramaForm').submit();
+    }
 </script>
 {% endblock %}

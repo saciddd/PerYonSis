@@ -237,12 +237,24 @@ def export_raporlama_excel(request):
             riskli_normal_nobet_kodu = getattr(birim, 'RiskliNormalNobetKodu', '')
             riskli_bayram_nobet_kodu = getattr(birim, 'RiskliBayramNobetKodu', '')
             
+            # Gece birim kodlarını al
+            normal_gece_nobet_kodu = getattr(birim, 'NormalGeceNobetKodu', '')
+            bayram_gece_nobet_kodu = getattr(birim, 'BayramGeceNobetKodu', '')
+            riskli_normal_gece_nobet_kodu = getattr(birim, 'RiskliNormalGeceNobetKodu', '')
+            riskli_bayram_gece_nobet_kodu = getattr(birim, 'RiskliBayramGeceNobetKodu', '')
+            
             # Her bir fazla mesai/icap türü için kontrol yap ve ayrı satır oluştur
             fazla_mesai_list = [
                 ('NormalFazlaMesai', normal_nobet_kodu, bildirim.NormalFazlaMesai),
                 ('BayramFazlaMesai', bayram_nobet_kodu, bildirim.BayramFazlaMesai),
                 ('RiskliNormalFazlaMesai', riskli_normal_nobet_kodu, bildirim.RiskliNormalFazlaMesai),
                 ('RiskliBayramFazlaMesai', riskli_bayram_nobet_kodu, bildirim.RiskliBayramFazlaMesai),
+                # Gece
+                ('GeceNormalFazlaMesai', normal_gece_nobet_kodu, bildirim.GeceNormalFazlaMesai),
+                ('GeceBayramFazlaMesai', bayram_gece_nobet_kodu, bildirim.GeceBayramFazlaMesai),
+                ('GeceRiskliNormalFazlaMesai', riskli_normal_gece_nobet_kodu, bildirim.GeceRiskliNormalFazlaMesai),
+                ('GeceRiskliBayramFazlaMesai', riskli_bayram_gece_nobet_kodu, bildirim.GeceRiskliBayramFazlaMesai),
+                # İcap
                 ('NormalIcap', normal_nobet_kodu, bildirim.NormalIcap),
                 ('BayramIcap', bayram_nobet_kodu, bildirim.BayramIcap),
             ]

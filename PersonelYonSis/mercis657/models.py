@@ -309,6 +309,12 @@ class Bildirim(models.Model):
     RiskliNormalFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     RiskliBayramFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     
+    # Gece çalışma süreleri (saat cinsinden)
+    GeceNormalFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    GeceBayramFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    GeceRiskliNormalFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    GeceRiskliBayramFazlaMesai = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    
     # İcap süreleri (saat cinsinden)
     NormalIcap = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     BayramIcap = models.DecimalField(max_digits=5, decimal_places=2, default=0)
@@ -338,7 +344,9 @@ class Bildirim(models.Model):
     def ToplamFazlaMesai(self):
         """Toplam fazla mesai saati"""
         return (self.NormalFazlaMesai + self.BayramFazlaMesai + 
-                self.RiskliNormalFazlaMesai + self.RiskliBayramFazlaMesai)
+                self.RiskliNormalFazlaMesai + self.RiskliBayramFazlaMesai +
+                self.GeceNormalFazlaMesai + self.GeceBayramFazlaMesai +
+                self.GeceRiskliNormalFazlaMesai + self.GeceRiskliBayramFazlaMesai)
 
     @property
     def ToplamIcap(self):

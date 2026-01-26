@@ -400,6 +400,45 @@ function updateBildirimTable(bildirimler) {
         }
 
         // --- Populate Data Cells (Adapted from _old's updateBildirimRow) ---
+        // Helper for Day/Night formatting
+        function setDualValue(cls, dayVal, nightVal) {
+             const cell = row.querySelector('.' + cls);
+             if (cell) {
+                 cell.innerHTML = ''; // Clear
+                 let hasContent = false;
+                 
+                 // Day Value
+                 if (dayVal > 0) {
+                     const div = document.createElement('div');
+                     div.textContent = Math.round(dayVal); // or toFixed(1)
+                     cell.appendChild(div);
+                     hasContent = true;
+                 }
+                 
+                 // Night Value
+                 if (nightVal > 0) {
+                     const div = document.createElement('div');
+                     div.className = 'text-muted small';
+                     div.innerHTML = `${Math.round(nightVal)} <i class="bi bi-moon-stars-fill text-primary" style="font-size: 0.7em;"></i>`;
+                     cell.appendChild(div);
+                     hasContent = true;
+                 }
+                 
+                 if (!hasContent) {
+                     cell.textContent = '-';
+                     cell.classList.remove('has-value');
+                 } else {
+                     cell.classList.add('has-value');
+                 }
+             }
+        }
+        
+        setDualValue('normal-mesai', bildirim.normal_mesai, bildirim.gece_normal_mesai);
+        setDualValue('bayram-mesai', bildirim.bayram_mesai, bildirim.gece_bayram_mesai);
+        setDualValue('riskli-normal', bildirim.riskli_normal, bildirim.gece_riskli_normal);
+        setDualValue('riskli-bayram', bildirim.riskli_bayram, bildirim.gece_riskli_bayram);
+
+        // Toplam is straight float
         function setCellValue(cls, val) {
             const cell = row.querySelector('.' + cls);
             if (cell) {
@@ -411,11 +450,8 @@ function updateBildirimTable(bildirimler) {
                 }
             }
         }
-        setCellValue('normal-mesai', bildirim.normal_mesai);
-        setCellValue('bayram-mesai', bildirim.bayram_mesai);
-        setCellValue('riskli-normal', bildirim.riskli_normal);
-        setCellValue('riskli-bayram', bildirim.riskli_bayram);
         setCellValue('toplam-mesai', bildirim.toplam_mesai);
+        
         setCellValue('normal-icap', bildirim.normal_icap);
         setCellValue('bayram-icap', bildirim.bayram_icap);
         setCellValue('toplam-icap', bildirim.toplam_icap);
@@ -719,25 +755,41 @@ function updateSingleBildirimRow(row, bildirim) {
      console.log("Updating single row for personel:", bildirim.personel_id, "with data:", bildirim);
 
      // Populate Data Cells
-     function setCellValue(cls, val) {
-        const cell = row.querySelector('.' + cls);
-        if (cell) {
-            cell.textContent = Math.round(val);
-            if (val && Number(val) !== 0) {
-                cell.classList.add('has-value');
-            } else {
-                cell.classList.remove('has-value');
-            }
-        }
-    }
-    setCellValue('normal-mesai', bildirim.normal_mesai);
-    setCellValue('bayram-mesai', bildirim.bayram_mesai);
-    setCellValue('riskli-normal', bildirim.riskli_normal);
-    setCellValue('riskli-bayram', bildirim.riskli_bayram);
-    setCellValue('toplam-mesai', bildirim.toplam_mesai);
-    setCellValue('normal-icap', bildirim.normal_icap);
-    setCellValue('bayram-icap', bildirim.bayram_icap);
-    setCellValue('toplam-icap', bildirim.toplam_icap);
+     // Populate Data Cells w/ Dual Values
+     function setDualValue(cls, dayVal, nightVal) {
+         const cell = row.querySelector('.' + cls);
+         if (cell) {
+             cell.innerHTML = '';
+             let hasContent = false;
+             if (dayVal > 0) {
+                 const d = document.createElement('div'); d.textContent = Math.round(dayVal); cell.appendChild(d); hasContent=true;
+             }
+             if (nightVal > 0) {
+                 const n = document.createElement('div'); n.className='text-muted small'; n.innerHTML=`${Math.round(nightVal)} <i class="bi bi-moon-stars-fill text-primary" style="font-size:0.7em;"></i>`; cell.appendChild(n); hasContent=true;
+             }
+             if(!hasContent) { cell.textContent='-'; cell.classList.remove('has-value'); }
+             else { cell.classList.add('has-value'); }
+         }
+     }
+     
+     // Helper for single
+     function setSingleValue(cls, val) {
+         const c = row.querySelector('.'+cls);
+         if(c) {
+             c.textContent = Math.round(val);
+             if(val>0) c.classList.add('has-value'); else c.classList.remove('has-value');
+         }
+     }
+
+    setDualValue('normal-mesai', bildirim.normal_mesai, bildirim.gece_normal_mesai);
+    setDualValue('bayram-mesai', bildirim.bayram_mesai, bildirim.gece_bayram_mesai);
+    setDualValue('riskli-normal', bildirim.riskli_normal, bildirim.gece_riskli_normal);
+    setDualValue('riskli-bayram', bildirim.riskli_bayram, bildirim.gece_riskli_bayram);
+    
+    setSingleValue('toplam-mesai', bildirim.toplam_mesai);
+    setSingleValue('normal-icap', bildirim.normal_icap);
+    setSingleValue('bayram-icap', bildirim.bayram_icap);
+    setSingleValue('toplam-icap', bildirim.toplam_icap);
 
      // Clear previous daily details
      row.querySelectorAll('.mesai-sure').forEach(cell => cell.textContent = '-');

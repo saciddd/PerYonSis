@@ -244,12 +244,22 @@ def bildirim_listele(request, year, month, birim_id):
             bayram = float(bildirim.BayramFazlaMesai)
             rnormal = float(bildirim.RiskliNormalFazlaMesai)
             rbayram = float(bildirim.RiskliBayramFazlaMesai)
+            
+            # Gece değerleri
+            gnormal = float(bildirim.GeceNormalFazlaMesai)
+            gbayram = float(bildirim.GeceBayramFazlaMesai)
+            grnormal = float(bildirim.GeceRiskliNormalFazlaMesai)
+            grbayram = float(bildirim.GeceRiskliBayramFazlaMesai)
+            
             nicap = float(bildirim.NormalIcap)
             bicap = float(bildirim.BayramIcap)
             mesai_detay = bildirim.MesaiDetay or {}
             icap_detay = bildirim.IcapDetay or {}
             onay_durumu = int(bildirim.OnayDurumu or 0)
             mutemet_kilit = bool(bildirim.MutemetKilit)
+        else:
+             # Değişkenlerin tanımlı olduğundan emin ol
+             gnormal = gbayram = grnormal = grbayram = 0.0
 
         result.append({
             'personel_id': p.PersonelID,
@@ -259,7 +269,11 @@ def bildirim_listele(request, year, month, birim_id):
             'bayram_mesai': bayram,
             'riskli_normal': rnormal,
             'riskli_bayram': rbayram,
-            'toplam_mesai': normal + bayram + rnormal + rbayram,
+            'gece_normal_mesai': gnormal,
+            'gece_bayram_mesai': gbayram,
+            'gece_riskli_normal': grnormal,
+            'gece_riskli_bayram': grbayram,
+            'toplam_mesai': normal + bayram + rnormal + rbayram + gnormal + gbayram + grnormal + grbayram,
             'normal_icap': nicap,
             'bayram_icap': bicap,
             'toplam_icap': nicap + bicap,
@@ -323,10 +337,18 @@ def bildirim_olustur(request):
 
         normal = fazla_mesai_sonuclari.get('normal_fazla_mesai', Decimal('0.0'))
         bayram = fazla_mesai_sonuclari.get('bayram_fazla_mesai', Decimal('0.0'))
-        rnormal = Decimal('0.0') # Riskli normal mesai hesaplaması şimdilik yok
-        rbayram = Decimal('0.0') # Riskli bayram mesaisi hesaplaması şimdilik yok
-        nicap = Decimal('0.0') # İcap hesaplaması şimdilik yok
-        bicap = Decimal('0.0') # İcap hesaplaması şimdilik yok
+        
+        # Gece Değerleri
+        gnormal = fazla_mesai_sonuclari.get('normal_gece_fazla_mesai', Decimal('0.0'))
+        gbayram = fazla_mesai_sonuclari.get('bayram_gece_fazla_mesai', Decimal('0.0'))
+        
+        rnormal = Decimal('0.0')
+        rbayram = Decimal('0.0')
+        grnormal = Decimal('0.0') # Gece Riskli Normal
+        grbayram = Decimal('0.0') # Gece Riskli Bayram
+        
+        nicap = Decimal('0.0')
+        bicap = Decimal('0.0')
         
         # load resmi tatiller
         tatiller = ResmiTatil.objects.filter(TatilTarihi__year=year, TatilTarihi__month=month)
@@ -353,6 +375,10 @@ def bildirim_olustur(request):
                     'BayramFazlaMesai': bayram,
                     'RiskliNormalFazlaMesai': rnormal,
                     'RiskliBayramFazlaMesai': rbayram,
+                    'GeceNormalFazlaMesai': gnormal,
+                    'GeceBayramFazlaMesai': gbayram,
+                    'GeceRiskliNormalFazlaMesai': grnormal,
+                    'GeceRiskliBayramFazlaMesai': grbayram,
                     'NormalIcap': nicap,
                     'BayramIcap': bicap,
                 }
@@ -367,6 +393,10 @@ def bildirim_olustur(request):
                 bildirim.BayramFazlaMesai = bayram
                 bildirim.RiskliNormalFazlaMesai = rnormal
                 bildirim.RiskliBayramFazlaMesai = rbayram
+                bildirim.GeceNormalFazlaMesai = gnormal
+                bildirim.GeceBayramFazlaMesai = gbayram
+                bildirim.GeceRiskliNormalFazlaMesai = grnormal
+                bildirim.GeceRiskliBayramFazlaMesai = grbayram
                 bildirim.NormalIcap = nicap
                 bildirim.BayramIcap = bicap
                 bildirim.OlusturanKullanici = request.user
@@ -379,7 +409,11 @@ def bildirim_olustur(request):
             'bayram_mesai': float(bildirim.BayramFazlaMesai),
             'riskli_normal': float(bildirim.RiskliNormalFazlaMesai),
             'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai),
-            'toplam_mesai': float(bildirim.NormalFazlaMesai + bildirim.BayramFazlaMesai + bildirim.RiskliNormalFazlaMesai + bildirim.RiskliBayramFazlaMesai), # Toplam fazla mesaiyi yeni hesaplanan değerlerle güncelle
+            'gece_normal_mesai': float(bildirim.GeceNormalFazlaMesai),
+            'gece_bayram_mesai': float(bildirim.GeceBayramFazlaMesai),
+            'gece_riskli_normal': float(bildirim.GeceRiskliNormalFazlaMesai),
+            'gece_riskli_bayram': float(bildirim.GeceRiskliBayramFazlaMesai),
+            'toplam_mesai': float(bildirim.NormalFazlaMesai + bildirim.BayramFazlaMesai + bildirim.RiskliNormalFazlaMesai + bildirim.RiskliBayramFazlaMesai + bildirim.GeceNormalFazlaMesai + bildirim.GeceBayramFazlaMesai + bildirim.GeceRiskliNormalFazlaMesai + bildirim.GeceRiskliBayramFazlaMesai),
             'normal_icap': float(bildirim.NormalIcap),
             'bayram_icap': float(bildirim.BayramIcap),
             'toplam_icap': float(bildirim.ToplamIcap),
@@ -578,10 +612,10 @@ def bildirim_form(request, birim_id):
             donem_baslangic = date(year, month, 1)
             bildirim = Bildirim.objects.filter(Personel=p, DonemBaslangic=donem_baslangic, SilindiMi=False).first()
 
-            normal = bildirim.NormalFazlaMesai if (bildirim and bildirim.NormalFazlaMesai is not None) else Decimal('0.0')
-            bayram = bildirim.BayramFazlaMesai if (bildirim and bildirim.BayramFazlaMesai is not None) else Decimal('0.0')
-            rnormal = bildirim.RiskliNormalFazlaMesai if (bildirim and bildirim.RiskliNormalFazlaMesai is not None) else Decimal('0.0')
-            rbayram = bildirim.RiskliBayramFazlaMesai if (bildirim and bildirim.RiskliBayramFazlaMesai is not None) else Decimal('0.0')
+            normal = (bildirim.NormalFazlaMesai or Decimal('0.0')) + (bildirim.GeceNormalFazlaMesai or Decimal('0.0')) if bildirim else Decimal('0.0')
+            bayram = (bildirim.BayramFazlaMesai or Decimal('0.0')) + (bildirim.GeceBayramFazlaMesai or Decimal('0.0')) if bildirim else Decimal('0.0')
+            rnormal = (bildirim.RiskliNormalFazlaMesai or Decimal('0.0')) + (bildirim.GeceRiskliNormalFazlaMesai or Decimal('0.0')) if bildirim else Decimal('0.0')
+            rbayram = (bildirim.RiskliBayramFazlaMesai or Decimal('0.0')) + (bildirim.GeceRiskliBayramFazlaMesai or Decimal('0.0')) if bildirim else Decimal('0.0')
             daily_mesai = bildirim.MesaiDetay if (bildirim and bildirim.MesaiDetay) else {}
             onay = int(bildirim.OnayDurumu) if (bildirim and bildirim.OnayDurumu is not None) else 0
 
@@ -741,6 +775,10 @@ def riskli_bildirim_data(request, birim_id):
                     'bayram_mesai': float(bildirim.BayramFazlaMesai or 0),
                     'riskli_normal': float(bildirim.RiskliNormalFazlaMesai or 0),
                     'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai or 0),
+                    'gece_normal_mesai': float(bildirim.GeceNormalFazlaMesai or 0),
+                    'gece_bayram_mesai': float(bildirim.GeceBayramFazlaMesai or 0),
+                    'gece_riskli_normal': float(bildirim.GeceRiskliNormalFazlaMesai or 0),
+                    'gece_riskli_bayram': float(bildirim.GeceRiskliBayramFazlaMesai or 0),
                 })
 
         return JsonResponse({'status': 'success', 'bildirimler': bildirimler})
@@ -783,6 +821,13 @@ def update_risky_bildirim(request, birim_id):
                     bildirim.RiskliBayramFazlaMesai = Decimal(str(change.get('riskli_bayram', 0)))
                     bildirim.NormalFazlaMesai = Decimal(str(change.get('normal_mesai', 0)))
                     bildirim.BayramFazlaMesai = Decimal(str(change.get('bayram_mesai', 0)))
+                    
+                    # Gece alanları
+                    bildirim.GeceRiskliNormalFazlaMesai = Decimal(str(change.get('gece_riskli_normal', 0)))
+                    bildirim.GeceRiskliBayramFazlaMesai = Decimal(str(change.get('gece_riskli_bayram', 0)))
+                    bildirim.GeceNormalFazlaMesai = Decimal(str(change.get('gece_normal_mesai', 0)))
+                    bildirim.GeceBayramFazlaMesai = Decimal(str(change.get('gece_bayram_mesai', 0)))
+                    
                     bildirim.save()
                     updated_count += 1
 

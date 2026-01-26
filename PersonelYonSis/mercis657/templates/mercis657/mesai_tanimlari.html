@@ -73,6 +73,7 @@
                                     <th>Akşam</th>
                                     <th>Gece</th>
                                     <th>Süre</th>
+                                    <th>Gece Çalışma Süresi</th>
                                     <th>Renk</th>
                                 </tr>
                             </thead>
@@ -92,6 +93,7 @@
                                     <td>{{ item.AksamMesaisi|yesno:"Evet,Hayır" }}</td>
                                     <td>{{ item.GeceMesaisi|yesno:"Evet,Hayır" }}</td>
                                     <td>{{ item.Sure }}</td>
+                                    <td>{{ item.GeceCalismaSure }}</td>
                                     <td>
                                         {% if item.Renk %}
                                             <span class="color-swatch" data-color="{{ item.Renk }}">&nbsp;</span>

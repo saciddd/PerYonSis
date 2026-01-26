@@ -442,7 +442,7 @@ def personel_detay(request, pk):
                 messages.error(request, f"Ayrılış bilgileri kaydedilirken hata oluştu: {e}")
             return redirect('ik_core:personel_detay', pk=pk)
 
-    personel_ismi_degistirme_yetkisi = request.user.has_perm('İK Modülü Personel İsmi Değiştirme')
+    personel_ismi_degistirme_yetkisi = request.user.has_permission('İK Modülü Personel İsmi Değiştirme')
 
     context = {
         'personel': personel,
@@ -471,7 +471,7 @@ def personel_detay(request, pk):
 @require_POST
 @login_required
 def personel_isim_degistir(request, personel_id):
-    if not request.user.has_perm('İK Modülü Personel İsmi Değiştirme'):
+    if not request.user.has_permission('İK Modülü Personel İsmi Değiştirme'):
         messages.error(request, "Bu işlem için yetkiniz bulunmamaktadır.")
         return redirect('ik_core:personel_detay', pk=personel_id)
     

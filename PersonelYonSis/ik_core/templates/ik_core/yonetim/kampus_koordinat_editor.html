@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Kampüs Koordinat Editörü{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3 align-items-center">
+        <div class="col">
+            <h1 class="h3 mb-0 text-gray-800">Kampüs Koordinat Editörü</h1>
+            <p class="text-muted small mb-0">Harita üzerinde binaları çizerek tanımlayın.</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'ik_core:analiz_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+               <i class="bi bi-arrow-left"></i> Analiz Paneli
+           </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body py-2">
+            <form method="get" class="row align-items-center g-2">
+                <div class="col-auto">
+                    <label class="fw-bold small">Kampüs Seçimi:</label>
+                </div>
+                <div class="col-auto">
+                    <select name="kampus_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for k in kampusler %}
+                        <option value="{{ k.id }}" {% if k == aktif_kampus %}selected{% endif %}>{{ k.ad }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+            {% csrf_token %}
+        </div>
+    </div>
+
+    {% if aktif_kampus %}
+    <div class="row">
+        <!-- Sol Panel: Bina Listesi -->
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 fw-bold">Binalar</h6>
+                </div>
+                <div class="list-group list-group-flush overflow-auto" style="max-height: 700px;">
+                    {% for bina in binalar %}
+                    <button type="button" 
+                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center bina-select-btn"
+                            data-bina-id="{{ bina.id }}"
+                            data-bina-ad="{{ bina.ad }}"
+                            data-coords="{{ bina.koordinatlar|default:'' }}">
+                        <span class="text-truncate" title="{{ bina.ad }}">{{ bina.ad }}</span>
+                        {% if bina.koordinatlar %}
+                        <i class="bi bi-check-circle-fill text-success" title="Tanımlı"></i>
+                        {% else %}
+                        <i class="bi bi-circle text-muted" title="Tanımsız"></i>
+                        {% endif %}
+                    </button>
+                    {% empty %}
+                    <div class="p-3 text-center text-muted small">Bu kampüse ait bina bulunamadı.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ Panel: Editör Alanı -->
+        <div class="col-md-9">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center bg-white">
+                    <div>
+                        <span id="sc-header-text" class="fw-bold text-primary">Bir bina seçin...</span>
+                        <span id="mode-text" class="badge bg-secondary ms-2 d-none">İzleme Modu</span>
+                    </div>
+                    
+                    <div class="btn-group btn-group-sm">
+                         <button type="button" class="btn btn-outline-danger" id="btn-clear" disabled>
+                            <i class="bi bi-trash"></i> Çizimi Temizle
+                        </button>
+                        <button type="button" class="btn btn-primary" id="btn-save" disabled>
+                            <i class="bi bi-save"></i> Kaydet
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0 bg-dark position-relative overflow-hidden user-select-none" id="editor-container" style="min-height: 500px;">
+                    
+                    {% if aktif_kampus.gorsel %}
+                        <div id="image-wrapper" style="position: relative; display: inline-block; width: 100%;">
+                            <img src="{{ aktif_kampus.gorsel.url }}" id="kampus-img" style="width: 100%; display: block; pointer-events: none;">
+                            
+                            <!-- SVG Layer for drawing -->
+                            <svg id="editor-svg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair;" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                <!-- Existing defined buildings ghost outlines -->
+                                {% for b in binalar %}
+                                    {% if b.koordinatlar %}
+                                    <polygon points="{{ b.koordinatlar }}" 
+                                             class="ghost-polygon" 
+                                             style="fill: rgba(255, 255, 255, 0.1); stroke: rgba(255, 255, 255, 0.3); stroke-width: 0.5; pointer-events: none;"></polygon>
+                                    {% endif %}
+                                {% endfor %}
+
+                                <!-- Active Drawing Polygon -->
+                                <polygon id="active-polygon" points="" style="fill: rgba(40, 167, 69, 0.4); stroke: #28a745; stroke-width: 0.8;"></polygon>
+                                <!-- Interactive Points -->
+                                <g id="active-points"></g>
+                            </svg>
+                        </div>
+                    {% else %}
+                        <div class="d-flex align-items-center justify-content-center h-100 text-white flex-column p-5">
+                            <i class="bi bi-image-alt fs-1 mb-3 text-muted"></i>
+                            <p>Kampüs görseli yüklenmemiş.</p>
+                        </div>
+                    {% endif %}
+
+                </div>
+                 <div class="card-footer bg-light small text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Nasıl Kullanılır: Listeden bir bina seçin. Görsel üzerine tıklayarak noktalar ekleyin. Çizimi tamamlamak için son noktadan sonra Kaydet butonuna basın veya başka bir binaya geçin.
+                    <br>Not: Koordinatlar % (yüzdelik) olarak kaydedilir, böylece farklı ekran boyutlarında uyumlu çalışır.
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning text-center mt-5">
+        <i class="bi bi-exclamation-triangle fs-3 d-block mb-3"></i>
+        Sistemde tanımlı kampüs bulunamadı. Lütfen önce Yönetim panelinden Kampüs tanımı yapın.
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const svg = document.getElementById('editor-svg');
+    if (!svg) return; // No image, no script needed
+
+    const activePolygon = document.getElementById('active-polygon');
+    const activePointsGroup = document.getElementById('active-points');
+    const btnSave = document.getElementById('btn-save');
+    const btnClear = document.getElementById('btn-clear');
+    const headerText = document.getElementById('sc-header-text');
+    const buildingList = document.querySelectorAll('.bina-select-btn');
+    const container = document.getElementById('image-wrapper'); // Wrapper for size calc
+
+    let currentBinaId = null;
+    let points = []; // Array of {x, y} in percentages 0-100
+
+    // --- Building Selection ---
+    buildingList.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // UI Update
+            buildingList.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // State Update
+            currentBinaId = this.dataset.binaId;
+            const binaAd = this.dataset.binaAd;
+            const existingCoords = this.dataset.coords;
+
+            headerText.innerText = `Düzenleniyor: ${binaAd}`;
+            headerText.className = 'fw-bold text-success';
+            
+            // Allow controls
+            btnSave.disabled = false;
+            btnClear.disabled = false;
+
+            // Load existing points if any
+            points = [];
+            if (existingCoords) {
+                points = parsePoints(existingCoords);
+            }
+            renderPolygon();
+        });
+    });
+
+    // --- Drawing Interaction ---
+    svg.addEventListener('click', function(e) {
+        if (!currentBinaId) {
+            alert('Lütfen önce sol menüden bir bina seçiniz.');
+            return;
+        }
+
+        const rect = svg.getBoundingClientRect();
+        const xPixels = e.clientX - rect.left;
+        const yPixels = e.clientY - rect.top;
+
+        // Convert to percentage (0-100)
+        const xPercent = (xPixels / rect.width) * 100;
+        const yPercent = (yPixels / rect.height) * 100;
+
+        points.push({x: xPercent, y: yPercent});
+        renderPolygon();
+    });
+
+    // Handle Right Click to remove last point? Maybe simple 'Clear' is enough.
+    
+    // --- Actions ---
+    btnClear.addEventListener('click', function() {
+        if(confirm('Çizimi temizlemek istediğinize emin misiniz?')) {
+            points = [];
+            renderPolygon();
+        }
+    });
+
+    btnSave.addEventListener('click', function() {
+        if (!currentBinaId) return;
+        
+        // Convert points array to string format "x1,y1 x2,y2 ..."
+        const coordsString = points.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+
+        // AJAX Save
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        fetch("{% url 'ik_core:bina_koordinat_kaydet' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                bina_id: currentBinaId,
+                koordinatlar: coordsString
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update UI on list
+                const btn = document.querySelector(`.bina-select-btn[data-bina-id="${currentBinaId}"]`);
+                if (btn) {
+                    btn.dataset.coords = coordsString;
+                    const icon = btn.querySelector('i');
+                    if (coordsString.trim().length > 0) {
+                        icon.className = 'bi bi-check-circle-fill text-success';
+                        icon.title = 'Tanımlı';
+                    } else {
+                        icon.className = 'bi bi-circle text-muted';
+                        icon.title = 'Tanımsız';
+                    }
+                }
+                
+                // Show toast or alert
+                const originalText = headerText.innerText;
+                headerText.innerText = 'Kaydedildi!';
+                setTimeout(() => {
+                    headerText.innerText = originalText;
+                }, 1500);
+            } else {
+                alert('Hata: ' + data.error);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Bir hata oluştu.');
+        });
+    });
+
+    // --- Helpers ---
+    function renderPolygon() {
+        if (points.length === 0) {
+            activePolygon.setAttribute('points', '');
+            activePointsGroup.innerHTML = '';
+            return;
+        }
+
+        const pointsStr = points.map(p => `${p.x},${p.y}`).join(' ');
+        activePolygon.setAttribute('points', pointsStr);
+
+        // Render point handles
+        activePointsGroup.innerHTML = '';
+        points.forEach((p, index) => {
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', p.x + '%'); // Use % for cx/cy? No, cx/cy in user units within viewbox 0-100
+            circle.setAttribute('cy', p.y + '%');
+            circle.setAttribute('r', '1'); // visual size relative to viewbox 100x100. 1 might be big. 0.5
+            // But if viewbox is 100 100, 1 unit is 1% of width. That's fine.
+            circle.setAttribute('fill', '#fff');
+            circle.setAttribute('stroke', '#000');
+            circle.setAttribute('stroke-width', '0.2');
+            circle.style.cursor = 'pointer';
+            
+            // Add delete on click for individual points?
+            // circle.addEventListener('click', (e) => { e.stopPropagation(); removePoint(index); });
+
+            activePointsGroup.appendChild(circle);
+        });
+    }
+
+    function parsePoints(str) {
+        if (!str) return [];
+        return str.trim().split(' ').map(pair => {
+            const parts = pair.split(',');
+            return {
+                x: parseFloat(parts[0]),
+                y: parseFloat(parts[1])
+            };
+        });
+    }
+});
+</script>
+{% endblock %}

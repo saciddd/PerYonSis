@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Kampüs Tanımları{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row align-items-center mb-4">
+        <div class="col">
+            <h1 class="h3 mb-0 text-gray-800">Kampüs Tanımları</h1>
+            <p class="text-muted small mb-0">Sistemdeki kampüsleri yönetin.</p>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'ik_core:tanimlamalar' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Geri Dön
+            </a>
+        </div>
+    </div>
+
+    <!-- Ekleme Formu -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0 fw-bold">Yeni Kampüs Ekle</h6>
+        </div>
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label for="{{ form.ad.id_for_label }}" class="form-label small fw-bold">Kampüs Adı</label>
+                        {{ form.ad }}
+                        {% if form.ad.errors %}
+                        <div class="text-danger small">{{ form.ad.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-5">
+                        <label for="{{ form.gorsel.id_for_label }}" class="form-label small fw-bold">Kampüs Krokisi/Görseli</label>
+                        {{ form.gorsel }}
+                        {% if form.gorsel.errors %}
+                        <div class="text-danger small">{{ form.gorsel.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-plus-lg"></i> Ekle
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Liste -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0 align-middle">
+                    <thead class="bg-light">
+                        <tr>
+                            <th scope="col" style="width: 50px;">#</th>
+                            <th scope="col" style="width: 100px;">Görsel</th>
+                            <th scope="col">Kampüs Adı</th>
+                            <th scope="col">Bina Sayısı</th>
+                            <th scope="col" class="text-end" style="width: 150px;">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for kampus in kampusler %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>
+                                {% if kampus.gorsel %}
+                                <a href="{{ kampus.gorsel.url }}" target="_blank">
+                                    <img src="{{ kampus.gorsel.url }}" class="img-thumbnail" style="height: 40px;">
+                                </a>
+                                {% else %}
+                                <span class="text-muted small">Yok</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">{{ kampus.ad }}</td>
+                            <td>
+                                <span class="badge bg-secondary">{{ kampus.binalar.count }}</span>
+                            </td>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-outline-primary btn-sm edit-kampus-btn" 
+                                        data-url="{% url 'ik_core:kampus_duzenle' kampus.id %}"
+                                        data-bs-toggle="modal" data-bs-target="#editModal">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <a href="{% url 'ik_core:kampus_koordinat_editor' %}?kampus_id={{ kampus.id }}" class="btn btn-outline-info btn-sm" title="Koordinat Editörü">
+                                    <i class="bi bi-map"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger btn-sm delete-kampus-btn" 
+                                        data-url="{% url 'ik_core:kampus_sil' kampus.id %}"
+                                        data-ad="{{ kampus.ad }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">Kayıtlı kampüs bulunamadı.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kampüs Düzenle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="editModalBody">
+                <div class="text-center py-3">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Form (Hidden) -->
+<form method="post" id="deleteForm" action="">
+    {% csrf_token %}
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Edit Modal Content Loader
+        const editModal = document.getElementById('editModal');
+        editModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const url = button.getAttribute('data-url');
+            const modalBody = document.getElementById('editModalBody');
+            
+            modalBody.innerHTML = '<div class="text-center py-3"><div class="spinner-border text-primary" role="status"></div></div>';
+            
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.text())
+            .then(html => {
+                modalBody.innerHTML = html;
+            });
+        });
+
+        // Delete Confirm
+        document.querySelectorAll('.delete-kampus-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const url = this.getAttribute('data-url');
+                const ad = this.getAttribute('data-ad');
+                
+                if(confirm(ad + ' kampüsünü silmek istediğinize emin misiniz?')) {
+                    const form = document.getElementById('deleteForm');
+                    form.action = url;
+                    form.submit();
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

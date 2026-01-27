@@ -14,7 +14,7 @@ from django.contrib import messages # Import messages framework
 from django.contrib.auth.decorators import login_required
 from .models.personel import Personel, KisaUnvan, Brans, Kurum, OzelDurum, UnvanBransEslestirme, Unvan
 from .models.GeciciGorev import GeciciGorev
-from .models import UstBirim, Bina, Birim, PersonelBirim
+from .models import UstBirim, Bina, Birim, PersonelBirim, Kampus
 # Import value lists needed
 from .models.valuelists import (
     TESKILAT_DEGERLERI, EGITIM_DEGERLERI, MAZERET_DEGERLERI,
@@ -1085,25 +1085,76 @@ def birim_yonetimi(request):
         'ust_birimler': ust_birimler,
         'selected_bina': selected_bina,
         'birimler': birimler,
+        'kampusler': Kampus.objects.all().order_by('ad'), # Kampüsleri context'e ekledik
     }
     return render(request, 'ik_core/birim_yonetimi.html', context)
 
 @login_required
 @require_POST
-def bina_ekle(request):
-    """Bina ekleme endpoint'i"""
+def bina_ekle_duzenle(request):
+    """Bina ekleme ve düzenleme endpoint'i"""
+    bina_id = request.POST.get('bina_id')
     ad = request.POST.get('ad', '').strip()
+    kampus_id = request.POST.get('kampus_id')
+    aciklama = request.POST.get('aciklama', '').strip()
+
     if not ad:
         return JsonResponse({'success': False, 'message': 'Bina adı gereklidir.'})
+
+    try:
+        if bina_id: # Düzenleme
+            bina = get_object_or_404(Bina, id=bina_id)
+            if Bina.objects.filter(ad=ad).exclude(id=bina_id).exists():
+                return JsonResponse({'success': False, 'message': 'Bu bina adı başka bir kayıt tarafından kullanılıyor.'})
+            bina.ad = ad
+            message = 'Bina başarıyla güncellendi.'
+        else: # Ekleme
+            if Bina.objects.filter(ad=ad).exists():
+                return JsonResponse({'success': False, 'message': 'Bu bina adı zaten mevcut.'})
+            bina = Bina(ad=ad)
+            message = 'Bina başarıyla eklendi.'
+        
+        # Kampüs atama
+        if kampus_id:
+            bina.kampus_id = kampus_id
+        else:
+            bina.kampus = None
+            
+        bina.aciklama = aciklama
+        bina.save()
+
+        return JsonResponse({
+            'success': True, 
+            'message': message,
+            'bina': {
+                'id': bina.id, 
+                'ad': bina.ad, 
+                'kampus_id': bina.kampus_id,
+                'aciklama': bina.aciklama,
+                'birim_sayisi': bina.birim_sayisi
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Hata oluştu: {str(e)}'})
+
+@login_required
+@require_GET
+def get_bina_detay(request):
+    """AJAX ile bina detaylarını getir"""
+    bina_id = request.GET.get('bina_id')
+    if not bina_id:
+        return JsonResponse({'success': False})
     
-    if Bina.objects.filter(ad=ad).exists():
-        return JsonResponse({'success': False, 'message': 'Bu bina adı zaten mevcut.'})
-    
-    bina = Bina.objects.create(ad=ad)
+    bina = get_object_or_404(Bina, id=bina_id)
     return JsonResponse({
-        'success': True, 
-        'message': 'Bina başarıyla eklendi.',
-        'bina': {'id': bina.id, 'ad': bina.ad, 'birim_sayisi': 0}
+        'success': True,
+        'bina': {
+            'id': bina.id,
+            'ad': bina.ad,
+            'kampus_id': bina.kampus_id,
+            'aciklama': bina.aciklama or ''
+        }
     })
 
 @login_required

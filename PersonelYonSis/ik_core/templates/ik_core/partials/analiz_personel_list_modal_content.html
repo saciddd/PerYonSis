@@ -1,11 +1,7 @@
 <div class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center bg-light">
     <div>
-        <span class="fw-bold text-primary">{{ personeller|length }}</span> Personel Listeleniyor
+        <span class="fw-bold text-primary">{{ total_count }}</span> Personel Listeleniyor
     </div>
-    {% comment %}
-    Export buttons could go here. 
-    Implementation note: Need to forward all current GET params to an export endpoint.
-    {% endcomment %}
 </div>
 
 <div class="table-responsive">
@@ -13,7 +9,7 @@
         <thead class="table-light sticky-top" style="top: 0; z-index: 10;">
             <tr>
                 <th>Ad Soyad</th>
-                <th>Birim</th>
+                {% comment %} Birim column hidden because it is grouped {% endcomment %}
                 <th>Telefon</th>
                 <th>Yaş</th>
                 <th>Ünvan / Branş</th>
@@ -25,52 +21,66 @@
             </tr>
         </thead>
         <tbody>
-            {% for p in personeller %}
-            <tr>
-                <td>
-                    <div class="fw-bold">{{ p.ad_soyad }}</div>
-                    <div class="small text-muted">{{ p.tc_kimlik_no }}</div>
-                </td>
-                <td>{{ p.son_birim_kaydi|default:"-" }}</td>
-                <td>{{ p.telefon|default:"-" }}</td>
-                <td>{{ p.yas|default:"-" }}</td>
-                <td>
-                    <div>{{ p.unvan.ad|default:"-" }}</div>
-                    <div class="small text-muted">{{ p.brans.ad|default:"" }}</div>
-                </td>
-                <td>
-                    <div class="small">
-                        {% if p.son_mercis657_listesi %}
-                            <div><b>{{ p.son_mercis657_listesi.yil }}/{{ p.son_mercis657_listesi.ay }}</b> - {{ p.son_mercis657_listesi.birim }}</div>
+            {% for birim_ad, p_list in grouped_personnel.items %}
+                <!-- Group Header Row -->
+                <tr class="table-secondary">
+                    <td colspan="9" class="fw-bold text-dark ps-3">
+                        <i class="bi bi-building"></i> {{ birim_ad }} 
+                        <span class="badge bg-secondary ms-2 rounded-pill">{{ p_list|length }}</span>
+                    </td>
+                </tr>
+
+                <!-- Personnel Rows -->
+                {% for p in p_list %}
+                <tr>
+                    <td class="ps-4">
+                        <div class="fw-bold">{{ p.ad_soyad }}</div>
+                        <div class="small text-muted">{{ p.tc_kimlik_no }}</div>
+                    </td>
+                    {% comment %} 
+                    No Birim column here
+                    <td>{{ p.son_birim_kaydi|default:"-" }}</td> 
+                    {% endcomment %}
+                    <td>{{ p.telefon|default:"-" }}</td>
+                    <td>{{ p.yas|default:"-" }}</td>
+                    <td>
+                        <div>{{ p.unvan.ad|default:"-" }}</div>
+                        <div class="small text-muted">{{ p.brans.ad|default:"" }}</div>
+                    </td>
+                    <td>
+                        <div class="small">
+                            {% if p.son_mercis657_listesi %}
+                                <div><b>{{ p.son_mercis657_listesi.yil }}/{{ p.son_mercis657_listesi.ay }}</b> - {{ p.son_mercis657_listesi.birim }}</div>
+                            {% else %}
+                                <div class="text-muted">-</div>
+                            {% endif %}
+                            {% if p.son_hizmet_sunum_bildirimi %}
+                                <div class="small text-muted">{{ p.son_hizmet_sunum_bildirimi.yil }}/{{ p.son_hizmet_sunum_bildirimi.ay }} - {{ p.son_hizmet_sunum_bildirimi.birim }}</div>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if p.kadrolu_personel %}
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success">Kadrolu</span>
                         {% else %}
-                            <div class="text-muted">-</div>
+                        <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Geçici Gelen</span>
                         {% endif %}
-                        {% if p.son_hizmet_sunum_bildirimi %}
-                            <div class="small text-muted">{{ p.son_hizmet_sunum_bildirimi.yil }}/{{ p.son_hizmet_sunum_bildirimi.ay }} - {{ p.son_hizmet_sunum_bildirimi.birim }}</div>
-                        {% endif %}
-                    </div>
-                </td>
-                <td>
-                    {% if p.kadrolu_personel %}
-                    <span class="badge bg-success bg-opacity-10 text-success border border-success">Kadrolu</span>
-                    {% else %}
-                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Geçici Gelen</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% for oz in p.ozel_durumu.all %}
-                        <span class="badge bg-info text-dark mb-1">{{ oz.ad }}</span>
-                    {% empty %}
-                        <span class="text-muted small">-</span>
-                    {% endfor %}
-                </td>
-                <td>
-                    <span class="badge bg-secondary">{{ p.durum }}</span>
-                </td>
-                <td class="text-end">
-                    <button type="button" class="btn btn-sm btn-outline-primary set-yeni-birim-btn" data-personel-id="{{ p.id }}">Birim Değiştir</button>
-                </td>
-            </tr>
+                    </td>
+                    <td>
+                        {% for oz in p.ozel_durumu.all %}
+                            <span class="badge bg-info text-dark mb-1">{{ oz.ad }}</span>
+                        {% empty %}
+                            <span class="text-muted small">-</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary">{{ p.durum }}</span>
+                    </td>
+                    <td class="text-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary set-yeni-birim-btn" data-personel-id="{{ p.id }}">Birim Değiştir</button>
+                    </td>
+                </tr>
+                {% endfor %}
             {% empty %}
             <tr>
                 <td colspan="9" class="text-center py-4 text-muted">Personel bulunamadı.</td>

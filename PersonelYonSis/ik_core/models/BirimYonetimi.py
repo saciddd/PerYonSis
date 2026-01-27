@@ -12,8 +12,22 @@ class UstBirim(models.Model):
     def __str__(self):
         return self.ad
 
+class Kampus(models.Model):
+    ad = models.CharField(max_length=100, verbose_name="Kampüs Adı")
+    gorsel = models.ImageField(upload_to='kampus_krokileri/', verbose_name="Kampüs Krokisi/Render")
+    
+    class Meta:
+        verbose_name = "Kampüs"
+        verbose_name_plural = "Kampüsler"
+
+    def __str__(self):
+        return self.ad
+
 class Bina(models.Model):
     ad = models.CharField(max_length=50, verbose_name="Bina Adı")
+    kampus = models.ForeignKey(Kampus, on_delete=models.SET_NULL, null=True, related_name='binalar', verbose_name="Kampüs")
+    aciklama = models.CharField(max_length=100, blank=True, null=True, verbose_name="Açıklama (Örn: 3 Katlı)")
+    koordinatlar = models.TextField(blank=True, null=True, help_text="SVG Polygon noktaları (x1,y1 x2,y2...)")
     
     class Meta:
         verbose_name = "Bina"

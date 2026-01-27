@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, resmi_yazi_views, durum_belgesi_views, analiz_views
+from . import views, resmi_yazi_views, durum_belgesi_views, analiz_views, kampus_views
 from ik_core.api import views as api_views
 
 app_name = 'ik_core'
@@ -53,7 +53,9 @@ urlpatterns = [
     path('durum-belgesi-get/<int:pk>/', durum_belgesi_views.durum_belgesi_get, name='durum_belgesi_get'),
     # Birim yönetimi
     path('birim-yonetimi/', views.birim_yonetimi, name='birim_yonetimi'),
-    path('bina-ekle/', views.bina_ekle, name='bina_ekle'),
+    path('birim-yonetimi/', views.birim_yonetimi, name='birim_yonetimi'),
+    path('bina-ekle/', views.bina_ekle_duzenle, name='bina_ekle'), # Name yine bina_ekle kalsın, template değişmesin
+    path('get-bina-detay/', views.get_bina_detay, name='get_bina_detay'),
     path('ust-birim-ekle/', views.ust_birim_ekle, name='ust_birim_ekle'),
     path('birim-ekle/', views.birim_ekle, name='birim_ekle'),
     path('get-birimler-by-bina/', views.get_birimler_by_bina, name='get_birimler_by_bina'),
@@ -64,6 +66,13 @@ urlpatterns = [
     path('analiz/unvan/', analiz_views.unvan_analiz_view, name='unvan_analiz'),
     path('analiz/birim/', analiz_views.birim_analiz_view, name='birim_analiz'),
     path('analiz/modal/personel-list/', analiz_views.personel_list_modal_view, name='analiz_personel_list_modal'),
+    path('analiz/kampus/', analiz_views.kampus_analiz_view, name='kampus_analiz'),
+    # Kampüs Yönetimi
+    path('yonetim/kampus/', kampus_views.kampus_tanimlari, name='kampus_tanimlari'),
+    path('yonetim/kampus/duzenle/<int:pk>/', kampus_views.kampus_duzenle, name='kampus_duzenle'),
+    path('yonetim/kampus/sil/<int:pk>/', kampus_views.kampus_sil, name='kampus_sil'),
+    path('yonetim/kampus-koordinat/', kampus_views.kampus_koordinat_editor, name='kampus_koordinat_editor'),
+    path('yonetim/bina-koordinat-kaydet/', kampus_views.bina_koordinat_kaydet, name='bina_koordinat_kaydet'),
     # API endpoints
     path('api/personel_aktar/', api_views.filemaker_personel_aktar, name='filemaker_personel_aktar'),
 

@@ -35,7 +35,14 @@
                     {% for bina in binalar %}
                     <tr>
                         <td>{{ forloop.counter }}</td>
-                        <td>{{ bina.ad }}</td>
+                        <td>
+                            <a href="#" class="text-decoration-none fw-bold" 
+                               data-bs-toggle="modal" 
+                               data-bs-target="#binaEkleModal" 
+                               data-bina-edit-id="{{ bina.id }}">
+                                <i class="bi bi-pencil-square me-1"></i>{{ bina.ad }}
+                            </a>
+                        </td>
                         <td>{{ bina.birim_sayisi }}</td>
                         <td>
                             <a href="?bina_id={{ bina.id }}" class="btn btn-sm btn-dark">

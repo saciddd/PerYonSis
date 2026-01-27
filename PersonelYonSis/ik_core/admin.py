@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UstBirim, Bina, Birim, PersonelBirim
+from .models import UstBirim, Bina, Birim, PersonelBirim, Kampus
 from .models.personel import KisaUnvan, UnvanBransEslestirme
 
 @admin.register(KisaUnvan)
@@ -22,9 +22,15 @@ class UstBirimAdmin(admin.ModelAdmin):
 
 @admin.register(Bina)
 class BinaAdmin(admin.ModelAdmin):
-    list_display = ['ad', 'birim_sayisi']
-    search_fields = ['ad']
+    list_display = ['ad', 'kampus', 'aciklama', 'birim_sayisi']
+    search_fields = ['ad', 'kampus__ad']
+    list_filter = ['kampus']
     ordering = ['ad']
+
+@admin.register(Kampus)
+class KampusAdmin(admin.ModelAdmin):
+    list_display = ['ad']
+    search_fields = ['ad']
 
 @admin.register(Birim)
 class BirimAdmin(admin.ModelAdmin):

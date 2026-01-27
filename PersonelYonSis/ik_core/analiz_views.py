@@ -4,7 +4,7 @@ from django.db.models.functions import RowNumber
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
 from .models.personel import Personel, KisaUnvan, UnvanBransEslestirme
-from .models.BirimYonetimi import Birim, UstBirim, PersonelBirim, Bina
+from .models.BirimYonetimi import Birim, UstBirim, PersonelBirim, Bina, Kampus
 from datetime import date
 import json
 
@@ -353,6 +353,7 @@ def personel_list_modal_view(request):
     birim_id = request.GET.get('birim_id')
     kisa_unvan_id = request.GET.get('kisa_unvan_id')
     ust_birim_id = request.GET.get('ust_birim_id')
+    bina_id = request.GET.get('bina_id')
     
     # Global Filters
     durum_filter = request.GET.getlist('durum', [])
@@ -412,8 +413,8 @@ def personel_list_modal_view(request):
             # Eşleşme yoksa boş döndür
             personeller = personeller.filter(pk__in=[])
         
-    # Checking Birim / UstBirim involves fetching current unit
-    if birim_id or ust_birim_id:
+    # Checking Birim / UstBirim / Bina involves fetching current unit
+    if birim_id or ust_birim_id or bina_id:
         target_pids = []
         for p in personeller:
             current_pb = p.personelbirim_set.order_by('-gecis_tarihi', '-creation_timestamp').first()
@@ -427,11 +428,186 @@ def personel_list_modal_view(request):
             elif ust_birim_id:
                 if current_pb and str(current_pb.birim.ust_birim.id) == str(ust_birim_id):
                     target_pids.append(p.id)
+            elif bina_id:
+                if current_pb and current_pb.birim.bina and str(current_pb.birim.bina.id) == str(bina_id):
+                    target_pids.append(p.id)
         
         personeller = personeller.filter(id__in=target_pids)
 
+    # Grouping by Last Unit (Birim)
+    # We'll use a dictionary: { 'Birim Name': [personel_list], ... }
+    
+    grouped_personnel = {}
+    
+    # Sort personeller to make grouping easier or just iterate
+    # Note: We can't rely on 'son_birim_kaydi' property for ORDER_BY in ORM easily because it is a property/computed.
+    # So we iterate and group in Python.
+    
+    for p in personeller:
+        # p.son_birim_kaydi uses the same logic: last PersonelBirim or "-"
+        # Let's check for optimization. 'son_birim_kaydi' property uses DB hit if not optimized.
+        # We did prefetch 'personelbirim_set' -> 'birim' in line 365, so it should be fast if property uses filtered set.
+        # However, the property on model might do .last() which hits DB.
+        # Let's stick effectively to what the template uses or what logic we have.
+        
+        # Optimized lookup from prefetched
+        last_pb = None
+        pbs = sorted(
+            [pb for pb in p.personelbirim_set.all()], 
+            key=lambda x: (x.gecis_tarihi, x.creation_timestamp), 
+            reverse=True
+        )
+        if pbs:
+            last_pb = pbs[0]
+            
+        birim_name = "Birim Atanmamış"
+        if last_pb:
+            birim_name = f"{last_pb.birim.ad} ({last_pb.birim.bina.ad if last_pb.birim.bina else '?'})"
+        
+        if birim_name not in grouped_personnel:
+            grouped_personnel[birim_name] = []
+        grouped_personnel[birim_name].append(p)
+
+    # Sort groups by name
+    sorted_groups = dict(sorted(grouped_personnel.items()))
+
     context = {
-        'personeller': personeller
+        'grouped_personnel': sorted_groups,
+        'total_count': len(personeller)
     }
     
     return render(request, 'ik_core/partials/analiz_personel_list_modal_content.html', context)
+
+def kampus_analiz_view(request):
+    """
+    Kampüs / Görev Noktaları Analiz Sayfası
+    """
+    # Initialize Filters
+    durum_filter = request.GET.getlist('durum', [])
+    kampus_filter = request.GET.get('kampus', '') # Single selection for map view mostly
+    kisa_unvan_filter = request.GET.getlist('kisa_unvan', [])
+    kadro_durumu_filter = request.GET.get('kadro_durumu', '')
+    
+    # Varsayılan Filtreler
+    if not durum_filter and not kampus_filter and not kisa_unvan_filter and not kadro_durumu_filter:
+        durum_filter = ['Aktif']
+
+    # 1. Personel Filtreleme (Mevcut mantığın aynısı)
+    personeller = Personel.objects.all()
+    
+    # Kadro Durumu
+    if kadro_durumu_filter:
+        if kadro_durumu_filter == 'Kadrolu':
+            personeller = personeller.filter(kadrolu_personel=True)
+        elif kadro_durumu_filter == 'Geçici Gelen':
+            personeller = personeller.filter(kadrolu_personel=False)
+
+    # Kısa Unvan
+    if kisa_unvan_filter:
+        eslesmeler = UnvanBransEslestirme.objects.filter(kisa_unvan_id__in=kisa_unvan_filter).values_list('unvan_id', 'brans_id')
+        kisa_unvan_query = Q()
+        for u_id, b_id in eslesmeler:
+             if b_id:
+                 kisa_unvan_query |= Q(unvan_id=u_id, brans_id=b_id)
+             else:
+                 kisa_unvan_query |= Q(unvan_id=u_id, brans__isnull=True)
+        if kisa_unvan_query:
+            personeller = personeller.filter(kisa_unvan_query)
+        else:
+            personeller = personeller.filter(pk__in=[])
+
+    # Durum (Python property filter)
+    if durum_filter:
+        personeller_list = list(personeller.select_related('unvan', 'brans').prefetch_related('gecicigorev_set'))
+        valid_ids = []
+        for p in personeller_list:
+            if p.durum in durum_filter:
+                 valid_ids.append(p.id)
+        personeller = Personel.objects.filter(id__in=valid_ids)
+
+    # 2. Kampüs Verisi ve Bina Analizi
+    
+    # Filter valid person IDs for fast lookup
+    valid_personel_ids = set(personeller.values_list('id', flat=True))
+    
+    # Eğer Kampüs seçilmemişse, varsayılan olarak ilki veya hepsi? 
+    # Harita gösterimi için tek bir kampüs seçilmesi daha mantıklı.
+    # Eğer seçilmemişse ilk kampüsü alalım.
+    if kampus_filter:
+        aktif_kampus = get_object_or_404(Kampus, id=kampus_filter)
+    else:
+        aktif_kampus = Kampus.objects.first()
+
+    bina_verileri = []
+    
+    if aktif_kampus:
+        binalar = aktif_kampus.binalar.all().prefetch_related('birim_set', 'birim_set__personelbirim_set')
+        
+        for bina in binalar:
+            # Bina içindeki birimler
+            birimler = bina.birim_set.all()
+            birim_sayisi = birimler.count()
+            
+            # Bu birimlerdeki filtrelenmiş personel sayısı
+            personel_count = 0
+            
+            # Bu işlem biraz maliyetli olabilir, optimizasyon gerekebilir.
+            # Her birim için o birimde şu an çalışan personelleri bulmamız lazım.
+            
+            # Daha performanslı yöntem:
+            # PersonelBirim üzerinden gitmek yerine, filtrelenmiş personellerin
+            # en son çalıştığı birimlere bakarak saymak.
+            
+            # Yukarıda calculated `valid_personel_ids` var.
+            # Bütün personellerin son birimlerini bir seferde çekip mapleyelim.
+            pass # Loop içinde yapmayalım, dışarı alalım logic'i.
+    
+    # Optimized Calculation
+    # Analiz edilecek personellerin (valid_personel_ids)
+    # CURRENT birimlerini bulup, hangi binada olduklarını sayalım.
+    
+    bina_personel_counts = {} # { bina_id: count }
+    
+    # Fetch latest units for filtered personnel
+    # We can reuse the logic from birim_analiz
+    target_personels = personeller.select_related().prefetch_related(
+        'personelbirim_set', 
+        'personelbirim_set__birim',
+        'personelbirim_set__birim__bina'
+    )
+    
+    for p in target_personels:
+        current_pb = p.personelbirim_set.order_by('-gecis_tarihi', '-creation_timestamp').first()
+        if current_pb and current_pb.birim and current_pb.birim.bina:
+            b_id = current_pb.birim.bina.id
+            if b_id:
+                bina_personel_counts[b_id] = bina_personel_counts.get(b_id, 0) + 1
+                
+    # Now build the view data
+    if aktif_kampus:
+        binalar = aktif_kampus.binalar.all()
+        for bina in binalar:
+            count = bina_personel_counts.get(bina.id, 0)
+            bina_verileri.append({
+                'id': bina.id,
+                'ad': bina.ad,
+                'aciklama': bina.aciklama,
+                'koordinatlar': bina.koordinatlar,
+                'birim_sayisi': bina.birim_set.count(),
+                'personel_sayisi': count,
+                'kat_bilgisi': bina.aciklama # Reuse as kat info generally
+            })
+
+    context = {
+        'kampusler': Kampus.objects.all(),
+        'aktif_kampus': aktif_kampus,
+        'bina_verileri': bina_verileri,
+        # Filters context
+        'kisa_unvanlar': KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad'),
+        'selected_durum': durum_filter,
+        'selected_kampus': int(aktif_kampus.id) if aktif_kampus else None,
+        'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
+        'selected_kadro_durumu': kadro_durumu_filter,
+    }
+
+    return render(request, 'ik_core/analiz/kampus_analiz.html', context)

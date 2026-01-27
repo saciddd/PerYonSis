@@ -1,0 +1,21 @@
+<form method="post" enctype="multipart/form-data" action="{% url 'ik_core:kampus_duzenle' kampus.id %}">
+    {% csrf_token %}
+    <div class="mb-3">
+        <label for="{{ form.ad.id_for_label }}" class="form-label small fw-bold">Kampüs Adı</label>
+        {{ form.ad }}
+    </div>
+    <div class="mb-3">
+        <label for="{{ form.gorsel.id_for_label }}" class="form-label small fw-bold">Kampüs Krokisi/Görseli</label>
+        {% if kampus.gorsel %}
+        <div class="mb-2">
+            <img src="{{ kampus.gorsel.url }}" class="img-fluid" style="max-height: 150px;">
+            <div class="small text-muted">Mevcut görsel</div>
+        </div>
+        {% endif %}
+        {{ form.gorsel }}
+    </div>
+    <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+    </div>
+</form>

@@ -3,14 +3,28 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="binaEkleModalLabel">Bina Ekle</h5>
+                <h5 class="modal-title" id="binaEkleModalLabel">Bina Ekle / Düzenle</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="binaEkleForm">
+                <input type="hidden" name="bina_id" id="id_bina_id">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="id_bina-ad" class="form-label">Bina Adı</label>
                         <input type="text" class="form-control" id="id_bina-ad" name="ad" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_bina-kampus" class="form-label">Kampüs</label>
+                        <select class="form-select" id="id_bina-kampus" name="kampus_id">
+                            <option value="">Kampüs Seçiniz (Opsiyonel)</option>
+                            {% for kampus in kampusler %}
+                            <option value="{{ kampus.id }}">{{ kampus.ad }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_bina-aciklama" class="form-label">Açıklama</label>
+                        <input type="text" class="form-control" id="id_bina-aciklama" name="aciklama" placeholder="Örn: 3 Katlı, Ana Hizmet Binası vb.">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -23,9 +37,50 @@
 </div>
 
 <script>
-// Bina ekleme form submit
 document.addEventListener('DOMContentLoaded', function() {
     const binaEkleForm = document.getElementById('binaEkleForm');
+    const modalEl = document.getElementById('binaEkleModal');
+    const modalTitle = document.getElementById('binaEkleModalLabel');
+    const inputId = document.getElementById('id_bina_id');
+    const inputAd = document.getElementById('id_bina-ad');
+    const selectKampus = document.getElementById('id_bina-kampus');
+    const inputAciklama = document.getElementById('id_bina-aciklama');
+
+    // Modal açıldığında olay dinleyicisi ekle
+    // Bootstrap 5 modal is opened: set focus or reset form
+    if (modalEl) {
+        modalEl.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            // Eğer buton data-bina-id içeriyorsa düzenleme modudur
+            const binaId = button.getAttribute('data-bina-edit-id'); 
+            
+            if (binaId) {
+                // Düzenleme modu
+                modalTitle.textContent = "Bina Düzenle";
+                inputId.value = binaId;
+                
+                // Verileri getir
+                fetch(`{% url 'ik_core:get_bina_detay' %}?bina_id=${binaId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        inputAd.value = data.bina.ad;
+                        selectKampus.value = data.bina.kampus_id || "";
+                        inputAciklama.value = data.bina.aciklama;
+                    }
+                });
+                
+            } else {
+                // Ekleme modu (Reset form only if not editing)
+                // Ancak "Bina Ekle" butonuna basınca da bu event tetiklenir
+                // Eğer data-bina-edit-id yoksa temizle
+                modalTitle.textContent = "Bina Ekle";
+                binaEkleForm.reset();
+                inputId.value = "";
+            }
+        });
+    }
+
     if (binaEkleForm) {
         binaEkleForm.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -48,17 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Başarılı mesajı göster
                     alert(data.message);
-                    
-                    // Modalı kapat
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('binaEkleModal'));
-                    modal.hide();
-                    
-                    // Formu temizle
-                    this.reset();
-                    
-                    // Sayfayı yenile
                     location.reload();
                 } else {
                     alert('Hata: ' + data.message);

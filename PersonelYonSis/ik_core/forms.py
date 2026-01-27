@@ -3,6 +3,7 @@ from .models.personel import Personel, Kurum, Unvan, Brans
 from .models.GeciciGorev import GeciciGorev
 from .models.ResmiYazi import ResmiYazi
 from .models.DurumBelgesi import DurumBelgesi
+from .models.BirimYonetimi import Kampus
 from .models.valuelists import (
     TESKILAT_DEGERLERI, EGITIM_DEGERLERI, MAZERET_DEGERLERI,
     AYRILMA_NEDENI_DEGERLERI, ENGEL_DERECESI_DEGERLERI # Add necessary value lists
@@ -169,4 +170,13 @@ class DurumBelgesiForm(forms.ModelForm):
         widgets = {
             'ad': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Belge Adı'}),
             'metin': forms.Textarea(attrs={'class': 'form-control', 'rows': 10, 'placeholder': 'Durum belgesi metni'}),
+        }
+
+class KampusForm(forms.ModelForm):
+    class Meta:
+        model = Kampus
+        fields = ['ad', 'gorsel']
+        widgets = {
+            'ad': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Kampüs Adı'}),
+            'gorsel': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }

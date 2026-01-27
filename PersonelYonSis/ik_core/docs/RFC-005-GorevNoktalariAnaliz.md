@@ -38,7 +38,7 @@ Mevcut birim_analiz_view fonksiyonunuzun mantığını koruyarak, bina bazlı ve
 Filtreleme Personel seçimi ve Kampüs seçimi şeklinde olmalı (Personel filtrelemesi için analiz_views.py dosyasındaki def birim_analiz_view(request): fonksiyonu kopyalanabilir, çalışma mantığı aynı olmalı).
 
 Ardından bulunan veri seti üzerinden;
-Kampüs seçimi ile ilgili kampüsteki binaların listelenmesi.
+İlgili kampüsteki binaların listelenmesi.
 
 Her bina için:
 
@@ -102,11 +102,11 @@ Migrate: Kampus modelini oluştur ve Bina modeline kampus, aciklama, koordinatla
 
 Admin Update: Kampüs tanımları sayfası oluştur, kampüs görseli üzerinden JS "Coordinate Picker" ile bina kordinatlarını elde et ve Bina modeline kaydet.
 
-Analysis Logic: birim_analiz_view fonksiyonunu, seçilen kampüsteki binaları dönecek ve her bina için annotate veya Python seviyesinde gruplandırma yaparak personel sayılarını hesaplayacak şekilde güncelle.
+Analysis Logic: Yeni oluşturacağımız fonksiyonu birim_analiz_view fonksiyonunu temel alarak seçilen kampüsteki binaları dönecek ve her bina için annotate veya Python seviyesinde gruplandırma yaparak personel sayılarını hesaplayacak şekilde oluştur. Backend tarafını oluştururken, mevcut fonksiyonunun mantığını koruyarak, yeni fonksiyonu oluşturmalısın. Bu fonksiyonları analiz_views.py dosyasına yerleştir.
 
 Template: AdminLTE uyumlu yeni bir analiz sayfası oluştur. Sorgu / filtre sayfası ayrı, Kampüs görselinin (SVG overlay ile) yer aldığı analiz sayfası ayrı.
 
-Modal: Bina tıklandığında açılacak, içinde DataTables barındıran ve birim/personel detaylarını gösteren modülü ayrıo dosya olarak hazırla. include edilecek.
+Modal: Bina tıklandığında açılacak, içinde DataTables barındıran ve birim/personel detaylarını gösteren modülü ayrı dosya olarak hazırla. include edilecek.
 
 6. Teknik Notlar
 Koordinatlar: Görselin üzerine çizilecek poligonlar için 0,0 100,0 100,100 0,100 gibi (yüzdelik tabanlı) veya sabit pixel bazlı koordinatlar kullanılabilir. Responsive olması için yüzdelik (viewBox) kullanımı önerilir.

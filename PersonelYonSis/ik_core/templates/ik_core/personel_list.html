@@ -126,7 +126,7 @@
                                 </thead>
                                 <tbody>
                                     {% for personel in personeller %}
-                                    <tr>
+                                    <tr id="personel-row-{{ personel.pk }}">
                                         <td>{{ personel.tc_kimlik_no }}</td>
                                         <td>{{ personel.ad }}</td>
                                         <td>{{ personel.soyad }}</td>
@@ -144,7 +144,7 @@
                                                 <span class="badge bg-secondary">{{ personel.durum }}</span>
                                             {% endif %}
                                         </td>
-                                        <td style="margin: 0; padding: 0;">
+                                        <td style="margin: 0; padding: 0;" class="birim-bilgisi-cell">
                                             <span class="badge text-dark">Birim: {% if personel.son_birim_kaydi %}{{ personel.son_birim_kaydi }}{% else %}-{% endif %}
                                             {% if personel.son_mercis657_listesi %}
                                                 <p style="padding: 0; margin: 0;">Bulunduğu Son Liste: {{ personel.son_mercis657_listesi.yil }}/{{ personel.son_mercis657_listesi.ay }}-{{ personel.son_mercis657_listesi.birim }}</p>
@@ -162,6 +162,9 @@
                                                 <a href="{% url 'ik_core:teblig_islemleri' personel.pk %}" class="btn btn-primary btn-sm">
                                                     <i class="bi bi-file-earmark-text"></i> Tebliğ
                                                 </a>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#yeniBirimBelirleModal" title="Yeni Birim Belirle" data-personel-id="{{ personel.pk }}">
+                                                    <i class="bi bi-building-add"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -262,6 +265,8 @@
             </div>
         </div>
     </div>
+
+    {% include 'ik_core/partials/yeni_birim_belirle_modal.html' %}
 </div>
 {% endblock %}
 
@@ -305,6 +310,19 @@ $(document).ready(function() {
     }
 
     // Modal işlemleri
+    // Yeni Birim Modal açılışında personel ID'yi set et
+    var yeniBirimModal = document.getElementById('yeniBirimBelirleModal');
+    if (yeniBirimModal) {
+        yeniBirimModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var personelId = button.getAttribute('data-personel-id');
+            var input = this.querySelector('#id_yeni_birim-personel_id');
+            if (input) {
+                input.value = personelId;
+            }
+        });
+    }
+
     async function pasteToBulk() {
         try {
             const text = await navigator.clipboard.readText();

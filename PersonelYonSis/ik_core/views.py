@@ -79,6 +79,8 @@ def personel_list(request):
         'personel_sayisi': len(personeller),
         'kisa_unvanlar': kisa_unvanlar,
         'export_fields': export_fields,
+        'ust_birimler': UstBirim.objects.all().order_by('ad'),
+        'binalar': Bina.objects.all().order_by('ad'),
         'arama': {
             'tc_kimlik_no': request.GET.get('tc_kimlik_no', ''),
             'ad_soyad': request.GET.get('ad_soyad', ''),

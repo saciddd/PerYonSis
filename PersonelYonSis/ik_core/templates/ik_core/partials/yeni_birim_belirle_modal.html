@@ -87,11 +87,56 @@ document.getElementById('yeniBirimBelirleForm').addEventListener('submit', funct
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(data.message);
-            const modal = bootstrap.Modal.getInstance(document.getElementById('yeniBirimBelirleModal'));
+            const modalElem = document.getElementById('yeniBirimBelirleModal');
+            const modal = bootstrap.Modal.getInstance(modalElem);
             modal.hide();
             this.reset();
-            location.reload();
+            
+            // DOM Güncelleme
+            const currentPid = document.getElementById('id_yeni_birim-personel_id').value;
+
+            // 1. Liste satırını güncelle (Personel Listesi)
+            const listRow = document.getElementById('personel-row-' + currentPid);
+            if (listRow) {
+                const cell = listRow.querySelector('.birim-bilgisi-cell span.badge');
+                if (cell) {
+                    // Metin güncelleme: "Birim: " ile başlayan text node'u bul
+                    let updated = false;
+                    for (let node of cell.childNodes) {
+                        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim().startsWith('Birim:')) {
+                            node.textContent = 'Birim: ' + data.personel_birim.birim_ad + ' ';
+                            updated = true;
+                            break;
+                        }
+                    }
+                    if (!updated) {
+                         // Eğer yapı beklendiği gibi değilse, güvenli bir şekilde ekle
+                         // Mevcut içeriği sakla, temizle ve yeniden oluştur basitçe yapılabilir ama 
+                         // Mercis verisi kaybolmasın diye sadece text node manipülasyonu denedik.
+                         // Çalışmadıysa, içeriğin başına ekleyelim
+                         cell.textContent = 'Birim: ' + data.personel_birim.birim_ad;
+                    }
+
+                    // Görsel Geri Bildirim
+                    const originalClass = cell.className;
+                    cell.setAttribute('class', 'badge bg-success text-white');
+                    setTimeout(() => {
+                        cell.className = originalClass;
+                    }, 1500);
+                }
+            }
+
+            // 2. Detay bilgisini güncelle (Personel Detay)
+            const detailSpan = document.getElementById('detay-birim-bilgisi');
+            if (detailSpan) {
+                detailSpan.textContent = data.personel_birim.birim_ad;
+                // Görsel efekt
+                detailSpan.classList.add('text-success', 'fw-bold');
+                setTimeout(() => {
+                   detailSpan.classList.remove('text-success', 'fw-bold');
+                }, 1500);
+            }
+
         } else {
             alert('Hata: ' + data.message);
         }

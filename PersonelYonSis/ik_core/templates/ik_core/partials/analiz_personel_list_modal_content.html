@@ -10,10 +10,8 @@
             <tr>
                 <th>Ad Soyad</th>
                 {% comment %} Birim column hidden because it is grouped {% endcomment %}
-                <th>Telefon</th>
                 <th>Yaş</th>
                 <th>Ünvan / Branş</th>
-                <th>Son Bildirimler</th>
                 <th>Kadro Durumu</th>
                 <th>Özel Durumlar</th>
                 <th>Durum</th>
@@ -24,7 +22,6 @@
             {% for birim_ad, p_list in grouped_personnel.items %}
                 <!-- Group Header Row -->
                 <tr class="table-secondary">
-                    <td colspan="9" class="fw-bold text-dark ps-3">
                         <i class="bi bi-building"></i> {{ birim_ad }} 
                         <span class="badge bg-secondary ms-2 rounded-pill">{{ p_list|length }}</span>
                     </td>
@@ -35,29 +32,14 @@
                 <tr>
                     <td class="ps-4">
                         <div class="fw-bold">{{ p.ad_soyad }}</div>
-                        <div class="small text-muted">{{ p.tc_kimlik_no }}</div>
                     </td>
                     {% comment %} 
                     No Birim column here
                     <td>{{ p.son_birim_kaydi|default:"-" }}</td> 
                     {% endcomment %}
-                    <td>{{ p.telefon|default:"-" }}</td>
                     <td>{{ p.yas|default:"-" }}</td>
                     <td>
-                        <div>{{ p.unvan.ad|default:"-" }}</div>
-                        <div class="small text-muted">{{ p.brans.ad|default:"" }}</div>
-                    </td>
-                    <td>
-                        <div class="small">
-                            {% if p.son_mercis657_listesi %}
-                                <div><b>{{ p.son_mercis657_listesi.yil }}/{{ p.son_mercis657_listesi.ay }}</b> - {{ p.son_mercis657_listesi.birim }}</div>
-                            {% else %}
-                                <div class="text-muted">-</div>
-                            {% endif %}
-                            {% if p.son_hizmet_sunum_bildirimi %}
-                                <div class="small text-muted">{{ p.son_hizmet_sunum_bildirimi.yil }}/{{ p.son_hizmet_sunum_bildirimi.ay }} - {{ p.son_hizmet_sunum_bildirimi.birim }}</div>
-                            {% endif %}
-                        </div>
+                        {{ p.unvan.ad|default:"-" }} / {{ p.brans.ad|default:"" }}
                     </td>
                     <td>
                         {% if p.kadrolu_personel %}

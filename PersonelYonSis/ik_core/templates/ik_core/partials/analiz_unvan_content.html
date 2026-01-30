@@ -1,0 +1,90 @@
+<!-- Tab 1: Dağılım -->
+<div class="tab-pane fade show active" id="tab-dagilim" role="tabpanel">
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-outline-primary btn-sm me-2" onclick="exportToPDF('tab-dagilim')">
+            <i class="bi bi-file-earmark-pdf"></i> PDF Yazdır
+        </button>
+        <button class="btn btn-outline-success btn-sm" onclick="exportToExcel('tab-dagilim')">
+            <i class="bi bi-file-earmark-excel"></i> Excel Aktar
+        </button>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Kısa Ünvan</th>
+                            <th class="text-center" style="width: 150px;">Personel Sayısı</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in kisa_unvan_dagilim %}
+                        <tr class="clickable-row detail-btn" data-kisa-unvan-id="{{ item.kisa_unvan_id }}"
+                            style="cursor: pointer;">
+                            <td class="fw-bold">{{ item.kisa_unvan_ad|default:"Tanımsız" }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-primary rounded-pill fs-6">{{ item.total }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">Veri bulunamadı.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab 2: Matriks -->
+<div class="tab-pane fade" id="tab-kirilim" role="tabpanel">
+    <div class="d-flex justify-content-end mb-3">
+        <button class="btn btn-outline-primary btn-sm me-2" onclick="exportToPDF('tab-kirilim')">
+            <i class="bi bi-file-earmark-pdf"></i> PDF Yazdır
+        </button>
+        <button class="btn btn-outline-success btn-sm" onclick="exportToExcel('tab-kirilim')">
+            <i class="bi bi-file-earmark-excel"></i> Excel Aktar
+        </button>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive" style="max-height: 700px; overflow: auto;">
+                <table class="table table-bordered table-hover text-center table-sm align-middle mb-0"
+                    style="font-size: 0.85rem;">
+                    <thead class="table-light position-sticky top-0 shadow-sm" style="z-index: 5;">
+                        <tr>
+                            <th class="text-start bg-light position-sticky start-0"
+                                style="min-width: 200px; left: 0; z-index: 6;">Birim</th>
+                            {% for ku_id, ku_ad in matrix_headers %}
+                            <th style="min-width: 100px; writing-mode: vertical-rl; transform: rotate(180deg);"
+                                class="py-2">
+                                <div class="fw-normal text-start">{{ ku_ad }}</div>
+                            </th>
+                            {% endfor %}
+                            <th class="bg-light position-sticky end-0" style="width: 80px; z-index: 6;">TOPLAM</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in matrix_rows %}
+                        <tr>
+                            <td class="text-start fw-bold position-sticky start-0 bg-white detail-btn"
+                                data-birim-id="{{ row.birim_id }}" style="left: 0; cursor: pointer;">{{ row.birim_ad }}</td>
+                            {% for col in row.cols %}
+                            <td class="{% if col.count > 0 %}table-info clickable-cell{% endif %}" {% if col.count > 0 %} style="cursor: pointer;" data-birim-id="{{ row.birim_id }}" data-kisa-unvan-id="{{ col.ku_id }}" {% endif %}> {% if col.count > 0 %}<span class="fw-bold text-primary">{{ col.count }}</span>{% else %}<span class="text-muted text-opacity-25">-</span>{% endif %}</td>
+                            {% endfor %}
+                            <td class="fw-bold bg-light position-sticky end-0">{{ row.total }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="{{ matrix_headers|length|add:'2' }}" class="text-center py-4">Veri bulunamadı.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

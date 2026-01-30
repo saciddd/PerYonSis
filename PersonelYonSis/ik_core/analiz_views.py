@@ -7,6 +7,84 @@ from .models.personel import Personel, KisaUnvan, UnvanBransEslestirme
 from .models.BirimYonetimi import Birim, UstBirim, PersonelBirim, Bina, Kampus
 from datetime import date
 import json
+from django.template.loader import render_to_string
+
+def serialize_personel_list(personels):
+    """
+    Frontend tarafında filtreleme ve listeleme yapmak için personelleri serialize eder.
+    """
+    data = []
+    # Optimization: Prefetch already done in views usually, but for consistency:
+    # We assume 'personels' is an iterable of Personel objects with necessary related fields populated.
+    
+    for p in personels:
+        # Determine current unit logic (similar to views)
+        # Using the cached property approach if available or calculating.
+        # Since we are iterating, we can calculate 'son_birim' info.
+        
+        # We need a robust way to get current unit info for the JS filter.
+        # In the views, we used logic like:
+        # current_pb = p.personelbirim_set.order_by('-gecis_tarihi', '-creation_timestamp').first()
+        # This is heavy to do one by one if not prefetched or annotated.
+        # For the frontend list, we rely on the specific attributes we used in analysis.
+        
+        # However, to be safe and fast, let's use the object's loaded relationships.
+        # We expect the queryset to have: .prefetch_related('personelbirim_set__birim__ust_birim', 'personelbirim_set__birim__bina')
+        
+        # Sort PBs in python to avoid DB hit per row
+        pbs = sorted(
+            [pb for pb in p.personelbirim_set.all()], 
+            key=lambda x: (x.gecis_tarihi, x.creation_timestamp), 
+            reverse=True
+        )
+        current_pb = pbs[0] if pbs else None
+        
+        birim_id = current_pb.birim.id if current_pb and current_pb.birim else 'unknown'
+        birim_ad = current_pb.birim.ad if current_pb and current_pb.birim else 'Birim Atanmamış'
+        ust_birim_id = current_pb.birim.ust_birim.id if current_pb and current_pb.birim and current_pb.birim.ust_birim else 'unknown'
+        bina_id = current_pb.birim.bina.id if current_pb and current_pb.birim and current_pb.birim.bina else 'unknown'
+        
+        # Ozel durumlar
+        ozel_durumlar = [{'ad': oz.ad} for oz in p.ozel_durumu.all()]
+        
+        # Unvan info
+        # kisa_unvan property triggers DB if not careful, but usually we filter by it.
+        # Let's trust kisa_unvan property or manual check.
+        # p.kisa_unvan uses unvan-brans mapping.
+        kisa_unvan_val = p.kisa_unvan or 'Tanımsız'
+        # We need ID for filtering. The frontend will compare kisa_unvan_id.
+        # We should map the text to ID? Or just use the calculated one if we have it in context.
+        # The view usually passes filtered list.
+        # Let's attach the kisa_unvan_id if we can, but p.kisa_unvan returns STRING.
+        # We need a reverse lookup or include it in the object.
+        # For simplicity, we can send kisa_unvan name and handle ID mapping in JS or send ID if we can deduce it.
+        # Better: The view has `kisa_unvan_ad_to_id` map. We can use it if passed, but here we are in helper.
+        # We will add checks for attributes set by the view.
+        
+        ku_id = getattr(p, '_kisa_unvan_id_cache', None) # We will set this in view loop
+        if ku_id is None:
+             # Fallback if view didn't annotate
+             # This is slow, but safe.
+             pass 
+
+        data.append({
+            'id': p.id,
+            'ad_soyad': p.ad_soyad,
+            'yas': p.yas or '-',
+            'unvan_ad': p.unvan.ad if p.unvan else '-',
+            'brans_ad': p.brans.ad if p.brans else '',
+            'birim_id': str(birim_id), # str for JS comparison
+            'birim_ad': birim_ad,
+            'ust_birim_id': str(ust_birim_id),
+            'bina_id': str(bina_id),
+            'kisa_unvan_id': str(ku_id) if ku_id else 'unknown',
+            'kisa_unvan_ad': str(kisa_unvan_val),
+            'durum': p.durum,
+            'kadro_durumu': 'Kadrolu' if p.kadrolu_personel else 'Geçici Gelen',
+            'ozel_durumlar': ozel_durumlar,
+        })
+    return data
+
 
 def dashboard_view(request):
     """
@@ -23,14 +101,32 @@ def unvan_analiz_view(request):
     kisa_unvan_filter = request.GET.getlist('kisa_unvan', [])
     kadro_durumu_filter = request.GET.get('kadro_durumu', '')
     
-    # İlk açılışta varsayılan olarak sadece aktif personeller
-    if not durum_filter and not kisa_unvan_filter and not kadro_durumu_filter:
-        durum_filter = ['Aktif']
+    # Varsayılan Filtreler (AJAX dışı istekler için de filtre state'ini tutmamız lazım)
+    # Check if this is an AJAX request for data
+    load_data = request.GET.get('load_data') == '1'
+    
+    context = {
+        'kisa_unvanlar': KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad'),
+        'ust_birimler': UstBirim.objects.all().order_by('ad'),
+        'binalar': Bina.objects.all().order_by('ad'),
+        'arama': {
+            'kisa_unvan': [str(x) for x in kisa_unvan_filter],
+        },
+        'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
+        'selected_durum': durum_filter,
+        'selected_kadro_durumu': kadro_durumu_filter,
+    }
+
+    if not load_data:
+        # Initial Page Load - Return Skeleton
+        return render(request, 'ik_core/analiz/unvan_analiz.html', context)
+
+    # --- BELOW IS DATA CALCULATION (Only runs on AJAX) ---
 
     # Base Queryset
     personeller = Personel.objects.all()
 
-    # Apply Filters - Önce DB filtreleri (performans için)
+    # Apply Filters - Önce DB filtreleri
     if kadro_durumu_filter:
         if kadro_durumu_filter == 'Kadrolu':
             personeller = personeller.filter(kadrolu_personel=True)
@@ -38,9 +134,7 @@ def unvan_analiz_view(request):
             personeller = personeller.filter(kadrolu_personel=False)
     
     if kisa_unvan_filter:
-        # DB'de filtreleme yapmak için: Seçilen Kısa Unvan'lara ait Unvan-Branş eşleşmelerini bul
         eslesmeler = UnvanBransEslestirme.objects.filter(kisa_unvan_id__in=kisa_unvan_filter).values_list('unvan_id', 'brans_id')
-        
         kisa_unvan_query = Q()
         for u_id, b_id in eslesmeler:
             if b_id:
@@ -51,38 +145,49 @@ def unvan_analiz_view(request):
         if kisa_unvan_query:
             personeller = personeller.filter(kisa_unvan_query)
         else:
-            # Eşleşme yoksa boş döndür
             personeller = personeller.filter(pk__in=[])
 
-    # Durum filtresi (property olduğu için Python tarafında)
-    # Önce DB filtrelerini uygulayıp sonra durum filtresini uyguluyoruz (daha verimli)
-    if durum_filter:
-        # QuerySet'i listeye çevir ve durum property'sine göre filtrele
-        # gecicigorev_set'i prefetch et çünkü durum property'si bunu kullanıyor
-        personeller_list = list(personeller.select_related('unvan', 'brans').prefetch_related('gecicigorev_set'))
-        valid_ids = []
-        for p in personeller_list:
-            if p.durum in durum_filter:
-                valid_ids.append(p.id)
-        personeller = Personel.objects.filter(id__in=valid_ids)
-
-    # Aggregations
-    # 1. Kısa Ünvan Dağılımı - kisa_unvan property'sine göre
-    # Python tarafında hesaplama yapmalıyız çünkü property DB'de değil
-    personeller_list_for_dagilim = personeller.select_related('unvan', 'brans')
-    kisa_unvan_dagilim_dict = {}
+    # Durum filtresi ve Personel Listesi Hazırlığı
+    # Genişletilmiş Prefetch
+    personeller_list = list(personeller.select_related('unvan', 'brans').prefetch_related(
+        'gecicigorev_set', 
+        'personelbirim_set', 
+        'personelbirim_set__birim', 
+        'personelbirim_set__birim__ust_birim',
+        'personelbirim_set__birim__bina',
+        'ozel_durumu'
+    ))
     
-    # Kısa unvan ID'lerini önceden bulalım (performans için)
+    valid_personels = []
+    
+    # Kisa unvan ve filter logic
     kisa_unvan_ad_to_id = {ku.ad: ku.id for ku in KisaUnvan.objects.all()}
-    
-    for p in personeller_list_for_dagilim:
+
+    # Helper for fast lookups
+    filtered_personel_objects = []
+
+    for p in personeller_list:
+        if durum_filter and p.durum not in durum_filter:
+            continue
+            
+        # Attach Helpers for Serialization & Matrix
+        ku_ad = p.kisa_unvan
+        ku_id = kisa_unvan_ad_to_id.get(ku_ad, 'unknown')
+        p._kisa_unvan_id_cache = ku_id
+        
+        filtered_personel_objects.append(p)
+
+    # --- Aggregations ---
+
+    # 1. Kısa Ünvan Dağılımı
+    kisa_unvan_dagilim_dict = {}
+    for p in filtered_personel_objects:
         ku_ad = p.kisa_unvan
         if ku_ad:
             if ku_ad not in kisa_unvan_dagilim_dict:
                 kisa_unvan_dagilim_dict[ku_ad] = 0
             kisa_unvan_dagilim_dict[ku_ad] += 1
-    
-    # Format for template: list of dicts (template uyumluluğu için)
+            
     kisa_unvan_dagilim = []
     for ku_ad, count in sorted(kisa_unvan_dagilim_dict.items(), key=lambda x: x[1], reverse=True):
         ku_id = kisa_unvan_ad_to_id.get(ku_ad, None)
@@ -92,31 +197,19 @@ def unvan_analiz_view(request):
             'total': count
         })
 
-    # 2. Birim - Kısa Ünvan Kırılımı
-    # We need current unit of each personel.
-    # Since PersonelBirim is a history table, getting the CURRENT unit for aggregation is tricky.
-    # We can pre-fetch current unit info.
-    
-    # Strategy: Get all PersonelBirim objects that are the 'latest' for each user 
-    # within the filtered personel list.
-    # Or, simpler: Iterate and build the matrix in Python.
-    # Given the requirements for "Dynamic columns", this suggests Python construction anyway.
-    
-    matrix_data = {} # { BirimID: { 'birim_ad': ..., 'unvanlar': { KisaUnvanID: count } } }
-    
+    # 2. Birim - Kısa Ünvan Matrix
+    matrix_data = {}
     all_kisa_unvans = set()
-    
-    # Optimize: prefetch related
-    personeller_list = personeller.select_related(
-        'unvan', 'brans'
-    ).prefetch_related('personelbirim_set', 'personelbirim_set__birim')
 
-    # Kısa unvan ID'lerini önceden bulalım (performans için)
-    kisa_unvan_ad_to_id = {ku.ad: ku.id for ku in KisaUnvan.objects.all()}
+    for p in filtered_personel_objects:
+        # Get Current Birim (optimized)
+        pbs = sorted(
+            [pb for pb in p.personelbirim_set.all()], 
+            key=lambda x: (x.gecis_tarihi, x.creation_timestamp), 
+            reverse=True
+        )
+        current_pb = pbs[0] if pbs else None
 
-    for p in personeller_list:
-        # Get Current Birim
-        current_pb = p.personelbirim_set.order_by('-gecis_tarihi', '-creation_timestamp').first()
         if current_pb:
             birim_id = current_pb.birim.id
             birim_ad = current_pb.birim.ad
@@ -124,13 +217,8 @@ def unvan_analiz_view(request):
             birim_id = 'unknown'
             birim_ad = 'Tanımsız Birim'
             
-        # kisa_unvan property'sini kullan
-        ku_ad = p.kisa_unvan
-        if ku_ad and ku_ad in kisa_unvan_ad_to_id:
-            ku_id = kisa_unvan_ad_to_id[ku_ad]
-        else:
-            ku_id = 'unknown'
-            ku_ad = ku_ad if ku_ad else 'Tanımsız Ünvan'
+        ku_id = p._kisa_unvan_id_cache
+        ku_ad = p.kisa_unvan or 'Tanımsız Ünvan'
             
         if birim_id not in matrix_data:
             matrix_data[birim_id] = {'birim_ad': birim_ad, 'counts': {}, 'total': 0}
@@ -144,7 +232,6 @@ def unvan_analiz_view(request):
         if ku_id != 'unknown':
             all_kisa_unvans.add((ku_id, ku_ad))
 
-    # Format for template
     sorted_kisa_unvans = sorted(list(all_kisa_unvans), key=lambda x: x[1])
     
     matrix_rows = []
@@ -166,25 +253,53 @@ def unvan_analiz_view(request):
         
     matrix_rows.sort(key=lambda x: x['total'], reverse=True)
 
-    # personel_list.html'deki gibi ust_birim'e göre sırala
-    kisa_unvanlar = KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad')
-
-    context = {
+    # Prepare Context for partial Rendering
+    # We render the Tables using render_to_string
+    # We need to reuse the same context keys as the template expects
+    
+    partial_context = context.copy()
+    partial_context.update({
         'kisa_unvan_dagilim': kisa_unvan_dagilim,
         'matrix_rows': matrix_rows,
         'matrix_headers': sorted_kisa_unvans,
-        'kisa_unvanlar': kisa_unvanlar, # For modal filter - personel_list.html ile uyumlu
-        'ust_birimler': UstBirim.objects.all().order_by('ad'),
-        'binalar': Bina.objects.all().order_by('ad'),
-        'arama': {
-            'kisa_unvan': [str(x) for x in kisa_unvan_filter], # Modal template'i için
-        },
-        'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
-        'selected_durum': durum_filter,
-        'selected_kadro_durumu': kadro_durumu_filter,
-    }
+    })
+    
+    # We need to extract the parts of the original template or create partials.
+    # It is cleaner to return HTML strings for specific containers.
+    # However, since the user wants a structural change, we can assume the existing template will be modified to accept this.
+    # I will create simple partials or just return the data structure and let frontend render? 
+    # NO, complex matrix is better rendered on server.
+    
+    # To avoid creating many new files, I'll render the whole 'unvan_analiz.html' but with a special block or 
+    # simply render the content areas if I had them as partials.
+    # The user didn't ask for partial files but I should probably create them for cleanliness.
+    # But for now, to be minimally invasive, I will construct the HTML manually or use inline templates? No.
+    # I will assume I can update the main template to wrap the dynamic parts in logic, OR
+    # I will simply return the fully rendered tables as strings.
+    
+    # Since I don't have partials for the tables in `unvan_analiz.html` yet, I would have to extract them.
+    # Better strategy: modify `unvan_analiz.html` to be mostly empty divs, and use JS to fill them.
+    # I will create a new partial `partials/analiz_unvan_tables.html` effectively by splitting or just render the current logic if I can isolatedly.
+    
+    # Let's create a partial for the content of tabs.
+    
+    # IMPORTANT: The user wants "Data loading after page show".
+    # I'll return:
+    # 1. html_tab_dagilim
+    # 2. html_tab_kirilim
+    # 3. personel_data (JSON)
+    
+    # I'll use inline rendering or create a partial file in the next step.
+    # For now in this VIEW update, I'll refer to a to-be-created partial: 'ik_core/partials/analiz_unvan_content.html'
+    
+    html_content = render_to_string('ik_core/partials/analiz_unvan_content.html', partial_context, request)
+    personel_data = serialize_personel_list(filtered_personel_objects)
+    
+    return JsonResponse({
+        'html_content': html_content,
+        'personel_data': personel_data
+    })
 
-    return render(request, 'ik_core/analiz/unvan_analiz.html', context)
 
 def birim_analiz_view(request):
     """
@@ -196,13 +311,32 @@ def birim_analiz_view(request):
     kisa_unvan_filter = request.GET.getlist('kisa_unvan', [])
     kadro_durumu_filter = request.GET.get('kadro_durumu', '')
     
-    # İlk açılışta varsayılan olarak sadece aktif personeller
-    if not durum_filter and not ust_birim_filter and not kisa_unvan_filter and not kadro_durumu_filter:
-        durum_filter = ['Aktif']
+    # Varsayılan Filtreler
+    # Check if this is an AJAX request for data
+    load_data = request.GET.get('load_data') == '1'
+    
+    context = {
+        'ust_birimler': UstBirim.objects.all().order_by('ad'),
+        'kisa_unvanlar': KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad'),
+        'binalar': Bina.objects.all().order_by('ad'),
+        'arama': {
+            'kisa_unvan': [str(x) for x in kisa_unvan_filter],
+        },
+        'selected_durum': durum_filter,
+        'selected_ust_birim': [int(x) for x in ust_birim_filter],
+        'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
+        'selected_kadro_durumu': kadro_durumu_filter,
+    }
+
+    if not load_data:
+        # Initial Page Load - Return Skeleton
+        return render(request, 'ik_core/analiz/birim_analiz.html', context)
+        
+    # --- AJAX DATA CALCULATION ---
 
     personeller = Personel.objects.all()
     
-    # Apply Filters - Önce DB filtreleri (performans için)
+    # Apply Filters
     if kadro_durumu_filter:
         if kadro_durumu_filter == 'Kadrolu':
             personeller = personeller.filter(kadrolu_personel=True)
@@ -210,59 +344,53 @@ def birim_analiz_view(request):
             personeller = personeller.filter(kadrolu_personel=False)
 
     if kisa_unvan_filter:
-        # DB'de filtreleme yapmak için: Seçilen Kısa Unvan'lara ait Unvan-Branş eşleşmelerini bul
         eslesmeler = UnvanBransEslestirme.objects.filter(kisa_unvan_id__in=kisa_unvan_filter).values_list('unvan_id', 'brans_id')
-        
         kisa_unvan_query = Q()
         for u_id, b_id in eslesmeler:
             if b_id:
                 kisa_unvan_query |= Q(unvan_id=u_id, brans_id=b_id)
             else:
                 kisa_unvan_query |= Q(unvan_id=u_id, brans__isnull=True)
-        
         if kisa_unvan_query:
             personeller = personeller.filter(kisa_unvan_query)
         else:
-            # Eşleşme yoksa boş döndür
             personeller = personeller.filter(pk__in=[])
 
-    # Durum filtresi (property olduğu için Python tarafında)
-    # Önce DB filtrelerini uygulayıp sonra durum filtresini uyguluyoruz (daha verimli)
-    if durum_filter:
-        # QuerySet'i listeye çevir ve durum property'sine göre filtrele
-        # gecicigorev_set'i prefetch et çünkü durum property'si bunu kullanıyor
-        personeller_list = list(personeller.select_related('unvan', 'brans').prefetch_related('gecicigorev_set'))
-        valid_ids = []
-        for p in personeller_list:
-            if p.durum in durum_filter:
-                valid_ids.append(p.id)
-        personeller = Personel.objects.filter(id__in=valid_ids)
-
-    # Birim filtering needs to happen on the valid person set.
-    # Since filter is "Birimin Bağlı Olduğu Üst Birim", we need to check current unit's parent.
+    # Durum filtresi ve PREFETCH
+    personeller_list = list(personeller.select_related('unvan', 'brans').prefetch_related(
+        'gecicigorev_set', 
+        'personelbirim_set', 
+        'personelbirim_set__birim', 
+        'personelbirim_set__birim__ust_birim',
+        'personelbirim_set__birim__bina',
+        'ozel_durumu'
+    ))
     
-    # Fetch data
-    personeller_list = personeller.select_related(
-        'unvan', 'brans'
-    ).prefetch_related('personelbirim_set', 'personelbirim_set__birim', 'personelbirim_set__birim__ust_birim')
+    valid_personels = []
     
-    # Kısa unvan ID'lerini önceden bulalım (performans için)
+    # Kisa unvan ve filter logic
     kisa_unvan_ad_to_id = {ku.ad: ku.id for ku in KisaUnvan.objects.all()}
     
-    # Aggregations
-    # Tab 1: Üst Birim -> Birim Dağılımı
-    ust_birim_data = {}
-    
-    # Tab 2: Bina -> Birim Tipi -> Birim -> Ünvan Dağılımı
-    bina_data = {}
-    
-    # Filter by Ust Birim here in Python loop if complex, or ID list
     selected_ust_birim_ids = [int(x) for x in ust_birim_filter]
 
-    filtered_personel_ids = []
+    # Aggregations
+    ust_birim_data = {}
+    bina_data = {}
+    all_kisa_unvans_set = set() # For compatibility
+    
+    filtered_personel_objects = []
 
     for p in personeller_list:
-        current_pb = p.personelbirim_set.order_by('-gecis_tarihi', '-creation_timestamp').first()
+        if durum_filter and p.durum not in durum_filter:
+            continue
+            
+        # Get Current Birim info for aggregation
+        pbs = sorted(
+            [pb for pb in p.personelbirim_set.all()], 
+            key=lambda x: (x.gecis_tarihi, x.creation_timestamp), 
+            reverse=True
+        )
+        current_pb = pbs[0] if pbs else None
         
         if not current_pb:
             continue
@@ -273,7 +401,12 @@ def birim_analiz_view(request):
         if selected_ust_birim_ids and ust_birim.id not in selected_ust_birim_ids:
             continue
             
-        filtered_personel_ids.append(p.id)
+        # Attach helper for serialization
+        ku_ad = p.kisa_unvan
+        ku_id = kisa_unvan_ad_to_id.get(ku_ad, 'unknown')
+        p._kisa_unvan_id_cache = ku_id
+        
+        filtered_personel_objects.append(p)
         
         # Data for Tab 1
         ub_id = ust_birim.id
@@ -290,14 +423,9 @@ def birim_analiz_view(request):
         ust_birim_data[ub_id]['birimler'][b_id]['count'] += 1
         ust_birim_data[ub_id]['total'] += 1
         
-        # Data for Tab 2 - bina -> birim_tipi'ne göre gruplandır
+        # Data for Tab 2
         bina_ad = birim.bina.ad if birim.bina else 'Tanımsız'
         birim_tipi = birim.birim_tipi or 'Tanımsız'
-        ku_ad = p.kisa_unvan
-        if ku_ad and ku_ad in kisa_unvan_ad_to_id:
-            ku_id = kisa_unvan_ad_to_id[ku_ad]
-        else:
-            ku_id = 'unknown'
         
         if bina_ad not in bina_data:
             bina_data[bina_ad] = {}
@@ -315,30 +443,22 @@ def birim_analiz_view(request):
         bina_data[bina_ad][birim_tipi]['birimler'][b_id]['total'] += 1
         bina_data[bina_ad][birim_tipi]['total'] += 1
 
-    # Only include filtered people in context if needed, but we aggregated already.
-    
-    # View Filters
-    ust_birimler = UstBirim.objects.all().order_by('ad')
-    # personel_list.html'deki gibi ust_birim'e göre sırala
-    kisa_unvanlar = KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad')
-
-    context = {
+    partial_context = context.copy()
+    partial_context.update({
         'ust_birim_data': ust_birim_data,
         'bina_data': bina_data,
-        'ust_birimler': ust_birimler,
-        'kisa_unvanlar': kisa_unvanlar, # For modal filter - personel_list.html ile uyumlu
-        'all_kisa_unvans': kisa_unvanlar, # Tab 2 için backward compatibility
-        'binalar': Bina.objects.all().order_by('ad'),
-        'arama': {
-            'kisa_unvan': [str(x) for x in kisa_unvan_filter], # Modal template'i için
-        },
-        'selected_durum': durum_filter,
-        'selected_ust_birim': selected_ust_birim_ids,
-        'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
-        'selected_kadro_durumu': kadro_durumu_filter,
-    }
+        'all_kisa_unvans': KisaUnvan.objects.all(), # Passed as QS in original but can be list
+    })
+
+    # Render Partial (Needs to be created, effectively content of tabs)
+    html_content = render_to_string('ik_core/partials/analiz_birim_content.html', partial_context, request)
+    personel_data = serialize_personel_list(filtered_personel_objects)
     
-    return render(request, 'ik_core/analiz/birim_analiz.html', context)
+    return JsonResponse({
+        'html_content': html_content,
+        'personel_data': personel_data
+    })
+
 
 def personel_list_modal_view(request):
     """
@@ -489,10 +609,32 @@ def kampus_analiz_view(request):
     kadro_durumu_filter = request.GET.get('kadro_durumu', '')
     
     # Varsayılan Filtreler
-    if not durum_filter and not kampus_filter and not kisa_unvan_filter and not kadro_durumu_filter:
-        durum_filter = ['Aktif']
+    # Check if this is an AJAX request for data
+    load_data = request.GET.get('load_data') == '1'
+    
+     # Eğer Kampüs seçilmemişse, varsayılan olarak ilki veya hepsi? 
+    if kampus_filter:
+        aktif_kampus = get_object_or_404(Kampus, id=kampus_filter)
+    else:
+        aktif_kampus = Kampus.objects.first()
 
-    # 1. Personel Filtreleme (Mevcut mantığın aynısı)
+    context = {
+        'kampusler': Kampus.objects.all(),
+        'aktif_kampus': aktif_kampus,
+        # Filters context
+        'kisa_unvanlar': KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad'),
+        'selected_durum': durum_filter,
+        'selected_kampus': int(aktif_kampus.id) if aktif_kampus else None,
+        'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
+        'selected_kadro_durumu': kadro_durumu_filter,
+    }
+    
+    if not load_data:
+        return render(request, 'ik_core/analiz/kampus_analiz.html', context)
+
+    # --- AJAX CALCULATION ---
+
+    # 1. Personel Filtreleme
     personeller = Personel.objects.all()
     
     # Kadro Durumu
@@ -516,74 +658,52 @@ def kampus_analiz_view(request):
         else:
             personeller = personeller.filter(pk__in=[])
 
-    # Durum (Python property filter)
-    if durum_filter:
-        personeller_list = list(personeller.select_related('unvan', 'brans').prefetch_related('gecicigorev_set'))
-        valid_ids = []
-        for p in personeller_list:
-            if p.durum in durum_filter:
-                 valid_ids.append(p.id)
-        personeller = Personel.objects.filter(id__in=valid_ids)
+    # Durum and Prefetch
+    personeller_list = list(personeller.select_related('unvan', 'brans').prefetch_related(
+        'gecicigorev_set', 
+        'personelbirim_set', 
+        'personelbirim_set__birim', 
+        'personelbirim_set__birim__bina',
+        'personelbirim_set__birim__ust_birim',
+        'ozel_durumu'
+    ))
+    
+    filtered_personel_objects = []
+    
+    kisa_unvan_ad_to_id = {ku.ad: ku.id for ku in KisaUnvan.objects.all()}
 
-    # 2. Kampüs Verisi ve Bina Analizi
+    # 2. Bina Calculate
+    bina_personel_counts = {} # { bina_id: count }
+    tanimsiz_personel_count = 0
     
-    # Filter valid person IDs for fast lookup
-    valid_personel_ids = set(personeller.values_list('id', flat=True))
-    
-    # Eğer Kampüs seçilmemişse, varsayılan olarak ilki veya hepsi? 
-    # Harita gösterimi için tek bir kampüs seçilmesi daha mantıklı.
-    # Eğer seçilmemişse ilk kampüsü alalım.
-    if kampus_filter:
-        aktif_kampus = get_object_or_404(Kampus, id=kampus_filter)
-    else:
-        aktif_kampus = Kampus.objects.first()
+    for p in personeller_list:
+        if durum_filter and p.durum not in durum_filter:
+            continue
+            
+        pbs = sorted(
+            [pb for pb in p.personelbirim_set.all()], 
+            key=lambda x: (x.gecis_tarihi, x.creation_timestamp), 
+            reverse=True
+        )
+        current_pb = pbs[0] if pbs else None
+        
+        ku_ad = p.kisa_unvan
+        ku_id = kisa_unvan_ad_to_id.get(ku_ad, 'unknown')
+        p._kisa_unvan_id_cache = ku_id
+        
+        filtered_personel_objects.append(p)
+        
+        if current_pb and current_pb.birim and current_pb.birim.bina:
+             b_id = current_pb.birim.bina.id
+             bina_personel_counts[b_id] = bina_personel_counts.get(b_id, 0) + 1
+        elif current_pb and current_pb.birim and not current_pb.birim.bina:
+             # Birimi var ama binası yok -> Tanımsız bina
+             tanimsiz_personel_count += 1
+        else:
+             # Birimi yok
+             tanimsiz_personel_count += 1
 
     bina_verileri = []
-    
-    if aktif_kampus:
-        binalar = aktif_kampus.binalar.all().prefetch_related('birim_set', 'birim_set__personelbirim_set')
-        
-        for bina in binalar:
-            # Bina içindeki birimler
-            birimler = bina.birim_set.all()
-            birim_sayisi = birimler.count()
-            
-            # Bu birimlerdeki filtrelenmiş personel sayısı
-            personel_count = 0
-            
-            # Bu işlem biraz maliyetli olabilir, optimizasyon gerekebilir.
-            # Her birim için o birimde şu an çalışan personelleri bulmamız lazım.
-            
-            # Daha performanslı yöntem:
-            # PersonelBirim üzerinden gitmek yerine, filtrelenmiş personellerin
-            # en son çalıştığı birimlere bakarak saymak.
-            
-            # Yukarıda calculated `valid_personel_ids` var.
-            # Bütün personellerin son birimlerini bir seferde çekip mapleyelim.
-            pass # Loop içinde yapmayalım, dışarı alalım logic'i.
-    
-    # Optimized Calculation
-    # Analiz edilecek personellerin (valid_personel_ids)
-    # CURRENT birimlerini bulup, hangi binada olduklarını sayalım.
-    
-    bina_personel_counts = {} # { bina_id: count }
-    
-    # Fetch latest units for filtered personnel
-    # We can reuse the logic from birim_analiz
-    target_personels = personeller.select_related().prefetch_related(
-        'personelbirim_set', 
-        'personelbirim_set__birim',
-        'personelbirim_set__birim__bina'
-    )
-    
-    for p in target_personels:
-        current_pb = p.personelbirim_set.order_by('-gecis_tarihi', '-creation_timestamp').first()
-        if current_pb and current_pb.birim and current_pb.birim.bina:
-            b_id = current_pb.birim.bina.id
-            if b_id:
-                bina_personel_counts[b_id] = bina_personel_counts.get(b_id, 0) + 1
-                
-    # Now build the view data
     if aktif_kampus:
         binalar = aktif_kampus.binalar.all()
         for bina in binalar:
@@ -595,19 +715,20 @@ def kampus_analiz_view(request):
                 'koordinatlar': bina.koordinatlar,
                 'birim_sayisi': bina.birim_set.count(),
                 'personel_sayisi': count,
-                'kat_bilgisi': bina.aciklama # Reuse as kat info generally
+                'kat_bilgisi': bina.aciklama 
             })
 
-    context = {
-        'kampusler': Kampus.objects.all(),
-        'aktif_kampus': aktif_kampus,
+    partial_context = context.copy()
+    partial_context.update({
         'bina_verileri': bina_verileri,
-        # Filters context
-        'kisa_unvanlar': KisaUnvan.objects.select_related('ust_birim').order_by('ust_birim__ad', 'ad'),
-        'selected_durum': durum_filter,
-        'selected_kampus': int(aktif_kampus.id) if aktif_kampus else None,
-        'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
-        'selected_kadro_durumu': kadro_durumu_filter,
-    }
+        'tanimsiz_personel_count': tanimsiz_personel_count
+    })
+    
+    html_content = render_to_string('ik_core/partials/analiz_kampus_map.html', partial_context, request)
+    personel_data = serialize_personel_list(filtered_personel_objects)
+    
+    return JsonResponse({
+        'html_content': html_content,
+        'personel_data': personel_data
+    })
 
-    return render(request, 'ik_core/analiz/kampus_analiz.html', context)

@@ -103,7 +103,10 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         TatilTarihi__gte=ilk_gun,
         TatilTarihi__lte=extended_end
     )
-    tatil_map_genis = {rt.TatilTarihi: rt.ArefeMi for rt in resmi_tatiller_genis}
+    tatil_map_genis = {
+        rt.TatilTarihi: {'ArefeMi': rt.ArefeMi, 'BayramMi': rt.BayramMi}
+        for rt in resmi_tatiller_genis
+    }
 
     bucket_bayram_gece = Decimal('0.0')
     bucket_bayram_gunduz = Decimal('0.0')
@@ -130,13 +133,17 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         
         is_bayram = False
         if d in tatil_map_genis:
-            arefe_mi = tatil_map_genis[d]
+            info = tatil_map_genis[d]
+            arefe_mi = info['ArefeMi']
+            bayram_mi = info['BayramMi']
+            
             if arefe_mi:
                 # Arefe günü 13:00'den sonra bayram
-                if t >= time(13, 0):
+                if t >= time(13, 0) and bayram_mi:
                     is_bayram = True
             else:
-                is_bayram = True
+                if bayram_mi:
+                    is_bayram = True
                 
         return is_bayram, is_gece
 

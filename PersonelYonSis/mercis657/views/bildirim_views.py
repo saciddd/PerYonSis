@@ -613,10 +613,18 @@ def bildirim_form(request, birim_id):
             donem_baslangic = date(year, month, 1)
             bildirim = Bildirim.objects.filter(Personel=p, DonemBaslangic=donem_baslangic, SilindiMi=False).first()
 
-            normal = (bildirim.NormalFazlaMesai or Decimal('0.0')) + (bildirim.GeceNormalFazlaMesai or Decimal('0.0')) if bildirim else Decimal('0.0')
-            bayram = (bildirim.BayramFazlaMesai or Decimal('0.0')) + (bildirim.GeceBayramFazlaMesai or Decimal('0.0')) if bildirim else Decimal('0.0')
-            rnormal = (bildirim.RiskliNormalFazlaMesai or Decimal('0.0')) + (bildirim.GeceRiskliNormalFazlaMesai or Decimal('0.0')) if bildirim else Decimal('0.0')
-            rbayram = (bildirim.RiskliBayramFazlaMesai or Decimal('0.0')) + (bildirim.GeceRiskliBayramFazlaMesai or Decimal('0.0')) if bildirim else Decimal('0.0')
+            normal = bildirim.NormalFazlaMesai or Decimal('0.0') if bildirim else Decimal('0.0')
+            gece_normal = bildirim.GeceNormalFazlaMesai or Decimal('0.0') if bildirim else Decimal('0.0')
+            
+            bayram = bildirim.BayramFazlaMesai or Decimal('0.0') if bildirim else Decimal('0.0')
+            gece_bayram = bildirim.GeceBayramFazlaMesai or Decimal('0.0') if bildirim else Decimal('0.0')
+            
+            rnormal = bildirim.RiskliNormalFazlaMesai or Decimal('0.0') if bildirim else Decimal('0.0')
+            gece_rnormal = bildirim.GeceRiskliNormalFazlaMesai or Decimal('0.0') if bildirim else Decimal('0.0')
+            
+            rbayram = bildirim.RiskliBayramFazlaMesai or Decimal('0.0') if bildirim else Decimal('0.0')
+            gece_rbayram = bildirim.GeceRiskliBayramFazlaMesai or Decimal('0.0') if bildirim else Decimal('0.0')
+
             daily_mesai = bildirim.MesaiDetay if (bildirim and bildirim.MesaiDetay) else {}
             onay = int(bildirim.OnayDurumu) if (bildirim and bildirim.OnayDurumu is not None) else 0
 
@@ -624,10 +632,14 @@ def bildirim_form(request, birim_id):
                 'sira_no': kayit.sira_no or 0,
                 'personel': p,
                 'normal_fazla_mesai': normal,
+                'gece_normal_fazla_mesai': gece_normal,
                 'bayram_fazla_mesai': bayram,
+                'gece_bayram_fazla_mesai': gece_bayram,
                 'riskli_normal': rnormal,
+                'gece_riskli_normal': gece_rnormal,
                 'riskli_bayram': rbayram,
-                'toplam': (normal + bayram + rnormal + rbayram),
+                'gece_riskli_bayram': gece_rbayram,
+                'toplam': (normal + gece_normal + bayram + gece_bayram + rnormal + gece_rnormal + rbayram + gece_rbayram),
                 'daily_mesai': daily_mesai,
                 'onay_durumu': onay,
             })
@@ -682,9 +694,13 @@ def bildirim_form(request, birim_id):
             'PersonelTCKN': getattr(p, 'PersonelTCKN', ''),
             'PersonelTitle': getattr(p, 'PersonelTitle', ''),
             'normal_fazla_mesai': row.get('normal_fazla_mesai'),
+            'gece_normal_fazla_mesai': row.get('gece_normal_fazla_mesai'),
             'bayram_fazla_mesai': row.get('bayram_fazla_mesai'),
+            'gece_bayram_fazla_mesai': row.get('gece_bayram_fazla_mesai'),
             'riskli_normal': row.get('riskli_normal'),
+            'gece_riskli_normal': row.get('gece_riskli_normal'),
             'riskli_bayram': row.get('riskli_bayram'),
+            'gece_riskli_bayram': row.get('gece_riskli_bayram'),
             'mesai_data': mesai_data,
             'hesaplama': {'fazla_mesai': None},
             'onay_durumu': onay_durumu,

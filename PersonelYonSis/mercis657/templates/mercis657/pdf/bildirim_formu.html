@@ -10,8 +10,33 @@
     table.grid { border-collapse: collapse; width: 100%; table-layout: fixed; }
     table.grid th, table.grid td { border: 1px solid #494949; padding: 2px; }
     table.grid th { background: #f3f3f3; height: 20px; }
-    table.grid tr {
-      height: 40px;
+    table.grid tr.header-row {
+      height: 160px;
+    }
+    .vertical-text {
+      width: 25px;
+      vertical-align: bottom;
+      padding-bottom: 5px;
+      text-align: center;
+      height: 160px; /* Ensure container has height */
+    }
+    .vertical-text-inner {
+      -webkit-transform: rotate(-90deg); /* specific for wkhtmltopdf */
+      -moz-transform: rotate(-90deg);
+      -ms-transform: rotate(-90deg);
+      -o-transform: rotate(-90deg);
+      transform: rotate(-90deg);
+      transform-origin: left bottom; /* Pivot point */
+      white-space: nowrap;
+      display: block;
+      width: 10px; /* Width becomes height after rotation */
+      height: 20px;
+      margin-bottom: 0px; 
+      margin-left: -2px; /* Push it to the right */
+      text-align: left;
+      position: relative;
+      bottom: 0px;
+      left: 10px;
     }
     .name-cell { text-align: left; font-size: 12px; }
     .weekend { background: #cdcdcd; }
@@ -54,15 +79,21 @@
 {% else %}
   <table class="grid">
     <thead>
-      <tr style="text-align:center">
+      <tr class="header-row" style="text-align:center">
         <th style="width:30px">Sıra</th>
         <th style="width:140px;">Ad Soyad</th>
         <th style="width:90px;">T.C. Kimlik No</th>
         <th style="width:80px;">Unvan</th>
-        <th style="width:40px;">Normal</th>
-        <th style="width:40px;">Bayram</th>
-        <th style="width:40px;">Riskli N.</th>
-        <th style="width:40px;">Riskli B.</th>
+        
+        <th class="vertical-text"><div class="vertical-text-inner">Normal F.M.</div></th>
+        <th class="vertical-text"><div class="vertical-text-inner">Gece F.M.</div></th>
+        <th class="vertical-text"><div class="vertical-text-inner">Bayram F.M.</div></th>
+        <th class="vertical-text"><div class="vertical-text-inner">Bayram Gece F.M.</div></th>
+        <th class="vertical-text"><div class="vertical-text-inner">Riskli Normal F.M.</div></th>
+        <th class="vertical-text"><div class="vertical-text-inner">Riskli Gece F.M.</div></th>
+        <th class="vertical-text"><div class="vertical-text-inner">Riskli Bayram F.M.</div></th>
+        <th class="vertical-text"><div class="vertical-text-inner">Riskli Bayram Gece F.M.</div></th>
+        
         {% for d in days %}
           {% comment %} Determine header class for weekend/holiday {% endcomment %}
           {% with c='' %}
@@ -82,10 +113,16 @@
           <td style="text-align:left; font-weight: bold">{{ person.PersonelName }} {{ person.PersonelSurname }}</td>
           <td style="text-align:left; font-weight: bold; text-align:center">{{ person.PersonelTCKN }}</td>
           <td style="text-align:left; font-weight: bold">{{ person.PersonelTitle|default:'-' }}</td>
+          
             <td style="text-align:center">{{ person.normal_fazla_mesai|floatformat:0 }}</td>
+            <td style="text-align:center">{{ person.gece_normal_fazla_mesai|floatformat:0 }}</td>
             <td style="text-align:center">{{ person.bayram_fazla_mesai|floatformat:0 }}</td>
+            <td style="text-align:center">{{ person.gece_bayram_fazla_mesai|floatformat:0 }}</td>
             <td style="text-align:center">{{ person.riskli_normal|floatformat:0 }}</td>
+            <td style="text-align:center">{{ person.gece_riskli_normal|floatformat:0 }}</td>
             <td style="text-align:center">{{ person.riskli_bayram|floatformat:0 }}</td>
+            <td style="text-align:center">{{ person.gece_riskli_bayram|floatformat:0 }}</td>
+            
           {% comment %} Expect person.mesai_data as list aligned with days; each item can be dict with Saat or IzinAd or empty {% endcomment %}
           {% for md in person.mesai_data %}
             <td class="small mesai-cell-pdf {% if md.is_weekend %}weekend{% endif %} {% if md.is_holiday %}holiday{% endif %} {% if md.is_arife %}arife{% endif %}">

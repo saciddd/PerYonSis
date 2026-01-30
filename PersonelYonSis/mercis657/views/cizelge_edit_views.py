@@ -11,7 +11,7 @@ from django.template.loader import get_template
 from django.conf import settings
 from pathlib import Path
 from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim, SabitMesai
-from ..utils import hesapla_fazla_mesai, get_favori_mesailer
+from ..utils import hesapla_fazla_mesai, get_favori_mesailer, get_turkish_month_name
 from PersonelYonSis.FMConnection.KDHIzin import IzinSorgula
 import pdfkit
 from django.conf import settings
@@ -138,7 +138,8 @@ def cizelge_yazdir(request):
     else:
         aciklama = ""
 
-    form_adi = f"{year} Yılı {month}. Dönem {birim.BirimAdi} Çalışma Listesi"
+    ay_ismi = get_turkish_month_name(month)
+    form_adi = f"{year} Yılı {ay_ismi} {birim.BirimAdi} Çalışma Listesi"
 
     context = {
         'kurum': kurum,

@@ -562,3 +562,20 @@ def get_vardiya_tanimlari():
             'gece': mt.GeceMesaisi
         }
     return result
+
+def get_turkish_month_name(month_index):
+    """
+    Ay indeksine göre Türkçe ay ismini döndürür.
+    1 -> Ocak
+    """
+    months = [
+        "", "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+        "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"
+    ]
+    try:
+        m = int(month_index)
+        if 1 <= m <= 12:
+            return f"{months[m]} Ayı"
+    except (ValueError, TypeError):
+        pass
+    return f"{month_index}. Dönem"

@@ -19,7 +19,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db import transaction
 from decimal import Decimal
-from mercis657.utils import hesapla_fazla_mesai
+from mercis657.utils import hesapla_fazla_mesai, get_turkish_month_name
 
 
 def get_donemler():
@@ -573,7 +573,8 @@ def bildirim_form(request, birim_id):
     # header/context similar to cizelge_yazdir
     kurum = "Kayseri Devlet Hastanesi"
     dokuman_kodu = "KU.FR.07"
-    form_adi = f"{year} Yılı {month}. Dönem Fazla Mesai Bildirim Formu"
+    ay_ismi = get_turkish_month_name(month)
+    form_adi = f"{year} Yılı {ay_ismi} Fazla Mesai Bildirim Formu"
 
     # resolve birim
     birim = Birim.objects.filter(BirimID=birim_id).first() or Birim.objects.filter(id=birim_id).first()

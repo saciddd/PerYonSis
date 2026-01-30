@@ -11,7 +11,7 @@ from django.template.loader import get_template
 from django.conf import settings
 from pathlib import Path
 from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim, SabitMesai
-from ..utils import hesapla_fazla_mesai, get_favori_mesailer, get_turkish_month_name
+from ..utils import hesapla_fazla_mesai, get_favori_mesailer, get_turkish_month_name, hesapla_fazla_mesai_sade
 from PersonelYonSis.FMConnection.KDHIzin import IzinSorgula
 import pdfkit
 from django.conf import settings
@@ -117,13 +117,13 @@ def cizelge_yazdir(request):
                     mesai_data.append(md)
                 
                 #  Fazla mesai hesapla
-                hesaplama = hesapla_fazla_mesai(kayit, year, month)
+                fazla_mesai_degeri = hesapla_fazla_mesai_sade(kayit, year, month)
 
                 personeller_for_pdf.append({
                     'PersonelName': f"{ p.PersonelName} {p.PersonelSurname}",
                     'PersonelTitle': getattr(p, 'PersonelTitle', ''),
                     'mesai_data': mesai_data,
-                    'hesaplama': {'fazla_mesai': hesaplama['fazla_mesai'] if hesaplama else 0 }
+                    'hesaplama': {'fazla_mesai': fazla_mesai_degeri }
                 })
     except Exception as e:
         # swallow and render template with whatever we have

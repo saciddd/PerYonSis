@@ -152,4 +152,8 @@ urlpatterns = [
     path('vardiya-dagilim/search/', views.vardiya_dagilim_search, name='vardiya_dagilim_search'),
     path('vardiya-dagilim/kaydet/', views.vardiya_dagilim_kaydet, name='vardiya_dagilim_kaydet'),
     path('vardiya-dagilim/pdf/', views.vardiya_dagilim_pdf, name='vardiya_dagilim_pdf'),
+    
+    # Çalışma Statüsü Kontrolü
+    path('calisma-statusu-list/<int:liste_id>/', views.get_calisma_statusu_list, name='get_calisma_statusu_list'),
+    path('calisma-statusu-guncelle/<int:liste_id>/', views.update_calisma_statusu_list, name='update_calisma_statusu_list'),
 ]

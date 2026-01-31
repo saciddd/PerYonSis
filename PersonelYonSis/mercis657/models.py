@@ -96,6 +96,10 @@ class PersonelListesiKayit(models.Model):
     radyasyon_calisani = models.BooleanField(default=False)
     sabit_mesai = models.ForeignKey(SabitMesai, null=True, blank=True, on_delete=models.SET_NULL)
     sira_no = models.PositiveIntegerField(null=True, blank=True)
+    is_gunduz_personeli = models.BooleanField(
+        default=True,
+        help_text="True: Gündüz Personeli, False: Nöbetli Çalışan"
+    )
 
     class Meta:
         unique_together = ('liste', 'personel')

@@ -230,3 +230,74 @@ def toplu_sabit_mesai_ata(request, liste_id):
             'message': f'Hata oluştu: {str(e)}'
         })
 
+
+@login_required
+@login_required
+def get_calisma_statusu_list(request, liste_id):
+    """Personel listesindeki kayıtları ve çalışma statülerini döner. liste_id parametresi birim_id olarak da kullanılabilir."""
+    try:
+        year = request.GET.get('year')
+        month = request.GET.get('month')
+        
+        # Eğer yıl ve ay parametreleri varsa, liste_id aslında birim_id'dir.
+        if year and month:
+            # İlgili birim ve dönem için listeyi bul
+            liste = PersonelListesi.objects.filter(
+                birim_id=liste_id, 
+                yil=year, 
+                ay=month
+            ).first()
+            
+            if not liste:
+                 return JsonResponse({'status': 'error', 'message': f'{year}/{month} dönemi için personel listesi bulunamadı.'}, status=404)
+        else:
+            # Direkt liste ID olarak işlem yap
+            liste = get_object_or_404(PersonelListesi, pk=liste_id)
+
+        kayitlar = liste.kayitlar.select_related('personel').all().order_by('sira_no', 'personel__PersonelName')
+        
+        data = []
+        for k in kayitlar:
+            data.append({
+                'personel_id': k.personel.PersonelID,
+                'ad_soyad': f"{k.personel.PersonelName} {k.personel.PersonelSurname}",
+                'is_gunduz_personeli': k.is_gunduz_personeli
+            })
+            
+        return JsonResponse({'status': 'success', 'data': data, 'actual_liste_id': liste.id})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+@login_required
+@require_POST
+def update_calisma_statusu_list(request, liste_id):
+    """Personel listesindeki kayıtların çalışma statülerini günceller."""
+    try:
+        import json
+        from .cizelge_kontrol_views import sabit_mesai_kontrol
+        
+        payload = json.loads(request.body)
+        updates = payload.get('updates', []) # List of {personel_id: x, is_gunduz_personeli: bool}
+        
+        liste = get_object_or_404(PersonelListesi, pk=liste_id)
+        
+        updated_count = 0
+        for item in updates:
+            pid = item.get('personel_id')
+            status = item.get('is_gunduz_personeli')
+            
+            if pid is not None and status is not None:
+                # is_gunduz_personeli alanını güncelle ve eğer False ise sabit_mesai alanını None yap
+                if status == False:
+                    cnt = PersonelListesiKayit.objects.filter(liste=liste, personel__PersonelID=pid).update(is_gunduz_personeli=status, sabit_mesai=None)
+                else:
+                    cnt = PersonelListesiKayit.objects.filter(liste=liste, personel__PersonelID=pid).update(is_gunduz_personeli=status)
+                updated_count += cnt
+        
+        # Statüsü True (Gündüz Personeli) olanlar için sabit mesai kontrolünü çalıştır
+        if updated_count > 0:
+            sabit_mesai_kontrol(liste, int(liste.yil), int(liste.ay))
+                
+        return JsonResponse({'status': 'success', 'message': f'{updated_count} kayıt güncellendi.'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

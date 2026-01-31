@@ -32,6 +32,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     personel = personel_listesi_kayit.personel
     radyasyon_calisani = personel_listesi_kayit.radyasyon_calisani
     sabit_mesai = personel_listesi_kayit.sabit_mesai
+    is_gunduz_personeli = getattr(personel_listesi_kayit, 'is_gunduz_personeli', True)
     
     # O dönemdeki yarim_zamanli_calisma durumu
     ilk_gun = date(year, month, 1)
@@ -121,7 +122,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         Personel=personel,
         MesaiDate__year=year,
         MesaiDate__month=month
-    ).select_related('MesaiTanim').prefetch_related('mercis657_stoplar')
+    ).select_related('MesaiTanim').prefetch_related('mercis657_stoplar').order_by('MesaiDate')
 
     def get_context(dt):
         """Verilen datetime için status döner: is_bayram, is_gece"""
@@ -147,11 +148,15 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 
         return is_bayram, is_gece
 
-    # Sabit mesai düşümü için kullanılacak toplam
-    sabit_mesai_dusum_miktari = Decimal('0.0')
 
+
+    # İzin Azaltımı Hesapla (Ortak)
     for mesai in mesailer:
-        # İzin hesabı
+        # Fiili çalışma süresine ekleme
+        if mesai.MesaiTanim and getattr(mesai.MesaiTanim, 'Sure', None):
+            if sabit_mesai and mesai.MesaiTanim.Sure > 8 and mesai.MesaiDate.weekday() < 5:
+                fiili_calisma_suresi -= sabit_mesai.ara_dinlenme
+            fiili_calisma_suresi += mesai.MesaiTanim.Sure
         izin_field = getattr(mesai, 'Izin', None)
         mesai_tarih = getattr(mesai, 'MesaiDate', None)
         
@@ -162,224 +167,225 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                     per_day = Decimal('7.0') if radyasyon_calisani else Decimal('8.0')
                     izin_azaltimi += per_day
 
-        if not mesai.MesaiTanim or not mesai.MesaiTanim.Saat:
-            continue
-
-        # Mesai zaman aralığını belirle
-        try:
-            saat_str = mesai.MesaiTanim.Saat.strip()
-            start_s, end_s = saat_str.split()
-            sh, sm = map(int, start_s.split(':'))
-            eh, em = map(int, end_s.split(':'))
-            
-            start_dt = datetime.combine(mesai_tarih, time(sh, sm))
-            end_dt = datetime.combine(mesai_tarih, time(eh, em))
-            
-            # Bitiş başlangıçtan küçükse veya sarkıyorsa sonraki gün
-            if getattr(mesai.MesaiTanim, 'SonrakiGuneSarkiyor', False) or end_dt <= start_dt:
-                end_dt += timedelta(days=1)
-                
-        except ValueError:
-            continue
-
-        # Stopları işle: Stopları birer 'negatif aralık' gibi düşünebiliriz ama
-        # basitçe Work aralıklarını Stop aralıklarıyla bölmek daha doğru.
-        # Bu karmaşık olabileceğinden, basitçe 'Stop Suresi'ni kaydedip,
-        # hangi bucket'tan düşeceğimize karar verelim.
-        # Stoplar kesin saatli olduğu için bucket'ı bellidir.
-        
-        stopler = list(mesai.mercis657_stoplar.all())
-        stops_intervals = []
-        for stop in stopler:
-            if stop.StopBaslangic and stop.StopBitis:
-                sb = stop.StopBaslangic
-                se = stop.StopBitis
-                # Stop tarihini belirlemek lazım.
-                # Mesai başlangıcına göre hizalanmalı.
-                # Stop saati < Mesai başlama saati -> Ertesi gün (kabaca)
-                # Daha güvenlisi: Stop saati ile Mesai aralığını kıyaslamak.
-                # Genelde stop shift içinde olur.
-                
-                # Stop başlangıç dt
-                stop_start_dt = datetime.combine(mesai_tarih, sb)
-                if stop_start_dt < start_dt:
-                     stop_start_dt += timedelta(days=1)
-                
-                stop_end_dt = datetime.combine(mesai_tarih, se)
-                if stop_end_dt < stop_start_dt:
-                    stop_end_dt += timedelta(days=1)
-                
-                # Mesai sınırları dışına taşarsa kırp
-                stop_start_dt = max(start_dt, stop_start_dt)
-                stop_end_dt = min(end_dt, stop_end_dt)
-                
-                if stop_end_dt > stop_start_dt:
-                    stops_intervals.append((stop_start_dt, stop_end_dt))
-                    duration_hours = Decimal((stop_end_dt - stop_start_dt).total_seconds() / 3600)
-                    stop_suresi += duration_hours
-
-        # Çalışma aralığını (start_dt, end_dt) stoplar haricinde dilimlere böl
-        # Basit "Timeline" algoritması
-        milestones = set()
-        milestones.add(start_dt)
-        milestones.add(end_dt)
-        
-        # Kritik saatler (00:00, 08:00, 13:00, 20:00)
-        # Shift'in kapsadığı günleri bul
-        d_ptr = start_dt.date()
-        end_date = end_dt.date()
-        while d_ptr <= end_date:
-            for h in [0, 8, 13, 20]:
-                check_dt = datetime.combine(d_ptr, time(h, 0))
-                if start_dt < check_dt < end_dt:
-                    milestones.add(check_dt)
-            d_ptr += timedelta(days=1)
-            
-        # Stop noktalarını da ekle
-        for s_start, s_end in stops_intervals:
-            # Stop aralığını işten çıkaracağız.
-            # Milestones'a ekleyip, segment logic'te "Is inside stop?" kontrolü yapabiliriz.
-            if start_dt < s_start < end_dt: milestones.add(s_start)
-            if start_dt < s_end < end_dt: milestones.add(s_end)
-
-        sorted_points = sorted(list(milestones))
-        
-        # Segmentleri işle
-        for i in range(len(sorted_points) - 1):
-            seg_start = sorted_points[i]
-            seg_end = sorted_points[i+1]
-            mid = seg_start + (seg_end - seg_start) / 2
-            
-            # Bu segment bir STOP içinde mi?
-            in_stop = False
-            for s_start, s_end in stops_intervals:
-                if s_start <= mid <= s_end:
-                    in_stop = True
-                    break
-            
-            if in_stop:
-                continue
-                
-            # Değilse, bu segment çalışmadır.
-            duration = Decimal((seg_end - seg_start).total_seconds() / 3600)
-            is_bayram, is_gece = get_context(mid)
-            
-            if is_bayram and is_gece:
-                bucket_bayram_gece += duration
-            elif is_bayram and not is_gece:
-                bucket_bayram_gunduz += duration
-            elif not is_bayram and is_gece:
-                bucket_normal_gece += duration
-            else:
-                bucket_normal_gunduz += duration
-
-        # Sabit Mesai Ara Dinlenme Kontrolü
-        # Fiili süreden düş, ama hangi buckettan? 
-        # Genelde normal gündüzden düşülür.
-        if sabit_mesai and mesai.MesaiTanim.Sure > 8 and mesai.MesaiDate.weekday() < 5:
-             # Bu düşüm, hesaplanan "timeline" süresinden ayrıca düşülmeli mi?
-             # utils.py orijinal mantığı: fiili süreden direkt düşüyordu.
-             # Biz burada bucketları topluyoruz. Toplam fiili bucketların toplamı olacak.
-             # Bu yüzden bucketlardan birinden düşmeliyiz.
-             dusum = sabit_mesai.ara_dinlenme
-             sabit_mesai_dusum_miktari += dusum
-             
-             # Düşümü uygula (Önce normal gündüz, sonra normal gece...)
-             remaining_dusum = dusum
-             if bucket_normal_gunduz >= remaining_dusum:
-                 bucket_normal_gunduz -= remaining_dusum
-                 remaining_dusum = 0
-             else:
-                 remaining_dusum -= bucket_normal_gunduz
-                 bucket_normal_gunduz = Decimal(0)
-                 
-                 # Hala düşülecek varsa diğerlerine bak (pek olası değil ama)
-                 if bucket_normal_gece >= remaining_dusum:
-                     bucket_normal_gece -= remaining_dusum
-                     remaining_dusum = 0
-                 # ... diğerleri ...
-    
-    # 3. Mazeret Ekleme
-    # Mazeret fiili süreye ekleniyor (çalışmış gibi)
-    # Hangi bucket? Mazeret genellikle 'Normal Gündüz' sayılır.
+    # 3. Mazeret Hesapla (Ortak - Erken hesaplama gerekli)
     mazeret_azaltimi = Decimal('0.0')
     mazeret_kayitlari = MazeretKaydi.objects.filter(
         personel=personel,
         baslangic_tarihi__lte=son_gun,
         bitis_tarihi__gte=ilk_gun
     )
-
     for mazeret in mazeret_kayitlari:
         baslangic = max(mazeret.baslangic_tarihi, ilk_gun)
         bitis = min(mazeret.bitis_tarihi, son_gun)
-        
         mazeret_gunleri = 0
         curr = baslangic
         while curr <= bitis:
-            if curr.weekday() < 5:
-                # Resmi tatil/Arefe değilse
-                if curr not in tatil_map_month:
-                    # O gün izinli değilse
-                    izinli_mi = Mesai.objects.filter(
-                        Personel=personel,
-                        MesaiDate=curr
-                    ).exclude(Izin=False).exclude(Izin__isnull=True).exists()
-                    if not izinli_mi:
-                        mazeret_gunleri += 1
+            if curr.weekday() < 5 and curr not in tatil_map_month:
+                 izinli_mi = Mesai.objects.filter(Personel=personel, MesaiDate=curr).exclude(Izin=False).exclude(Izin__isnull=True).exists()
+                 if not izinli_mi:
+                     mazeret_gunleri += 1
             curr += timedelta(days=1)
-        
         mazeret_azaltimi += mazeret_gunleri * mazeret.gunluk_azaltim_saat
 
-    # Mazereti "Normal Çalışma" olarak ekle
-    # (Fiili süreyi artırır, fazla mesai havuzuna girer)
-    bucket_normal_gunduz += mazeret_azaltimi
-
-    # 4. Toplamların Hesaplanması
-    fiili_calisma_suresi = (
-        bucket_bayram_gece + 
-        bucket_bayram_gunduz + 
-        bucket_normal_gece + 
-        bucket_normal_gunduz
-    )
-    
     # İzin düşümü (olması gerekenden)
-    olmasi_gereken_sure -= izin_azaltimi
-    
-    fazla_mesai = fiili_calisma_suresi - olmasi_gereken_sure
-    
-    # 5. Dağıtım (Fazla Mesai Varsa)
-    # Sıralama: Bayram Gece -> Bayram Gündüz -> Normal Gece -> Normal Gündüz
-    res_bayram_gece = Decimal('0.0')
-    res_bayram_gunduz = Decimal('0.0')
-    res_normal_gece = Decimal('0.0')
-    res_normal_gunduz = Decimal('0.0')
-    
-    if fazla_mesai > 0:
-        remaining = fazla_mesai
+    effective_olmasi_gereken = olmasi_gereken_sure - izin_azaltimi
+
+
+    if is_gunduz_personeli:
+        # ----------------------------------------------------------------
+        # GÜNDÜZ PERSONELİ (Mevcut Mantık: Bucket Havuzu)
+        # ----------------------------------------------------------------
+        # Mazereti havuza ekle
+        bucket_normal_gunduz += mazeret_azaltimi
         
-        # 1. Bayram Gece
-        take = min(remaining, bucket_bayram_gece)
-        res_bayram_gece = take
-        remaining -= take
+        for mesai in mesailer:
+            if not mesai.MesaiTanim or not mesai.MesaiTanim.Saat:
+                continue
+            
+            # Zaman aralığı bul
+            try:
+                saat_str = mesai.MesaiTanim.Saat.strip()
+                start_s, end_s = saat_str.split()
+                sh, sm = map(int, start_s.split(':'))
+                eh, em = map(int, end_s.split(':'))
+                start_dt = datetime.combine(mesai.MesaiDate, time(sh, sm))
+                end_dt = datetime.combine(mesai.MesaiDate, time(eh, em))
+                if getattr(mesai.MesaiTanim, 'SonrakiGuneSarkiyor', False) or end_dt <= start_dt:
+                    end_dt += timedelta(days=1)
+            except ValueError:
+                continue
+
+            # Stopları işle
+            stopler = list(mesai.mercis657_stoplar.all())
+            stops_intervals = []
+            for stop in stopler:
+                if stop.StopBaslangic and stop.StopBitis:
+                    sb, se = stop.StopBaslangic, stop.StopBitis
+                    stop_start_dt = datetime.combine(mesai.MesaiDate, sb)
+                    if stop_start_dt < start_dt: stop_start_dt += timedelta(days=1)
+                    stop_end_dt = datetime.combine(mesai.MesaiDate, se)
+                    if stop_end_dt < stop_start_dt: stop_end_dt += timedelta(days=1)
+                    stop_start_dt = max(start_dt, stop_start_dt)
+                    stop_end_dt = min(end_dt, stop_end_dt)
+                    if stop_end_dt > stop_start_dt:
+                        stops_intervals.append((stop_start_dt, stop_end_dt))
+                        stop_suresi += Decimal((stop_end_dt - stop_start_dt).total_seconds() / 3600)
+
+            # Timeline analizi
+            milestones = set([start_dt, end_dt])
+            d_ptr, end_date = start_dt.date(), end_dt.date()
+            while d_ptr <= end_date:
+                for h in [0, 8, 13, 20]:
+                    check_dt = datetime.combine(d_ptr, time(h, 0))
+                    if start_dt < check_dt < end_dt: milestones.add(check_dt)
+                d_ptr += timedelta(days=1)
+            
+            sorted_points = sorted(list(milestones))
+            for i in range(len(sorted_points) - 1):
+                seg_start, seg_end = sorted_points[i], sorted_points[i+1]
+                mid = seg_start + (seg_end - seg_start) / 2
+                
+                in_stop = any(s_start <= mid <= s_end for s_start, s_end in stops_intervals)
+                if in_stop: continue
+                    
+                duration = Decimal((seg_end - seg_start).total_seconds() / 3600)
+                is_bayram, is_gece = get_context(mid)
+                
+                if is_bayram and is_gece: bucket_bayram_gece += duration
+                elif is_bayram and not is_gece: bucket_bayram_gunduz += duration
+                elif not is_bayram and is_gece: bucket_normal_gece += duration
+                else: bucket_normal_gunduz += duration
+
+
+        fazla_mesai = fiili_calisma_suresi - effective_olmasi_gereken
         
-        # 2. Bayram Gündüz
-        if remaining > 0:
-            take = min(remaining, bucket_bayram_gunduz)
-            res_bayram_gunduz = take
-            remaining -= take
+        # Dağıtım (Best Benefit)
+        res_bayram_gece, res_bayram_gunduz = Decimal('0.0'), Decimal('0.0')
+        res_normal_gece, res_normal_gunduz = Decimal('0.0'), Decimal('0.0')
+        
+        if fazla_mesai > 0:
+            rem = fazla_mesai
+            take = min(rem, bucket_bayram_gece)
+            res_bayram_gece = take
+            rem -= take
+            if rem > 0:
+                take = min(rem, bucket_bayram_gunduz)
+                res_bayram_gunduz = take
+                rem -= take
+            if rem > 0:
+                take = min(rem, bucket_normal_gece)
+                res_normal_gece = take
+                rem -= take
+            if rem > 0:
+                res_normal_gunduz = rem
+
+    else:
+        # ----------------------------------------------------------------
+        # NÖBETLİ ÇALIŞAN (Kronolojik Hesaplama)
+        # ----------------------------------------------------------------
+        # Mazereti başlangıç working accumulation olarak kabul ediyoruz
+        accumulated_hours = mazeret_azaltimi
+        limit = effective_olmasi_gereken
+        
+        # Fazla mesai bucketları (Bunlar direkt olarak sonuç olacak)
+        res_bayram_gece = Decimal('0.0')
+        res_bayram_gunduz = Decimal('0.0')
+        res_normal_gece = Decimal('0.0')
+        res_normal_gunduz = Decimal('0.0')
+        
+        for mesai in mesailer:
+            if not mesai.MesaiTanim or not mesai.MesaiTanim.Saat:
+                continue
+                
+            # Mesai aralığını belirle
+            try:
+                saat_str = mesai.MesaiTanim.Saat.strip()
+                start_s, end_s = saat_str.split()
+                sh, sm = map(int, start_s.split(':'))
+                eh, em = map(int, end_s.split(':'))
+                start_dt = datetime.combine(mesai.MesaiDate, time(sh, sm))
+                end_dt = datetime.combine(mesai.MesaiDate, time(eh, em))
+                if getattr(mesai.MesaiTanim, 'SonrakiGuneSarkiyor', False) or end_dt <= start_dt:
+                    end_dt += timedelta(days=1)
+            except ValueError:
+                continue
+
+            # Stopları belirle
+            stops_intervals = []
+            stopler = list(mesai.mercis657_stoplar.all())
+            for stop in stopler:
+                if stop.StopBaslangic and stop.StopBitis:
+                    sb, se = stop.StopBaslangic, stop.StopBitis
+                    stop_start_dt = datetime.combine(mesai.MesaiDate, sb)
+                    if stop_start_dt < start_dt: stop_start_dt += timedelta(days=1)
+                    stop_end_dt = datetime.combine(mesai.MesaiDate, se)
+                    if stop_end_dt < stop_start_dt: stop_end_dt += timedelta(days=1)
+                    
+                    stop_start_dt = max(start_dt, stop_start_dt)
+                    stop_end_dt = min(end_dt, stop_end_dt)
+                    
+                    if stop_end_dt > stop_start_dt:
+                        stops_intervals.append((stop_start_dt, stop_end_dt))
+                        stop_suresi += Decimal((stop_end_dt - stop_start_dt).total_seconds() / 3600)
+
+            # Bu vardiyayı segmentlere ayır ve işle
+            # Ancak önce toplam süresini bulup birikmişe eklemeli, sonra taşma var mı bakmalıyız.
             
-        # 3. Normal Gece
-        if remaining > 0:
-            take = min(remaining, bucket_normal_gece)
-            res_normal_gece = take
-            remaining -= take
+            # Vardiyayı timeline parçalarına ayıralım (stopsuz)
+            milestones = set([start_dt, end_dt])
+            d_ptr, end_date = start_dt.date(), end_dt.date()
+            while d_ptr <= end_date:
+                for h in [0, 8, 13, 20]:
+                    check_dt = datetime.combine(d_ptr, time(h, 0))
+                    if start_dt < check_dt < end_dt: milestones.add(check_dt)
+                d_ptr += timedelta(days=1)
             
-        # 4. Kalan (Normal Gündüz)
-        if remaining > 0:
-            res_normal_gunduz = remaining
+            sorted_points = sorted(list(milestones))
+            
+            # Bu vardiyanın her bir segmentini kronolojik olarak işle
+            for i in range(len(sorted_points) - 1):
+                seg_start, seg_end = sorted_points[i], sorted_points[i+1]
+                mid = seg_start + (seg_end - seg_start) / 2
+                
+                # Stop içinde mi?
+                in_stop = any(s_start <= mid <= s_end for s_start, s_end in stops_intervals)
+                if in_stop: continue
+                
+                seg_duration = Decimal((seg_end - seg_start).total_seconds() / 3600)
+                
+                current_acc_start = accumulated_hours
+                accumulated_hours += seg_duration
+                
+                # Limit aşımı kontrolü
+                if accumulated_hours > limit:
+                     # Bu segmentin bir kısmı veya tamamı fazla mesai
+                     excess = accumulated_hours - limit
+                     
+                     # Eğer önceki birikim zaten limitin üzerindeyse, tüm segment fazla mesai
+                     # Değilse, sadece taşan kısım fazla mesai
+                     ot_part = min(excess, seg_duration)
+                     
+                     # OT kısmını analiz et
+                     is_bayram, is_gece = get_context(mid)
+                     
+                     # Normalde segmentin hepsi aynı tiptedir (çünkü milestone'lar kritik saatlerde bölüyor)
+                     # Yani OT kısmını direkt current tipte ekleyebiliriz
+                     if is_bayram and is_gece: res_bayram_gece += ot_part
+                     elif is_bayram and not is_gece: res_bayram_gunduz += ot_part
+                     elif not is_bayram and is_gece: res_normal_gece += ot_part
+                     else: res_normal_gunduz += ot_part
+
+        fiili_calisma_suresi = accumulated_hours
+        fazla_mesai = max(Decimal('0.0'), fiili_calisma_suresi - limit)
+
             
     return {
-        'olması_gereken_sure': olmasi_gereken_sure,
+        'olması_gereken_sure': olmasi_gereken_sure, # Raw değer döndürülmeli, view tarafı effective'i hesaplar mı? Hayır, bu dict dönüyor.
+                                                    # Ancak view genelde bu dict keylerini kullanır. 
+                                                    # Utils logic'te izin_azaltimi düşülmüş "olması gereken" ile kıyasladık.
+                                                    # Return değerine orijinal olması_gereken mi dönmeli yoksa düşülmüş mü?
+                                                    # Orijinal kodda return dict'te "olmasi_gereken_sure -= izin_azaltimi" yapılmıştı.
+                                                    # Biz de effective değerini dönmeliyiz tutarlılık için.
         'fiili_calisma_suresi': fiili_calisma_suresi,
         'fazla_mesai': fazla_mesai,
         'calisma_gunleri': calisma_gunleri,

@@ -143,7 +143,7 @@
                 <i class="bi bi-exclamation-circle-fill text-warning"></i> İlk Liste Bildirimi Oluştur
             {% endif %}
     </button>
-    <button class="btn btn-outline-success btn-sm" type="button" id="showFazlaMesaiBtn" title="Fazla Mesaileri Hesapla">
+    <button class="btn btn-outline-success btn-sm" type="button" id="showFazlaMesaiBtn_Trigger" title="Fazla Mesaileri Hesapla">
         <i class="bi bi-clock-history"></i> Fazla Mesaileri Göster
     </button>
     <button type="button" class="btn btn-outline-secondary btn-sm" id="imzaCizelgeleriBtn" title="İmza Çizelgeleri Yazdır">
@@ -154,7 +154,7 @@
     </span>
     <!-- Sağ tarafa hizalanmış Hata Kontrolü butonu -->
     <span class="float-end">
-        <button type="button" class="btn btn-outline-danger btn-sm" id="hataKontrolBtn" title="Hata Kontrolü">
+        <button type="button" class="btn btn-outline-danger btn-sm" id="hataKontrolBtn_Trigger" title="Hata Kontrolü">
             <i class="bi bi-exclamation-circle"></i> Hata Kontrolü
         </button>
     </span>
@@ -281,6 +281,80 @@
 {% include "mercis657/personel_sirala_modal.html" %}
 {% include 'mercis657/partials/birim_yetkili_kullanicilar_modal.html' %}
 {% include 'mercis657/partials/ilk_liste_goruntuleme_modal.html' %}
+{% include 'mercis657/partials/calisma_statusu_modal.html' %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Hata Kontrolü Butonu Override
+        const newHataBtn = document.getElementById('hataKontrolBtn_Trigger');
+        if (newHataBtn) {
+            newHataBtn.addEventListener('click', function() {
+                const listeId = window.listeId || document.getElementById('selectBirim')?.value;
+                if (!listeId || listeId == 0) {
+                    Swal.fire('Uyarı', 'Lütfen birim seçiniz.', 'warning');
+                    return;
+                }
+                if (typeof CalismaStatusuApp !== 'undefined') {
+                    CalismaStatusuApp.openModal(listeId, function() {
+                        if (typeof checkCizelgeErrorsBackend === 'function') {
+                            checkCizelgeErrorsBackend();
+                        } else {
+                            console.error('checkCizelgeErrorsBackend fonksiyonu bulunamadı.');
+                        }
+                    });
+                }
+            });
+        }
+
+        // Fazla Mesai Hesapla Butonu Override
+        const newFmBtn = document.getElementById('showFazlaMesaiBtn_Trigger');
+        if (newFmBtn) {
+            newFmBtn.addEventListener("click", function() {
+                const donem = document.getElementById('selectDonem').value;
+                if(!donem) { Swal.fire('Uyarı', 'Dönem seçiniz', 'warning'); return; }
+                const [year, month] = donem.split('/');
+                const listeId = window.listeId && window.listeId !== 0 ? window.listeId : document.getElementById('selectBirim').value;
+
+                if (typeof CalismaStatusuApp !== 'undefined') {
+                    CalismaStatusuApp.openModal(listeId, function() {
+                        // Orijinal mantığı buraya taşıyoruz
+                        Swal.fire({
+                            title: 'Hesaplanıyor...',
+                            html: 'Fazla mesailer hesaplanıyor, lütfen bekleyin.',
+                            allowOutsideClick: false,
+                            didOpen: () => Swal.showLoading()
+                        });
+
+                        fetch(`/mercis657/fazla-mesai-hesapla?year=${year}&month=${month}&liste_id=${listeId}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === "success") {
+                                    data.data.forEach(item => {
+                                        try {
+                                            const rowId = `personel-${item.personel_id}`;
+                                            const cell = document.querySelector(`#${rowId} .fazla-mesai-cell`);
+                                            if (cell) {
+                                                const fm = Number(item.fazla_mesai);
+                                                cell.textContent = `${fm > 0 ? '+' : ''}${fm}`;
+                                                cell.classList.remove('fm-pos', 'fm-neg');
+                                                if (fm > 0) cell.classList.add('fm-pos');
+                                                else if (fm < 0) cell.classList.add('fm-neg');
+                                            }
+                                        } catch (e) { console.error(e); }
+                                    });
+                                    Swal.fire({ title: "Tamamlandı", text: "Fazla mesailer hesaplandı.", icon: "success" });
+                                } else { throw new Error(data.message || 'Hesaplama hatası'); }
+                            })
+                            .catch(error => {
+                                console.error('Hata:', error);
+                                Swal.fire({ title: "Hata", text: error.message, icon: "error" });
+                            });
+                    });
+                }
+            });
+        }
+    });
+</script>
 
 <!-- Personel Profil Modal -->
 <div id="personelProfilContainer"></div>

@@ -38,7 +38,7 @@
         </div>
         <div class="col-md-6 text-end">
             <div class="btn-group btn-group-sm mt-3">
-            <button class="btn btn-success" id="createAllBtn" {% if not selected_birim %}disabled{% endif %}>
+            <button class="btn btn-success" id="createAllBtn_Trigger" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-plus-circle"></i> Tüm Personele Bildirim
             </button>
             <button class="btn btn-info" id="downloadFormBtn" {% if not selected_birim %}disabled{% endif %}>
@@ -1021,5 +1021,88 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.show();
     });
 });
+</script>
+{% include 'mercis657/partials/calisma_statusu_modal.html' %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Override Create All Button
+        const oldCreateBtn = document.getElementById('createAllBtn_Trigger');
+        if (oldCreateBtn) {
+            const newCreateBtn = oldCreateBtn.cloneNode(true);
+            oldCreateBtn.parentNode.replaceChild(newCreateBtn, oldCreateBtn);
+
+            newCreateBtn.addEventListener('click', function() {
+                const selectedBirim = document.getElementById('selectBirim').value;
+                const donemValue = document.getElementById('selectDonem').value;
+
+                if (!selectedBirim || selectedBirim === "0") {
+                        Swal.fire('Hata', 'Lütfen bir birim seçin.', 'error');
+                        return;
+                }
+
+                if (typeof CalismaStatusuApp !== 'undefined') {
+                    let yearNum, monthNum;
+                    try {
+                        let parts = donemValue.includes('/') ? donemValue.split('/') : donemValue.split('-');
+                        yearNum = parseInt(parts[0], 10);
+                        monthNum = parseInt(parts[1], 10);
+                        if (!yearNum || !monthNum) throw new Error('Invalid donem');
+                    } catch (e) {
+                         // Fallback or alert, but try to proceed
+                         console.error(e);
+                    }
+
+                    CalismaStatusuApp.openModal(selectedBirim, function() {
+                        if (!yearNum || !monthNum) {
+                            Swal.fire('Hata', 'Geçersiz dönem seçimi.', 'error');
+                            return;
+                        }
+
+                        Swal.fire({
+                            title: 'Emin misiniz?',
+                            text: `Seçili birimdeki tüm personel için ${donemValue} dönemi bildirimleri (yeniden) oluşturulacak. Mevcut onaylanmamış bildirimler güncellenecektir.`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Evet, oluştur!',
+                            cancelButtonText: 'İptal'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                fetch("{% url 'mercis657:bildirim_toplu_olustur' 999 %}".replace('999', selectedBirim), {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': '{{ csrf_token }}'
+                                    },
+                                    body: JSON.stringify({
+                                        year: yearNum,
+                                        month: monthNum
+                                    })
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.status === 'success') {
+                                        Swal.fire('Başarılı!', `Bildirimler oluşturuldu/güncellendi. Etkilenen personel sayısı: ${data.count}`, 'success');
+                                        if (typeof fetchBildirimler === 'function') {
+                                            fetchBildirimler(donemValue, selectedBirim);
+                                        } else {
+                                            location.reload();
+                                        }
+                                    } else {
+                                        Swal.fire('Hata', 'Bir hata oluştu: ' + data.message, 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Toplu bildirim oluşturma hatası:', error);
+                                    Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
+                                });
+                            }
+                        });
+                    }, { year: yearNum, month: monthNum }); // Pass extra params here
+                } else {
+                     console.error('CalismaStatusuApp definition not found');
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}

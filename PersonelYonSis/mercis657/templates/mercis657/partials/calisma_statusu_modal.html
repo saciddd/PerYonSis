@@ -1,0 +1,214 @@
+<div class="modal fade" id="calismaStatusuModal" tabindex="-1" aria-labelledby="calismaStatusuModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="calismaStatusuModalLabel">Çalışma Statüsü Belirleme</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Lütfen personellerin çalışma statüsünü belirleyiniz. Bu seçim fazla mesai hesaplamasını ve hata kontrollerini etkiler.
+                </p>
+                <div class="d-flex justify-content-between mb-3">
+                    <button type="button" class="btn btn-outline-success" id="btnTumunuGunduzYap">
+                        <i class="bi bi-sun"></i> Tümünü Gündüz Personeli Yap
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" id="btnTumunuNobetliYap">
+                        <i class="bi bi-moon"></i> Tümünü Nöbetli Çalışan Yap
+                    </button>
+                </div>
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th style="width: 50px;">Sıra</th>
+                                <th>Personel</th>
+                                <th class="text-center" style="width: 350px;">Statü</th>
+                            </tr>
+                        </thead>
+                        <tbody id="calismaStatusuTableBody">
+                            <!-- JS ile doldurulacak -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-primary" id="btnCalismaStatusuKaydet">Kaydet ve Devam Et</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CalismaStatusuApp = {
+        listeId: null,
+        data: [],
+        nextAction: null, // 'hesapla', 'kontrol', 'bildirim'
+
+        init: function() {
+            this.bindEvents();
+        },
+
+        openModal: function(listeId, onSaveCallback, extraParams) {
+            this.listeId = listeId;
+            this.onSaveCallback = onSaveCallback; // Function to run after save
+            this.extraParams = extraParams || {};
+            
+            const modalEl = document.getElementById('calismaStatusuModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            this.loadData();
+        },
+
+        loadData: function() {
+            const tbody = document.getElementById('calismaStatusuTableBody');
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center">Yükleniyor...</td></tr>';
+            
+            let url = `/mercis657/calisma-statusu-list/${this.listeId}/`;
+            const params = new URLSearchParams();
+            if (this.extraParams.year) params.append('year', this.extraParams.year);
+            if (this.extraParams.month) params.append('month', this.extraParams.month);
+            
+            const queryString = params.toString();
+            if (queryString) {
+                url += `?${queryString}`;
+            }
+
+            fetch(url)
+                .then(r => r.json())
+                .then(resp => {
+                    if (resp.status === 'success') {
+                        this.data = resp.data;
+                        // Key fix: Use the actual list ID returned by the server for updates
+                        if (resp.actual_liste_id) {
+                            this.targetId = resp.actual_liste_id;
+                        } else {
+                            this.targetId = this.listeId;
+                        }
+                        this.renderTable();
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">${resp.message}</td></tr>`;
+                    }
+                })
+                .catch(e => {
+                     tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Hata: ${e}</td></tr>`;
+                });
+        },
+
+        renderTable: function() {
+            const tbody = document.getElementById('calismaStatusuTableBody');
+            tbody.innerHTML = '';
+            
+            this.data.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                
+                const gunduzClass = item.is_gunduz_personeli ? 'btn-success' : 'btn-outline-secondary';
+                const nobetClass = !item.is_gunduz_personeli ? 'btn-danger' : 'btn-outline-secondary';
+                
+                
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${item.ad_soyad}</td>
+                    <td class="text-center">
+                         <div class="btn-group w-100" role="group">
+                             <button type="button" class="btn ${gunduzClass} btn-sm status-btn" 
+                                     data-index="${index}" data-status="true">
+                                 <i class="bi bi-sun-fill me-1"></i> Gündüz Personeli
+                             </button>
+                             <button type="button" class="btn ${nobetClass} btn-sm status-btn" 
+                                     data-index="${index}" data-status="false">
+                                 <i class="bi bi-moon-stars-fill me-1"></i> Nöbetli Çalışan
+                             </button>
+                         </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // Re-bind buttons
+            document.querySelectorAll('.status-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const targetBtn = e.target.closest('.status-btn');
+                    const idx = targetBtn.dataset.index;
+                    const status = targetBtn.dataset.status === 'true'; // string to boolean
+                    this.setStatus(idx, status);
+                });
+            });
+        },
+
+        setStatus: function(index, status) {
+            // Only update if changed
+            if (this.data[index].is_gunduz_personeli !== status) {
+                this.data[index].is_gunduz_personeli = status;
+                this.renderTable();
+            }
+        },
+
+        setAll: function(status) {
+            this.data.forEach(item => item.is_gunduz_personeli = status);
+            this.renderTable();
+        },
+
+        save: function() {
+            const updates = this.data.map(item => ({
+                personel_id: item.personel_id,
+                is_gunduz_personeli: item.is_gunduz_personeli
+            }));
+
+            // Check CSRF
+            let csrftoken = '';
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, 10) === ('csrftoken=')) {
+                    csrftoken = decodeURIComponent(cookie.substring(10));
+                    break;
+                }
+            }
+
+            // Use targetId if available (for Unit ID cases), else listeId
+            const updateId = this.targetId || this.listeId;
+
+            fetch(`/mercis657/calisma-statusu-guncelle/${updateId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ updates: updates })
+            })
+            .then(r => r.json())
+            .then(resp => {
+                if (resp.status === 'success') {
+                    // Close modal
+                    const modalEl = document.getElementById('calismaStatusuModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    
+                    if (this.onSaveCallback) {
+                        this.onSaveCallback();
+                    }
+                } else {
+                    alert('Hata: ' + resp.message);
+                }
+            })
+            .catch(err => alert('Kaydetme hatası: ' + err));
+        },
+
+        bindEvents: function() {
+            const btnGunduz = document.getElementById('btnTumunuGunduzYap');
+            if(btnGunduz) btnGunduz.addEventListener('click', () => this.setAll(true));
+
+            const btnNobetli = document.getElementById('btnTumunuNobetliYap');
+            if(btnNobetli) btnNobetli.addEventListener('click', () => this.setAll(false));
+
+            const btnKaydet = document.getElementById('btnCalismaStatusuKaydet');
+            if(btnKaydet) btnKaydet.addEventListener('click', () => this.save());
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        CalismaStatusuApp.init();
+    });
+</script>

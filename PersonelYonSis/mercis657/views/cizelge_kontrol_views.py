@@ -88,6 +88,8 @@ def _check_24_hour_mesai_rule(liste, year, month):
     kayitlar = liste.kayitlar.select_related('personel').all()
     
     for kayit in kayitlar:
+        if not getattr(kayit, 'is_gunduz_personeli', True):
+            continue
         personel = kayit.personel
         mesailer = Mesai.objects.filter(
             Personel=personel,
@@ -207,6 +209,8 @@ def sabit_mesai_kontrol(liste, year, month):
     kayitlar = liste.kayitlar.select_related('personel', 'sabit_mesai').all()
     
     for kayit in kayitlar:
+        if not getattr(kayit, 'is_gunduz_personeli', True):
+            continue
         personel = kayit.personel
         
         # Personelin ilgili dönemdeki mesailerini kontrol et

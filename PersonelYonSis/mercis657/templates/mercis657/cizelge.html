@@ -195,7 +195,7 @@
                 {% endfor %}
             </tr>
             <!-- Günler Satırı -->
-            <tr>
+            <tr class="days-row">
                 <th class="sticky-col-1">S/N</th>
                 <th class="sticky-col-2">Personel Adı Soyadı</th>
                 <th class="sticky-col-3">Unvanı</th>
@@ -203,9 +203,6 @@
                 {% for day in days %}
                 <th class="{% if day.is_weekend %}weekend{% elif day.is_resmi_tatil %}resmi-tatil{% endif %}">{{ day.day_num }}</th>
                 {% endfor %}
-            </tr>
-            <tr>
-                <th colspan="{{ days|length|add:5 }}" class="border-bottom"></th>
             </tr>
         </thead>
         <tbody id="tableBody">

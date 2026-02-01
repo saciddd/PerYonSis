@@ -378,14 +378,20 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         fiili_calisma_suresi = accumulated_hours
         fazla_mesai = max(Decimal('0.0'), fiili_calisma_suresi - limit)
 
+    # debug
+    print(f"Olması gereken süre: {olmasi_gereken_sure}")
+    print(f"Fiili çalışma süresi: {fiili_calisma_suresi}")
+    print(f"Fazla mesai: {fazla_mesai}")
+    print(f"Arefe günleri: {arefe_gunleri}")
+    print(f"Mazeret azaltımı: {mazeret_azaltimi}")
+    print(f"Bayram fazla mesai: {res_bayram_gunduz}")
+    print(f"Normal fazla mesai: {res_normal_gunduz}")
+    print(f"Bayram gece fazla mesai: {res_bayram_gece}")
+    print(f"Normal gece fazla mesai: {res_normal_gece}")
+    print(f"Stop süresi: {stop_suresi}")
             
     return {
-        'olması_gereken_sure': olmasi_gereken_sure, # Raw değer döndürülmeli, view tarafı effective'i hesaplar mı? Hayır, bu dict dönüyor.
-                                                    # Ancak view genelde bu dict keylerini kullanır. 
-                                                    # Utils logic'te izin_azaltimi düşülmüş "olması gereken" ile kıyasladık.
-                                                    # Return değerine orijinal olması_gereken mi dönmeli yoksa düşülmüş mü?
-                                                    # Orijinal kodda return dict'te "olmasi_gereken_sure -= izin_azaltimi" yapılmıştı.
-                                                    # Biz de effective değerini dönmeliyiz tutarlılık için.
+        'olması_gereken_sure': olmasi_gereken_sure,
         'fiili_calisma_suresi': fiili_calisma_suresi,
         'fazla_mesai': fazla_mesai,
         'calisma_gunleri': calisma_gunleri,
@@ -395,7 +401,179 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         'normal_fazla_mesai': res_normal_gunduz,
         'bayram_gece_fazla_mesai': res_bayram_gece,
         'normal_gece_fazla_mesai': res_normal_gece,
-        'stop_suresi': stop_suresi
+        'stop_suresi': stop_suresi,
+        **hesapla_icap_suresi(personel_listesi_kayit, year, month)
+    }
+
+def hesapla_icap_suresi(personel_listesi_kayit, year, month):
+    """
+    Personel için aylık icap sürelerini hesaplar.
+    RFC-009'a göre:
+    - Mesai bitişinden ertesi sabah 08:00'e kadar.
+    - Hafta sonu/tatil ise tüm gün (veya mesai yoksa 24 saat).
+    - Mesai varsa, mesai bitişinden itibaren hesaplanır.
+    """
+    personel = personel_listesi_kayit.personel
+    days_in_month = calendar.monthrange(year, month)[1]
+    
+    normal_icap = Decimal('0.0')
+    bayram_icap = Decimal('0.0')
+    icap_detay = {}
+    
+    # Resmi tatilleri cache'le
+    resmi_tatiller = ResmiTatil.objects.filter(
+        TatilTarihi__year=year,
+        TatilTarihi__month=month
+    )
+    tatil_map = {rt.TatilTarihi: rt for rt in resmi_tatiller}
+
+    # İcap kayıtlarını çek
+    icap_kayitlari = Mesai.objects.filter(
+        Personel=personel,
+        MesaiDate__year=year,
+        MesaiDate__month=month,
+        Icap=True
+    ).select_related('MesaiTanim')
+
+    for kayit in icap_kayitlari:
+        current_date = kayit.MesaiDate
+        next_date = current_date + timedelta(days=1)
+        
+        # Tatil durumlarını belirle
+        is_today_bayram = False
+        is_today_arefe = False
+        is_next_bayram = False
+        
+        if current_date in tatil_map:
+            rt = tatil_map[current_date]
+            if rt.TatilTipi == 'TAM' or (rt.ArefeMi and not rt.YarimGun):
+                 is_today_bayram = True
+            elif rt.ArefeMi: # Yarım gün arefe (13:00 sonrası tatil)
+                 is_today_arefe = True
+        
+        # Ertesi günün tatil durumu (cache'den bulunmayabilir, veritabanından çek)
+        # Ancak performans için sadece bu ayı cacheledik. Bir sonraki gün bir sonraki aya düşebilir.
+        # Basitlik ve performans için tek tek sorgu yerine genişletilmiş cache veya tekil sorgu.
+        # Sonraki gün ayın son günü ise sorun yok, sonraki ayın ilk günü ise mapte yok.
+        if next_date in tatil_map:
+             rt_next = tatil_map[next_date]
+             if rt_next.TatilTipi == 'TAM' or (rt_next.ArefeMi and not rt_next.YarimGun):
+                 is_next_bayram = True
+        else:
+             # Ay geçişi kontrolü
+             next_rt = ResmiTatil.objects.filter(TatilTarihi=next_date).first()
+             if next_rt and (next_rt.TatilTipi == 'TAM' or (next_rt.ArefeMi and not next_rt.YarimGun)):
+                 is_next_bayram = True
+
+        # Zaman dilimleri
+        today_08 = datetime.combine(current_date, time(8, 0))
+        today_13 = datetime.combine(current_date, time(13, 0))
+        today_24 = datetime.combine(next_date, time(0, 0)) # Bu gece yarısı
+        next_08  = datetime.combine(next_date, time(8, 0))
+        
+        # Başlangıç zamanını belirle
+        start_dt = today_08 # Mesai yoksa varsayılan
+        
+        if kayit.MesaiTanim and kayit.MesaiTanim.Saat:
+            try:
+                saat_str = kayit.MesaiTanim.Saat.strip()
+                _, end_s = saat_str.split()
+                eh, em = map(int, end_s.split(':'))
+                mesai_bitis = datetime.combine(current_date, time(eh, em))
+                
+                # Sarkma ve gece yarısı geçişleri
+                start_parts = saat_str.split()[0].split(':')
+                start_h, start_m = int(start_parts[0]), int(start_parts[1])
+                start_time_val = calendar.timegm(datetime.combine(current_date, time(start_h, start_m)).timetuple())
+                end_time_val = calendar.timegm(mesai_bitis.timetuple())
+                
+                if getattr(kayit.MesaiTanim, 'SonrakiGuneSarkiyor', False):
+                     mesai_bitis += timedelta(days=1)
+                elif end_time_val < start_time_val:
+                     mesai_bitis += timedelta(days=1)
+                
+                # Kural: Icap hesaplaması için mesai bitimi 08:00'dan büyük olmalı
+                # Eğer mesai bitişi <= 08:00 ise start_dt 08:00 kalır (User logic interpretation needed).
+                # Kullanıcı: "mesai bitiminin 08:00'dan büyük olmak zorunda"
+                # Bu şu demek olabilir: Eğer gece vardiyası 08:00'de bitiyorsa icap 08:00'de başlar.
+                # Eğer 07:00'de bitiyorsa 08:00'de icap başlar mı? Yoksa 07:00'de mi?
+                # "Mesai yoksa" durumu ile benzer.
+                # Varsayım: Mesai bitişi > 08:00 ise start_dt = mesai_bitis
+                if mesai_bitis > today_08:
+                    start_dt = mesai_bitis
+                else:
+                    start_dt = today_08
+
+            except ValueError:
+                pass # Parse hatası, varsayılan 08:00 kalır
+
+        # Bitiş zamanı her zaman ertesi gün 08:00
+        end_dt = next_08
+        
+        if start_dt >= end_dt:
+             continue # Geçersiz aralık
+
+        # Süre hesaplama ve dağıtma
+        current_cursor = start_dt
+        day_bayram_sum = Decimal('0.0')
+        day_normal_sum = Decimal('0.0')
+
+        # Kritik eşikler: 13:00 (Arefe), 24:00 (Gece geçişi)
+        check_points = sorted([t for t in [today_13, today_24] if current_cursor < t < end_dt])
+        # Bitiş noktasını da ekle
+        points = check_points + [end_dt]
+        
+        for p in points:
+            if current_cursor >= p:
+                continue
+            
+            segment_duration = Decimal((p - current_cursor).total_seconds() / 3600)
+            
+            # Bu segmentin türünü belirle
+            is_segment_bayram = False
+            
+            # Period: current_cursor -> p
+            mid_point = current_cursor + (p - current_cursor) / 2
+            
+            # 1. Bugünün kontrolü (08:00 - 24:00 arası)
+            if mid_point < today_24:
+                if is_today_bayram:
+                    is_segment_bayram = True
+                elif is_today_arefe:
+                    # 13:00 sonrası bayram
+                    if mid_point >= today_13:
+                        is_segment_bayram = True
+                    else:
+                        is_segment_bayram = False
+                else:
+                    is_segment_bayram = False
+            # 2. Yarının kontrolü (00:00 - 08:00 arası)
+            else:
+                if is_next_bayram:
+                    is_segment_bayram = True
+                else:
+                     # Sonraki gün bayram değilse normal icap
+                     is_segment_bayram = False
+            
+            if is_segment_bayram:
+                day_bayram_sum += segment_duration
+            else:
+                day_normal_sum += segment_duration
+                
+            current_cursor = p
+            
+        bayram_icap += day_bayram_sum
+        normal_icap += day_normal_sum
+            
+        # Format: 'YYYY-MM-DD' key for the notification detail
+        key = current_date.strftime('%Y-%m-%d')
+        icap_detay[key] = float(day_bayram_sum + day_normal_sum) # Toplam süreyi yazıyoruz detay olarak
+
+    return {
+        'normal_icap': normal_icap,
+        'bayram_icap': bayram_icap,
+        'toplam_icap': normal_icap + bayram_icap,
+        'icap_detay': icap_detay
     }
 
 def get_favori_mesailer(user):

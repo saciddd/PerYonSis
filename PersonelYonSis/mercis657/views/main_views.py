@@ -223,7 +223,8 @@ def cizelge(request):
             "IzinAd": mesai.Izin.ad if mesai.Izin else "",
             "Degisiklik": mesai.Degisiklik,
             "PrevSaat": (last_backup.MesaiTanim.Saat if (last_backup and last_backup.MesaiTanim) else ""),
-            "PrevIzinAd": (last_backup.Izin.ad if (last_backup and last_backup.Izin) else "")
+            "PrevIzinAd": (last_backup.Izin.ad if (last_backup and last_backup.Izin) else ""),
+            "Icap": mesai.Icap,
         }
 
         if last_stop:
@@ -260,7 +261,8 @@ def cizelge(request):
                 "IzinAd": "",
                 "Degisiklik": False,
                 "PrevSaat": "",
-                "PrevIzinAd": ""
+                "PrevIzinAd": "",
+                "Icap": False
             })
             mesai_info["MesaiDate"] = day['full_date']
             mesai_info["is_weekend"] = day['is_weekend']

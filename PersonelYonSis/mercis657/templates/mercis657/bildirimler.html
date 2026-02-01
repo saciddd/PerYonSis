@@ -190,65 +190,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const newUrl = `{% url 'mercis657:cizelge' %}?birim_id=${birim_id}&donem=${donem}`;
         window.open(newUrl, '_self');
     });
-    // Tüm Personele Bildirim Butonu
-    document.getElementById('createAllBtn').addEventListener('click', function() {
-        const selectedBirim = document.getElementById('selectBirim').value;
-        const donemValue = document.getElementById('selectDonem').value;
-
-        if (!selectedBirim || selectedBirim === "0") {
-             Swal.fire('Hata', 'Lütfen bir birim seçin.', 'error');
-             return;
-        }
-
-        // parse year/month from donemValue
-        let yearNum, monthNum;
-        try {
-            let parts = donemValue.includes('/') ? donemValue.split('/') : donemValue.split('-');
-            yearNum = parseInt(parts[0], 10);
-            monthNum = parseInt(parts[1], 10);
-            if (!yearNum || !monthNum) throw new Error('Invalid donem');
-        } catch (e) {
-            Swal.fire('Hata', 'Geçersiz dönem seçimi.', 'error');
-            return;
-        }
-
-        Swal.fire({
-            title: 'Emin misiniz?',
-            text: `Seçili birimdeki tüm personel için ${donemValue} dönemi bildirimleri (yeniden) oluşturulacak. Mevcut onaylanmamış bildirimler güncellenecektir.`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Evet, oluştur!',
-            cancelButtonText: 'İptal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch("{% url 'mercis657:bildirim_toplu_olustur' 999 %}".replace('999', selectedBirim), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify({
-                        year: yearNum,
-                        month: monthNum
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        Swal.fire('Başarılı!', `Bildirimler oluşturuldu/güncellendi. Etkilenen personel sayısı: ${data.count}`, 'success');
-                        // Refresh data after creation
-                        fetchBildirimler(donemValue, selectedBirim);
-                    } else {
-                        Swal.fire('Hata', 'Bir hata oluştu: ' + data.message, 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Toplu bildirim oluşturma hatası:', error);
-                    Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
-                });
-            }
-        });
-    });
 
     // Bildirim Formu İndirme Butonu
     document.getElementById('downloadFormBtn').addEventListener('click', function() {
@@ -961,8 +902,8 @@ td[class*="gun-"].bg-light-blue {
 }
 
 .icap-sure {
-    color: #0dcaf0;  /* Bootstrap info color */
-    font-size: 0.8rem;
+    color: #444444;
+    font-size: 11pt;
     line-height: 1;
     border-top: 1px dotted #dee2e6;
     padding-top: 2px;

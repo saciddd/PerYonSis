@@ -105,6 +105,10 @@
                 <input class="form-check-input" type="checkbox" id="stopModeSwitch">
                 <label class="form-check-label small" for="stopModeSwitch">Stoplama Modu</label>
             </div>
+            <div class="form-check form-switch mt-1">
+                <input class="form-check-input" type="checkbox" id="icapModeSwitch" style="border-color: #198754;">
+                <label class="form-check-label small fw-bold text-success" for="icapModeSwitch">İcap Girişi <i class="bi bi-telephone-forward-fill"></i></label>
+            </div>
     </div>
 
     <!-- Aksiyon Butonları -->
@@ -199,7 +203,7 @@
                 <th class="sticky-col-1">S/N</th>
                 <th class="sticky-col-2">Personel Adı Soyadı</th>
                 <th class="sticky-col-3">Unvanı</th>
-                <th>Fazla Mesai</th>
+                <th>Fazla Mesai/İcap</th>
                 {% for day in days %}
                 <th class="{% if day.is_weekend %}weekend{% elif day.is_resmi_tatil %}resmi-tatil{% endif %}">{{ day.day_num }}</th>
                 {% endfor %}
@@ -232,6 +236,7 @@
                     data-izin-id="{{ mesai.IzinID|default:'' }}"
                     data-mesai-notu="{{ mesai.MesaiNotu|default:'' }}"
                     data-degisiklik="{{ mesai.Degisiklik|yesno:'1,0' }}"
+                    data-icap="{{ mesai.Icap|yesno:'true,false' }}"
                     data-prev-saat="{{ mesai.PrevSaat }}"
                     data-prev-izin="{{ mesai.PrevIzinAd }}"
                     {% if mesai.MesaiTanimRenk %} style="color: {{ mesai.MesaiTanimRenk }}; font-weight: bold;"{% endif %}>
@@ -244,6 +249,9 @@
                     {% endif %}
                     {% if mesai.StopKaydi %}
                         <i class="bi bi-pause-circle text-warning float-end ms-1" title="Stop kaydı: {{ mesai.StopKaydi.StopBaslangic }} - {{ mesai.StopKaydi.StopBitis }} | Süre: {{ mesai.StopKaydi.Sure }} saat | Oluşturan: {{ mesai.StopKaydi.created_by }}"></i>
+                    {% endif %}
+                    {% if mesai.Icap %}
+                        <i class="bi bi-telephone-forward-fill text-success float-end ms-1 icap-indicator" title="İcap Nöbeti"></i>
                     {% endif %}
                 </td>
                 {% endfor %}
@@ -565,6 +573,7 @@
     const alanBosalt = document.getElementById('alanBosaltSwitch');
     const mesaiNotuSelect = document.getElementById('mesaiNotuSelection');
     const stopModeSwitch = document.getElementById('stopModeSwitch');
+    const icapModeSwitch = document.getElementById('icapModeSwitch');
 
     // Alanlar arası ilişki: biri seçilince diğerleri temizlenir
     mesaiSelect.addEventListener('change', function() {
@@ -572,6 +581,8 @@
             izinSelect.value = "";
             mesaiNotuSelect.value = "";
             alanBosalt.checked = false;
+            stopModeSwitch.checked = false;
+            icapModeSwitch.checked = false;
         }
     });
     izinSelect.addEventListener('change', function() {
@@ -579,6 +590,8 @@
             mesaiSelect.value = "";
             mesaiNotuSelect.value = "";
             alanBosalt.checked = false;
+            stopModeSwitch.checked = false;
+            icapModeSwitch.checked = false;
         }
     });
     mesaiNotuSelect.addEventListener('change', function() {
@@ -586,6 +599,8 @@
             mesaiSelect.value = "";
             izinSelect.value = "";
             alanBosalt.checked = false;
+            stopModeSwitch.checked = false;
+            icapModeSwitch.checked = false;
         }
     });
     alanBosalt.addEventListener('change', function() {
@@ -593,6 +608,8 @@
             mesaiSelect.value = "";
             izinSelect.value = "";
             mesaiNotuSelect.value = "";
+            stopModeSwitch.checked = false;
+            icapModeSwitch.checked = false;
         }
     });
     // Stoplama modu etkinleştirildiğinde diğer seçimleri temizle
@@ -602,6 +619,17 @@
             izinSelect.value = "";
             mesaiNotuSelect.value = "";
             alanBosalt.checked = false;
+            icapModeSwitch.checked = false;
+        }
+    });
+    // İcap modu etkinleştirildiğinde diğerlerini temizle
+    icapModeSwitch.addEventListener('change', function() {
+        if (icapModeSwitch.checked) {
+            mesaiSelect.value = "";
+            izinSelect.value = "";
+            mesaiNotuSelect.value = "";
+            alanBosalt.checked = false;
+            stopModeSwitch.checked = false;
         }
     });
 
@@ -674,7 +702,44 @@
                         .catch(err => { if (window.Swal) Swal.fire('Hata', err.toString(), 'error'); else alert(err); });
                 }
                 return;
+                return;
             }
+
+            // İcap Girişi Modu
+            if (icapModeSwitch && icapModeSwitch.checked) {
+                // İzin var mı kontrol et
+                const currentIzin = cell.dataset.izinId;
+                if (currentIzin && currentIzin !== "") {
+                     if (window.Swal) Swal.fire('Uyarı', 'İzinli güne icap girilemez.', 'warning');
+                     else alert('İzinli güne icap girilemez.');
+                     return;
+                }
+
+                const currentIcap = cell.dataset.icap === 'true';
+                const newIcap = !currentIcap;
+                
+                // Update visuals locally
+                cell.dataset.icap = newIcap ? 'true' : 'false';
+                let indicator = cell.querySelector('.icap-indicator');
+                if (newIcap) {
+                    if (!indicator) {
+                        indicator = document.createElement('i');
+                        indicator.className = 'bi bi-telephone-forward-fill text-success float-end ms-1 icap-indicator';
+                        indicator.title = 'İcap Nöbeti';
+                        cell.appendChild(indicator);
+                    }
+                } else {
+                    if (indicator) indicator.remove();
+                }
+                
+                cell.classList.add('modified');
+                
+                // Calculate logic remains same as oldDuration (icap doesn't change duration directly in cell view)
+                // But we mark it modified to trigger save.
+                
+                return;
+            }
+
             let mesaiVal = mesaiSelect.value;
             let izinVal = izinSelect.value;
             let bosalt = alanBosalt.checked;
@@ -864,10 +929,12 @@
         const mesaiId = cell.dataset.mesaiId || null;
         const izinId = cell.dataset.izinId || null;
         const mesaiNotu = cell.dataset.mesaiNotu || null;
+        const icap = cell.dataset.icap === 'true';
         initialMap[key] = JSON.stringify({
             mesaiId: mesaiId ? String(mesaiId) : null,
             izinId: izinId ? String(izinId) : null,
-            mesaiNotu: mesaiNotu ? String(mesaiNotu) : null
+            mesaiNotu: mesaiNotu ? String(mesaiNotu) : null,
+            icap: icap
         });
     });
 
@@ -907,15 +974,20 @@
             const currentMesaiId = cell.dataset.mesaiId || null;
             const currentIzinId = cell.dataset.izinId || null;
             const currentMesaiNotu = cell.dataset.mesaiNotu || null;
-            const origData = initialMap[key] ? JSON.parse(initialMap[key]) : {mesaiId: null, izinId: null, mesaiNotu: null};
+            const currentIcap = cell.dataset.icap === 'true';
+
+            const origData = initialMap[key] ? JSON.parse(initialMap[key]) : {mesaiId: null, izinId: null, mesaiNotu: null, icap: false};
             const mesaiChanged = currentMesaiId !== origData.mesaiId;
             const izinChanged = currentIzinId !== origData.izinId;
             const notChanged = currentMesaiNotu !== origData.mesaiNotu;
-            if (mesaiChanged || izinChanged || notChanged) {
+            const icapChanged = currentIcap !== origData.icap;
+
+            if (mesaiChanged || izinChanged || notChanged || icapChanged) {
                 changes[key] = {
                     mesaiId: currentMesaiId ? Number(currentMesaiId) : null,
                     izinId: currentIzinId ? Number(currentIzinId) : null,
-                    mesaiNotu: currentMesaiNotu ? currentMesaiNotu : null
+                    mesaiNotu: currentMesaiNotu ? currentMesaiNotu : null,
+                    icap: currentIcap
                 };
             }
         });
@@ -949,7 +1021,9 @@
                 Object.keys(changes).forEach(k => {
                     initialMap[k] = JSON.stringify({
                         mesaiId: changes[k].mesaiId ? String(changes[k].mesaiId) : null,
-                        izinId: changes[k].izinId ? String(changes[k].izinId) : null
+                        izinId: changes[k].izinId ? String(changes[k].izinId) : null,
+                        mesaiNotu: changes[k].mesaiNotu ? String(changes[k].mesaiNotu) : null,
+                        icap: changes[k].icap
                     });
                 });
                 // Modified sınıfını temizle

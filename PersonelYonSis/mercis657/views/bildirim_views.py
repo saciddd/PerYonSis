@@ -347,8 +347,12 @@ def bildirim_olustur(request):
         grnormal = Decimal('0.0') # Gece Riskli Normal
         grbayram = Decimal('0.0') # Gece Riskli Bayram
         
-        nicap = Decimal('0.0')
-        bicap = Decimal('0.0')
+        nicap = fazla_mesai_sonuclari.get('normal_icap', Decimal('0.0'))
+        bicap = fazla_mesai_sonuclari.get('bayram_icap', Decimal('0.0'))
+        
+        icap_detay_data = fazla_mesai_sonuclari.get('icap_detay', {})
+        if icap_detay_data:
+             icap_detay = icap_detay_data
         
         # load resmi tatiller
         tatiller = ResmiTatil.objects.filter(TatilTarihi__year=year, TatilTarihi__month=month)

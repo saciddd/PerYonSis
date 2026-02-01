@@ -125,6 +125,7 @@ class Mesai(models.Model):
     MesaiDate = models.DateField(null=False)
     MesaiTanim = models.ForeignKey('Mesai_Tanimlari', on_delete=models.CASCADE, null=True, related_name='mercis657_mesai_tanimlari')
     Izin = models.ForeignKey('Izin', on_delete=models.SET_NULL, null=True, blank=True, related_name='mercis657_mesai_izin')
+    Icap = models.BooleanField(default=False)
     OnayDurumu = models.BooleanField(default=True)
     OnayTarihi = models.DateTimeField(null=True, blank=True)
     Onaylayan = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='mercis657_mesai_onaylayan')

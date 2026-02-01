@@ -106,7 +106,11 @@
                         <td>{{ forloop.counter }}</td>
                         <td>{{ birim_data.birim.Kurum|default:"-" }}</td>
                         <td>{{ birim_data.birim.UstBirim|default:"-" }}</td>
-                        <td>{{ birim_data.birim.BirimAdi }}</td>
+                        <td>{{ birim_data.birim.BirimAdi }}
+                            {% if bildirim_sayfasi_yetkisi %}
+                                <a href="{% url 'mercis657:bildirimler' %}?birim_id={{ birim_data.birim.BirimID }}&donem={{ selected_donem|slice:':4' }}/{{ selected_donem|slice:'5:' }}" target="_blank" class="text-primary ms-2" title="Görüntüle"><i class="bi bi-box-arrow-up-right"></i></a>
+                            {% endif %}
+                        </td>
                         <td>{{ birim_data.personel_sayisi }}</td>
                         <td>{{ birim_data.onaylanmis_sayisi }}</td>
                         <!-- Beklemede sayisi 0'dan fazla ise css kullanılacak -->

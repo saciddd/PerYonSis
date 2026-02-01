@@ -140,6 +140,7 @@ def raporlama(request):
         info_message = "Lütfen bir dönem ve isteğe bağlı kriterlerinizi seçerek raporlayın."
 
     kod_duzenleme_yetkisi = request.user.has_permission('ÇS 657 Birim Kodlarını Düzenleyebilir')
+    bildirim_sayfasi_yetkisi = request.user.has_permission('ÇS 657 Bildirim İşlemleri')
     context = {
         # 'form': form, # Form kaldırıldı
         'bildirimler_by_birim': bildirimler_by_birim,
@@ -157,6 +158,7 @@ def raporlama(request):
         'info_message': info_message,
         'toplam_kayit': toplam_kayit,
         'kod_duzenleme_yetkisi': kod_duzenleme_yetkisi,
+        'bildirim_sayfasi_yetkisi': bildirim_sayfasi_yetkisi,
     }
     return render(request, 'mercis657/raporlama.html', context)
 

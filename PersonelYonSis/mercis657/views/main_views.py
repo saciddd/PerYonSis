@@ -94,7 +94,13 @@ def excel_export(request):
 @login_required
 def cizelge(request):
     user = request.user
-    user_birimler = UserBirim.objects.filter(user=user).select_related('birim')
+    tum_birimler_yetkisi = request.user.has_permission("ÇS 657 Tüm Birimleri Görebilir")
+    user_birim_ids = list(UserBirim.objects.filter(user=user).values_list('birim__BirimID', flat=True))
+
+    if tum_birimler_yetkisi:
+        birimler = Birim.objects.select_related('Kurum', 'UstBirim', 'Idareci').all().order_by('BirimAdi')
+    else:
+        birimler = Birim.objects.filter(BirimID__in=user_birim_ids).select_related('Kurum', 'UstBirim', 'Idareci').order_by('BirimAdi')
     izinler = Izin.objects.all()
     kurumlar = Kurum.objects.all()
     ust_birimler = UstBirim.objects.all()
@@ -131,7 +137,7 @@ def cizelge(request):
     all_mesai_tanimlari = Mesai_Tanimlari.objects.all().order_by('Saat')
     
     pastcontext = {
-            "user_birimler": user_birimler,
+            "birimler": birimler,
             "selected_birim_id": selected_birim_id,
             "donemler": donemler,
             "selected_donem": selected_donem,
@@ -162,7 +168,7 @@ def cizelge(request):
 
     birim = get_object_or_404(Birim, BirimID=birim_id)
 
-    if not UserBirim.objects.filter(user=request.user, birim=birim).exists() and not (request.user.has_permission('ÇS 657 Tüm Listeleri Düzenleyebilir')):
+    if not tum_birimler_yetkisi and not UserBirim.objects.filter(user=request.user, birim=birim).exists() and not (request.user.has_permission('ÇS 657 Tüm Listeleri Düzenleyebilir')):
         return HttpResponseForbidden("Bu birim için yetkiniz yok.")
 
     # Liste varsa getir
@@ -297,7 +303,7 @@ def cizelge(request):
         "current_month": current_month,
         "months": [{'value': i, 'label': calendar.month_name[i]} for i in range(1, 13)],
         "years": [year for year in range(2023, 2027)],
-        "user_birimler": user_birimler,
+        "birimler": birimler,
         "selected_birim_id": selected_birim_id,
         "liste": liste.id if liste else 0,
         "donemler": donemler,

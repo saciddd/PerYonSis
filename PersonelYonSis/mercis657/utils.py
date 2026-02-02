@@ -208,6 +208,8 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 start_s, end_s = saat_str.split()
                 sh, sm = map(int, start_s.split(':'))
                 eh, em = map(int, end_s.split(':'))
+                if sh == 24: sh = 0
+                if eh == 24: eh = 0
                 start_dt = datetime.combine(mesai.MesaiDate, time(sh, sm))
                 end_dt = datetime.combine(mesai.MesaiDate, time(eh, em))
                 if getattr(mesai.MesaiTanim, 'SonrakiGuneSarkiyor', False) or end_dt <= start_dt:
@@ -294,15 +296,30 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         res_normal_gunduz = Decimal('0.0')
         
         for mesai in mesailer:
-            if not mesai.MesaiTanim or not mesai.MesaiTanim.Saat:
+            if not mesai.MesaiTanim:
+                continue
+
+            # Eğer Saat tanımlı değilse, Süre üzerinden hesapla (Fallback)
+            if not mesai.MesaiTanim.Saat:
+                if getattr(mesai.MesaiTanim, 'Sure', None):
+                    sure = mesai.MesaiTanim.Sure
+                    accumulated_hours += sure
+                    
+                    # Limit aşımı kontrolü (Basit)
+                    if accumulated_hours > limit:
+                        excess = accumulated_hours - limit
+                        ot_part = min(excess, sure)
+                        res_normal_gunduz += ot_part
                 continue
                 
-            # Mesai aralığını belirle
+            # Mesai aralığını belirle (Saat tanımlıysa)
             try:
                 saat_str = mesai.MesaiTanim.Saat.strip()
                 start_s, end_s = saat_str.split()
                 sh, sm = map(int, start_s.split(':'))
                 eh, em = map(int, end_s.split(':'))
+                if sh == 24: sh = 0
+                if eh == 24: eh = 0
                 start_dt = datetime.combine(mesai.MesaiDate, time(sh, sm))
                 end_dt = datetime.combine(mesai.MesaiDate, time(eh, em))
                 if getattr(mesai.MesaiTanim, 'SonrakiGuneSarkiyor', False) or end_dt <= start_dt:

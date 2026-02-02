@@ -48,15 +48,31 @@ def bildirimler(request):
     year, month = map(int, selected_donem.split("/"))
     donem_baslangic = date(year, month, 1)
 
-    # Kullanıcının yetkili olduğu birimleri al
-    user_birimler = UserBirim.objects.filter(user=request.user).values_list('birim__BirimID', flat=True)
-    birimler = Birim.objects.filter(BirimID__in=user_birimler)
+    # Yetki kontrolü ve Birimlerin listelenmesi
+    tum_birimler_yetkisi = request.user.has_permission("ÇS 657 Tüm Birimleri Görebilir")
+    user_birim_ids = list(UserBirim.objects.filter(user=request.user).values_list('birim__BirimID', flat=True))
+
+    if tum_birimler_yetkisi:
+        # Tüm birimleri gör (Kurum, UstBirim, Idareci bilgileriyle)
+        birimler = Birim.objects.select_related('Kurum', 'UstBirim', 'Idareci').all().order_by('BirimAdi')
+    else:
+        # Sadece yetkili olduğu birimleri gör
+        birimler = Birim.objects.filter(BirimID__in=user_birim_ids).select_related('Kurum', 'UstBirim', 'Idareci').order_by('BirimAdi')
 
     selected_birim_id = request.GET.get("birim_id")
-    if selected_birim_id and int(selected_birim_id) in user_birimler:
-        selected_birim = get_object_or_404(Birim, BirimID=selected_birim_id)
-    else:
-        selected_birim = birimler.first() # Varsayılan olarak ilk birimi seç
+    selected_birim = None
+    
+    if selected_birim_id:
+        try:
+            bid = int(selected_birim_id)
+            # Eğer tümünü görme yetkisi varsa veya kullanıcı bu birimde yetkili ise
+            if tum_birimler_yetkisi or (bid in user_birim_ids):
+                selected_birim = get_object_or_404(Birim, BirimID=bid)
+        except ValueError:
+            pass
+            
+    if not selected_birim and birimler.exists():
+        selected_birim = birimler.first() # Varsayılan olarak listedeki ilk birimi seç
     
     personel_data_for_template = []
 
@@ -346,6 +362,18 @@ def bildirim_olustur(request):
         rbayram = Decimal('0.0')
         grnormal = Decimal('0.0') # Gece Riskli Normal
         grbayram = Decimal('0.0') # Gece Riskli Bayram
+
+        # Radyasyon çalışanları için mesaileri riskli grubuna kaydır
+        if personel_listesi_kayit.radyasyon_calisani:
+            rnormal = normal
+            rbayram = bayram
+            grnormal = gnormal
+            grbayram = gbayram
+            
+            normal = Decimal('0.0')
+            bayram = Decimal('0.0')
+            gnormal = Decimal('0.0')
+            gbayram = Decimal('0.0')
         
         nicap = fazla_mesai_sonuclari.get('normal_icap', Decimal('0.0'))
         bicap = fazla_mesai_sonuclari.get('bayram_icap', Decimal('0.0'))

@@ -14,6 +14,15 @@
     .select2-container .select2-selection--single {
        height: 31px !important;
     }
+    /* Fix for Select2 inside Input Group */
+    .input-group .select2-container {
+        flex: 1 1 auto;
+        width: auto !important;
+    }
+    .input-group .select2-container .select2-selection {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
 </style>
 {% endblock %}
 
@@ -37,7 +46,7 @@
     <div class="col-auto">
         <label for="selectBirim" class="form-label small fw-bold">Birim</label>
         <div class="input-group input-group-sm">
-            <select name="birim_id" id="selectBirim" class="form-select" style="width: 100%;" required>
+            <select name="birim_id" id="selectBirim" class="form-select" required>
                 <option value="">Seçiniz</option>
                 {% for birim in birimler %}
                 <option value="{{ birim.BirimID }}" {% if birim.BirimID == selected_birim_id|add:0 %}selected{% endif %}>
@@ -399,7 +408,7 @@
     $(document).ready(function() {
         $('#selectBirim').select2({
             theme: 'bootstrap-5',
-            width: '100%',
+            // width: '100%', // CSS ile kontrol ediliyor
             placeholder: 'Seçiniz',
             allowClear: true
         });

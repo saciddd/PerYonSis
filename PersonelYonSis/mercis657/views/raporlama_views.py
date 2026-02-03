@@ -257,8 +257,8 @@ def export_raporlama_excel(request):
                 ('GeceRiskliNormalFazlaMesai', riskli_normal_gece_nobet_kodu, bildirim.GeceRiskliNormalFazlaMesai),
                 ('GeceRiskliBayramFazlaMesai', riskli_bayram_gece_nobet_kodu, bildirim.GeceRiskliBayramFazlaMesai),
                 # İcap
-                ('NormalIcap', normal_nobet_kodu, bildirim.NormalIcap),
-                ('BayramIcap', bayram_nobet_kodu, bildirim.BayramIcap),
+                ('NormalIcap', '17', bildirim.NormalIcap),
+                ('BayramIcap', '18', bildirim.BayramIcap),
             ]
 
             for fm_type, birim_kodu, value in fazla_mesai_list:

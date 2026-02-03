@@ -188,7 +188,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         mazeret_azaltimi += mazeret_gunleri * mazeret.gunluk_azaltim_saat
 
     # İzin düşümü (olması gerekenden)
-    effective_olmasi_gereken = olmasi_gereken_sure - izin_azaltimi
+    effective_olmasi_gereken = olmasi_gereken_sure - izin_azaltimi - mazeret_azaltimi
 
 
     if is_gunduz_personeli:
@@ -196,7 +196,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         # GÜNDÜZ PERSONELİ (Mevcut Mantık: Bucket Havuzu)
         # ----------------------------------------------------------------
         # Mazereti havuza ekle
-        bucket_normal_gunduz += mazeret_azaltimi
+        # bucket_normal_gunduz += mazeret_azaltimi
         
         for mesai in mesailer:
             if not mesai.MesaiTanim or not mesai.MesaiTanim.Saat:
@@ -286,7 +286,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         # NÖBETLİ ÇALIŞAN (Kronolojik Hesaplama)
         # ----------------------------------------------------------------
         # Mazereti başlangıç working accumulation olarak kabul ediyoruz
-        accumulated_hours = mazeret_azaltimi
+        accumulated_hours = Decimal('0.0')
         limit = effective_olmasi_gereken
         
         # Fazla mesai bucketları (Bunlar direkt olarak sonuç olacak)
@@ -736,10 +736,10 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
         mazeret_azaltimi += mazeret_gunleri * mazeret.gunluk_azaltim_saat
 
     # Mazeret azaltımı fiili çalışma süresine ekleniyor
-    fiili_calisma_suresi += mazeret_azaltimi
+    # fiili_calisma_suresi += mazeret_azaltimi
 
     # İzin azaltımını olması gereken süreden düş
-    olmasi_gereken_sure -= izin_azaltimi
+    olmasi_gereken_sure -= (izin_azaltimi + mazeret_azaltimi)
 
     # Fazla mesai hesapla
     fazla_mesai = fiili_calisma_suresi - olmasi_gereken_sure

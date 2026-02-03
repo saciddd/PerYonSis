@@ -484,16 +484,25 @@ def register(request):
 				Phone=phone,
 				TCKimlikNo=tckimlikno,
 				Organisation=organisation,
-				is_active=False  # Set user as inactive
+				is_active=True  # Set user as active
 			)
 			user.password = password  # Store raw password without hashing
 			user.save()
+
+			# Otomatik rol tanımlama (RoleID=10)
+			try:
+				default_role = Role.objects.get(RoleID=10)
+				user.roles.add(default_role)
+			except Role.DoesNotExist:
+				# RoleID=10 yoksa işlem yapılmaz veya loglanabilir
+				pass
+
 			notify_role_users(
 				role_name="Admin",
 				title="Yeni Kullanıcı Kaydı",
 				message=f"{username} kullanıcı olarak sisteme kaydoldu."
 			)
-			messages.success(request, "Kayıt başarılı! Hesabınız onaylandıktan sonra giriş yapabilirsiniz.")
+			messages.success(request, "Kaydınız başarıyla tamamlandı, sisteme giriş yapabilirsiniz.")
 			return redirect('login')
 		except IntegrityError as e:
 			if "Users.TCKimlikNo" in str(e):

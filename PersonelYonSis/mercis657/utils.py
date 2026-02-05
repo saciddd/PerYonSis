@@ -463,9 +463,9 @@ def hesapla_icap_suresi(personel_listesi_kayit, year, month):
         
         if current_date in tatil_map:
             rt = tatil_map[current_date]
-            if rt.TatilTipi == 'TAM' or (rt.ArefeMi and not rt.YarimGun):
+            if rt.BayramMi:
                  is_today_bayram = True
-            elif rt.ArefeMi: # Yarım gün arefe (13:00 sonrası tatil)
+            elif rt.ArefeMi:
                  is_today_arefe = True
         
         # Ertesi günün tatil durumu (cache'den bulunmayabilir, veritabanından çek)
@@ -474,12 +474,12 @@ def hesapla_icap_suresi(personel_listesi_kayit, year, month):
         # Sonraki gün ayın son günü ise sorun yok, sonraki ayın ilk günü ise mapte yok.
         if next_date in tatil_map:
              rt_next = tatil_map[next_date]
-             if rt_next.TatilTipi == 'TAM' or (rt_next.ArefeMi and not rt_next.YarimGun):
+             if rt_next.BayramMi:
                  is_next_bayram = True
         else:
              # Ay geçişi kontrolü
              next_rt = ResmiTatil.objects.filter(TatilTarihi=next_date).first()
-             if next_rt and (next_rt.TatilTipi == 'TAM' or (next_rt.ArefeMi and not next_rt.YarimGun)):
+             if next_rt and next_rt.BayramMi:
                  is_next_bayram = True
 
         # Zaman dilimleri

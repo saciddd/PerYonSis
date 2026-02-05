@@ -93,6 +93,8 @@
         <th class="vertical-text"><div class="vertical-text-inner">Riskli Gece F.M.</div></th>
         <th class="vertical-text"><div class="vertical-text-inner">Riskli Bayram F.M.</div></th>
         <th class="vertical-text"><div class="vertical-text-inner">Riskli Bayram Gece F.M.</div></th>
+        <th class="vertical-text"><div class="vertical-text-inner">Normal İcap</div></th>
+        <th class="vertical-text"><div class="vertical-text-inner">Bayram İcap</div></th>
         
         {% for d in days %}
           {% comment %} Determine header class for weekend/holiday {% endcomment %}
@@ -103,7 +105,6 @@
           {% endwith %}
           <th class="{{ c }}" style="width:34px;">{{ d.day_num }}</th>
         {% endfor %}
-        <th style="width:80px">Sistem Onayı</th>
       </tr>
     </thead>
     <tbody>
@@ -122,6 +123,8 @@
             <td style="text-align:center">{{ person.gece_riskli_normal|floatformat:0 }}</td>
             <td style="text-align:center">{{ person.riskli_bayram|floatformat:0 }}</td>
             <td style="text-align:center">{{ person.gece_riskli_bayram|floatformat:0 }}</td>
+            <td style="text-align:center; font-weight:bold;">{{ person.normal_icap|floatformat:0 }}</td>
+            <td style="text-align:center; font-weight:bold;">{{ person.bayram_icap|floatformat:0 }}</td>
             
           {% comment %} Expect person.mesai_data as list aligned with days; each item can be dict with Saat or IzinAd or empty {% endcomment %}
           {% for md in person.mesai_data %}
@@ -138,18 +141,18 @@
                   -
                 {% endif %}
               </span>
+              {% if md.IcapSure %}
+              <div style="font-weight:bold; margin-top:2px;">☎{{ md.IcapSure|floatformat:0 }}</div>
+              {% endif %}
             </td>
           {% endfor %}
-          <td>
-            {{ person.onay_durumu }}
-          </td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
 
   <div class="footer-note">
-    <small>* Sarı: Resmi tatil, Açık mavi: Arefe, Gri: Hafta sonu</small>
+    <small>* Sarı: Resmi tatil, Açık mavi: Arefe, Gri: Hafta sonu. ☎: İcap Süresi (Saat)</small>
   </div>
   
   {% if aciklama %}

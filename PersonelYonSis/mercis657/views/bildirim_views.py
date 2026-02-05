@@ -657,7 +657,11 @@ def bildirim_form(request, birim_id):
             rbayram = bildirim.RiskliBayramFazlaMesai or Decimal('0.0') if bildirim else Decimal('0.0')
             gece_rbayram = bildirim.GeceRiskliBayramFazlaMesai or Decimal('0.0') if bildirim else Decimal('0.0')
 
+            nicap = bildirim.NormalIcap or Decimal('0.0') if bildirim else Decimal('0.0')
+            bicap = bildirim.BayramIcap or Decimal('0.0') if bildirim else Decimal('0.0')
+
             daily_mesai = bildirim.MesaiDetay if (bildirim and bildirim.MesaiDetay) else {}
+            icap_daily = bildirim.IcapDetay if (bildirim and bildirim.IcapDetay) else {}
             onay = int(bildirim.OnayDurumu) if (bildirim and bildirim.OnayDurumu is not None) else 0
 
             personel_rows.append({
@@ -671,8 +675,11 @@ def bildirim_form(request, birim_id):
                 'gece_riskli_normal': gece_rnormal,
                 'riskli_bayram': rbayram,
                 'gece_riskli_bayram': gece_rbayram,
+                'normal_icap': nicap,
+                'bayram_icap': bicap,
                 'toplam': (normal + gece_normal + bayram + gece_bayram + rnormal + gece_rnormal + rbayram + gece_rbayram),
                 'daily_mesai': daily_mesai,
+                'icap_daily': icap_daily,
                 'onay_durumu': onay,
             })
 
@@ -696,11 +703,14 @@ def bildirim_form(request, birim_id):
     for row in personel_rows:
         p = row.get('personel')
         daily = row.get('daily_mesai') or {}
+        icap_daily = row.get('icap_daily') or {}
         onay_durumu = "Onaylandı" if row.get('onay_durumu', 0) == 1 else "Beklemede"
         mesai_data = []
         for d in days:
             key = d['full_date']
             entry = daily.get(key, {})
+            icap_val = icap_daily.get(key, 0)
+            
             if isinstance(entry, dict):
                 saat = entry.get('saat', '')
                 izinad = entry.get('izin', '')
@@ -714,6 +724,7 @@ def bildirim_form(request, birim_id):
                 'Saat': saat,
                 'IzinAd': izinad,
                 'MesaiNotu': mesai_notu,
+                'IcapSure': icap_val if icap_val > 0 else None,
                 'is_weekend': d.get('is_weekend', False),
                 'is_holiday': (d['day_num'] in resmi_tatil_gunleri_nums),
                 'is_arife': (d['day_num'] in arefe_gunleri_nums),
@@ -733,6 +744,8 @@ def bildirim_form(request, birim_id):
             'gece_riskli_normal': row.get('gece_riskli_normal'),
             'riskli_bayram': row.get('riskli_bayram'),
             'gece_riskli_bayram': row.get('gece_riskli_bayram'),
+            'normal_icap': row.get('normal_icap'),
+            'bayram_icap': row.get('bayram_icap'),
             'mesai_data': mesai_data,
             'hesaplama': {'fazla_mesai': None},
             'onay_durumu': onay_durumu,

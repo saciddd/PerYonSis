@@ -589,3 +589,53 @@ def izinleri_mesailere_isle(request, liste_id):
         })
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+@login_required
+@require_POST
+def toplu_mesai_degistir(request, liste_id, year, month):
+    """Belirli bir mesaiyi başka bir mesai ile toplu olarak değiştirir"""
+    if not request.user.has_permission('ÇS 657 Çizelge Sayfası'):
+        return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+        eski_mesai_id = data.get('eski_mesai_id')
+        yeni_mesai_id = data.get('yeni_mesai_id')
+        
+        # Eski ve yeni mesai ID'leri zorunlu
+        if not eski_mesai_id or not yeni_mesai_id:
+            return JsonResponse({'status': 'error', 'message': 'Eski ve yeni mesai seçimi zorunludur.'})
+            
+        eski_mesai_id = int(eski_mesai_id)
+        yeni_mesai_id = int(yeni_mesai_id)
+
+        # Liste ve tanımları al
+        liste = get_object_or_404(PersonelListesi, pk=liste_id)
+        
+        # Yeni mesai tanımını kontrol et
+        yeni_mesai = get_object_or_404(Mesai_Tanimlari, pk=yeni_mesai_id)
+        
+        person_ids = liste.kayitlar.values_list('personel_id', flat=True)
+        
+        mesailer = Mesai.objects.filter(
+            Personel_id__in=person_ids,
+            MesaiDate__year=year,
+            MesaiDate__month=month,
+            MesaiTanim_id=eski_mesai_id,
+            SistemdekiIzin=False
+        )
+        
+        updated_count = mesailer.update(
+            MesaiTanim=yeni_mesai,
+            OnayDurumu=True,
+            Degisiklik=False
+        )
+        
+        return JsonResponse({
+            'status': 'success', 
+            'message': f'{updated_count} adet mesai kaydı güncellendi.',
+            'updated_count': updated_count
+        })
+
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})

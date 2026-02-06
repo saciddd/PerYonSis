@@ -96,6 +96,7 @@ urlpatterns = [
     path('toplu-radyasyon-ata/<int:liste_id>/', views.toplu_radyasyon_ata, name='toplu_radyasyon_ata'),
     path('toplu-sabit-mesai-ata/<int:liste_id>/', views.toplu_sabit_mesai_ata, name='toplu_sabit_mesai_ata'),
     path('toplu-mesai-ata/<int:liste_id>/<int:year>/<int:month>/', views.toplu_mesai_ata, name='toplu_mesai_ata'),
+    path('toplu-mesai-degistir/<int:liste_id>/<int:year>/<int:month>/', views.toplu_mesai_degistir, name='toplu_mesai_degistir'),
 
     # İzin çek
     path('izinleri-mesailere-isle/<int:liste_id>/', views.izinleri_mesailere_isle, name='izinleri_mesailere_isle'),

@@ -1,68 +1,278 @@
-.sticky-header th {
-    position: sticky;
-    /* top: 0; Handled by JS */
-    background-color: #f8f9fa;
-    z-index: 10;
-    border: 1px solid #070707 !important;
+/* Çizelge - Modern & Cleanized Version */
+:root {
+    --table-border-color: #969696; /* Slate 400 - Higher contrast borders */
+    --table-head-bg: #323232;     /* Slate 800 - Dark header */
+    --table-head-text: #f8fafc;   /* Slate 50 - Light text */
+    --sticky-col-bg: #ffffff;
+    --sticky-col-text: #0f172a;
+    --hover-bg: #dbeafe;          /* Blue 100 - Distinct hover */
+    --stripe-bg: #f1f5f9;         /* Slate 100 */
+    
+    --day-cell-width: 42px;
+    --row-height: 54px; /* Increased to fit multi-line text + icons comfortably */
 }
 
-/* Sticky first columns */
-.sticky-col {
-    position: sticky;
-    background-color: #fff !important;
-    z-index: 15 !important;
-    border: 1px solid #070707 !important;
-}
-
-.sticky-col-1 { /* S/N column */
-    left: 0px;
-    z-index: 16 !important;
-}
-
-.sticky-col-2 { /* Personel Adı Soyadı column */
-    left: 50px;  /* Adjust based on S/N column width */
-    z-index: 16 !important;
-}
-
-.sticky-col-3 { /* Unvan column */
-    left: 100px !important; /* Adjust based on previous columns width */
-    z-index: 16 !important;
-}
-
+/* Table container */
 .table-responsive {
     scrollbar-gutter: stable both-edges;
-    max-height: calc(100vh - 250px);
+    max-height: calc(100vh - 180px);
     overflow: auto;
     padding-bottom: 10px;
+    border: 1px solid var(--table-border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    background-color: #ffffff;
 }
 
-.fazla-mesai-badge {
-    position: absolute;
-    bottom: 2px;
-    right: 4px;
-    font-size: 0.75em;
-    font-weight: bold;
-    background: rgba(180,180,180,0.35);
-    color: #000000;
-    padding: 1px 5px;
-    border-radius: 6px;
-    z-index: 1;
-    pointer-events: none;
-}
-
-/* Badge colors */
-.fazla-mesai-positive {
-    background: rgba(0,128,0,0.3) !important;
-}
-
-.fazla-mesai-negative {
-    background: rgba(255,0,0,0.3) !important;
-}
-
-/* Global table border color */
+/* Base Table */
 #cizelgeTable {
-    border-color: #070707 !important;
+    table-layout: fixed;
+    width: max-content;
+    border-collapse: separate; 
+    border-spacing: 0;
+    margin-bottom: 0;
+    font-size: 0.85rem;
+    color: #334155; /* Slate 700 */
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
-#cizelgeTable th, #cizelgeTable td {
-    border-color: #070707 !important;
+
+#cizelgeTable th,
+#cizelgeTable td {
+    vertical-align: middle;
+    text-align: center;
+    border: 1px solid var(--table-border-color) !important;
+    padding: 0 2px;
+    height: var(--row-height);
+    outline: none; 
+}
+
+/* Header Styling */
+#cizelgeTable thead th {
+    background-color: var(--table-head-bg) !important;
+    color: var(--table-head-text);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 1px solid #969696 !important; 
+    border-right: 1px solid #969696 !important;
+}
+
+/* Sticky Headers */
+.sticky-header th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.1);
+}
+
+/* --- Columns Configuration --- */
+/* 
+   Col 1: S/N (30px)
+   Col 2: Ad Soyad (150px)
+   Col 3: Unvan (100px)
+   Col 4: Fazla Mesai (40px)
+*/
+
+/* Sticky Columns Common */
+.sticky-col {
+    position: sticky;
+    background-color: var(--sticky-col-bg) !important;
+    color: var(--sticky-col-text);
+    z-index: 15 !important;
+}
+
+/* S/N Column */
+.sticky-col.sticky-col-1 {
+    left: 0;
+    width: 30px;
+    z-index: 20 !important;
+    font-weight: bold;
+    background-color: #f8fafc !important; 
+}
+thead tr th.sticky-col-1 {
+    left: 0;
+    width: 30px;
+    z-index: 25 !important;
+}
+
+/* Ad Soyad Column */
+.sticky-col.sticky-col-2 {
+    left: 30px; 
+    width: 150px;
+    text-align: left;
+    padding-left: 8px !important;
+    z-index: 20 !important;
+    font-weight: 600;
+}
+thead tr th.sticky-col-2 {
+    left: 30px;
+    width: 150px;
+    z-index: 25 !important;
+}
+
+/* Unvan Column */
+.sticky-col.sticky-col-3 {
+    left: 180px; 
+    width: 100px;
+    z-index: 20 !important;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+thead tr th.sticky-col-3 {
+    left: 180px;
+    width: 100px;
+    z-index: 25 !important;
+}
+
+/* Fazla Mesai Column */
+.fazla-mesai-cell {
+    width: 40px; 
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+
+/* --- Column Width Definitions (Replacing inline HTML styles) --- */
+#cizelgeTable colgroup col:nth-child(1) { width: 30px; }
+#cizelgeTable colgroup col:nth-child(2) { width: 150px; }
+#cizelgeTable colgroup col:nth-child(3) { width: 100px; }
+#cizelgeTable colgroup col:nth-child(4) { width: 40px; }
+#cizelgeTable colgroup col:nth-child(n+5) { width: var(--day-cell-width); }
+
+/* Spacer Column (Last Column) */
+#cizelgeTable colgroup col:last-child { 
+    width: 20px !important; 
+    max-width: 20px !important;
+}
+
+#cizelgeTable thead tr th:last-child,
+#cizelgeTable tbody tr td:last-child {
+    background-color: #969696 !important;
+    border-color: #969696 !important;
+    padding: 0 !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+}
+
+#cizelgeTable thead .days-row th:nth-child(4) { 
+    width: 40px;
+}
+
+/* Day Columns */
+#cizelgeTable thead .days-row th:nth-child(n+5) {
+    width: var(--day-cell-width);
+    min-width: var(--day-cell-width);
+    max-width: var(--day-cell-width);
+}
+
+/* Data Cells (Days) */
+.mesai-cell {
+    position: relative;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.85rem;
+    width: var(--day-cell-width);
+    min-width: var(--day-cell-width);
+    max-width: var(--day-cell-width);
+    /* transition removed for instant hover */
+    
+    /* Text wrapping/overflow handling */
+    white-space: normal;
+    word-break: break-all;
+    line-height: 1.2;
+    overflow: visible; /* Show icons that might overflow or float */
+    padding: 2px !important;
+}
+
+.mesai-cell:hover {
+    background-color: #93c5fd !important; /* Blue 300 - Clear plain blue */
+    color: #1e293b; /* Dark text for contrast */
+}
+
+.mesai-cell.modified {
+    background-color: #bfdbfe !important; 
+    color: #1e3a8a;
+}
+
+/* Shift Counts Rows (Vardiya Sayıları) */
+.vardiya-row {
+    transition: all 0.2s ease;
+}
+.vardiya-row.d-none {
+    display: none !important;
+}
+.vardiya-row th {
+    font-size: 0.75rem;
+    padding: 0;
+    height: 30px; /* Fixed height for header rows independent of data rows */
+    color: #1e293b;
+}
+
+/* Shift row colors */
+.gunduz-row th { background-color: #dcfce7 !important; color: #15803d !important; border-bottom: 1px solid #bbf7d0 !important; } 
+.aksam-row th { background-color: #fef9c3 !important; color: #a16207 !important; border-bottom: 1px solid #fde047 !important; } 
+.gece-row th { background-color: #dbeafe !important; color: #1d4ed8 !important; border-bottom: 1px solid #bfdbfe !important; } 
+
+/* Value styling */
+.mesai-main-value {
+    display: block; /* Removed flex center to allow floats to flow naturally */
+    width: 100%;
+    text-align: center;
+}
+
+/* Positive/Negative Fazla Mesai */
+.fm-pos { color: #16a34a !important; } /* Green 600 */
+.fm-neg { color: #dc2626 !important; } /* Red 600 */
+
+/* Row Striping & Hover */
+#cizelgeTable tbody tr:nth-child(even) td {
+    background-color: var(--stripe-bg);
+}
+#cizelgeTable tbody tr:hover td {
+    background-color: var(--hover-bg);
+    color: #0f172a;
+}
+
+/* Ensure sticky cols keep their white/stripe bg on hover if needed, or let them darken */
+#cizelgeTable tbody tr:hover .sticky-col {
+    background-color: var(--hover-bg) !important;
+}
+#cizelgeTable tbody tr:nth-child(even) .sticky-col {
+    background-color: var(--stripe-bg) !important;
+}
+
+/* Weekend & Holiday */
+.weekend {
+    background-color: #afafaf !important; /* Slate 300 */
+}
+.resmi-tatil {
+    background-color: #d6ccb0 !important; /* Red 300 */
+}
+.sistemdeki-izin {
+    background-color: #86efac !important; /* Green 300 */
+}
+
+/* Badges */
+.mesai-notu-badge {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    padding: 1px 3px;
+    font-size: 0.6rem;
+    line-height: 1;
+    background: #ef4444; /* Red 500 */
+    color: #ffffff;
+    border-radius: 4px;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Input/Form elements inside table if any */
+#cizelgeTable input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    text-align: center;
+    font-family: inherit;
+    font-size: inherit;
 }

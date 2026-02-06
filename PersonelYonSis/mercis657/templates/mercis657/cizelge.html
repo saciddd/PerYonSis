@@ -28,6 +28,14 @@
 
 {% block content %}
 <div class="container-fluid mt-3">
+    <div class="row">
+        <div class="col-12 text-center" style="width: 100%;">
+            <span class="alert alert-warning alert-dismissible fade show p-1 text-center" style="width: 100%;" role="alert">
+                Veri girişi esnasında tahmini hesaplama yapılmaktadır. Kesin hesaplamalar için kaydetme işlemini tamamlayın.
+            </span>
+        </div>
+    </div>
+
 <form id="filterForm" method="get" class="row g-2 align-items-end mb-3">
     <!-- Dönem Seçimi -->
     <div class="col-auto">
@@ -43,7 +51,7 @@
     </div>
 
     <!-- Birim ve Personel Seçimi -->
-    <div class="col-auto">
+    <div class="col-auto" style="width: 400px; max-width: 400px;">
         <label for="selectBirim" class="form-label small fw-bold">Birim</label>
         <div class="input-group input-group-sm">
             <select name="birim_id" id="selectBirim" class="form-select" required>
@@ -137,86 +145,89 @@
             <button type="button" class="btn btn-outline-secondary" id="topluIslemButton" title="Toplu İşlemler">
                 <i class="bi bi-gear"></i>
             </button>
+            <button type="button" class="btn btn-primary btn-sm d-none mt-3" id="approveAllButton">Tümünü Onayla</button>
+            <button type="button" class="btn btn-outline-danger btn-sm" id="hataKontrolBtn_Trigger" title="Hata Kontrolü">
+                <i class="bi bi-exclamation-circle"></i> Hata Kontrolü
+            </button>
         </div>
-        <button type="button" class="btn btn-primary btn-sm d-none mt-3" id="approveAllButton">Tümünü Onayla</button>
     </div>
 </form>
 
     {% if personeller %}
-    <!-- Personel Sıralama Butonu -->
-    <div class="mb-2">
+    <!-- Butonları gruplandırıyoruz -->
+    <div class="btn-group btn-group-sm mt-3">
+        <!-- Personel Sıralama Butonu -->
         <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#personelSiralaModal">
             <i class="bi bi-list-ul"></i> Personelleri Sırala
         </button>
-    <!-- İlk Liste Bildirimi Butonu -->
-    <button class="btn btn-outline-primary btn-sm"
-        onclick="olusturIlkListe('{{ liste|default:0 }}')">
-            {% if ilk_liste %}
-                <i class="bi bi-check-circle-fill text-success"></i> İlk Liste Bildirimi Oluşturuldu
-            {% else %}
-                <i class="bi bi-exclamation-circle-fill text-warning"></i> İlk Liste Bildirimi Oluştur
-            {% endif %}
-    </button>
-    <button class="btn btn-outline-success btn-sm" type="button" id="showFazlaMesaiBtn_Trigger" title="Fazla Mesaileri Hesapla">
-        <i class="bi bi-clock-history"></i> Fazla Mesaileri Göster
-    </button>
-    <button type="button" class="btn btn-outline-secondary btn-sm" id="imzaCizelgeleriBtn" title="İmza Çizelgeleri Yazdır">
-        <i class="bi bi-printer"></i> İmza Çizelgeleri
-    </button>
-    <span class="alert alert-warning alert-dismissible fade show p-1" role="alert">
-        Veri girişi esnasında tahmini hesaplama yapılmaktadır. Kesin hesaplamalar için kaydetme işlemini tamamlayın.
-    </span>
-    <!-- Sağ tarafa hizalanmış Hata Kontrolü butonu -->
-    <span class="float-end">
-        <button type="button" class="btn btn-outline-danger btn-sm" id="hataKontrolBtn_Trigger" title="Hata Kontrolü">
-            <i class="bi bi-exclamation-circle"></i> Hata Kontrolü
+        <!-- İlk Liste Bildirimi Butonu -->
+        <button class="btn btn-outline-primary btn-sm"
+            onclick="olusturIlkListe('{{ liste|default:0 }}')">
+                {% if ilk_liste %}
+                    <i class="bi bi-check-circle-fill text-success"></i> İlk Liste Bildirimi Oluşturuldu
+                {% else %}
+                    <i class="bi bi-exclamation-circle-fill text-warning"></i> İlk Liste Bildirimi Oluştur
+                {% endif %}
         </button>
-    </span>
+        <button class="btn btn-outline-success btn-sm" type="button" id="showFazlaMesaiBtn_Trigger" title="Fazla Mesaileri Hesapla">
+            <i class="bi bi-clock-history"></i> Fazla Mesaileri Göster
+        </button>
+        <button class="btn btn-outline-info btn-sm" type="button" id="toggleVardiyaRowsBtn" title="Vardiya Sayılarını Göster/Gizle">
+            <i class="bi bi-layers"></i> Vardiya Sayıları
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="imzaCizelgeleriBtn" title="İmza Çizelgeleri Yazdır">
+            <i class="bi bi-printer"></i> İmza Çizelgeleri
+        </button>
     </div>
 
-    <div class="table-responsive" style="max-height: calc(100vh - 250px); overflow: auto; padding-bottom: 10px;">
+    <!-- 20 px boşluk -->
+    <div style="height: 20px;"></div>
+    
+    <div class="table-responsive">
     <table id="cizelgeTable" class="table table-sm table-bordered table-hover">
         <colgroup>
-            <col style="width: 12px;">
-            <col style="width: 120px;">
-            <col style="width: 100px;">
-            <col style="width: 80px;">
+            <col>
+            <col>
+            <col>
+            <col>
             {% for day in days %}
-            <col style="width: 32px;">
+            <col>
             {% endfor %}
+            <col> <!-- Scrollbar spacer -->
         </colgroup>
-        <thead class="table-light sticky-header">
-            <!-- Vardiya Sayıları Satırları -->
-            <tr class="vardiya-row gunduz-row">
+        <thead class="sticky-header">
+            <!-- Vardiya Sayıları Satırları (Varsayılan Gizli) -->
+            <tr class="vardiya-row gunduz-row d-none">
                 <th colspan="4" class="text-center fw-bold">Gündüz</th>
                 {% for day in days %}
-                <th class="vardiya-count"
-                    data-date="{{ day.full_date }}">0</th>
+                <th class="vardiya-count" data-date="{{ day.full_date }}">0</th>
                 {% endfor %}
+                <th></th>
             </tr>
-            <tr class="vardiya-row aksam-row">
+            <tr class="vardiya-row aksam-row d-none">
                 <th colspan="4" class="text-center fw-bold">Akşam</th>
                 {% for day in days %}
-                <th class="vardiya-count"
-                    data-date="{{ day.full_date }}">0</th>
+                <th class="vardiya-count" data-date="{{ day.full_date }}">0</th>
                 {% endfor %}
+                <th></th>
             </tr>
-            <tr class="vardiya-row gece-row">
+            <tr class="vardiya-row gece-row d-none">
                 <th colspan="4" class="text-center fw-bold">Gece</th>
                 {% for day in days %}
-                <th class="vardiya-count"
-                    data-date="{{ day.full_date }}">0</th>
+                <th class="vardiya-count" data-date="{{ day.full_date }}">0</th>
                 {% endfor %}
+                <th></th>
             </tr>
             <!-- Günler Satırı -->
             <tr class="days-row">
-                <th class="sticky-col-1">S/N</th>
-                <th class="sticky-col-2">Personel Adı Soyadı</th>
-                <th class="sticky-col-3">Unvanı</th>
-                <th>Fazla Mesai/İcap</th>
+                <th class="sticky-col sticky-col-1">S/N</th>
+                <th class="sticky-col sticky-col-2">Personel Adı Soyadı</th>
+                <th class="sticky-col sticky-col-3">Unvanı</th>
+                <th>Fazla Mesai</th>
                 {% for day in days %}
                 <th class="{% if day.is_weekend %}weekend{% elif day.is_resmi_tatil %}resmi-tatil{% endif %}">{{ day.day_num }}</th>
                 {% endfor %}
+                <th></th>
             </tr>
         </thead>
         <tbody id="tableBody">
@@ -265,6 +276,7 @@
                     {% endif %}
                 </td>
                 {% endfor %}
+                <td></td><!-- Spacer cell -->
             </tr>
             {% endfor %}
         </tbody>
@@ -537,7 +549,8 @@
         function updateStickyHeaderPositions() {
             const thead = document.querySelector('.sticky-header');
             if (!thead) return;
-            const rows = Array.from(thead.querySelectorAll('tr'));
+            // Only visible rows
+            const rows = Array.from(thead.querySelectorAll('tr')).filter(row => !row.classList.contains('d-none'));
             let currentTop = 0;
             rows.forEach(row => {
                 Array.from(row.querySelectorAll('th')).forEach(cell => {
@@ -546,7 +559,20 @@
                 currentTop += row.offsetHeight;
             });
         }
+
+        // Toggle Vardiya Rows
+        const toggleBtn = document.getElementById('toggleVardiyaRowsBtn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function() {
+                const rows = document.querySelectorAll('.vardiya-row');
+                rows.forEach(row => row.classList.toggle('d-none'));
+                // Recalculate sticky positions after transition/render
+                setTimeout(updateStickyHeaderPositions, 50); 
+            });
+        }
+
         // Run initially and on resize
+        // Use ResizeObserver for more robust handling if available, or just window resize
         updateStickyHeaderPositions();
         window.addEventListener('resize', updateStickyHeaderPositions);
     });
@@ -1364,47 +1390,7 @@
     body, .container-fluid { font-size: 0.95rem; }
     .form-label, label { font-size: 0.95rem; }
     .form-select-sm, .form-control-sm { font-size: 0.95rem; }
-    #cizelgeTable .weekend { background-color: #f5d2d2; color: #222; }
-    #cizelgeTable .resmi-tatil { background-color: #ffe6cc; color: #222; }
-    #cizelgeTable td, #cizelgeTable th { padding: 2px 4px; }
-    #cizelgeTable td.mesai-cell:hover { background-color: #bbe9f7; cursor: pointer; }
-    #cizelgeTable tbody tr:hover { background-color: #f0f8ff; }
-    #cizelgeTable td.mesai-cell.modified { background-color: #b3d9ff !important; }
-    /* Green background for system-registered leaves/permissions */
-    #cizelgeTable td.sistemdeki-izin { background-color: #aeefb3 !important; }
     .input-group > .form-select, .input-group > .btn { margin-right: 4px; }
-    .mesai-notu-badge {
-        position: absolute;
-        top: 2px;
-        right: 4px;
-        font-size: 0.75em;
-        font-weight: bold;
-        background: rgba(180,180,180,0.35);
-        color: #000000;
-        padding: 1px 5px;
-        border-radius: 6px;
-        z-index: 1;
-        pointer-events: none;
-    }
-
-    .vardiya-row th {
-        z-index: 250;
-        font-size: 0.85em;
-        padding: 2px 4px;
-    }
-
-    .vardiya-count {
-        text-align: center;
-        font-weight: bold;
-    }
-    .mesai-cell {
-        position: relative;
-    }
-    .mesai-main-value {
-        display: inline;
-    }
-    .fm-pos { color: #198754 !important; font-weight: 700; }
-    .fm-neg { color: #dc3545 !important; font-weight: 700; }
 </style>
 
 <!-- Favori Mesai Modal -->

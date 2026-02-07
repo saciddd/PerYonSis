@@ -276,3 +276,20 @@ thead tr th.sticky-col-3 {
     font-family: inherit;
     font-size: inherit;
 }
+
+/* Cell Hover Tooltip */
+#cell-tooltip {
+    position: fixed;
+    display: none;
+    z-index: 9999;
+    background-color: #0f172a; /* Slate 900 */
+    color: #f8fafc; /* Slate 50 */
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    pointer-events: none; /* Mouse events pass through */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    white-space: nowrap;
+}

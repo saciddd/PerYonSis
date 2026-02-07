@@ -232,7 +232,7 @@
         </thead>
         <tbody id="tableBody">
             {% for personel in personeller %}
-            <tr id="personel-{{ personel.PersonelID }}">
+            <tr id="personel-{{ personel.PersonelID }}" data-personel-name="{{ personel.PersonelName }} {{ personel.PersonelSurname }}">
                 <!-- Satır Numarası -->
                 <td class="sticky-col sticky-col-1">{{ forloop.counter }}</td>
                 <td class="sticky-col sticky-col-2">
@@ -435,6 +435,57 @@
 <script src="{% static 'mercis657/js/fazla_mesai_hesapla.js' %}"></script>
 <script src="{% static 'mercis657/js/vardiya_sayilari.js' %}"></script>
 <script src="{% static 'mercis657/js/cizelge_kontrol.js' %}"></script>
+<div id="cell-tooltip"></div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tooltip = document.getElementById('cell-tooltip');
+        const table = document.getElementById('cizelgeTable');
+
+        if (tooltip && table) {
+            table.addEventListener('mouseover', function(e) {
+                const cell = e.target.closest('.mesai-cell');
+                if (cell) {
+                    const row = cell.closest('tr');
+                    const name = row ? row.dataset.personelName : '';
+                    if (name) {
+                        tooltip.textContent = name;
+                        tooltip.style.display = 'block';
+                    }
+                }
+            });
+
+            table.addEventListener('mousemove', function(e) {
+                if (tooltip.style.display === 'block') {
+                    // Position tooltip slightly to the right and bottom of the cursor
+                    const x = e.clientX + 15;
+                    const y = e.clientY + 15;
+                    
+                    // Simple boundary check (optional, but good for UX)
+                    // If it goes off screen right, move it left
+                    if (x + tooltip.offsetWidth > window.innerWidth) {
+                        tooltip.style.left = (e.clientX - tooltip.offsetWidth - 10) + 'px';
+                    } else {
+                        tooltip.style.left = x + 'px';
+                    }
+
+                    // If it goes off screen bottom, move it up
+                    if (y + tooltip.offsetHeight > window.innerHeight) {
+                        tooltip.style.top = (e.clientY - tooltip.offsetHeight - 10) + 'px';
+                    } else {
+                        tooltip.style.top = y + 'px';
+                    }
+                }
+            });
+
+            table.addEventListener('mouseout', function(e) {
+                const cell = e.target.closest('.mesai-cell');
+                if (cell) {
+                    tooltip.style.display = 'none';
+                }
+            });
+        }
+    });
+</script>
 <script>
     // Fazla mesai hesaplama
     document.addEventListener('DOMContentLoaded', function() {

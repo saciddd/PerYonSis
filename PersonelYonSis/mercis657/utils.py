@@ -394,18 +394,6 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
 
         fiili_calisma_suresi = accumulated_hours
         fazla_mesai = max(Decimal('0.0'), fiili_calisma_suresi - limit)
-
-    # debug
-    print(f"Olması gereken süre: {olmasi_gereken_sure}")
-    print(f"Fiili çalışma süresi: {fiili_calisma_suresi}")
-    print(f"Fazla mesai: {fazla_mesai}")
-    print(f"Arefe günleri: {arefe_gunleri}")
-    print(f"Mazeret azaltımı: {mazeret_azaltimi}")
-    print(f"Bayram fazla mesai: {res_bayram_gunduz}")
-    print(f"Normal fazla mesai: {res_normal_gunduz}")
-    print(f"Bayram gece fazla mesai: {res_bayram_gece}")
-    print(f"Normal gece fazla mesai: {res_normal_gece}")
-    print(f"Stop süresi: {stop_suresi}")
             
     return {
         'olması_gereken_sure': olmasi_gereken_sure,

@@ -97,7 +97,7 @@ def birim_guncelle(request, birim_id):
             if not UserBirim.objects.filter(user=request.user, birim=birim).exists():
                 return JsonResponse({'status': 'error', 'message': 'Bu birim için yetkiniz yok.'}, status=403)
 
-        ad = request.POST.get('BirimAdi')
+        ad = request.POST.get('birimAdi')
         kurum_id = request.POST.get('Kurum') or None
         ust_id = request.POST.get('UstBirim') or None
         mudur_id = request.POST.get('idareci') or None

@@ -183,19 +183,18 @@ document.getElementById('unvanArama').addEventListener('keyup', function() {
 
 // Modal Logic
 function setSelectedUnvan(unvanId, unvanAdi) {
+    // Görünür input (Display ONLY)
     const bransUnvanInput = document.getElementById('id_brans-unvan');
     if(bransUnvanInput) bransUnvanInput.value = unvanAdi;
-    // Hidden field varsayımı (Django formunda unvan fieldi hidden ise value set etmeliyiz)
-    // Eğer standart Django modelform ise select render eder. Burada modal partial içeriğini bilmediğimden genel mantığı koruyorum.
-    // Ancak id_brans-unvan genellikle select'tir. Option seçtirmek gerekebilir.
-    const bransUnvanSelect = document.querySelector('#id_brans-unvan');
-    if(bransUnvanSelect && bransUnvanSelect.tagName === 'SELECT') {
-        bransUnvanSelect.value = unvanId;
-    }
+
+    // Gizli input (Backend bu değeri kullanacak)
+    const bransUnvanHidden = document.getElementById('hidden_brans-unvan');
+    if(bransUnvanHidden) bransUnvanHidden.value = unvanId;
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    const bransEkleBtn = document.querySelector('[data-unvan-id]');
+    // "Branş Ekle" butonunu daha spesifik seçelim
+    const bransEkleBtn = document.querySelector('button[data-bs-target="#bransEkleModal"]');
     if (bransEkleBtn) {
         bransEkleBtn.addEventListener('click', function() {
             const unvanId = this.getAttribute('data-unvan-id');

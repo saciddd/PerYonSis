@@ -60,6 +60,18 @@ class PersonelForm(forms.ModelForm):
         if 'brans' in self.fields:
             self.fields['brans'].empty_label = "Branş seçiniz"
             self.fields['brans'].required = False
+            
+            # Unvan seçimine göre branşları filtrele
+            self.fields['brans'].queryset = Brans.objects.none()
+            
+            if 'unvan' in self.data:
+                try:
+                    unvan_id = int(self.data.get('unvan'))
+                    self.fields['brans'].queryset = Brans.objects.filter(unvan_id=unvan_id).order_by('ad')
+                except (ValueError, TypeError):
+                    pass  # invalid input from the client; ignore and fallback to empty queryset
+            elif self.instance.pk and self.instance.unvan:
+                self.fields['brans'].queryset = Brans.objects.filter(unvan=self.instance.unvan).order_by('ad')
         
         # Bazı alanları zorunlu yap
         self.fields['tc_kimlik_no'].required = True

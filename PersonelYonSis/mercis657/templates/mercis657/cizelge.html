@@ -155,30 +155,95 @@
 
     {% if personeller %}
     <!-- Butonları gruplandırıyoruz -->
-    <div class="btn-group btn-group-sm mt-3">
-        <!-- Personel Sıralama Butonu -->
-        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#personelSiralaModal">
-            <i class="bi bi-list-ul"></i> Personelleri Sırala
-        </button>
-        <!-- İlk Liste Bildirimi Butonu -->
-        <button class="btn btn-outline-primary btn-sm"
-            onclick="olusturIlkListe('{{ liste|default:0 }}')">
-                {% if ilk_liste %}
-                    <i class="bi bi-check-circle-fill text-success"></i> İlk Liste Bildirimi Oluşturuldu
-                {% else %}
-                    <i class="bi bi-exclamation-circle-fill text-warning"></i> İlk Liste Bildirimi Oluştur
-                {% endif %}
-        </button>
-        <button class="btn btn-outline-success btn-sm" type="button" id="showFazlaMesaiBtn_Trigger" title="Fazla Mesaileri Hesapla">
-            <i class="bi bi-clock-history"></i> Fazla Mesaileri Göster
-        </button>
-        <button class="btn btn-outline-info btn-sm" type="button" id="toggleVardiyaRowsBtn" title="Vardiya Sayılarını Göster/Gizle">
-            <i class="bi bi-layers"></i> Vardiya Sayıları
-        </button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" id="imzaCizelgeleriBtn" title="İmza Çizelgeleri Yazdır">
-            <i class="bi bi-printer"></i> İmza Çizelgeleri
-        </button>
+    <!-- Butonları gruplandırıyoruz -->
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <div class="btn-group btn-group-sm">
+            <!-- Personel Sıralama Butonu -->
+            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#personelSiralaModal">
+                <i class="bi bi-list-ul"></i> Personelleri Sırala
+            </button>
+            <!-- İlk Liste Bildirimi Butonu -->
+            <button class="btn btn-outline-primary btn-sm"
+                onclick="olusturIlkListe('{{ liste|default:0 }}')">
+                    {% if ilk_liste %}
+                        <i class="bi bi-check-circle-fill text-success"></i> İlk Liste Bildirimi Oluşturuldu
+                    {% else %}
+                        <i class="bi bi-exclamation-circle-fill text-warning"></i> İlk Liste Bildirimi Oluştur
+                    {% endif %}
+            </button>
+            <button class="btn btn-outline-success btn-sm" type="button" id="showFazlaMesaiBtn_Trigger" title="Fazla Mesaileri Hesapla">
+                <i class="bi bi-clock-history"></i> Fazla Mesaileri Göster
+            </button>
+            <button class="btn btn-outline-info btn-sm" type="button" id="toggleVardiyaRowsBtn" title="Vardiya Sayılarını Göster/Gizle">
+                <i class="bi bi-layers"></i> Vardiya Sayıları
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="imzaCizelgeleriBtn" title="İmza Çizelgeleri Yazdır">
+                <i class="bi bi-printer"></i> İmza Çizelgeleri
+            </button>
+        </div>
+
+        <!-- Zoom Kontrolleri -->
+        <div class="btn-group btn-group-sm ms-2">
+            <button type="button" class="btn btn-outline-secondary" id="cizelgeZoomOut" title="Küçült">
+                <i class="bi bi-zoom-out"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="cizelgeZoomReset" title="Sıfırla">
+                <i class="bi bi-search"></i> %100
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="cizelgeZoomIn" title="Büyüt">
+                <i class="bi bi-zoom-in"></i>
+            </button>
+        </div>
     </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Zoom functionality - Target the table container only
+            // "Direkt tarayıcının zoom özelliğini kullan" -> Using style.zoom on the container behaves like native zoom for that area
+            let currentZoom = parseFloat(localStorage.getItem('cizelgeZoomLevel')) || 1.0;
+            const targetElement = document.querySelector('.table-responsive');
+            
+            const updateZoom = (val) => {
+                if(targetElement) {
+                    targetElement.style.zoom = val;
+                    targetElement.style.transformOrigin = "top left"; // Just in case browser uses transform implementation of zoom
+                }
+                
+                // Update reset button text to show percentage
+                const resetBtn = document.getElementById('cizelgeZoomReset');
+                if(resetBtn) resetBtn.innerHTML = `<i class="bi bi-search"></i> %${Math.round(val * 100)}`;
+                localStorage.setItem('cizelgeZoomLevel', val);
+            };
+
+            // Apply saved zoom if different from 1
+            if(currentZoom !== 1.0) updateZoom(currentZoom);
+
+            const btnIn = document.getElementById('cizelgeZoomIn');
+            const btnOut = document.getElementById('cizelgeZoomOut');
+            const btnReset = document.getElementById('cizelgeZoomReset');
+
+            if(btnIn) {
+                btnIn.addEventListener('click', function() {
+                    currentZoom = Math.min(2.0, currentZoom + 0.1);
+                    updateZoom(currentZoom);
+                });
+            }
+            
+            if(btnOut) {
+                btnOut.addEventListener('click', function() {
+                    currentZoom = Math.max(0.5, currentZoom - 0.1);
+                    updateZoom(currentZoom);
+                });
+            }
+            
+            if(btnReset) {
+                btnReset.addEventListener('click', function() {
+                    currentZoom = 1.0;
+                    updateZoom(currentZoom);
+                });
+            }
+        });
+    </script>
 
     <!-- 20 px boşluk -->
     <div style="height: 20px;"></div>
@@ -456,24 +521,24 @@
 
             table.addEventListener('mousemove', function(e) {
                 if (tooltip.style.display === 'block') {
-                    // Position tooltip slightly to the right and bottom of the cursor
-                    const x = e.clientX + 15;
-                    const y = e.clientY + 15;
+                    // Tooltip is outside the zoomed container and has position: fixed
+                    // It uses viewport coordinates directly, so we use e.clientX/Y without zoom adjustment
                     
-                    // Simple boundary check (optional, but good for UX)
-                    // If it goes off screen right, move it left
+                    // Position tooltip slightly to the right and bottom of the cursor
+                    let x = e.clientX + 15;
+                    let y = e.clientY + 15;
+                    
+                    // Boundary check
                     if (x + tooltip.offsetWidth > window.innerWidth) {
-                        tooltip.style.left = (e.clientX - tooltip.offsetWidth - 10) + 'px';
-                    } else {
-                        tooltip.style.left = x + 'px';
+                        x = e.clientX - tooltip.offsetWidth - 10;
                     }
 
-                    // If it goes off screen bottom, move it up
                     if (y + tooltip.offsetHeight > window.innerHeight) {
-                        tooltip.style.top = (e.clientY - tooltip.offsetHeight - 10) + 'px';
-                    } else {
-                        tooltip.style.top = y + 'px';
+                        y = e.clientY - tooltip.offsetHeight - 10;
                     }
+                    
+                    tooltip.style.left = x + 'px';
+                    tooltip.style.top = y + 'px';
                 }
             });
 

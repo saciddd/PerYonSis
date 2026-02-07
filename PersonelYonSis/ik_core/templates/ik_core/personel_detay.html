@@ -1627,6 +1627,36 @@
                 }
             });
         }
+        // Unvan değiştiğinde branşları güncelle
+        const unvanSelect = document.querySelector('select[name="unvan"]');
+        const bransSelect = document.querySelector('select[name="brans"]');
+        
+        if (unvanSelect && bransSelect) {
+            unvanSelect.addEventListener('change', function() {
+                const unvanId = this.value;
+                
+                // Clear existing options
+                bransSelect.innerHTML = '<option value="">Branş seçiniz</option>';
+                
+                if (unvanId) {
+                    // AJAX isteği
+                    fetch(`{% url "ik_core:get_brans_by_unvan" %}?unvan_id=${unvanId}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.branslar && data.branslar.length > 0) {
+                                data.branslar.forEach(brans => {
+                                    const option = document.createElement('option');
+                                    option.value = brans.id;
+                                    option.textContent = brans.ad;
+                                    bransSelect.appendChild(option);
+                                });
+                            }
+                        })
+                        .catch(error => console.error('Error fetching branches:', error));
+                }
+            });
+        }
+
     });
 </script>
 

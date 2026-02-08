@@ -7,13 +7,17 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0 text-gray-800">Riskli Çalışma Yönetimi - {{ month_name }} {{ year }}</h1>
-        <div>
+        <div class="btn-group btn-group-sm" role="group">
             <!-- Çizelge urlsi: /mercis657/cizelge?donem=2026%2F01&birim_id=1 -->
-            <a href="{% url 'mercis657:cizelge' %}?donem={{ year }}/{{ month|stringformat:"02d" }}&birim_id={{ birim.BirimID }}" class="btn btn-secondary btn-sm">
-                <i class="fas fa-arrow-left"></i> Çizelgeye Dön
+            <a href="{% url 'mercis657:cizelge' %}?donem={{ year }}/{{ month|stringformat:"02d" }}&birim_id={{ birim.BirimID }}" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-arrow-left"></i> Çizelgeye Dön
+            </a>
+            <!-- Fazla Mesai Bildirim butonu, mercis657:bildirimler/?birim_id=1&donem=2025/12 benzeri, bildirim sayfasına git -->
+            <a href="{% url 'mercis657:bildirimler' %}?birim_id={{ birim.BirimID }}&donem={{ year }}/{{ month|stringformat:"02d" }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-arrow-left"></i> Bildirimler
             </a>
             <button id="btn-save" class="btn btn-success btn-sm ml-2">
-                <i class="fas fa-save"></i> Değişiklikleri Kaydet
+                <i class="bi bi-save"></i> Değişiklikleri Kaydet
             </button>
         </div>
     </div>
@@ -22,16 +26,16 @@
     <div class="alert alert-info border-left-info shadow-sm mb-4" role="alert">
         <div class="row align-items-center">
             <div class="col-auto">
-                <i class="fas fa-info-circle fa-2x text-info"></i>
+                <i class="bi bi-info-circle fa-2x text-info"></i>
             </div>
             <div class="col">
                 <h5 class="alert-heading font-weight-bold mb-1">Riskli Çalışma Talimatı</h5>
                 <ul class="mb-0 pl-3 small">
-                    <li><i class="fas fa-check-circle text-success mr-1"></i> Personelin riskli birimlerde çalıştığı günler aşağıdaki tablodan işaretlenmelidir.</li>
-                    <li><i class="fas fa-exclamation-triangle text-danger mr-1"></i> Tüm mesai riskli birimde geçiyorsa <strong>"TAM"</strong> olarak seçiniz.</li>
-                    <li><i class="fas fa-clock text-warning mr-1"></i> Gündüz normal birimde çalışıp, nöbeti riskli birimde tutuluyorsa <strong>"Nöbet"</strong> olarak seçiniz.</li>
-                    <li><i class="fas fa-calculator text-primary mr-1"></i> Hesaplanan riskli saatler, fazla mesai ödemelerine esas teşkil edecektir.</li>
-                    <li><i class="fas fa-mouse-pointer text-secondary mr-1"></i> İşlem butonları veya hücrelere tıklayerek hızlı düzenleme yapabilirsiniz.</li>
+                    <li><i class="bi bi-check-circle text-success mr-1"></i> Personelin riskli birimlerde çalıştığı günler aşağıdaki tablodan işaretlenmelidir.</li>
+                    <li><i class="bi bi-exclamation-triangle text-danger mr-1"></i> Tüm mesai riskli birimde geçiyorsa <strong>"TAM"</strong> olarak seçiniz.</li>
+                    <li><i class="bi bi-clock text-warning mr-1"></i> Gündüz normal birimde çalışıp, nöbeti riskli birimde tutuluyorsa <strong>"Nöbet"</strong> olarak seçiniz.</li>
+                    <li><i class="bi bi-calculator text-primary mr-1"></i> Hesaplanan riskli saatler, fazla mesai ödemelerine esas teşkil edecektir.</li>
+                    <li><i class="bi bi-mouse-pointer text-secondary mr-1"></i> İşlem butonları veya hücrelere tıklayerek hızlı düzenleme yapabilirsiniz.</li>
                 </ul>
             </div>
         </div>
@@ -96,7 +100,7 @@
                                 <div class="btn-group btn-group-sm" role="group">
                                     <button type="button" class="btn btn-outline-danger btn-sm p-bulk-action" data-pid="{{ p.id }}" data-action="all_full" title="Tam Riskli">Tam</button>
                                     <button type="button" class="btn btn-outline-warning btn-sm p-bulk-action" data-pid="{{ p.id }}" data-action="all_nobet" title="Nöbet Riskli">Nöbet</button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm p-bulk-action" data-pid="{{ p.id }}" data-action="all_clear" title="Temizle"><i class="fas fa-eraser"></i></button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm p-bulk-action" data-pid="{{ p.id }}" data-action="all_clear" title="Temizle"><i class="bi bi-eraser"></i></button>
                                 </div>
                             </td>
                         </tr>

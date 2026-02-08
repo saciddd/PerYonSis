@@ -40,6 +40,9 @@
         </div>
         <div class="col-md-6 text-end">
             <div class="btn-group btn-group-sm mt-3">
+            <a href="{% url 'mercis657:riskli_calisma_yonetim' selected_birim.BirimID|default:0 %}?year={{ selected_donem|slice:':4' }}&month={{ selected_donem|slice:'5:' }}" class="btn btn-outline-warning" title="Riskli Çalışmaları Belirle">
+                <i class="bi bi-exclamation-triangle"></i> Riskli Çalışmaları Belirle
+            </a>
             <button class="btn btn-success" id="createAllBtn_Trigger" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-plus-circle"></i> Tüm Personele Bildirim Oluştur / Güncelle
             </button>

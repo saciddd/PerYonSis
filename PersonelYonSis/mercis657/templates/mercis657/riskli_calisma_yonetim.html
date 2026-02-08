@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Riskli Çalışma Yönetimi{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0 text-gray-800">Riskli Çalışma Yönetimi - {{ month_name }} {{ year }}</h1>
+        <div>
+            <!-- Çizelge urlsi: /mercis657/cizelge?donem=2026%2F01&birim_id=1 -->
+            <a href="{% url 'mercis657:cizelge' %}?donem={{ year }}/{{ month|stringformat:"02d" }}&birim_id={{ birim.BirimID }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Çizelgeye Dön
+            </a>
+            <button id="btn-save" class="btn btn-success btn-sm ml-2">
+                <i class="fas fa-save"></i> Değişiklikleri Kaydet
+            </button>
+        </div>
+    </div>
+
+    <!-- Bilgilendirme Kutusu -->
+    <div class="alert alert-info border-left-info shadow-sm mb-4" role="alert">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <i class="fas fa-info-circle fa-2x text-info"></i>
+            </div>
+            <div class="col">
+                <h5 class="alert-heading font-weight-bold mb-1">Riskli Çalışma Talimatı</h5>
+                <ul class="mb-0 pl-3 small">
+                    <li><i class="fas fa-check-circle text-success mr-1"></i> Personelin riskli birimlerde çalıştığı günler aşağıdaki tablodan işaretlenmelidir.</li>
+                    <li><i class="fas fa-exclamation-triangle text-danger mr-1"></i> Tüm mesai riskli birimde geçiyorsa <strong>"TAM"</strong> olarak seçiniz.</li>
+                    <li><i class="fas fa-clock text-warning mr-1"></i> Gündüz normal birimde çalışıp, nöbeti riskli birimde tutuluyorsa <strong>"Nöbet"</strong> olarak seçiniz.</li>
+                    <li><i class="fas fa-calculator text-primary mr-1"></i> Hesaplanan riskli saatler, fazla mesai ödemelerine esas teşkil edecektir.</li>
+                    <li><i class="fas fa-mouse-pointer text-secondary mr-1"></i> İşlem butonları veya hücrelere tıklayerek hızlı düzenleme yapabilirsiniz.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">{{ birim.BirimAdi }} Personel Listesi</h6>
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-danger bulk-action" data-action="all_full">Tümü Tam</button>
+                <button type="button" class="btn btn-warning bulk-action" data-action="all_nobet">Tümü Nöbet</button>
+                <button type="button" class="btn btn-secondary bulk-action" data-action="all_clear">Temizle</button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0" id="risk-table" style="font-size: 0.85rem;">
+                    <thead class="thead-light">
+                        <tr>
+                            <th style="width: 200px; position: sticky; left: 0; z-index: 10; background-color: #f8f9fc;">Personel</th>
+                            <th class="text-center" style="width: 80px;">Riskli (Saat)</th>
+                            {% for day in days %}
+                            <th class="text-center p-1 {% if day.is_weekend %}bg-secondary text-white{% endif %}" style="min-width: 30px;">
+                                <div style="font-size: 0.7rem;">{{ day.day }}</div>
+                            </th>
+                            {% endfor %}
+                            <th style="width: 160px;">İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in personel_data %}
+                        <tr data-personel-id="{{ p.id }}">
+                            <td class="font-weight-bold" style="position: sticky; left: 0; z-index: 10; background-color: #fff;">
+                                {{ p.name }}
+                            </td>
+                            <td class="text-center">{{ p.total_riskli|default:"-" }}</td>
+                            {% for day_str, status in p.days.items %}
+                            <td class="text-center p-0 risk-cell"
+                                data-day="{{ day_str }}"
+                                data-mesai-id="{{ status.mesai_id|default:'' }}"
+                                data-status="{{ status.risk_status }}"
+                                data-has-mesai="{{ status.has_mesai|yesno:'true,false' }}"
+                                data-clickable="{{ status.is_clickable|yesno:'true,false' }}"
+                                style="vertical-align: middle; height: 40px;">
+                                {% if status.has_mesai %}
+                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center risk-indicator text-xs font-weight-bold" 
+                                         style="transition: all 0.2s;">
+                                        {% if status.risk_status == 'full' %}
+                                            Tam
+                                        {% elif status.risk_status == 'nobet' %}
+                                            Nöbet
+                                        {% else %}
+                                            
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <div class="bg-light w-100 h-100"></div>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-danger btn-sm p-bulk-action" data-pid="{{ p.id }}" data-action="all_full" title="Tam Riskli">Tam</button>
+                                    <button type="button" class="btn btn-outline-warning btn-sm p-bulk-action" data-pid="{{ p.id }}" data-action="all_nobet" title="Nöbet Riskli">Nöbet</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm p-bulk-action" data-pid="{{ p.id }}" data-action="all_clear" title="Temizle"><i class="fas fa-eraser"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+<style>
+    .risk-cell[data-clickable="true"]:hover {
+        background-color: #f1f1f1;
+        cursor: pointer;
+    }
+    
+    /* Status Colors for Cells */
+    .risk-cell[data-status="full"] {
+        background-color: #e74a3b !important; /* Red */
+        color: white;
+        border: 1px solid #c0392b;
+    }
+    .risk-cell[data-status="nobet"] {
+        background-color: #f6c23e !important; /* Yellow */
+        color: black;
+        border: 1px solid #dda20a;
+    }
+    .risk-cell[data-status="none"][data-clickable="true"] {
+        background-color: #c8e3f7; /* Light Blue */
+        cursor: pointer;
+        border: 1px solid #bbdefb;
+    }
+    .risk-cell[data-clickable="true"]:hover {
+        opacity: 0.8;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const riskStates = ['none', 'full', 'nobet'];
+        const updates = new Map(); // mid -> status
+
+        // Cell Click Handler
+        document.querySelectorAll('.risk-cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                if (this.dataset.clickable !== 'true') return;
+                
+                const mid = this.dataset.mesaiId;
+                if (!mid) return; 
+
+                // Cycle logic: none -> full -> nobet -> none
+                let currentStatus = this.dataset.status;
+                let nextIndex = (riskStates.indexOf(currentStatus) + 1) % riskStates.length;
+                let nextStatus = riskStates[nextIndex];
+                
+                updateCellVisuals(this, nextStatus);
+                updates.set(mid, nextStatus);
+            });
+        });
+
+        function updateCellVisuals(cell, status) {
+            cell.dataset.status = status;
+            const indicator = cell.querySelector('.risk-indicator');
+            
+            // remove distinct styles (handled by css attribute selector mostly)
+            // But icon needs manual update
+            indicator.innerHTML = '';
+            if (status === 'full') {
+                indicator.innerText = 'Tam';
+            } else if (status === 'nobet') {
+                indicator.innerText = 'Nöbet';
+            } else {
+                 indicator.innerText = '';
+            }
+        }
+
+        // Save Button
+        document.getElementById('btn-save').addEventListener('click', function() {
+            if (updates.size === 0) {
+                alert("Değişiklik yok.");
+                return;
+            }
+
+            const updateList = [];
+            updates.forEach((status, mid) => {
+                updateList.push({ mesai_id: mid, status: status });
+            });
+
+            fetch("{% url 'mercis657:riskli_calisma_kaydet' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ updates: updateList })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    updates.clear();
+                    // update total risky time maybe? Reload page is easier to refresh stats.
+                    window.location.reload(); 
+                } else {
+                    alert("Hata: " + data.message);
+                }
+            });
+        });
+        
+        // Bulk Actions (Page Level)
+        document.querySelectorAll('.bulk-action').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const action = this.dataset.action;
+                if (!confirm("Tüm sayfada bu işlemi yapmak istediğinize emin misiniz?")) return;
+                
+                sendBulkRequest({
+                    bulk_action: action,
+                    year: {{ year }},
+                    month: {{ month }},
+                    birim_id: {{ birim.BirimID }},
+                    target_type: 'all'
+                });
+            });
+        });
+        
+        // Bulk Actions (Personel Level)
+        document.querySelectorAll('.p-bulk-action').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const action = this.dataset.action;
+                const pid = this.dataset.pid;
+                
+                sendBulkRequest({
+                    bulk_action: action,
+                    year: {{ year }},
+                    month: {{ month }},
+                    birim_id: {{ birim.BirimID }},
+                    target_type: 'personel',
+                    personel_id: pid
+                });
+            });
+        });
+
+        function sendBulkRequest(payload) {
+             fetch("{% url 'mercis657:riskli_calisma_kaydet' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    window.location.reload();
+                } else {
+                    alert("Hata: " + data.message);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

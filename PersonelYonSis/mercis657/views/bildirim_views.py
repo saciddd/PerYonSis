@@ -358,17 +358,17 @@ def bildirim_olustur(request):
         gnormal = fazla_mesai_sonuclari.get('normal_gece_fazla_mesai', Decimal('0.0'))
         gbayram = fazla_mesai_sonuclari.get('bayram_gece_fazla_mesai', Decimal('0.0'))
         
-        rnormal = Decimal('0.0')
-        rbayram = Decimal('0.0')
-        grnormal = Decimal('0.0') # Gece Riskli Normal
-        grbayram = Decimal('0.0') # Gece Riskli Bayram
+        rnormal = fazla_mesai_sonuclari.get('riskli_normal_fazla_mesai', Decimal('0.0'))
+        rbayram = fazla_mesai_sonuclari.get('riskli_bayram_fazla_mesai', Decimal('0.0'))
+        grnormal = fazla_mesai_sonuclari.get('riskli_normal_gece_fazla_mesai', Decimal('0.0'))
+        grbayram = fazla_mesai_sonuclari.get('riskli_bayram_gece_fazla_mesai', Decimal('0.0'))
 
-        # Radyasyon çalışanları için mesaileri riskli grubuna kaydır
+        # Radyasyon çalışanları için NORMAL mesaileri de riskli grubuna kaydır
         if personel_listesi_kayit.radyasyon_calisani:
-            rnormal = normal
-            rbayram = bayram
-            grnormal = gnormal
-            grbayram = gbayram
+            rnormal += normal
+            rbayram += bayram
+            grnormal += gnormal
+            grbayram += gbayram
             
             normal = Decimal('0.0')
             bayram = Decimal('0.0')
@@ -801,164 +801,3 @@ def bildirim_form(request, birim_id):
     response['Content-Disposition'] = f'inline; filename="{filename}"'
     return response
 
-@login_required
-def riskli_bildirim_data(request, birim_id):
-    """Riskli bildirim yönetimi için veri sağlar"""
-    try:
-        if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
-            return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
-
-        donem = request.GET.get('donem')
-        if not donem:
-            return JsonResponse({'status': 'error', 'message': 'Dönem parametresi gerekli.'}, status=400)
-
-        year, month = map(int, donem.split('/') if '/' in donem else donem.split('-'))
-
-        birim = Birim.objects.filter(BirimID=birim_id).first()
-        if not birim:
-            return JsonResponse({'status': 'error', 'message': 'Birim bulunamadı.'}, status=404)
-
-        liste = PersonelListesi.objects.filter(birim=birim, yil=year, ay=month).first()
-        if not liste:
-            return JsonResponse({'status': 'error', 'message': 'Personel listesi bulunamadı.'}, status=404)
-
-        bildirimler = []
-        for kayit in liste.kayitlar.select_related('personel'):
-            bildirim = Bildirim.objects.filter(
-                Personel=kayit.personel,
-                DonemBaslangic=date(year, month, 1)
-            ).first()
-
-            if bildirim:
-                bildirimler.append({
-                    'bildirim_id': bildirim.BildirimID,
-                    'personel_adi': f"{kayit.personel.PersonelName} {kayit.personel.PersonelSurname}",
-                    'normal_mesai': float(bildirim.NormalFazlaMesai or 0),
-                    'bayram_mesai': float(bildirim.BayramFazlaMesai or 0),
-                    'riskli_normal': float(bildirim.RiskliNormalFazlaMesai or 0),
-                    'riskli_bayram': float(bildirim.RiskliBayramFazlaMesai or 0),
-                    'gece_normal_mesai': float(bildirim.GeceNormalFazlaMesai or 0),
-                    'gece_bayram_mesai': float(bildirim.GeceBayramFazlaMesai or 0),
-                    'gece_riskli_normal': float(bildirim.GeceRiskliNormalFazlaMesai or 0),
-                    'gece_riskli_bayram': float(bildirim.GeceRiskliBayramFazlaMesai or 0),
-                })
-
-        return JsonResponse({'status': 'success', 'bildirimler': bildirimler})
-
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})
-
-
-@login_required
-@require_POST
-def update_risky_bildirim(request, birim_id):
-    """Riskli bildirim değerlerini günceller"""
-    try:
-        if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
-            return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
-
-        data = json.loads(request.body)
-        changes = data.get('changes', [])
-
-        if not changes:
-            return JsonResponse({'status': 'error', 'message': 'Güncellenecek veri bulunamadı.'}, status=400)
-
-        with transaction.atomic():
-            not_updated = []
-            updated_count = 0
-            for change in changes:
-                bildirim = Bildirim.objects.filter(BildirimID=change['bildirim_id']).first()
-                if not bildirim:
-                    continue
-                # Eğer bildirim onaylıysa değişiklik yapılmaz, listeye ekle
-                if bildirim.OnayDurumu == 1:
-                    try:
-                        p = bildirim.Personel
-                        person_name = f"{p.PersonelName} {p.PersonelSurname}"
-                    except Exception:
-                        person_name = str(bildirim.BildirimID)
-                    not_updated.append(f"Bildirim.{person_name} isimli personelin bildirimi onaylandığı için değişiklik yapılmadı")
-                else:
-                    bildirim.RiskliNormalFazlaMesai = Decimal(str(change.get('riskli_normal', 0)))
-                    bildirim.RiskliBayramFazlaMesai = Decimal(str(change.get('riskli_bayram', 0)))
-                    bildirim.NormalFazlaMesai = Decimal(str(change.get('normal_mesai', 0)))
-                    bildirim.BayramFazlaMesai = Decimal(str(change.get('bayram_mesai', 0)))
-                    
-                    # Gece alanları
-                    bildirim.GeceRiskliNormalFazlaMesai = Decimal(str(change.get('gece_riskli_normal', 0)))
-                    bildirim.GeceRiskliBayramFazlaMesai = Decimal(str(change.get('gece_riskli_bayram', 0)))
-                    bildirim.GeceNormalFazlaMesai = Decimal(str(change.get('gece_normal_mesai', 0)))
-                    bildirim.GeceBayramFazlaMesai = Decimal(str(change.get('gece_bayram_mesai', 0)))
-                    
-                    bildirim.save()
-                    updated_count += 1
-
-        resp = {'status': 'success', 'message': 'Değişiklikler başarıyla kaydedildi.'}
-        resp['updated_count'] = updated_count
-        if not_updated:
-            resp['not_updated'] = not_updated
-        return JsonResponse(resp)
-
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})
-
-
-@login_required
-@require_POST
-def convert_all_to_risky(request, birim_id):
-    """Tüm bildirimleri riskli hale çevirir"""
-    try:
-        if not request.user.has_permission("ÇS 657 Bildirim İşlemleri"):
-            return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
-
-        data = json.loads(request.body)
-        donem = data.get('donem')
-
-        if not donem:
-            return JsonResponse({'status': 'error', 'message': 'Dönem parametresi gerekli.'}, status=400)
-
-        year, month = map(int, donem.split('/') if '/' in donem else donem.split('-'))
-
-        birim = Birim.objects.filter(BirimID=birim_id).first()
-        if not birim:
-            return JsonResponse({'status': 'error', 'message': 'Birim bulunamadı.'}, status=404)
-
-        liste = PersonelListesi.objects.filter(birim=birim, yil=year, ay=month).first()
-        if not liste:
-            return JsonResponse({'status': 'error', 'message': 'Personel listesi bulunamadı.'}, status=404)
-
-        with transaction.atomic():
-            not_updated = []
-            updated_count = 0
-            for kayit in liste.kayitlar.select_related('personel'):
-                bildirim = Bildirim.objects.filter(
-                    Personel=kayit.personel,
-                    DonemBaslangic=date(year, month, 1)
-                ).first()
-
-                if not bildirim:
-                    continue
-
-                if bildirim.OnayDurumu == 1:
-                    try:
-                        p = kayit.personel
-                        person_name = f"{p.PersonelName} {p.PersonelSurname}"
-                    except Exception:
-                        person_name = str(bildirim.BildirimID)
-                    not_updated.append(f"Bildirim.{person_name} isimli personelin bildirimi onaylandığı için değişiklik yapılmadı")
-                else:
-                    bildirim.RiskliNormalFazlaMesai = bildirim.NormalFazlaMesai
-                    bildirim.RiskliBayramFazlaMesai = bildirim.BayramFazlaMesai
-                    bildirim.NormalFazlaMesai = Decimal('0.0')
-                    bildirim.BayramFazlaMesai = Decimal('0.0')
-                    bildirim.save()
-                    updated_count += 1
-
-        resp = {'status': 'success', 'message': 'Tüm bildirimler riskli hale çevrildi.'}
-        resp['updated_count'] = updated_count
-        if not_updated:
-            resp['not_updated'] = not_updated
-        return JsonResponse(resp)
-
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})

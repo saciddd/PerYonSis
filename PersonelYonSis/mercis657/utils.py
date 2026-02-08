@@ -26,7 +26,11 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             'normal_fazla_mesai': Decimal,       # Normal Gündüz
             'bayram_gece_fazla_mesai': Decimal,  # Bayram Gece
             'normal_gece_fazla_mesai': Decimal,  # Normal Gece
-            'stop_suresi': Decimal
+            'stop_suresi': Decimal,
+            'riskli_bayram_fazla_mesai': Decimal,
+            'riskli_normal_fazla_mesai': Decimal,
+            'riskli_bayram_gece_fazla_mesai': Decimal,
+            'riskli_normal_gece_fazla_mesai': Decimal
         }
     """
     personel = personel_listesi_kayit.personel
@@ -59,7 +63,11 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             'normal_fazla_mesai': 0,
             'bayram_gece_fazla_mesai': 0,
             'normal_gece_fazla_mesai': 0,
-            'stop_suresi': 0
+            'stop_suresi': 0,
+            'riskli_bayram_fazla_mesai': 0,
+            'riskli_normal_fazla_mesai': 0,
+            'riskli_bayram_gece_fazla_mesai': 0,
+            'riskli_normal_gece_fazla_mesai': 0
         }
 
     # ==========================================
@@ -114,6 +122,11 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     bucket_normal_gece = Decimal('0.0')
     bucket_normal_gunduz = Decimal('0.0')
     
+    riskli_bucket_bayram_gece = Decimal('0.0')
+    riskli_bucket_bayram_gunduz = Decimal('0.0')
+    riskli_bucket_normal_gece = Decimal('0.0')
+    riskli_bucket_normal_gunduz = Decimal('0.0')
+
     stop_suresi = Decimal('0.0')
     fiili_calisma_suresi = Decimal('0.0')
     izin_azaltimi = Decimal('0.0')
@@ -195,6 +208,19 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         # ----------------------------------------------------------------
         # GÜNDÜZ PERSONELİ (Mevcut Mantık: Bucket Havuzu)
         # ----------------------------------------------------------------
+        
+        # Sabit Mesai Bitiş Saati Analizi (Nobet riskli için)
+        sabit_mesai_bitis = None
+        if sabit_mesai and sabit_mesai.aralik:
+             try:
+                 parts = sabit_mesai.aralik.strip().split()
+                 if len(parts) >= 2:
+                     end_s = parts[1] # "17:00"
+                     eh, em = map(int, end_s.split(':'))
+                     sabit_mesai_bitis = time(eh, em)
+             except (ValueError, IndexError):
+                 pass
+
         # Mazereti havuza ekle
         # bucket_normal_gunduz += mazeret_azaltimi
         
@@ -257,6 +283,25 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 elif is_bayram and not is_gece: bucket_bayram_gunduz += duration
                 elif not is_bayram and is_gece: bucket_normal_gece += duration
                 else: bucket_normal_gunduz += duration
+                
+                # --- Riskli Bucket Ekleme ---
+                risky_duration = Decimal('0.0')
+                if mesai.riskli_calisma == Mesai.RISKLI_TAM:
+                    risky_duration = duration
+                elif mesai.riskli_calisma == Mesai.RISKLI_NOBET:
+                     if mesai.MesaiDate.weekday() < 5 and mesai.MesaiDate not in tatil_map_month:
+                          if sabit_mesai_bitis:
+                                r_start_dt = datetime.combine(mesai.MesaiDate, sabit_mesai_bitis)
+                                r_start = max(seg_start, r_start_dt)
+                                r_end = seg_end
+                                if r_end > r_start:
+                                     risky_duration = Decimal((r_end - r_start).total_seconds() / 3600)
+
+                if risky_duration > 0:
+                    if is_bayram and is_gece: riskli_bucket_bayram_gece += risky_duration
+                    elif is_bayram and not is_gece: riskli_bucket_bayram_gunduz += risky_duration
+                    elif not is_bayram and is_gece: riskli_bucket_normal_gece += risky_duration
+                    else: riskli_bucket_normal_gunduz += risky_duration
 
 
         fazla_mesai = fiili_calisma_suresi - effective_olmasi_gereken
@@ -280,6 +325,18 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 rem -= take
             if rem > 0:
                 res_normal_gunduz = rem
+        
+        # --- Riskli Fazla Mesai Hesaplama (Min Logic) ---
+        res_riskli_bayram_gece = min(riskli_bucket_bayram_gece, res_bayram_gece)
+        res_riskli_bayram_gunduz = min(riskli_bucket_bayram_gunduz, res_bayram_gunduz)
+        res_riskli_normal_gece = min(riskli_bucket_normal_gece, res_normal_gece)
+        res_riskli_normal_gunduz = min(riskli_bucket_normal_gunduz, res_normal_gunduz)
+
+        # --- Risksiz Fazla Mesai Düzeltmesi (Düşüm) ---
+        res_bayram_gece -= res_riskli_bayram_gece
+        res_bayram_gunduz -= res_riskli_bayram_gunduz
+        res_normal_gece -= res_riskli_normal_gece
+        res_normal_gunduz -= res_riskli_normal_gunduz
 
     else:
         # ----------------------------------------------------------------
@@ -294,6 +351,12 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         res_bayram_gunduz = Decimal('0.0')
         res_normal_gece = Decimal('0.0')
         res_normal_gunduz = Decimal('0.0')
+        
+        # Riskli Fazla Mesai Bucketları
+        res_riskli_bayram_gece = Decimal('0.0')
+        res_riskli_bayram_gunduz = Decimal('0.0')
+        res_riskli_normal_gece = Decimal('0.0')
+        res_riskli_normal_gunduz = Decimal('0.0')
         
         for mesai in mesailer:
             if not mesai.MesaiTanim:
@@ -385,16 +448,34 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                      # OT kısmını analiz et
                      is_bayram, is_gece = get_context(mid)
                      
-                     # Normalde segmentin hepsi aynı tiptedir (çünkü milestone'lar kritik saatlerde bölüyor)
-                     # Yani OT kısmını direkt current tipte ekleyebiliriz
-                     if is_bayram and is_gece: res_bayram_gece += ot_part
-                     elif is_bayram and not is_gece: res_bayram_gunduz += ot_part
-                     elif not is_bayram and is_gece: res_normal_gece += ot_part
-                     else: res_normal_gunduz += ot_part
+                     # Nöbetli personelde RISKLI_NOBET = vardiyanın tamamı risklidir
+                     is_risky_segment = (
+                         mesai.riskli_calisma == Mesai.RISKLI_TAM
+                         or mesai.riskli_calisma == Mesai.RISKLI_NOBET
+                     )
+
+                     if is_risky_segment:
+                         if is_bayram and is_gece:
+                             res_riskli_bayram_gece += ot_part
+                         elif is_bayram:
+                             res_riskli_bayram_gunduz += ot_part
+                         elif is_gece:
+                             res_riskli_normal_gece += ot_part
+                         else:
+                             res_riskli_normal_gunduz += ot_part
+                     else:
+                         if is_bayram and is_gece:
+                             res_bayram_gece += ot_part
+                         elif is_bayram:
+                             res_bayram_gunduz += ot_part
+                         elif is_gece:
+                             res_normal_gece += ot_part
+                         else:
+                             res_normal_gunduz += ot_part
 
         fiili_calisma_suresi = accumulated_hours
         fazla_mesai = max(Decimal('0.0'), fiili_calisma_suresi - limit)
-            
+    
     return {
         'olması_gereken_sure': olmasi_gereken_sure,
         'fiili_calisma_suresi': fiili_calisma_suresi,
@@ -407,6 +488,10 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         'bayram_gece_fazla_mesai': res_bayram_gece,
         'normal_gece_fazla_mesai': res_normal_gece,
         'stop_suresi': stop_suresi,
+        'riskli_bayram_fazla_mesai': res_riskli_bayram_gunduz,
+        'riskli_normal_fazla_mesai': res_riskli_normal_gunduz,
+        'riskli_bayram_gece_fazla_mesai': res_riskli_bayram_gece,
+        'riskli_normal_gece_fazla_mesai': res_riskli_normal_gece,
         **hesapla_icap_suresi(personel_listesi_kayit, year, month)
     }
 
@@ -768,3 +853,16 @@ def get_turkish_month_name(month_index):
     except (ValueError, TypeError):
         pass
     return f"{month_index}. Dönem"
+
+def hesapla_riskli_calisma(personel_listesi_kayit, year, month):
+    """
+    Personel için toplam riskli çalışma süresini hesaplar (hesapla_fazla_mesai fonksiyonunu kullanır).
+    """
+    sonuc = hesapla_fazla_mesai(personel_listesi_kayit, year, month)
+    total = (
+        sonuc.get('riskli_bayram_fazla_mesai', Decimal('0.0')) +
+        sonuc.get('riskli_normal_fazla_mesai', Decimal('0.0')) +
+        sonuc.get('riskli_bayram_gece_fazla_mesai', Decimal('0.0')) +
+        sonuc.get('riskli_normal_gece_fazla_mesai', Decimal('0.0'))
+    )
+    return total

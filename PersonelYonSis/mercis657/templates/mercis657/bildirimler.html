@@ -41,7 +41,7 @@
         <div class="col-md-6 text-end">
             <div class="btn-group btn-group-sm mt-3">
             <button class="btn btn-success" id="createAllBtn_Trigger" {% if not selected_birim %}disabled{% endif %}>
-                <i class="bi bi-plus-circle"></i> Tüm Personele Bildirim
+                <i class="bi bi-plus-circle"></i> Tüm Personele Bildirim Oluştur / Güncelle
             </button>
             <button class="btn btn-info" id="downloadFormBtn" {% if not selected_birim %}disabled{% endif %}>
                 <i class="bi bi-download"></i> Bildirim Formu
@@ -61,11 +61,7 @@
     <!-- Başlık -->
     <div class="row mb-3">
         <div class="col">
-            <h4>Bildirim İşlemleri 
-                <button class="btn btn-sm btn-warning ms-2" id="riskliBildirimBtn" {% if not selected_birim %}disabled{% endif %}>
-                    <i class="bi bi-exclamation-triangle"></i> Riskli Çalışma Bildirimleri
-                </button>
-            </h4>
+            <h4>Bildirim İşlemleri</h4>
             {% if selected_birim %}
             <small class="text-muted">{{ selected_birim.BirimAdi }}</small>
             {% endif %}
@@ -979,18 +975,6 @@ td.toplam-icap.has-value {
 }
 </style>
 
-<!-- Riskli Bildirim Yönetimi Modal -->
-{% include 'mercis657/riskli_bildirim_yonetim.html' %}
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Riskli bildirim butonu event listener
-    document.getElementById('riskliBildirimBtn').addEventListener('click', function() {
-        const modal = new bootstrap.Modal(document.getElementById('riskliBildirimModal'));
-        modal.show();
-    });
-});
-</script>
 {% include 'mercis657/partials/calisma_statusu_modal.html' %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {

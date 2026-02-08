@@ -133,6 +133,9 @@
     <div class="col-auto ms-auto">
         <div class="btn-group btn-group-sm mt-3">
             {% if bildirim_yetkisi %}
+            <a href="{% url 'mercis657:riskli_calisma_yonetim' selected_birim_id|default:0 %}?year={{ current_year }}&month={{ current_month }}" class="btn btn-outline-warning" title="Riskli Çalışmaları Belirle">
+                <i class="bi bi-exclamation-triangle"></i> Riskli Çalışmaları Belirle
+            </a>
             <button type="button" class="btn btn-outline-primary" id="btnBildirim" title="Fazla Mesai Bildirim Sayfasına Git">
                 <i class="bi bi-envelope"></i>
                 <span>Fazla Mesai Bildirim</span>

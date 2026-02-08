@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .views import fazla_mesai_views, liste_views
-from .views import personel_yonetim_views, cizelge_kontrol_views
+from .views import personel_yonetim_views, cizelge_kontrol_views, riskli_calisma_views
 # from .views import main_views
 
 app_name = 'mercis657'  # Namespace tanımlaması
@@ -122,10 +122,9 @@ urlpatterns = [
     path('bildirim/tekil-onay/<int:bildirim_id>/', views.bildirim_tekil_onay, name='bildirim_tekil_onay'),
     path('bildirim/toplu-onay/<int:birim_id>/', views.bildirim_toplu_onay, name='bildirim_toplu_onay'),
     
-    # Riskli Bildirim Yönetimi
-    path('bildirimler/<int:birim_id>/riskli-data/', views.riskli_bildirim_data, name='riskli_bildirim_data'),
-    path('bildirimler/<int:birim_id>/update-risky/', views.update_risky_bildirim, name='update_risky_bildirim'),
-    path('bildirimler/<int:birim_id>/convert-all-risky/', views.convert_all_to_risky, name='convert_all_to_risky'),
+    # Riskli Çalışma Yönetimi
+    path('riskli-calisma/<int:birim_id>/', riskli_calisma_views.riskli_calisma_yonetim, name='riskli_calisma_yonetim'),
+    path('riskli-calisma/kaydet/', riskli_calisma_views.riskli_calisma_kaydet, name='riskli_calisma_kaydet'),
 
     # Raporlama
     path('raporlama/', views.raporlama, name='raporlama'),

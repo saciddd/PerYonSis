@@ -275,6 +275,9 @@ def cizelge_kaydet(request):
                 existing_mesai.Icap = icap
                 existing_mesai.SistemdekiIzin = False  # manuel değişiklik
                 
+                # Manuel değişiklik yapıldığında riskli çalışma bilgisini sıfırla
+                existing_mesai.riskli_calisma = None
+                
                 # Sadece Icap değiştiyse ve Mesai/Izin değişmediyse onay durumu bozulmasın (Yedek yok çünkü)
                 if icap_changed and not (mesai_changed or izin_changed):
                      # OnayDurumu'nu ellemiyoruz (veya True yapıyoruz?)

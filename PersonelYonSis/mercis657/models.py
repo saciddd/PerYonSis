@@ -135,6 +135,22 @@ class Mesai(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='mercis657_mesai_ekleyen')
     
+    RISKLI_TAM = 'full'
+    RISKLI_NOBET = 'nobet'
+
+    RISKLI_CHOICES = [
+        (RISKLI_TAM, 'Tam Riskli'),
+        (RISKLI_NOBET, 'Nöbet Riskli'),
+    ]
+
+    riskli_calisma = models.CharField(
+        max_length=10,
+        choices=RISKLI_CHOICES,
+        default=None,
+        null=True,
+        blank=True
+    )
+    
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['Personel', 'MesaiDate'], name='unique_personel_mesaidate')

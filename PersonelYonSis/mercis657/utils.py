@@ -558,44 +558,28 @@ def hesapla_icap_suresi(personel_listesi_kayit, year, month):
         # Zaman dilimleri
         today_08 = datetime.combine(current_date, time(8, 0))
         today_13 = datetime.combine(current_date, time(13, 0))
+        today_17 = datetime.combine(current_date, time(17, 0))
         today_24 = datetime.combine(next_date, time(0, 0)) # Bu gece yarısı
         next_08  = datetime.combine(next_date, time(8, 0))
         
-        # Başlangıç zamanını belirle
-        start_dt = today_08 # Mesai yoksa varsayılan
+        # Başlangıç zamanını belirle (Sabit Kurallar)
+        # Hafta içi resmi tatil değilse 17-08 arası
+        # Hafta içi Arefeyse 13-08 arası
+        # Resmi tatil veya haftasonuysa 24 saat (08-08)
         
-        if kayit.MesaiTanim and kayit.MesaiTanim.Saat:
-            try:
-                saat_str = kayit.MesaiTanim.Saat.strip()
-                _, end_s = saat_str.split()
-                eh, em = map(int, end_s.split(':'))
-                mesai_bitis = datetime.combine(current_date, time(eh, em))
-                
-                # Sarkma ve gece yarısı geçişleri
-                start_parts = saat_str.split()[0].split(':')
-                start_h, start_m = int(start_parts[0]), int(start_parts[1])
-                start_time_val = calendar.timegm(datetime.combine(current_date, time(start_h, start_m)).timetuple())
-                end_time_val = calendar.timegm(mesai_bitis.timetuple())
-                
-                if getattr(kayit.MesaiTanim, 'SonrakiGuneSarkiyor', False):
-                     mesai_bitis += timedelta(days=1)
-                elif end_time_val < start_time_val:
-                     mesai_bitis += timedelta(days=1)
-                
-                # Kural: Icap hesaplaması için mesai bitimi 08:00'dan büyük olmalı
-                # Eğer mesai bitişi <= 08:00 ise start_dt 08:00 kalır (User logic interpretation needed).
-                # Kullanıcı: "mesai bitiminin 08:00'dan büyük olmak zorunda"
-                # Bu şu demek olabilir: Eğer gece vardiyası 08:00'de bitiyorsa icap 08:00'de başlar.
-                # Eğer 07:00'de bitiyorsa 08:00'de icap başlar mı? Yoksa 07:00'de mi?
-                # "Mesai yoksa" durumu ile benzer.
-                # Varsayım: Mesai bitişi > 08:00 ise start_dt = mesai_bitis
-                if mesai_bitis > today_08:
-                    start_dt = mesai_bitis
-                else:
-                    start_dt = today_08
-
-            except ValueError:
-                pass # Parse hatası, varsayılan 08:00 kalır
+        is_weekend = current_date.weekday() >= 5
+        is_resmi_tatil = current_date in tatil_map
+        
+        if is_weekend:
+            start_dt = today_08
+        elif is_resmi_tatil:
+            rt = tatil_map[current_date]
+            if rt.ArefeMi:
+                start_dt = today_13
+            else:
+                start_dt = today_08
+        else:
+            start_dt = today_17
 
         # Bitiş zamanı her zaman ertesi gün 08:00
         end_dt = next_08
@@ -866,3 +850,96 @@ def hesapla_riskli_calisma(personel_listesi_kayit, year, month):
         sonuc.get('riskli_normal_gece_fazla_mesai', Decimal('0.0'))
     )
     return total
+
+def duzelt_icap_kayitlari(donem_baslangic):
+    """
+    Belirtilen dönemdeki tüm bildirimler için icap sürelerini yeniden hesaplar ve günceller.
+    Değişen kayıtları raporlar ve excel çıktısı üretir.
+    
+    Args:
+        donem_baslangic (str or date): 'YYYY-MM-DD' formatında string veya date objesi.
+    """
+    from .models import Bildirim, PersonelListesiKayit
+    import pandas as pd
+    
+    if isinstance(donem_baslangic, str):
+        target_date = datetime.strptime(donem_baslangic, '%Y-%m-%d').date()
+    else:
+        target_date = donem_baslangic
+
+    bildirimler = Bildirim.objects.filter(DonemBaslangic=target_date)
+    
+    updated_records = []
+    total_count = bildirimler.count()
+    change_count = 0
+    scanned_count = 0
+    
+    print(f"Toplam {total_count} bildirim incelenecek. Dönem: {target_date}")
+
+    for b in bildirimler:
+        scanned_count += 1
+        
+        # PersonelListesiKayit bul
+        plk = PersonelListesiKayit.objects.filter(
+            liste=b.PersonelListesi,
+            personel=b.Personel
+        ).first()
+        
+        if not plk:
+            print(f"Kayıt bulunamadı: {b.Personel} - {b.PersonelListesi}")
+            continue
+            
+        # Icap Hesaplama
+        sonuc = hesapla_icap_suresi(plk, target_date.year, target_date.month)
+        
+        yeni_normal = sonuc['normal_icap']
+        yeni_bayram = sonuc['bayram_icap']
+        yeni_detay = sonuc['icap_detay']
+        
+        # Değişiklik Kontrolü
+        diff = False
+        
+        # Decimal karşılaştırma
+        if abs(b.NormalIcap - yeni_normal) > Decimal('0.01'):
+            diff = True
+        elif abs(b.BayramIcap - yeni_bayram) > Decimal('0.01'):
+            diff = True
+        # Detay kontrolü (basit string/json comparison)
+        elif b.IcapDetay != yeni_detay:
+             diff = True
+
+        if diff:
+            old_normal = b.NormalIcap
+            old_bayram = b.BayramIcap
+            
+            b.NormalIcap = yeni_normal
+            b.BayramIcap = yeni_bayram
+            b.IcapDetay = yeni_detay
+            b.save()
+            
+            change_count += 1
+            updated_records.append({
+                'Personel': f"{b.Personel.PersonelName} {b.Personel.PersonelSurname}",
+                'Eski Normal Icap': float(old_normal),
+                'Yeni Normal Icap': float(yeni_normal),
+                'Eski Bayram Icap': float(old_bayram),
+                'Yeni Bayram Icap': float(yeni_bayram)
+            })
+            
+    print(f"İşlem Tamamlandı.")
+    print(f"İncelenen Kayıt Sayısı: {scanned_count}")
+    print(f"Değişen Kayıt Sayısı: {change_count}")
+    
+    if updated_records:
+        try:
+            df = pd.DataFrame(updated_records)
+            output_file = f"icap_duzeltme_raporu_{target_date}.xlsx"
+            df.to_excel(output_file, index=False)
+            print(f"Excel raporu oluşturuldu: {output_file}")
+            return output_file
+        except Exception as e:
+            print(f"Excel raporu oluşturulurken hata: {e}")
+            return None
+    else:
+        print("Herhangi bir değişiklik yapılmadı.")
+        return None

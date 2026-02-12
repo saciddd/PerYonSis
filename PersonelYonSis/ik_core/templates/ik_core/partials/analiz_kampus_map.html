@@ -23,7 +23,8 @@
                          data-kat="{{ bina.kat_bilgisi|default_if_none:'' }}"
                          data-birim="{{ bina.birim_sayisi }}"
                          data-personel="{{ bina.personel_sayisi }}"
-                         style="fill:rgba(0, 123, 255, 0.3); stroke:#007bff; stroke-width:0.5; cursor:pointer; transition: fill 0.3s;">
+                         data-birim-listesi='{{ bina.birim_listesi_json|safe }}'
+                         style="fill:rgba(0, 123, 255, 0.1); stroke:#007bff; stroke-width:0.5; cursor:pointer; transition: fill 0.3s;">
                     <title>{{ bina.ad }} ({{ bina.personel_sayisi }} Personel)</title>
                 </polygon>
                 {% endif %}

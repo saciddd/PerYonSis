@@ -80,6 +80,7 @@ def serialize_personel_list(personels):
             'kisa_unvan_id': str(ku_id) if ku_id else 'unknown',
             'kisa_unvan_ad': str(kisa_unvan_val),
             'durum': p.durum,
+            'aciklama': current_pb.not_text if current_pb and current_pb.not_text else '',
             'kadro_durumu': 'Kadrolu' if p.kadrolu_personel else 'Geçici Gelen',
             'ozel_durumlar': ozel_durumlar,
         })
@@ -579,6 +580,9 @@ def personel_list_modal_view(request):
         )
         if pbs:
             last_pb = pbs[0]
+            # Attach for template
+            p.aciklama = last_pb.not_text if last_pb.not_text else ''
+            p.kisa_unvan_ad = p.kisa_unvan or 'Tanımsız'
             
         birim_name = "Birim Atanmamış"
         if last_pb:
@@ -672,8 +676,9 @@ def kampus_analiz_view(request):
     
     kisa_unvan_ad_to_id = {ku.ad: ku.id for ku in KisaUnvan.objects.all()}
 
-    # 2. Bina Calculate
+     # 2. Bina Calculate
     bina_personel_counts = {} # { bina_id: count }
+    bina_unit_counts = {} # { bina_id: { unit_name: count } }
     tanimsiz_personel_count = 0
     
     for p in personeller_list:
@@ -696,6 +701,13 @@ def kampus_analiz_view(request):
         if current_pb and current_pb.birim and current_pb.birim.bina:
              b_id = current_pb.birim.bina.id
              bina_personel_counts[b_id] = bina_personel_counts.get(b_id, 0) + 1
+             
+             # Unit aggregations
+             if b_id not in bina_unit_counts:
+                 bina_unit_counts[b_id] = {}
+             unit_name = current_pb.birim.ad
+             bina_unit_counts[b_id][unit_name] = bina_unit_counts[b_id].get(unit_name, 0) + 1
+
         elif current_pb and current_pb.birim and not current_pb.birim.bina:
              # Birimi var ama binası yok -> Tanımsız bina
              tanimsiz_personel_count += 1
@@ -708,6 +720,11 @@ def kampus_analiz_view(request):
         binalar = aktif_kampus.binalar.all()
         for bina in binalar:
             count = bina_personel_counts.get(bina.id, 0)
+            
+            # Prepare unit list sorted by count
+            units = bina_unit_counts.get(bina.id, {})
+            sorted_units = sorted([{'ad': k, 'count': v} for k,v in units.items()], key=lambda x: x['count'], reverse=True)
+            
             bina_verileri.append({
                 'id': bina.id,
                 'ad': bina.ad,
@@ -715,7 +732,8 @@ def kampus_analiz_view(request):
                 'koordinatlar': bina.koordinatlar,
                 'birim_sayisi': bina.birim_set.count(),
                 'personel_sayisi': count,
-                'kat_bilgisi': bina.aciklama 
+                'kat_bilgisi': bina.aciklama,
+                'birim_listesi_json': json.dumps(sorted_units)
             })
 
     partial_context = context.copy()

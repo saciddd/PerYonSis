@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 db_config.json
 PersonelYonSis/db_config_main.json
+/PersonelYonSis/media

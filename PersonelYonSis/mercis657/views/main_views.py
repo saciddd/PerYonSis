@@ -108,7 +108,7 @@ def cizelge(request):
     # Dönemler: mevcut aydan 6 ay önce ile 2 ay sonrası arası
     today = date.today().replace(day=1)
     donemler = []
-    for i in range(-6, 3):
+    for i in range(-6, 5):
         d = today + relativedelta(months=i)
         value = f"{d.year}/{d.month:02d}"
         label = value

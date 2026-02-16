@@ -1179,14 +1179,18 @@ def ust_birim_ekle(request):
 
 @login_required
 @require_POST
+@login_required
+@require_POST
 def birim_ekle(request):
-    """Birim ekleme endpoint'i"""
+    """Birim ekleme ve güncelleme endpoint'i"""
+    birim_id = request.POST.get('birim_id')
     bina_id = request.POST.get('bina_id')
     ust_birim_id = request.POST.get('ust_birim_id')
     ad = request.POST.get('ad', '').strip()
+    aciklama = request.POST.get('aciklama', '').strip()
     
     if not all([bina_id, ust_birim_id, ad]):
-        return JsonResponse({'success': False, 'message': 'Tüm alanlar gereklidir.'})
+        return JsonResponse({'success': False, 'message': 'Tüm zorunlu alanlar gereklidir.'})
     
     try:
         bina = Bina.objects.get(id=bina_id)
@@ -1194,18 +1198,39 @@ def birim_ekle(request):
     except (Bina.DoesNotExist, UstBirim.DoesNotExist):
         return JsonResponse({'success': False, 'message': 'Geçersiz bina veya üst birim.'})
     
-    if Birim.objects.filter(bina=bina, ad=ad).exists():
-        return JsonResponse({'success': False, 'message': 'Bu birim adı bu binada zaten mevcut.'})
-    
-    birim = Birim.objects.create(bina=bina, ust_birim=ust_birim, ad=ad)
+    if birim_id:
+        # Güncelleme
+        try:
+            birim = Birim.objects.get(id=birim_id)
+            # İsim çakışması kontrolü (kendisi hariç)
+            if Birim.objects.filter(bina=bina, ad=ad).exclude(id=birim_id).exists():
+                return JsonResponse({'success': False, 'message': 'Bu birim adı bu binada zaten mevcut.'})
+            
+            birim.bina = bina
+            birim.ust_birim = ust_birim
+            birim.ad = ad
+            birim.aciklama = aciklama
+            birim.save()
+            message = 'Birim başarıyla güncellendi.'
+        except Birim.DoesNotExist:
+             return JsonResponse({'success': False, 'message': 'Güncellenecek birim bulunamadı.'})
+    else:
+        # Ekleme
+        if Birim.objects.filter(bina=bina, ad=ad).exists():
+            return JsonResponse({'success': False, 'message': 'Bu birim adı bu binada zaten mevcut.'})
+        
+        birim = Birim.objects.create(bina=bina, ust_birim=ust_birim, ad=ad, aciklama=aciklama)
+        message = 'Birim başarıyla eklendi.'
+
     return JsonResponse({
         'success': True, 
-        'message': 'Birim başarıyla eklendi.',
+        'message': message,
         'birim': {
             'id': birim.id, 
             'ad': birim.ad, 
             'bina_ad': birim.bina.ad,
-            'ust_birim_ad': birim.ust_birim.ad
+            'ust_birim_ad': birim.ust_birim.ad,
+            'aciklama': birim.aciklama
         }
     })
 
@@ -1226,7 +1251,13 @@ def get_birimler_by_bina(request):
     
     return JsonResponse({
         'birimler': [
-            {'id': birim.id, 'ad': birim.ad, 'ust_birim_ad': birim.ust_birim.ad}
+            {
+                'id': birim.id, 
+                'ad': birim.ad, 
+                'ust_birim_ad': birim.ust_birim.ad, 
+                'ust_birim_id': birim.ust_birim.id,
+                'aciklama': birim.aciklama or ''
+            }
             for birim in birimler
         ]
     })

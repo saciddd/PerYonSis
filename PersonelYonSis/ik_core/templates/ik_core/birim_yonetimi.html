@@ -96,8 +96,10 @@
                     <tr>
                         <th>#</th>
                         <th>Birim Adı</th>
+                        <th>Açıklama</th>
                         <th>Üst Birim</th>
                         <th>Bina</th>
+                        <th>İşlemler</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -105,8 +107,20 @@
                     <tr>
                         <td>{{ forloop.counter }}</td>
                         <td>{{ birim.ad }}</td>
+                        <td>{{ birim.aciklama|default:"" }}</td>
                         <td data-ust-birim-id="{{ birim.ust_birim.id }}">{{ birim.ust_birim.ad }}</td>
                         <td>{{ birim.bina.ad }}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-warning edit-birim-btn" 
+                                    data-id="{{ birim.id }}" 
+                                    data-ad="{{ birim.ad }}" 
+                                    data-aciklama="{{ birim.aciklama|default:'' }}"
+                                    data-ust-birim-id="{{ birim.ust_birim.id }}"
+                                    data-bina-id="{{ birim.bina.id }}"
+                                    data-bina-ad="{{ birim.bina.ad }}">
+                                <i class="bi bi-pencil-square"></i> Düzenle
+                            </button>
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -191,13 +205,65 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Birim ekle butonuna tıklandığında bina bilgilerini set et
-    const birimEkleBtn = document.querySelector('[data-bina-id]');
+    // Birim ekle/düzenle işlemleri
+    const birimEkleModal = document.getElementById('birimEkleModal');
+    const modalTitle = birimEkleModal ? birimEkleModal.querySelector('.modal-title') : null;
+    const form = document.getElementById('birimEkleForm');
+
+    // Birim Ekle butonuna tıklandığında formu temizle
+    const birimEkleBtn = document.querySelector('[data-bs-target="#birimEkleModal"]'); // Doğru selector
     if (birimEkleBtn) {
         birimEkleBtn.addEventListener('click', function() {
+            if (form) form.reset();
+            const idInput = document.getElementById('id_birim-id');
+            if (idInput) idInput.value = ''; // ID'yi temizle
+            if (modalTitle) modalTitle.textContent = 'Birim Ekle';
+            
             const binaId = this.getAttribute('data-bina-id');
             const binaAdi = this.getAttribute('data-bina-ad');
+            
+            if (binaId) {
+                setSelectedBina(binaId, binaAdi);
+            }
+        });
+    }
+
+    // Tablo üzerinde delegasyon ile "Düzenle" butonlarını dinle
+    const birimTablosu = document.getElementById('birimTablosu');
+    if (birimTablosu) {
+        birimTablosu.addEventListener('click', function(e) {
+            const btn = e.target.closest('.edit-birim-btn');
+            if (!btn) return;
+            
+            e.preventDefault();
+            
+            // Verileri al
+            const id = btn.getAttribute('data-id');
+            const ad = btn.getAttribute('data-ad');
+            const aciklama = btn.getAttribute('data-aciklama');
+            const ustBirimId = btn.getAttribute('data-ust-birim-id');
+            const binaId = btn.getAttribute('data-bina-id');
+            const binaAdi = btn.getAttribute('data-bina-ad');
+            
+            // Formu doldur
+            const idInput = document.getElementById('id_birim-id');
+            const adInput = document.getElementById('id_birim-ad');
+            const aciklamaInput = document.getElementById('id_birim-aciklama');
+            const ustBirimInput = document.getElementById('id_birim-ust_birim');
+            
+            if (idInput) idInput.value = id;
+            if (adInput) adInput.value = ad;
+            if (aciklamaInput) aciklamaInput.value = aciklama;
+            if (ustBirimInput) ustBirimInput.value = ustBirimId;
+            
             setSelectedBina(binaId, binaAdi);
+            
+            // Başlığı güncelle
+            if (modalTitle) modalTitle.textContent = 'Birim Düzenle';
+            
+            // Modalı aç
+            const modalInstance = bootstrap.Modal.getOrCreateInstance(birimEkleModal);
+            modalInstance.show();
         });
     }
 });
@@ -231,8 +297,20 @@ function getBirimlerByBina(binaId, ustBirimId = '') {
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td>${birim.ad}</td>
+                    <td>${birim.aciklama || ''}</td>
                     <td data-ust-birim-id="${birim.ust_birim_id}">${birim.ust_birim_ad}</td>
                     <td>${birim.bina_ad}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-warning edit-birim-btn" 
+                                data-id="${birim.id}" 
+                                data-ad="${birim.ad}" 
+                                data-aciklama="${birim.aciklama || ''}"
+                                data-ust-birim-id="${birim.ust_birim_id}"
+                                data-bina-id="${binaId}"
+                                data-bina-ad="${birim.bina_ad}">
+                            <i class="bi bi-pencil-square"></i> Düzenle
+                        </button>
+                    </td>
                 `;
             });
         })

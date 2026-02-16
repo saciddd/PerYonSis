@@ -39,7 +39,12 @@
                         {{ p.kisa_unvan_ad|default:"-" }}
                     </td>
                     <td class="p-1">
-                        {{ p.aciklama|default:"-" }}
+                        <div class="editable-note" 
+                             contenteditable="true" 
+                             data-personel-birim-id="{{ p._last_pb_id|default:'' }}"
+                             style="min-height: 20px; border-bottom: 1px dashed #ccc; cursor: text;">
+                            {{ p.aciklama|default:"" }}
+                        </div>
                     </td>
                     <td class="p-1">
                         {% if p.kadrolu_personel %}

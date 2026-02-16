@@ -81,6 +81,7 @@ def serialize_personel_list(personels):
             'kisa_unvan_ad': str(kisa_unvan_val),
             'durum': p.durum,
             'aciklama': current_pb.not_text if current_pb and current_pb.not_text else '',
+            'personel_birim_id': str(current_pb.id) if current_pb else '',
             'kadro_durumu': 'Kadrolu' if p.kadrolu_personel else 'Geçici Gelen',
             'ozel_durumlar': ozel_durumlar,
         })
@@ -583,6 +584,7 @@ def personel_list_modal_view(request):
             # Attach for template
             p.aciklama = last_pb.not_text if last_pb.not_text else ''
             p.kisa_unvan_ad = p.kisa_unvan or 'Tanımsız'
+            p._last_pb_id = last_pb.id # Attach PersonelBirim ID for editing
             
         birim_name = "Birim Atanmamış"
         if last_pb:
@@ -705,8 +707,16 @@ def kampus_analiz_view(request):
              # Unit aggregations
              if b_id not in bina_unit_counts:
                  bina_unit_counts[b_id] = {}
-             unit_name = current_pb.birim.ad
-             bina_unit_counts[b_id][unit_name] = bina_unit_counts[b_id].get(unit_name, 0) + 1
+             
+             # Store unit details using ID as key to be safe, or just collect list
+             unit_id = current_pb.birim.id
+             if unit_id not in bina_unit_counts[b_id]:
+                 bina_unit_counts[b_id][unit_id] = {
+                     'ad': current_pb.birim.ad,
+                     'aciklama': current_pb.birim.aciklama,
+                     'count': 0
+                 }
+             bina_unit_counts[b_id][unit_id]['count'] += 1
 
         elif current_pb and current_pb.birim and not current_pb.birim.bina:
              # Birimi var ama binası yok -> Tanımsız bina
@@ -723,7 +733,17 @@ def kampus_analiz_view(request):
             
             # Prepare unit list sorted by count
             units = bina_unit_counts.get(bina.id, {})
-            sorted_units = sorted([{'ad': k, 'count': v} for k,v in units.items()], key=lambda x: x['count'], reverse=True)
+            # Transform dict values to list
+            unit_list = [
+                {
+                    'id': uid,
+                    'ad': uData['ad'],
+                    'aciklama': uData['aciklama'],
+                    'count': uData['count']
+                } 
+                for uid, uData in units.items()
+            ]
+            sorted_units = sorted(unit_list, key=lambda x: x['count'], reverse=True)
             
             bina_verileri.append({
                 'id': bina.id,

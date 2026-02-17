@@ -37,6 +37,7 @@ urlpatterns = [
 	path('mutemet/', include('mutemet_app.urls')),
 	path('hizmet_sunum/', include('hizmet_sunum_app.urls')),
 	path('nobet_defteri/', include('nobet_defteri.urls')),
+	path('cardcontrol/', include('cardcontrol.urls')),
 	path('ik_core/', include('ik_core.urls')),
 	path('admin/', admin.site.urls),
 	# Bildirim işlemleri

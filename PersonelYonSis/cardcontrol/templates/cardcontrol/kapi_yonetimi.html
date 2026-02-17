@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                Kapı/Cihaz Seçimi
+            </div>
+            <div class="card-body">
+                <form method="get" action="{% url 'cardcontrol:kapi_yonetimi' %}">
+                    <div class="input-group">
+                        <select name="cihaz_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">Cihaz Seçiniz...</option>
+                            {% for c in cihazlar %}
+                            <option value="{{ c.id }}" {% if selected_cihaz and selected_cihaz.id == c.id %}selected{% endif %}>
+                                {{ c.kapi_adi }} ({{ c.ip }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary">Getir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if selected_cihaz %}
+<div class="row">
+    <!-- Kullanıcı Ekleme Formu -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                {{ selected_cihaz.kapi_adi }} - Kullanıcı Ekle
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'cardcontrol:cihaz_kullanici_ekle' selected_cihaz.id %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label>Ad Soyad</label>
+                        <input type="text" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Kart ID / User ID</label>
+                        <input type="number" name="card_id" class="form-control" required>
+                        <small class="text-muted">Kart üzerindeki numara.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Kullanıcı Ekle</button>
+                </form>
+                <hr>
+                <a href="{% url 'cardcontrol:cihaz_sync' selected_cihaz.id %}" class="btn btn-warning w-100 text-dark">
+                    <i class="bi bi-arrow-repeat"></i> Cihazdan Veri Çek (Sync)
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kullanıcı Listesi -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                Cihazdaki Kullanıcılar ({{ users|length }})
+            </div>
+            <div class="card-body table-responsive" style="max-height: 500px;">
+                <table class="table table-striped table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>UID</th>
+                            <th>User ID</th>
+                            <th>Ad Soyad</th>
+                            <th>Kart No</th>
+                            <th>Yetki</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td>{{ u.uid }}</td>
+                            <td>{{ u.user_id }}</td>
+                            <td>{{ u.name }}</td>
+                            <td>{{ u.card }}</td>
+                            <td>{{ u.privilege }}</td>
+                            <td>
+                                <form method="post" action="{% url 'cardcontrol:cihaz_kullanici_sil' selected_cihaz.id %}" onsubmit="return confirm('Bu kullanıcıyı cihazdan silmek istediğinize emin misiniz?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="kullanici_db_id" value="{{ u.id }}">
+                                    <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">Kullanıcı bulunamadı.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

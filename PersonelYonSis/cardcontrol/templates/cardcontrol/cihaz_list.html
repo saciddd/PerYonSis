@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                Cihaz Ekle
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <button type="submit" class="btn btn-success mt-3 w-100">Kaydet</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                Kayıtlı Cihazlar
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>Kapı Adı</th>
+                            <th>IP</th>
+                            <th>Port</th>
+                            <th>Açıklama</th>
+                            <th>İşlem</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cihaz in cihazlar %}
+                        <tr>
+                            <td>{{ cihaz.kapi_adi }}</td>
+                            <td>{{ cihaz.ip }}</td>
+                            <td>{{ cihaz.port }}</td>
+                            <td>{{ cihaz.aciklama }}</td>
+                            <td>
+                                <a href="{% url 'cardcontrol:kapi_yonetimi' %}?cihaz_id={{ cihaz.id }}" class="btn btn-info btn-sm">Yönet</a>
+                                <!-- Silme butonu eklenebilir -->
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Kayıtlı cihaz bulunamadı.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

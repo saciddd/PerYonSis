@@ -82,6 +82,10 @@ class Menu:
             MenuItem('Birim Tanımları', 'hekim_cizelge:birim_tanimlari', 'bi bi-octagon', 'HÇ Tanımlama Yapma Yetkisi', parent_menu='Hekim Çizelge Sistemi'),
             MenuItem('Resmi Tatil Tanımları', 'hekim_cizelge:resmi_tatiller', 'bi bi-octagon', 'HÇ Tanımlama Yapma Yetkisi', parent_menu='Hekim Çizelge Sistemi'),
             
+            # Kartlı Geçiş Sistemi
+            MenuItem('Kartlı Geçiş Sistemi', '#', 'bi bi-card-checklist', 'Kartlı Geçiş Sistemi', is_parent=True),
+            MenuItem('Cihazlar', 'cardcontrol:cihaz_list', 'bi bi-octagon', parent_menu='Kartlı Geçiş Sistemi'),
+            MenuItem('Kapı Yönetimi', 'cardcontrol:kapi_yonetimi', 'bi bi-octagon', parent_menu='Kartlı Geçiş Sistemi'),
         ]
         
         return [item for item in items if item.permission is None or self.user_has_permission(item.permission)]

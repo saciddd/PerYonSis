@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'ik_core',
     'nobet_defteri',
     'mercis696',
+    'cardcontrol',
 ]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

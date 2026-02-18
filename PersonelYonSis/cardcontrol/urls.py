@@ -9,4 +9,5 @@ urlpatterns = [
     path('cihaz-kullanici-ekle/<int:cihaz_id>/', views.cihaz_kullanici_ekle, name='cihaz_kullanici_ekle'),
     path('cihaz-kullanici-sil/<int:cihaz_id>/', views.cihaz_kullanici_sil, name='cihaz_kullanici_sil'),
     path('cihaz-sync/<int:cihaz_id>/', views.cihaz_sync, name='cihaz_sync'),
+    path('cihaz-loglari/', views.cihaz_loglari, name='cihaz_loglari'),
 ]

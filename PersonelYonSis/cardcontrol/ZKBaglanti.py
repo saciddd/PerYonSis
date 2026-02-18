@@ -241,12 +241,94 @@ def delete_user(
     _with_connection(op, ip=ip, port=port, timeout=timeout, password=password, force_udp=force_udp)
 
 
+
+def get_attendance(
+    *,
+    ip: str = DEFAULT_IP,
+    port: int = DEFAULT_PORT,
+    timeout: int = DEFAULT_TIMEOUT, # Uzun sürebilir, çağıran artırmalı
+    password: int = DEFAULT_PASSWORD,
+    force_udp: bool = DEFAULT_FORCE_UDP,
+) -> List[Any]:
+    """
+    Cihazdaki katılım (giriş/çıkış) kayıtlarını getirir.
+    """
+    if ip is None:
+        raise ValueError("Cihaz IP adresi belirtilmedi.")
+
+    def op(conn):
+        return conn.get_attendance()
+
+    return _with_connection(op, ip=ip, port=port, timeout=timeout, password=password, force_udp=force_udp)
+
+def get_storage_status_info(
+    *,
+    ip: str = DEFAULT_IP,
+    port: int = DEFAULT_PORT,
+    timeout: int = DEFAULT_TIMEOUT,
+    password: int = DEFAULT_PASSWORD,
+    force_udp: bool = DEFAULT_FORCE_UDP,
+) -> Dict[str, Any]:
+    """
+    Cihazın depolama durumunu getirir.
+    """
+    if ip is None:
+        raise ValueError("Cihaz IP adresi belirtilmedi.")
+    
+    def op(conn):
+        # get_storage_status() genellikle bir string veya dict döner, kütüphaneye göre değişebilir
+        # pyzk'da bu yöntem olmayabilir, extend_std_params ile bakabiliriz.
+        # Ancak pyzk'da 'params' property'si veya get_extend_user_info vb. var.
+        # Standart ZK kütüphanesinde conn.mid_get_device_status vb. olabilir. 
+        # Fakat basitçe user count, log count alalım.
+        
+        # pyzk kütüphanesinde bu metod olmayabilir, varsa kullanırız.
+        # Yoksa da basitçe user ve attendance sayısını manuel alabiliriz ama bu yavaş olur.
+        # Genelde 'read_sizes' veya benzeri metod vardır.
+        
+        # Kullanıcı talebi: conn.get_storage_status() komutu ile... 
+        # Demek ki kullanıcı pyzk kütüphanesinde bunun olduğunu biliyor veya varsayıyor.
+        try:
+             return conn.get_storage_status()
+        except AttributeError:
+             # Eğer metod yoksa fallback
+             users = len(conn.get_users())
+             att = len(conn.get_attendance())
+             return {"users": users, "attendance": att, "status": "Fallback (counted)"}
+    
+    return _with_connection(op, ip=ip, port=port, timeout=timeout, password=password, force_udp=force_udp)
+
+def sync_device_time(
+    *,
+    ip: str = DEFAULT_IP,
+    port: int = DEFAULT_PORT,
+    timeout: int = DEFAULT_TIMEOUT,
+    password: int = DEFAULT_PASSWORD,
+    force_udp: bool = DEFAULT_FORCE_UDP,
+) -> None:
+    """
+    Cihaz saatini sunucu saati ile eşitler.
+    """
+    from datetime import datetime
+    if ip is None:
+        raise ValueError("Cihaz IP adresi belirtilmedi.")
+
+    def op(conn):
+        conn.set_time(datetime.now())
+        return True
+
+    _with_connection(op, ip=ip, port=port, timeout=timeout, password=password, force_udp=force_udp)
+
+
 __all__ = [
     "ZKUser",
     "ZKConnectionError",
     "list_users",
     "add_user",
     "delete_user",
+    "get_attendance",
+    "get_storage_status_info",
+    "sync_device_time",
     "DEFAULT_IP",
     "DEFAULT_PORT",
     "DEFAULT_TIMEOUT",

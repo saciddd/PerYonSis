@@ -29,3 +29,22 @@ class CihazKullanici(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.cihaz.kapi_adi}"
+
+class CihazLog(models.Model):
+    cihaz = models.ForeignKey(Cihaz, on_delete=models.CASCADE, related_name='logs', verbose_name="Cihaz")
+    uid = models.PositiveIntegerField(verbose_name="UID") # User ID ile eşleşebilir
+    user_id = models.CharField(max_length=50, verbose_name="User ID", blank=True, null=True)
+    timestamp = models.DateTimeField(verbose_name="Zaman")
+    status = models.IntegerField(verbose_name="Durum", default=0) # Giriş/Çıkış vb.
+    verification = models.IntegerField(verbose_name="Doğrulama Türü", default=0)
+
+    class Meta:
+        verbose_name = "Cihaz Logu"
+        verbose_name_plural = "Cihaz Logları"
+        indexes = [
+            models.Index(fields=['timestamp']),
+            models.Index(fields=['cihaz']),
+        ]
+
+    def __str__(self):
+        return f"{self.cihaz.kapi_adi} - {self.timestamp}"

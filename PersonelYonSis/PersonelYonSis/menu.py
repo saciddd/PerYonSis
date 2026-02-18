@@ -86,6 +86,7 @@ class Menu:
             MenuItem('Kartlı Geçiş Sistemi', '#', 'bi bi-card-checklist', 'Kartlı Geçiş Sistemi', is_parent=True),
             MenuItem('Cihazlar', 'cardcontrol:cihaz_list', 'bi bi-octagon', parent_menu='Kartlı Geçiş Sistemi'),
             MenuItem('Kapı Yönetimi', 'cardcontrol:kapi_yonetimi', 'bi bi-octagon', parent_menu='Kartlı Geçiş Sistemi'),
+            MenuItem('Cihaz Logları', 'cardcontrol:cihaz_loglari', 'bi bi-octagon', parent_menu='Kartlı Geçiş Sistemi'),
         ]
         
         return [item for item in items if item.permission is None or self.user_has_permission(item.permission)]

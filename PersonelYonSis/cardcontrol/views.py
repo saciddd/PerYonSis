@@ -2,7 +2,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from .models import Cihaz, CihazKullanici
 from .forms import CihazForm
-from .ZKBaglanti import list_users, add_user, delete_user, ZKConnectionError, ZKUser
+from .ZKBaglanti import (
+    list_users, add_user, delete_user,
+    get_attendance, get_storage_status_info, sync_device_time,
+    ZKConnectionError, ZKUser
+)
 
 def cihaz_list(request):
     cihazlar = Cihaz.objects.all()
@@ -103,11 +107,24 @@ def cihaz_sync(request, cihaz_id):
     """Cihazdaki kullanıcıları çeker ve DB ile eşitler."""
     cihaz = get_object_or_404(Cihaz, id=cihaz_id)
     try:
+        # Cihaz saatini eşitle
+        sync_device_time(ip=cihaz.ip, port=cihaz.port)
+
         device_users = list_users(ip=cihaz.ip, port=cihaz.port)
         
+        created_count = 0
+        updated_count = 0
+
         # Cihazdaki kullanıcıları DB'ye ekle/güncelle
         for u in device_users:
-            CihazKullanici.objects.update_or_create(
+            # Önce UID ile kontrol et
+            # User ID ya da Card ID benzersizliğini de kontrol edebiliriz ama
+            # burada temel anahtar UID (cihaz içindeki ID).
+            
+            # Eğer kullanıcı veritabanında varsa, İSMİNİ GÜNCELLEME.
+            # Sadece yeni eklenenlerin ismini cihazdan al.
+            
+            user_inst, created = CihazKullanici.objects.get_or_create(
                 cihaz=cihaz,
                 uid=u.uid,
                 defaults={
@@ -117,12 +134,91 @@ def cihaz_sync(request, cihaz_id):
                     'privilege': u.privilege
                 }
             )
+
+            if created:
+                created_count += 1
+            else:
+                # Kayıt varsa, isim HARİÇ diğer alanları güncelle (yetki, kart no, vb.)
+                # Ancak kullanıcı 'ilgili kart numarası dbde varsa ismini değiştirmesin' dedi.
+                # UID zaten eşleşti.
+                
+                changed = False
+                if user_inst.user_id != u.user_id:
+                    user_inst.user_id = u.user_id
+                    changed = True
+                if user_inst.card != u.card:
+                    user_inst.card = u.card
+                    changed = True
+                if user_inst.privilege != u.privilege:
+                    user_inst.privilege = u.privilege
+                    changed = True
+                
+                # İsim güncellemesi YAPMIYORUZ.
+                
+                if changed:
+                    user_inst.save()
+                    updated_count += 1
         
-        # Opsiyonel: Cihazda olmayıp DB'de olanları silebiliriz veya işaretleyebiliriz.
-        # Şimdilik sadece cihaz -> DB yönünde ekleme/güncelleme yapıyoruz.
-        
-        messages.success(request, f'Senkronizasyon tamamlandı. Toplam {len(device_users)} kullanıcı bulundu.')
+        messages.success(request, f'Senkronizasyon tamamlandı. {created_count} yeni kullanıcı eklendi, {updated_count} kullanıcı güncellendi.')
     except Exception as e:
         messages.error(request, f'Senkronizasyon hatası: {str(e)}')
 
     return redirect(f'/cardcontrol/kapi-yonetimi/?cihaz_id={cihaz.id}')
+
+
+def cihaz_loglari(request):
+    cihazlar = Cihaz.objects.all()
+    selected_cihaz = None
+    logs = []
+    storage_info = None
+    
+    cihaz_id = request.GET.get('cihaz_id')
+    if cihaz_id:
+        selected_cihaz = get_object_or_404(Cihaz, id=cihaz_id)
+        try:
+            # 1. Saat Eşitleme
+            sync_device_time(ip=selected_cihaz.ip, port=selected_cihaz.port)
+            
+            # 2. Depolama Durumu
+            storage_info = get_storage_status_info(ip=selected_cihaz.ip, port=selected_cihaz.port)
+            
+            # 3. Logları Çek (Timeout artırıldı: 30sn)
+            # Log sayısı çoksa bu işlem uzun sürer.
+            device_logs = get_attendance(ip=selected_cihaz.ip, port=selected_cihaz.port, timeout=30)
+            
+            # Logları tersten sırala (en yeni en üstte)
+            device_logs.reverse()
+            
+            # 4. Kullanıcı isimlerini eşleştir
+            # DB'den bu cihazın kullanıcılarını çek: user_id -> name
+            db_users = CihazKullanici.objects.filter(cihaz=selected_cihaz)
+            user_map = {u.user_id: u.name for u in db_users}
+            
+            logs = []
+            for log in device_logs:
+                # Log nesnesi muhtemelen bir obje, attribute olarak ekleyemeyebiliriz (slot vs varsa).
+                # Bu yüzden dict'e çevirelim veya wrapper kullanalım.
+                # pyzk log nesnesinin user_id. timestamp, status, punch özellikleri var.
+                
+                log_user_id = getattr(log, 'user_id', '')
+                user_name = user_map.get(str(log_user_id), 'Bilinmeyen')
+                
+                logs.append({
+                    'user_id': log_user_id,
+                    'timestamp': log.timestamp,
+                    'status': log.status,
+                    'punch': log.punch,
+                    'user_name': user_name
+                })
+            
+            messages.success(request, f"{len(logs)} adet kayıt çekildi.")
+            
+        except Exception as e:
+            messages.error(request, f"Veri çekme hatası: {str(e)}")
+
+    return render(request, 'cardcontrol/cihaz_loglari.html', {
+        'cihazlar': cihazlar,
+        'selected_cihaz': selected_cihaz,
+        'logs': logs,
+        'storage_info': storage_info
+    })

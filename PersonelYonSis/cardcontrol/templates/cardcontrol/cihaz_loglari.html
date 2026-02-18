@@ -10,18 +10,42 @@
                 Cihaz Logları ve Durum
             </div>
             <div class="card-body">
-                <form method="get" action="{% url 'cardcontrol:cihaz_loglari' %}">
-                    <div class="input-group">
+                <form method="get" action="{% url 'cardcontrol:cihaz_loglari' %}" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Cihaz Seçimi</label>
                         <select name="cihaz_id" class="form-select" onchange="this.form.submit()">
-                            <option value="">Lütfen Loglarını Görmek İstediğiniz Cihazı Seçiniz...</option>
+                            <option value="">Cihaz Seçiniz...</option>
                             {% for c in cihazlar %}
                             <option value="{{ c.id }}" {% if selected_cihaz and selected_cihaz.id == c.id %}selected{% endif %}>
-                                {{ c.kapi_adi }} ({{ c.ip }})
+                                {{ c.kapi_adi }}
                             </option>
                             {% endfor %}
                         </select>
-                        <button type="submit" class="btn btn-primary">Logları Getir</button>
                     </div>
+                    {% if selected_cihaz %}
+                    <div class="col-md-2">
+                        <label class="form-label">Başlangıç</label>
+                        <input type="datetime-local" name="start_date" class="form-control" value="{{ request.GET.start_date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Bitiş</label>
+                        <input type="datetime-local" name="end_date" class="form-control" value="{{ request.GET.end_date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">User ID / İsim</label>
+                        <input type="text" name="name" class="form-control" placeholder="Ad veya ID" value="{{ request.GET.name }}">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100 me-2" name="fetch" value="0">
+                            <i class="bi bi-filter"></i> Filtrele
+                        </button>
+                    </div>
+                    <div class="col-md-12 text-end">
+                        <button type="submit" class="btn btn-warning" name="fetch" value="1">
+                            <i class="bi bi-cloud-download"></i> Cihazdan Yeni Veri Çek & Logları Güncelle
+                        </button>
+                    </div>
+                    {% endif %}
                 </form>
             </div>
         </div>
@@ -92,7 +116,7 @@
                                     <span class="badge bg-secondary">{{ log.status }}</span>
                                 {% endif %}
                             </td>
-                            <td>{{ log.punch }}</td> <!-- pyzk'da punch/verify mode döner -->
+                            <td>{{ log.punch }}</td> 
                         </tr>
                         {% empty %}
                         <tr>
@@ -102,6 +126,24 @@
                     </tbody>
                 </table>
             </div>
+            <!-- Pagination -->
+            {% if logs.has_other_pages %}
+            <div class="card-footer clearfix">
+                <ul class="pagination pagination-sm m-0 float-end">
+                    {% if logs.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&page=1&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}&name={{ request.GET.name }}">&laquo; İlk</a></li>
+                    <li class="page-item"><a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&page={{ logs.previous_page_number }}&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}&name={{ request.GET.name }}">Geri</a></li>
+                    {% endif %}
+
+                    <li class="page-item disabled"><a class="page-link" href="#">Sayfa {{ logs.number }} / {{ logs.paginator.num_pages }}</a></li>
+
+                    {% if logs.has_next %}
+                    <li class="page-item"><a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&page={{ logs.next_page_number }}&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}&name={{ request.GET.name }}">İleri</a></li>
+                    <li class="page-item"><a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&page={{ logs.paginator.num_pages }}&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}&name={{ request.GET.name }}">Son &raquo;</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

@@ -43,7 +43,10 @@
                             <td>{{ cihaz.aciklama }}</td>
                             <td>
                                 <a href="{% url 'cardcontrol:kapi_yonetimi' %}?cihaz_id={{ cihaz.id }}" class="btn btn-info btn-sm">Yönet</a>
-                                <!-- Silme butonu eklenebilir -->
+                                <button type="button" class="btn btn-warning btn-sm" 
+                                    onclick="editCihaz('{{ cihaz.id }}', '{{ cihaz.kapi_adi }}', '{{ cihaz.ip }}', '{{ cihaz.port }}', '{{ cihaz.aciklama|escapejs }}')">
+                                    Düzenle
+                                </button>
                             </td>
                         </tr>
                         {% empty %}
@@ -57,4 +60,62 @@
         </div>
     </div>
 </div>
+
+<!-- Düzenleme Modalı -->
+<div class="modal fade" id="editCihazModal" tabindex="-1" aria-labelledby="editCihazModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editCihazModalLabel">Cihaz Düzenle</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" id="editCihazForm">
+          {% csrf_token %}
+          <div class="modal-body">
+                <div class="mb-3">
+                    <label for="edit_kapi_adi" class="form-label">Kapı Adı</label>
+                    <input type="text" class="form-control" id="edit_kapi_adi" name="kapi_adi" required>
+                </div>
+                <div class="mb-3">
+                    <label for="edit_ip" class="form-label">IP Adresi</label>
+                    <input type="text" class="form-control" id="edit_ip" name="ip" required>
+                </div>
+                <div class="mb-3">
+                    <label for="edit_port" class="form-label">Port</label>
+                    <input type="number" class="form-control" id="edit_port" name="port" required>
+                </div>
+                <div class="mb-3">
+                    <label for="edit_aciklama" class="form-label">Açıklama</label>
+                    <textarea class="form-control" id="edit_aciklama" name="aciklama" rows="3"></textarea>
+                </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+            <button type="submit" class="btn btn-primary">Güncelle</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function editCihaz(id, kapi_adi, ip, port, aciklama) {
+    // Form action URL'sini güncelle
+    var url = "{% url 'cardcontrol:cihaz_list' %}".replace("cihazlar/", "cihaz-guncelle/" + id + "/"); 
+    // URL patterninizi kontrol edin, cihaz_guncelle için /cardcontrol/cihaz-guncelle/ID/ tanımladık mı?
+    // Ancak django template tag'i JS içinde render edilemez (argumentsiz).
+    // Basitçe string replace yapabiliriz veya data attribute kullanabiliriz.
+    // Şimdilik hardcoded path kullanacağım: /cardcontrol/cihaz-guncelle/<id>/
+    
+    document.getElementById('editCihazForm').action = "/cardcontrol/cihaz-guncelle/" + id + "/";
+    
+    document.getElementById('edit_kapi_adi').value = kapi_adi;
+    document.getElementById('edit_ip').value = ip;
+    document.getElementById('edit_port').value = port;
+    document.getElementById('edit_aciklama').value = aciklama;
+    
+    var myModal = new bootstrap.Modal(document.getElementById('editCihazModal'));
+    myModal.show();
+}
+</script>
 {% endblock %}

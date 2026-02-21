@@ -270,11 +270,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Seçili binayı birim modalına set etme fonksiyonu
 function setSelectedBina(binaId, binaAdi) {
-    const binaInput = document.getElementById('id_birim-bina');
-    const hiddenInput = document.getElementById('hidden_birim-bina');
-    
-    if (binaInput) binaInput.value = binaAdi;
-    if (hiddenInput) hiddenInput.value = binaId;
+    const binaSelect = document.getElementById('id_birim-bina_select');
+    if (binaSelect) {
+        binaSelect.value = binaId;
+    }
 }
 
 // AJAX ile birimleri getirme

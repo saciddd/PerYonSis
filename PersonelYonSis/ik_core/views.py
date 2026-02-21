@@ -1069,6 +1069,82 @@ def gecici_gorev_bulk_kaydet(request):
         )
     })
 
+
+@login_required
+@require_POST
+def gecici_gorev_bulk_update_mevcut(request):
+    """
+    Mevcut GeciciGorev kayıtlarını toplu (inline) günceller.
+    """
+    import json
+    from datetime import datetime
+    try:
+        from .models.GeciciGorev import GeciciGorev
+    except ImportError:
+        from ik_core.models.GeciciGorev import GeciciGorev
+
+    try:
+        body = json.loads(request.body)
+        updates = body.get('updates', [])
+        
+        updated_count = 0
+        errors = []
+
+        for item in updates:
+            gorev_id = item.get('id')
+            if not gorev_id:
+                continue
+
+            try:
+                gorev = GeciciGorev.objects.get(pk=gorev_id)
+            except GeciciGorev.DoesNotExist:
+                errors.append(f"ID {gorev_id} bulunamadı.")
+                continue
+
+            # Update fields
+            if 'asil_kurumu' in item:
+                gorev.asil_kurumu = item['asil_kurumu'].strip()
+            
+            if 'gorevlendirildigi_birim' in item:
+                gorev.gorevlendirildigi_birim = item['gorevlendirildigi_birim'].strip()
+
+            if 'gecici_gorev_baslangic' in item:
+                baslangic_str = item['gecici_gorev_baslangic']
+                if baslangic_str:
+                    try:
+                        gorev.gecici_gorev_baslangic = datetime.strptime(baslangic_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        errors.append(f"ID {gorev_id}: Geçersiz başlangıç tarihi ({baslangic_str})")
+
+            if 'gecici_gorev_bitis' in item:
+                bitis_str = item['gecici_gorev_bitis']
+                if bitis_str:
+                    try:
+                        gorev.gecici_gorev_bitis = datetime.strptime(bitis_str, '%Y-%m-%d').date()
+                    except ValueError:
+                        errors.append(f"ID {gorev_id}: Geçersiz bitiş tarihi ({bitis_str})")
+                else:
+                    gorev.gecici_gorev_bitis = None
+            
+            if 'gecici_gorev_tipi' in item:
+                tip = item['gecici_gorev_tipi']
+                if tip in ['Gelis', 'Gidis']:
+                    gorev.gecici_gorev_tipi = tip
+
+            gorev.save()
+            updated_count += 1
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{updated_count} kayıt güncellendi.',
+            'errors': errors
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Geçersiz JSON formatı.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Hata: {str(e)}'}, status=500)
+
 @login_required
 def birim_yonetimi(request):
     """Birim yönetimi sayfası - unvan_branstanimlari.html benzeri yapı"""
@@ -1235,6 +1311,50 @@ def birim_ekle(request):
     })
 
 @login_required
+@require_POST
+def birim_sil(request, pk):
+    """Birim kaydını sil"""
+    try:
+        from .models.BirimYonetimi import Birim
+    except ImportError:
+        from ik_core.models.BirimYonetimi import Birim
+        
+    try:
+        birim = Birim.objects.get(pk=pk)
+        # Check if there are personnel assigned to this unit
+        if birim.personelbirim_set.exists():
+             return JsonResponse({'success': False, 'message': 'Bu birime bağlı personel geçmişi kayıtları var. Önce onları silmelisiniz.'})
+        
+        birim.delete()
+        return JsonResponse({'success': True, 'message': 'Birim başarıyla silindi.'})
+    except Birim.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Birim bulunamadı.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Hata oluştu: {str(e)}'})
+
+@login_required
+@require_POST
+def bina_sil(request, pk):
+    """Bina kaydını sil"""
+    try:
+        from .models.BirimYonetimi import Bina
+    except ImportError:
+        from ik_core.models.BirimYonetimi import Bina
+        
+    try:
+        bina = Bina.objects.get(pk=pk)
+        # Check if there are units in this building
+        if bina.birim_set.exists():
+            return JsonResponse({'success': False, 'message': 'Bu binaya bağlı birimler var. Önce birimleri silmelisiniz.'})
+            
+        bina.delete()
+        return JsonResponse({'success': True, 'message': 'Bina başarıyla silindi.'})
+    except Bina.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Bina bulunamadı.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Hata oluştu: {str(e)}'})
+
+@login_required
 def get_birimler_by_bina(request):
     """Bina seçimine göre birimleri getiren AJAX endpoint'i"""
     bina_id = request.GET.get('bina_id')
@@ -1307,6 +1427,24 @@ def personel_birim_ekle(request):
             'sorumlu': personel_birim.sorumlu
         }
     })
+
+@login_required
+@require_POST
+def personel_birim_sil(request, pk):
+    """Personel birim kaydını sil"""
+    try:
+        from .models.BirimYonetimi import PersonelBirim
+    except ImportError:
+        from ik_core.models.BirimYonetimi import PersonelBirim
+        
+    try:
+        personel_birim = PersonelBirim.objects.get(pk=pk)
+        personel_birim.delete()
+        return JsonResponse({'success': True, 'message': 'Kayıt başarıyla silindi.'})
+    except PersonelBirim.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Kayıt bulunamadı.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Hata oluştu: {str(e)}'})
 
 @login_required
 def gorevlendirme_yazisi(request, personel_birim_id):

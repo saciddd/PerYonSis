@@ -50,9 +50,14 @@
                                 </td>
                                 <td>{{ kayit.not|default:"-" }}</td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="gorevlendirmeYazisiOlustur({{ kayit.id }})">
-                                        Görevlendirme Yazısı
-                                    </button>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="gorevlendirmeYazisiOlustur({{ kayit.id }})">
+                                            <i class="bi bi-file-earmark-pdf"></i> PDF
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="birimKaydiSil({{ kayit.id }})">
+                                            <i class="bi bi-trash"></i> Sil
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                             {% empty %}
@@ -83,5 +88,57 @@ function gorevlendirmeYazisiOlustur(personelBirimId) {
     // Görevlendirme yazısı PDF'ini oluştur
     const url = `{% url "ik_core:gorevlendirme_yazisi" 0 %}`.replace('/0/', `/${personelBirimId}/`) + `?imza_id=${imzaId}`;
     window.open(url, '_blank');
+}
+
+function birimKaydiSil(id) {
+    Swal.fire({
+        title: 'Emin misiniz?',
+        text: "Bu birim kaydı kalıcı olarak silinecektir!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Evet, sil!',
+        cancelButtonText: 'İptal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            
+            fetch(`{% url "ik_core:personel_birim_sil" 0 %}`.replace('/0/', `/${id}/`), {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire(
+                        'Silindi!',
+                        data.message,
+                        'success'
+                    ).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire(
+                        'Hata!',
+                        data.message,
+                        'error'
+                    );
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                Swal.fire(
+                    'Hata!',
+                    'Bir hata oluştu.',
+                    'error'
+                );
+            });
+        }
+    });
 }
 </script>

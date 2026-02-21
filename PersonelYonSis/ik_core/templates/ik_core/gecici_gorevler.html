@@ -11,6 +11,15 @@
             </form>
         </div>
         <div>
+            <button id="btnDuzenle" class="btn btn-warning">
+                <i class="bi bi-pencil me-1"></i> Düzenle
+            </button>
+            <button id="btnKaydet" class="btn btn-primary d-none">
+                <i class="bi bi-save me-1"></i> Kaydet
+            </button>
+            <button id="btnIptal" class="btn btn-secondary d-none">
+                <i class="bi bi-x-circle me-1"></i> İptal
+            </button>
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#geciciGorevModal">
                 <i class="bi bi-plus-square me-1"></i> Kayıt Ekle
             </button>
@@ -18,7 +27,7 @@
     </div>
 
     <div class="table-responsive">
-        <table class="table table-sm table-bordered">
+        <table class="table table-sm table-bordered" id="mainTable">
             <thead>
                 <tr>
                     <th>#</th>
@@ -37,7 +46,7 @@
             </thead>
             <tbody>
                 {% for k in kayitlar %}
-                <tr>
+                <tr data-id="{{ k.id }}">
                     <td>{{ forloop.counter }}</td>
                     <td>{{ k.personel.tc_kimlik_no }}</td>
                     <td>{{ k.personel.sicil_no }}</td>
@@ -45,11 +54,12 @@
                     <td>{{ k.personel.soyad }}</td>
                     <td>{% if k.personel.unvan %}{{ k.personel.unvan.ad }}{% endif %}</td>
                     <td>{% if k.personel.brans %}{{ k.personel.brans.ad }}{% endif %}</td>
-                    <td>{{ k.asil_kurumu }}</td>
-                    <td>{{ k.gorevlendirildigi_birim }}</td>
-                    <td>{{ k.gecici_gorev_baslangic }}</td>
-                    <td>{{ k.gecici_gorev_bitis|default:'-' }}</td>
-                    <td>
+                    
+                    <td class="editable-text" data-field="asil_kurumu">{{ k.asil_kurumu }}</td>
+                    <td class="editable-text" data-field="gorevlendirildigi_birim">{{ k.gorevlendirildigi_birim }}</td>
+                    <td class="editable-date" data-field="gecici_gorev_baslangic" data-val="{{ k.gecici_gorev_baslangic|date:'Y-m-d' }}">{{ k.gecici_gorev_baslangic|date:'d.m.Y' }}</td>
+                    <td class="editable-date" data-field="gecici_gorev_bitis" data-val="{{ k.gecici_gorev_bitis|date:'Y-m-d'|default:'' }}">{{ k.gecici_gorev_bitis|date:'d.m.Y'|default:'-' }}</td>
+                    <td class="editable-select" data-field="gecici_gorev_tipi" data-val="{{ k.gecici_gorev_tipi }}">
                         {% if k.gecici_gorev_tipi == 'Gelis' %}
                             <span class="badge bg-success">Geliş</span>
                         {% else %}
@@ -72,6 +82,137 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     initGeciciGorevModal();
+    
+    // Sayfa butonları
+    const btnDuzenle = document.getElementById('btnDuzenle');
+    const btnKaydet = document.getElementById('btnKaydet');
+    const btnIptal = document.getElementById('btnIptal');
+    const mainTable = document.getElementById('mainTable');
+
+    if (btnDuzenle) {
+        btnDuzenle.addEventListener('click', function() {
+            enableEditMode();
+        });
+    }
+
+    if (btnIptal) {
+        btnIptal.addEventListener('click', function() {
+            // İptal edilince sayfayı yenilemek en temizi
+            location.reload();
+        });
+    }
+
+    if (btnKaydet) {
+        btnKaydet.addEventListener('click', function() {
+            saveChanges();
+        });
+    }
+
+    function enableEditMode() {
+        btnDuzenle.classList.add('d-none');
+        btnKaydet.classList.remove('d-none');
+        btnIptal.classList.remove('d-none');
+
+        const rows = mainTable.querySelectorAll('tbody tr[data-id]');
+        rows.forEach(row => {
+            // Text fields
+            row.querySelectorAll('.editable-text').forEach(td => {
+                const val = td.innerText.trim();
+                td.innerHTML = `<input type="text" class="form-control form-control-sm" value="${val.replace(/"/g, '&quot;')}">`;
+            });
+
+            // Date fields
+            row.querySelectorAll('.editable-date').forEach(td => {
+                const val = td.dataset.val || '';
+                td.innerHTML = `<input type="date" class="form-control form-control-sm" value="${val}">`;
+            });
+
+            // Select fields
+            row.querySelectorAll('.editable-select').forEach(td => {
+                const val = td.dataset.val; // Gelis / Gidis
+                let html = `
+                    <select class="form-select form-select-sm">
+                        <option value="Gelis" ${val === 'Gelis' ? 'selected' : ''}>Geliş</option>
+                        <option value="Gidis" ${val === 'Gidis' ? 'selected' : ''}>Gidiş</option>
+                    </select>
+                `;
+                td.innerHTML = html;
+            });
+        });
+    }
+
+    function saveChanges() {
+        const rows = mainTable.querySelectorAll('tbody tr[data-id]');
+        const updates = [];
+
+        rows.forEach(row => {
+            const id = row.dataset.id;
+            const item = { id: id };
+            
+            // Text
+            row.querySelectorAll('.editable-text').forEach(td => {
+                const field = td.dataset.field;
+                const input = td.querySelector('input');
+                if (input) item[field] = input.value;
+            });
+
+            // Date
+            row.querySelectorAll('.editable-date').forEach(td => {
+                const field = td.dataset.field;
+                const input = td.querySelector('input');
+                if (input) item[field] = input.value || null;
+            });
+
+            // Select
+            row.querySelectorAll('.editable-select').forEach(td => {
+                const field = td.dataset.field; // gecici_gorev_tipi
+                const select = td.querySelector('select');
+                if (select) item[field] = select.value;
+            });
+
+            updates.push(item);
+        });
+
+        if (updates.length === 0) return;
+
+        fetch("{% url 'ik_core:gecici_gorev_bulk_update_mevcut' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ updates: updates })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Hata: ' + (data.message || data.errors.join('\n')));
+            }
+        })
+        .catch(err => {
+            alert('Sunucu hatası: ' + err);
+        });
+    }
+
+    // CSRF Utility
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
     // Sayfa üstündeki Yapıştır ve Temizle: modaldaki tabloya delegasyon
     const btnPaste = document.getElementById('btnSayfayaYapistir');
     const btnClear = document.getElementById('btnSayfayiTemizle');

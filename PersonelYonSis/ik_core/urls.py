@@ -27,6 +27,7 @@ urlpatterns = [
     # Geçici Görevler
     path('gecici-gorevler/', views.gecici_gorevler, name='gecici_gorevler'),
     path('gecici-gorevler/bulk-kaydet/', views.gecici_gorev_bulk_kaydet, name='gecici_gorev_bulk_kaydet'),
+    path('gecici-gorevler/bulk-update-mevcut/', views.gecici_gorev_bulk_update_mevcut, name='gecici_gorev_bulk_update_mevcut'),
     # Tebliğ işlemleri
     path('imza-tanimlari/', views.imza_tanimlari, name='imza_tanimlari'),
     path('teblig-tanimlari/', views.teblig_tanimlari, name='teblig_tanimlari'),
@@ -58,9 +59,12 @@ urlpatterns = [
     path('get-bina-detay/', views.get_bina_detay, name='get_bina_detay'),
     path('ust-birim-ekle/', views.ust_birim_ekle, name='ust_birim_ekle'),
     path('birim-ekle/', views.birim_ekle, name='birim_ekle'),
+    path('birim-sil/<int:pk>/', views.birim_sil, name='birim_sil'),
+    path('bina-sil/<int:pk>/', views.bina_sil, name='bina_sil'),
     path('get-birimler-by-bina/', views.get_birimler_by_bina, name='get_birimler_by_bina'),
     path('personel-birim-ekle/', views.personel_birim_ekle, name='personel_birim_ekle'),
     path('gorevlendirme-yazisi/<int:personel_birim_id>/', views.gorevlendirme_yazisi, name='gorevlendirme_yazisi'),
+    path('personel-birim-sil/<int:pk>/', views.personel_birim_sil, name='personel_birim_sil'),
     # Analiz Sayfaları
     path('analiz/', analiz_views.dashboard_view, name='analiz_dashboard'),
     path('analiz/unvan/', analiz_views.unvan_analiz_view, name='unvan_analiz'),

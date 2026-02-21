@@ -955,6 +955,7 @@
                                         <select class="form-select" id="ayrilma_nedeni" name="ayrilma_nedeni">
                                             <option value="">Ayrılma nedeni seçiniz</option>
                                             <option value="Emekli" {% if personel.ayrilma_nedeni == 'Emekli' %}selected{% endif %}>Emekli</option>
+                                            <option value="Tayin" {% if personel.ayrilma_nedeni == 'Tayin' %}selected{% endif %}>Tayin</option>
                                             <option value="İstifa" {% if personel.ayrilma_nedeni == 'İstifa' %}selected{% endif %}>İstifa</option>
                                             <option value="İhraç" {% if personel.ayrilma_nedeni == 'İhraç' %}selected{% endif %}>İhraç</option>
                                             <option value="Vefat" {% if personel.ayrilma_nedeni == 'Vefat' %}selected{% endif %}>Vefat</option>

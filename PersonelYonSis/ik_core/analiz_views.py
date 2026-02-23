@@ -75,6 +75,7 @@ def serialize_personel_list(personels):
             'brans_ad': p.brans.ad if p.brans else '',
             'birim_id': str(birim_id), # str for JS comparison
             'birim_ad': birim_ad,
+            'birim_aciklama': current_pb.birim.aciklama if current_pb and current_pb.birim else '',
             'ust_birim_id': str(ust_birim_id),
             'bina_id': str(bina_id),
             'kisa_unvan_id': str(ku_id) if ku_id else 'unknown',
@@ -589,15 +590,19 @@ def personel_list_modal_view(request):
             p._last_pb_id = last_pb.id # Attach PersonelBirim ID for editing
             
         birim_name = "Birim Atanmamış"
+        birim_aciklama = ""
         if last_pb:
             birim_name = f"{last_pb.birim.ad} ({last_pb.birim.bina.ad if last_pb.birim.bina else '?'})"
+            birim_aciklama = last_pb.birim.aciklama or ""
         
-        if birim_name not in grouped_personnel:
-            grouped_personnel[birim_name] = []
-        grouped_personnel[birim_name].append(p)
+        group_key = (birim_name, birim_aciklama)
+        
+        if group_key not in grouped_personnel:
+            grouped_personnel[group_key] = []
+        grouped_personnel[group_key].append(p)
 
-    # Sort groups by name
-    sorted_groups = dict(sorted(grouped_personnel.items()))
+    # Sort groups by name (the first element of the tuple)
+    sorted_groups = dict(sorted(grouped_personnel.items(), key=lambda x: x[0][0]))
 
     context = {
         'grouped_personnel': sorted_groups,

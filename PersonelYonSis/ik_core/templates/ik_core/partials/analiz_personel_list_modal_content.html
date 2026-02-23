@@ -19,11 +19,14 @@
             </tr>
         </thead>
         <tbody>
-            {% for birim_ad, p_list in grouped_personnel.items %}
+            {% for group_info, p_list in grouped_personnel.items %}
                 <!-- Group Header Row -->
                 <tr class="table-secondary">
                     <td colspan="8" class="fw-bold text-dark ps-2 py-1">
-                        <i class="bi bi-building"></i> {{ birim_ad }} 
+                        <i class="bi bi-building"></i> {{ group_info.0 }} 
+                        {% if group_info.1 %}
+                            <span class="text-muted fw-normal ms-2 small">- {{ group_info.1 }}</span>
+                        {% endif %}
                         <span class="badge bg-secondary ms-2 rounded-pill">{{ p_list|length }}</span>
                     </td>
                 </tr>

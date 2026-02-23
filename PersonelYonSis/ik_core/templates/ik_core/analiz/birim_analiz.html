@@ -420,12 +420,14 @@
             return true;
         });
 
-        // Grouping logic for display (Grouping by Birim Name)
+        // Grouping logic for display (Grouping by Birim Name + Description)
         const grouped = {};
         filtered.forEach(p => {
             const bName = p.birim_ad;
-            if (!grouped[bName]) grouped[bName] = [];
-            grouped[bName].push(p);
+            const bDesc = p.birim_aciklama || '';
+            const key = JSON.stringify([bName, bDesc]);
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(p);
         });
         
         const sortedKeys = Object.keys(grouped).sort();
@@ -462,10 +464,12 @@
         } else {
             sortedKeys.forEach(key => {
                 const list = grouped[key];
+                const [bName, bDesc] = JSON.parse(key);
                 html += `
                     <tr class="table-secondary">
                         <td colspan="8" class="fw-bold text-dark ps-2 py-1">
-                            <i class="bi bi-building"></i> ${key} 
+                            <i class="bi bi-building"></i> ${bName} 
+                            ${bDesc ? `<span class="text-muted fw-normal ms-2 small">- ${bDesc}</span>` : ''}
                             <span class="badge bg-secondary ms-2 rounded-pill">${list.length}</span>
                         </td>
                     </tr>`;

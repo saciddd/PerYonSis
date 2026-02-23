@@ -208,7 +208,15 @@ class Personel(models.Model):
             ).exists()
             return "Aktif" if active_gorev else "Asıl Kurumuna Döndü" # Or adjust as needed
 
+    # Aktif Geçici Görev Kaydı
     @property
+    def aktif_gecicigorev(self):
+        today = date.today()
+        return self.gecicigorev_set.filter(
+            models.Q(gecici_gorev_bitis__isnull=True) | models.Q(gecici_gorev_bitis__gte=today),
+            gecici_gorev_baslangic__lte=today
+        ).first()
+
     def memuriyet_durumu(self):
         if self.teskilat == "İşçi Personel 696 (Döner Sermaye)":
             return "Sürekli İşçi (696)"

@@ -3,7 +3,7 @@ from django.db.models import Count, Q, F, Window
 from django.db.models.functions import RowNumber
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
-from .models.personel import Personel, KisaUnvan, UnvanBransEslestirme
+from .models.personel import Personel, KisaUnvan, UnvanBransEslestirme, OzelDurum
 from .models.BirimYonetimi import Birim, UstBirim, PersonelBirim, Bina, Kampus
 from datetime import date
 import json
@@ -45,7 +45,7 @@ def serialize_personel_list(personels):
         bina_id = current_pb.birim.bina.id if current_pb and current_pb.birim and current_pb.birim.bina else 'unknown'
         
         # Ozel durumlar
-        ozel_durumlar = [{'ad': oz.ad} for oz in p.ozel_durumu.all()]
+        ozel_durumlar = [{'ad': oz.ad, 'kod': oz.kod} for oz in p.ozel_durumu.all()]
         
         # Unvan info
         # kisa_unvan property triggers DB if not careful, but usually we filter by it.
@@ -117,6 +117,7 @@ def unvan_analiz_view(request):
         'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
         'selected_durum': durum_filter,
         'selected_kadro_durumu': kadro_durumu_filter,
+        'all_ozel_durumlar': OzelDurum.objects.all().order_by('ad')
     }
 
     if not load_data:
@@ -328,6 +329,7 @@ def birim_analiz_view(request):
         'selected_ust_birim': [int(x) for x in ust_birim_filter],
         'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
         'selected_kadro_durumu': kadro_durumu_filter,
+        'all_ozel_durumlar': OzelDurum.objects.all().order_by('ad')
     }
 
     if not load_data:
@@ -599,7 +601,8 @@ def personel_list_modal_view(request):
 
     context = {
         'grouped_personnel': sorted_groups,
-        'total_count': len(personeller)
+        'total_count': len(personeller),
+        'all_ozel_durumlar': OzelDurum.objects.all().order_by('ad')
     }
     
     return render(request, 'ik_core/partials/analiz_personel_list_modal_content.html', context)
@@ -633,6 +636,7 @@ def kampus_analiz_view(request):
         'selected_kampus': int(aktif_kampus.id) if aktif_kampus else None,
         'selected_kisa_unvans': [int(x) for x in kisa_unvan_filter],
         'selected_kadro_durumu': kadro_durumu_filter,
+        'all_ozel_durumlar': OzelDurum.objects.all().order_by('ad')
     }
     
     if not load_data:

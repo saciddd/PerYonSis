@@ -228,6 +228,11 @@
 
     // --- Detail Modal Logic (Client Side) ---
     const detailModal = new bootstrap.Modal(document.getElementById('personelListModal'));
+    const allOzelDurumlar = [
+        {% for oz in all_ozel_durumlar %}
+        { kod: "{{ oz.kod }}", ad: "{{ oz.ad }}" },
+        {% endfor %}
+    ];
     
     // Event Delegation
     document.addEventListener('click', function(e) {
@@ -263,7 +268,136 @@
                  }
              }, 300);
         }
+
+        // Inline Edit: Ozel Durum click
+        const displayDiv = e.target.closest('.ozel-durum-display');
+        if (displayDiv) {
+            const container = displayDiv.closest('.editable-ozel-durum-container');
+            const editDiv = container.querySelector('.ozel-durum-edit');
+            const selectEl = editDiv.querySelector('.ozel-durum-select');
+
+            displayDiv.classList.add('d-none');
+            editDiv.classList.remove('d-none');
+
+            // Initialize Select2
+            $(selectEl).select2({
+                dropdownParent: $('#personelListModal'),
+                placeholder: 'Seçiniz...',
+                allowClear: true,
+                width: '100%'
+            }).on('change', function() {
+                // Instantly save
+                saveOzelDurum(container.dataset.personelId, $(this).val(), container);
+            }).on('select2:close', function() {
+                // Return to display mode
+                setTimeout(() => {
+                    updateOzelDurumDisplay(container);
+                    editDiv.classList.add('d-none');
+                    displayDiv.classList.remove('d-none');
+                }, 100);
+            }).select2('open');
+        }
     });
+
+    // Delegated Listener for editable-note focusout (blur doesn't bubble)
+    document.addEventListener('focusout', function(e) {
+        if (e.target.classList.contains('editable-note')) {
+            const div = e.target;
+            const newText = div.innerText.trim();
+            const pbId = div.dataset.personelBirimId;
+            
+            if(!pbId) return;
+
+            fetch('/ik_core/analiz/personel-birim/update-aciklama/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    'personel_birim_id': pbId,
+                    'aciklama': newText
+                })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if(d.status === 'success') {
+                    div.style.borderBottom = '1px solid green';
+                    setTimeout(() => { div.style.borderBottom = '1px dashed #ccc'; }, 2000);
+                    
+                    // Update global data if exists
+                    const p = globalPersonelData.find(x => String(x.personel_birim_id) === String(pbId));
+                    if (p) { p.aciklama = newText; }
+                } else {
+                    alert('Kaydedilemedi: ' + d.message);
+                }
+            })
+            .catch(e => {
+               console.error(e);
+               alert('Bir hata oluştu.');
+            });
+        }
+    });
+
+    function saveOzelDurum(personelId, ozel_durumlar, container) {
+        fetch('/ik_core/analiz/personel/update-ozel-durum/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                'personel_id': personelId,
+                'ozel_durumlar': ozel_durumlar
+            })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.status === 'success') {
+                container.style.backgroundColor = 'rgba(75, 181, 67, 0.1)';
+                setTimeout(() => { container.style.backgroundColor = 'transparent'; }, 1000);
+                
+                // Update global data so re-opens show new data
+                const p = globalPersonelData.find(x => String(x.id) === String(personelId));
+                if (p) {
+                    p.ozel_durumlar = allOzelDurumlar.filter(oz => ozel_durumlar.includes(oz.kod));
+                }
+            } else {
+                alert('Hata: ' + d.message);
+            }
+        })
+        .catch(e => {
+            console.error(e);
+            alert('Bir hata oluştu.');
+        });
+    }
+
+    function updateOzelDurumDisplay(container) {
+        const select = $(container.querySelector('.ozel-durum-select'));
+        const display = container.querySelector('.ozel-durum-display');
+        const selectedData = select.select2('data');
+        
+        if (selectedData.length === 0) {
+            display.innerHTML = '<span class="text-muted small">Ekle...</span>';
+        } else {
+            display.innerHTML = selectedData.map(item => `<span class="badge bg-info text-dark mb-1 me-1">${item.text}</span>`).join('');
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
 
     function openDetailModal(params) {
         if (!globalPersonelData) {
@@ -308,55 +442,78 @@
                  </div>
             </div>
             <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0" style="font-size: 0.9rem;">
+                <table class="table table-sm table-striped table-hover mb-0" style="font-size: 0.85rem;">
                     <thead class="table-light sticky-top" style="top: 0; z-index: 10;">
                         <tr>
-                            <th>Ad Soyad</th>
-                            <th>Yaş</th>
-                            <th>Ünvan / Branş</th>
-                            <th>Kadro Durumu</th>
-                            <th>Özel Durumlar</th>
-                            <th>Durum</th>
-                            <th>İşlemler</th>
+                            <th class="p-1">Ad Soyad</th>
+                            <th class="p-1">Yaş</th>
+                            <th class="p-1">Kısa Unvan</th>
+                            <th class="p-1">Açıklama</th>
+                            <th class="p-1">Kadro Durumu</th>
+                            <th class="p-1">Özel Durumlar</th>
+                            <th class="p-1">Durum</th>
+                            <th class="p-1">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody>`;
 
         if (filtered.length === 0) {
-            html += `<tr><td colspan="7" class="text-center py-4 text-muted">Personel bulunamadı.</td></tr>`;
+            html += `<tr><td colspan="8" class="text-center py-4 text-muted">Personel bulunamadı.</td></tr>`;
         } else {
             sortedKeys.forEach(key => {
                 const list = grouped[key];
                 html += `
                     <tr class="table-secondary">
-                        <td colspan="7" class="fw-bold text-dark ps-3">
+                        <td colspan="8" class="fw-bold text-dark ps-2 py-1">
                             <i class="bi bi-building"></i> ${key} 
                             <span class="badge bg-secondary ms-2 rounded-pill">${list.length}</span>
                         </td>
                     </tr>`;
                 
                 list.forEach(p => {
-                    let ozelDurumHtml = p.ozel_durumlar.map(oz => `<span class="badge bg-info text-dark mb-1 me-1">${oz.ad}</span>`).join('');
-                    if(!ozelDurumHtml) ozelDurumHtml = '<span class="text-muted small">-</span>';
+                    let ozelDurumBadges = p.ozel_durumlar.map(oz => `<span class="badge bg-info text-dark mb-1 me-1">${oz.ad}</span>`).join('');
+                    if(!ozelDurumBadges) ozelDurumBadges = '<span class="text-muted small">Ekle...</span>';
                     
                     let kadroBadge = p.kadro_durumu === 'Kadrolu' 
                         ? '<span class="badge bg-success bg-opacity-10 text-success border border-success">Kadrolu</span>'
-                        : '<span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Geçici Gelen</span>';
+                        : '<span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Geçici</span>';
+
+                    let optionsHtml = allOzelDurumlar.map(opt => {
+                        const isSelected = p.ozel_durumlar.some(oz => oz.kod === opt.kod);
+                        return `<option value="${opt.kod}" ${isSelected ? 'selected' : ''}>${opt.ad}</option>`;
+                    }).join('');
 
                     html += `
                     <tr>
-                        <td class="ps-4">
+                        <td class="p-1 ps-2">
                             <div class="fw-bold">${p.ad_soyad}</div>
                         </td>
-                        <td>${p.yas}</td>
-                        <td>
-                            ${p.unvan_ad} / ${p.brans_ad}
+                        <td class="p-1">${p.yas}</td>
+                        <td class="p-1">
+                             ${p.kisa_unvan_ad}
                         </td>
-                        <td>${kadroBadge}</td>
-                        <td>${ozelDurumHtml}</td>
-                        <td><span class="badge bg-secondary">${p.durum}</span></td>
-                        <td class="text-end">
-                            <button type="button" class="btn btn-sm btn-outline-primary set-yeni-birim-btn" data-personel-id="${p.id}">Birim Değiştir</button>
+                        <td class="p-1">
+                             <div class="editable-note" 
+                                  contenteditable="true" 
+                                  data-personel-birim-id="${p.personel_birim_id || ''}"
+                                  style="min-height: 20px; border-bottom: 1px dashed #ccc; cursor: text;">
+                                 ${p.aciklama || ''}
+                             </div>
+                        </td>
+                        <td class="p-1">${kadroBadge}</td>
+                        <td class="p-1 editable-ozel-durum-container" data-personel-id="${p.id}">
+                            <div class="ozel-durum-display" style="cursor: pointer; min-height: 25px;">
+                                ${ozelDurumBadges}
+                            </div>
+                            <div class="ozel-durum-edit d-none">
+                                <select class="form-select form-select-sm ozel-durum-select" multiple style="width: 100%;">
+                                    ${optionsHtml}
+                                </select>
+                            </div>
+                        </td>
+                        <td class="p-1"><span class="badge bg-secondary">${p.durum}</span></td>
+                        <td class="text-end p-1">
+                            <button type="button" class="btn btn-sm btn-outline-primary set-yeni-birim-btn py-0 px-2" style="font-size: 0.8rem;" data-personel-id="${p.id}">Birim Değiştir</button>
                         </td>
                     </tr>`;
                 });
@@ -369,6 +526,41 @@
         // Remove old export buttons from footer
         const footerExportBtns = document.querySelectorAll('#personelListModal .modal-footer .export-btn');
         footerExportBtns.forEach(b => b.remove());
+
+        // Add Listeners for Editable Notes
+        document.querySelectorAll('.editable-note').forEach(div => {
+            div.addEventListener('blur', function() {
+                const newText = this.innerText.trim();
+                const pbId = this.dataset.personelBirimId;
+                
+                if(!pbId) return;
+
+                fetch('/ik_core/analiz/personel-birim/update-aciklama/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        'personel_birim_id': pbId,
+                        'aciklama': newText
+                    })
+                })
+                .then(r => r.json())
+                .then(d => {
+                    if(d.status === 'success') {
+                        this.style.borderBottom = '1px solid green';
+                        setTimeout(() => { this.style.borderBottom = '1px dashed #ccc'; }, 2000);
+                    } else {
+                        alert('Kaydedilemedi: ' + d.message);
+                    }
+                })
+                .catch(e => {
+                   console.error(e);
+                   alert('Bir hata oluştu.');
+                });
+            });
+        });
     }
 
     // Export functions

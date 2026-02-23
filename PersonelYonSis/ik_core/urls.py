@@ -71,6 +71,7 @@ urlpatterns = [
     path('analiz/birim/', analiz_views.birim_analiz_view, name='birim_analiz'),
     path('analiz/modal/personel-list/', analiz_views.personel_list_modal_view, name='analiz_personel_list_modal'),
     path('analiz/personel-birim/update-aciklama/', analiz_utils_views.update_personel_birim_aciklama, name='update_personel_birim_aciklama'),
+    path('analiz/personel/update-ozel-durum/', analiz_utils_views.update_personel_ozel_durum, name='update_personel_ozel_durum'),
     path('analiz/kampus/', analiz_views.kampus_analiz_view, name='kampus_analiz'),
     # Kampüs Yönetimi
     path('yonetim/kampus/', kampus_views.kampus_tanimlari, name='kampus_tanimlari'),

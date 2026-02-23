@@ -53,12 +53,21 @@
                         <span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Geçici</span>
                         {% endif %}
                     </td>
-                    <td class="p-1">
-                        {% for oz in p.ozel_durumu.all %}
-                            <span class="badge bg-info text-dark mb-1 me-1">{{ oz.ad }}</span>
-                        {% empty %}
-                            <span class="text-muted small">-</span>
-                        {% endfor %}
+                    <td class="p-1 editable-ozel-durum-container" data-personel-id="{{ p.id }}">
+                        <div class="ozel-durum-display" style="cursor: pointer; min-height: 25px;">
+                            {% for oz in p.ozel_durumu.all %}
+                                <span class="badge bg-info text-dark mb-1 me-1">{{ oz.ad }}</span>
+                            {% empty %}
+                                <span class="text-muted small">Ekle...</span>
+                            {% endfor %}
+                        </div>
+                        <div class="ozel-durum-edit d-none">
+                            <select class="form-select form-select-sm ozel-durum-select" multiple style="width: 100%;">
+                                {% for opt in all_ozel_durumlar %}
+                                    <option value="{{ opt.kod }}" {% if opt in p.ozel_durumu.all %}selected{% endif %}>{{ opt.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </td>
                     <td class="p-1">
                         <span class="badge bg-secondary">{{ p.durum }}</span>

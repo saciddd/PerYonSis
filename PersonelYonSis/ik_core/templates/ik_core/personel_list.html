@@ -138,6 +138,9 @@
                                                 <span class="badge bg-success">{{ personel.durum }}</span>
                                             {% elif personel.durum == "Pasif" %}
                                                 <span class="badge bg-warning text-dark">{{ personel.durum }}</span>
+                                                {% if personel.aktif_gecicigorev %}
+                                                    <span class="badge bg-warning text-dark">{{ personel.aktif_gecicigorev.gecici_gorev_baslangic|date:"d.m.Y" }} - {{ personel.aktif_gecicigorev.gecici_gorev_bitis|date:"d.m.Y" }} ({{ personel.aktif_gecicigorev.gorevlendirildigi_birim }})</span>
+                                                {% endif %}
                                             {% elif personel.durum == "Kurumdan Ayrıldı" %}
                                                 <span class="badge bg-danger">{{ personel.durum }}</span>
                                             {% else %}

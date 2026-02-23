@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.shortcuts import render, get_object_or_404, redirect
 import re
 from django.db.models.query import QuerySet
@@ -305,6 +306,205 @@ def personel_export_xlsx(request):
     response['Content-Disposition'] = 'attachment; filename=Personel_Listesi.xlsx'
     wb.save(response)
     return response
+
+@login_required
+def personel_dashboard_export_xlsx(request):
+    import openpyxl
+    from openpyxl.styles import PatternFill, Font
+    from openpyxl.utils import get_column_letter
+
+    # Tüm personelleri getir (performans için select_related)
+    personeller = Personel.objects.select_related(
+        'unvan', 'brans', 'kurum', 'kadro_yeri', 'fiili_gorev_yeri', 'unvan_brans_eslestirme__kisa_unvan__ust_birim'
+    ).prefetch_related('gecicigorev_set', 'ozel_durumu')
+
+    # Sheet 1: Pano
+    wb = openpyxl.Workbook()
+    ws_pano = wb.active
+    ws_pano.title = "Pano"
+
+    header_fill = PatternFill(start_color="0c0c2e", end_color="0c0c2e", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    
+    ws_pano['A1'] = "Durum = 'Aktif'"
+    ws_pano['A1'].font = Font(bold=True)
+    ws_pano['A2'] = "Üst Birim"
+    ws_pano['B2'] = "Kısa Ünvan"
+    ws_pano['C2'] = "Personel Sayısı"
+    
+    ws_pano['E1'] = "Durum = 'Pasif'"
+    ws_pano['E1'].font = Font(bold=True)
+    ws_pano['E2'] = "Üst Birim"
+    ws_pano['F2'] = "Kısa Ünvan"
+    ws_pano['G2'] = "Personel Sayısı"
+
+    for col in ['A', 'B', 'C', 'E', 'F', 'G']:
+        ws_pano[f'{col}2'].fill = header_fill
+        ws_pano[f'{col}2'].font = header_font
+
+    aktif_data = {}
+    pasif_data = {}
+    doktorlar_list = []
+    memur_657_list = []
+    surekli_isci_list = []
+    
+    for p in personeller:
+        durum = p.durum
+        
+        kisa_unvan_ad = "Belirtilmemiş"
+        ust_birim_ad = "Belirtilmemiş"
+        if p.unvan_brans_eslestirme and p.unvan_brans_eslestirme.kisa_unvan:
+            kisa_unvan_ad = p.unvan_brans_eslestirme.kisa_unvan.ad
+            if p.unvan_brans_eslestirme.kisa_unvan.ust_birim:
+                ust_birim_ad = p.unvan_brans_eslestirme.kisa_unvan.ust_birim.ad
+                
+        key = (ust_birim_ad, kisa_unvan_ad)
+        
+        if "Aktif" in durum:
+            aktif_data[key] = aktif_data.get(key, 0) + 1
+        elif "Pasif" in durum:
+            pasif_data[key] = pasif_data.get(key, 0) + 1
+            
+        is_aktif_veya_pasif = ('Aktif' in durum or 'Pasif' in durum)
+        is_tabip = p.unvan and 'tabip' in p.unvan.ad.lower()
+        
+        # Determine memuriyet durumu from teskilat
+        teskilat = getattr(p, 'teskilat', '')
+        is_isci = teskilat in ["İşçi Personel 696 (Döner Sermaye)", "İşçi Personel (Genel Bütçe)"]
+        is_memur = not is_isci
+
+        if is_aktif_veya_pasif:
+            if is_tabip:
+                doktorlar_list.append(p)
+            elif is_memur:
+                memur_657_list.append(p)
+                
+            if is_isci:
+                surekli_isci_list.append(p)
+            
+    alt_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    
+    row_idx = 3
+    aktif_sorted = sorted(aktif_data.items(), key=lambda x: (x[0][0], x[0][1]))
+    total_aktif = 0
+    for i, ((ust_birim, kisa_unvan), sayi) in enumerate(aktif_sorted):
+        ws_pano[f'A{row_idx}'] = ust_birim
+        ws_pano[f'B{row_idx}'] = kisa_unvan
+        ws_pano[f'C{row_idx}'] = sayi
+        total_aktif += sayi
+        if i % 2 == 1:
+            for col in ['A', 'B', 'C']:
+                ws_pano[f'{col}{row_idx}'].fill = alt_fill
+        row_idx += 1
+        
+    ws_pano[f'B{row_idx}'] = "TOPLAM"
+    ws_pano[f'B{row_idx}'].font = Font(bold=True)
+    ws_pano[f'C{row_idx}'] = total_aktif
+    ws_pano[f'C{row_idx}'].font = Font(bold=True)
+    
+    row_idx_pasif = 3
+    pasif_sorted = sorted(pasif_data.items(), key=lambda x: (x[0][0], x[0][1]))
+    total_pasif = 0
+    for i, ((ust_birim, kisa_unvan), sayi) in enumerate(pasif_sorted):
+        ws_pano[f'E{row_idx_pasif}'] = ust_birim
+        ws_pano[f'F{row_idx_pasif}'] = kisa_unvan
+        ws_pano[f'G{row_idx_pasif}'] = sayi
+        total_pasif += sayi
+        if i % 2 == 1:
+            for col in ['E', 'F', 'G']:
+                ws_pano[f'{col}{row_idx_pasif}'].fill = alt_fill
+        row_idx_pasif += 1
+        
+    ws_pano[f'F{row_idx_pasif}'] = "TOPLAM"
+    ws_pano[f'F{row_idx_pasif}'].font = Font(bold=True)
+    ws_pano[f'G{row_idx_pasif}'] = total_pasif
+    ws_pano[f'G{row_idx_pasif}'].font = Font(bold=True)
+
+    pasif_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+    aktif_gecici_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+
+    def create_personel_sheet(wb, title, p_list, headers, include_son_birim=False):
+        ws = wb.create_sheet(title=title)
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.value = header
+            cell.fill = header_fill
+            cell.font = header_font
+            
+        for row_num, dr in enumerate(p_list, 2):
+            aktif_gorev = dr.aktif_gecicigorev
+            gorev_birimi = aktif_gorev.gorevlendirildigi_birim if aktif_gorev else ""
+            asil_kurum = aktif_gorev.asil_kurumu if aktif_gorev else ""
+            bitis_tarihi = aktif_gorev.gecici_gorev_bitis if aktif_gorev else ""
+            
+            durum = dr.durum
+            is_pasif = "Pasif" in durum
+            is_aktif_gecici = ("Aktif" in durum) and (dr.kadrolu_personel is False)
+            
+            if is_pasif:
+                asil_kurum = ""
+            if is_aktif_gecici:
+                gorev_birimi = ""
+                
+            row_data = [
+                row_num - 1,
+                dr.sicil_no,
+                dr.tc_kimlik_no,
+                dr.ad_soyad,
+                dr.unvan.ad if dr.unvan else "",
+                dr.brans.ad if dr.brans else ""
+            ]
+            
+            if include_son_birim:
+                row_data.append(dr.son_birim_kaydi or "")
+                
+            row_data.extend([
+                gorev_birimi,
+                asil_kurum,
+                bitis_tarihi.strftime("%d.%m.%Y") if bitis_tarihi else ""
+            ])
+            
+            for col_num, val in enumerate(row_data, 1):
+                cell = ws.cell(row=row_num, column=col_num)
+                cell.value = val
+                if is_pasif:
+                    cell.fill = pasif_fill
+                elif is_aktif_gecici:
+                    cell.fill = aktif_gecici_fill
+        return ws
+
+    # Sheet 2: Doktorlar
+    doktor_headers = [
+        "Sıra No", "Sicil No", "T.C. Kimlik No", "Ad Soyad", "Unvan", "Branş", 
+        "Görevlendirildiği Birim", "Asıl Kurumu", "Görevlendirme Bitiş Tarihi"
+    ]
+    ws_doktorlar = create_personel_sheet(wb, "Doktorlar", doktorlar_list, doktor_headers, include_son_birim=False)
+
+    # Sheet 3: Memur 657
+    genel_headers = [
+        "Sıra No", "Sicil No", "T.C. Kimlik No", "Ad Soyad", "Unvan", "Branş", "Son Birim Kaydı",
+        "Görevlendirildiği Birim", "Asıl Kurumu", "Görevlendirme Bitiş Tarihi"
+    ]
+    ws_memur = create_personel_sheet(wb, "Memur 657", memur_657_list, genel_headers, include_son_birim=True)
+
+    # Sheet 4: Sürekli İşçi
+    ws_isci = create_personel_sheet(wb, "Sürekli İşçi", surekli_isci_list, genel_headers, include_son_birim=True)
+
+    for ws in [ws_pano, ws_doktorlar, ws_memur, ws_isci]:
+        for i, column_cells in enumerate(ws.columns, 1):
+            if not column_cells: continue
+            length = max([len(str(cell.value) or "") for cell in column_cells] + [0])
+            ws.column_dimensions[get_column_letter(i)].width = length + 2
+
+    # Dosya adı: Personel_Verileri_Bugünün tarihi
+    bugun = datetime.now().strftime("%d.%m.%Y")
+    dosya_adi = f"Personel_Verileri_{bugun}.xlsx"
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename={dosya_adi}'
+    wb.save(response)
+    return response
+
 
 @login_required
 def personel_kontrol(request):

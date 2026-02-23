@@ -100,6 +100,9 @@
             <div class="card">
                 <div class="card-header d-flex align-items-center" style="gap: 1rem;">
                     <h3 class="card-title mb-0 flex-grow-1">Personel Listesi</h3>
+                    <a href="{% url 'ik_core:personel_dashboard_export_xlsx' %}" class="btn btn-outline-success btn-sm me-2">
+                        <i class="bi bi-file-earmark-excel-fill"></i> Tüm Personel Bilgilerini Excel'e Aktar
+                    </a>
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#exportModal">
                         <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar (XLSX)
                     </button>

@@ -637,7 +637,20 @@ def personel_detay(request, pk):
             form = PersonelForm(post_data, instance=personel)
             if form.is_valid():
                 form.save()
-                messages.success(request, f"{personel.ad} {personel.soyad} bilgileri başarıyla güncellendi.")
+                
+                fm_status = 'success'
+                fm_msg = "..."
+                if hasattr(personel, 'fm_sync_result') and isinstance(personel.fm_sync_result, dict):
+                    fm_status = personel.fm_sync_result.get('status', 'success')
+                    fm_msg_text = personel.fm_sync_result.get('message', '')
+                    if fm_msg_text:
+                        fm_msg = f" {fm_msg_text}"
+                
+                if fm_status == 'error':
+                    messages.warning(request, f"{personel.ad} {personel.soyad} bilgileri güncellendi.{fm_msg}")
+                else:
+                    messages.success(request, f"{personel.ad} {personel.soyad} bilgileri başarıyla güncellendi.{fm_msg}")
+                    
                 return redirect('ik_core:personel_detay', pk=pk)
             else:
                 # Form hatalarını detaylı olarak logla

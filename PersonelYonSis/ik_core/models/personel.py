@@ -323,6 +323,7 @@ class Personel(models.Model):
         """Kaydı kaydet ve FileMaker senkronizasyonu tetikle"""
         super().save(*args, **kwargs)
         try:
-            sync_personel_to_filemaker(self)
+            self.fm_sync_result = sync_personel_to_filemaker(self)
         except Exception as e:
             print(f"[FM SYNC HATA] {self.tc_kimlik_no}: {e}")
+            self.fm_sync_result = {"status": "error", "message": f"❌ FileMaker senkronizasyon hatası: {e}"}

@@ -330,40 +330,57 @@ def personel_dashboard_export_xlsx(request):
     ws_pano['A1'].font = Font(bold=True)
     ws_pano['A2'] = "Üst Birim"
     ws_pano['B2'] = "Kısa Ünvan"
-    ws_pano['C2'] = "Personel Sayısı"
+    ws_pano['C2'] = "Kadrolu"
+    ws_pano['D2'] = "Geçici"
     
-    ws_pano['E1'] = "Durum = 'Pasif'"
-    ws_pano['E1'].font = Font(bold=True)
-    ws_pano['E2'] = "Üst Birim"
-    ws_pano['F2'] = "Kısa Ünvan"
-    ws_pano['G2'] = "Personel Sayısı"
+    ws_pano['F1'] = "Durum = 'Pasif'"
+    ws_pano['F1'].font = Font(bold=True)
+    ws_pano['F2'] = "Üst Birim"
+    ws_pano['G2'] = "Kısa Ünvan"
+    ws_pano['H2'] = "Kadrolu"
+    ws_pano['I2'] = "Geçici"
 
-    for col in ['A', 'B', 'C', 'E', 'F', 'G']:
+    for col in ['A', 'B', 'C', 'D', 'F', 'G', 'H', 'I']:
         ws_pano[f'{col}2'].fill = header_fill
         ws_pano[f'{col}2'].font = header_font
 
-    aktif_data = {}
+    # Eşleştirme haritasını oluştur (Kısa Ünvan property olduğu için manuel eşleştirme yapıyoruz)
+    eslestirmeler = UnvanBransEslestirme.objects.select_related('kisa_unvan__ust_birim').all()
+    eslestirme_map = {(e.unvan_id, e.brans_id): e for e in eslestirmeler}
+
+    aktif_data = {} # (ust_birim, kisa_unvan) -> {'kadrolu': X, 'gecici': Y}
     pasif_data = {}
     doktorlar_list = []
     memur_657_list = []
     surekli_isci_list = []
     
     for p in personeller:
-        durum = p.durum
+        durum = p.durum or ""
         
+        # Kısa Ünvan ve Üst Birim bilgilerini al
+        eslesme = p.unvan_brans_eslestirme
+        if not eslesme:
+            eslesme = eslestirme_map.get((p.unvan_id, p.brans_id))
+            
         kisa_unvan_ad = "Belirtilmemiş"
         ust_birim_ad = "Belirtilmemiş"
-        if p.unvan_brans_eslestirme and p.unvan_brans_eslestirme.kisa_unvan:
-            kisa_unvan_ad = p.unvan_brans_eslestirme.kisa_unvan.ad
-            if p.unvan_brans_eslestirme.kisa_unvan.ust_birim:
-                ust_birim_ad = p.unvan_brans_eslestirme.kisa_unvan.ust_birim.ad
+        
+        if eslesme and eslesme.kisa_unvan:
+            kisa_unvan_ad = eslesme.kisa_unvan.ad
+            if eslesme.kisa_unvan.ust_birim:
+                ust_birim_ad = eslesme.kisa_unvan.ust_birim.ad
                 
         key = (ust_birim_ad, kisa_unvan_ad)
+        is_kadrolu = p.kadrolu_personel is not False
         
         if "Aktif" in durum:
-            aktif_data[key] = aktif_data.get(key, 0) + 1
+            if key not in aktif_data: aktif_data[key] = {'kadrolu': 0, 'gecici': 0}
+            if is_kadrolu: aktif_data[key]['kadrolu'] += 1
+            else: aktif_data[key]['gecici'] += 1
         elif "Pasif" in durum:
-            pasif_data[key] = pasif_data.get(key, 0) + 1
+            if key not in pasif_data: pasif_data[key] = {'kadrolu': 0, 'gecici': 0}
+            if is_kadrolu: pasif_data[key]['kadrolu'] += 1
+            else: pasif_data[key]['gecici'] += 1
             
         is_aktif_veya_pasif = ('Aktif' in durum or 'Pasif' in durum)
         is_tabip = p.unvan and 'tabip' in p.unvan.ad.lower()
@@ -386,39 +403,49 @@ def personel_dashboard_export_xlsx(request):
     
     row_idx = 3
     aktif_sorted = sorted(aktif_data.items(), key=lambda x: (x[0][0], x[0][1]))
-    total_aktif = 0
-    for i, ((ust_birim, kisa_unvan), sayi) in enumerate(aktif_sorted):
+    total_aktif_kadrolu = 0
+    total_aktif_gecici = 0
+    for i, ((ust_birim, kisa_unvan), counts) in enumerate(aktif_sorted):
         ws_pano[f'A{row_idx}'] = ust_birim
         ws_pano[f'B{row_idx}'] = kisa_unvan
-        ws_pano[f'C{row_idx}'] = sayi
-        total_aktif += sayi
+        ws_pano[f'C{row_idx}'] = counts['kadrolu']
+        ws_pano[f'D{row_idx}'] = counts['gecici']
+        total_aktif_kadrolu += counts['kadrolu']
+        total_aktif_gecici += counts['gecici']
         if i % 2 == 1:
-            for col in ['A', 'B', 'C']:
+            for col in ['A', 'B', 'C', 'D']:
                 ws_pano[f'{col}{row_idx}'].fill = alt_fill
         row_idx += 1
         
     ws_pano[f'B{row_idx}'] = "TOPLAM"
     ws_pano[f'B{row_idx}'].font = Font(bold=True)
-    ws_pano[f'C{row_idx}'] = total_aktif
+    ws_pano[f'C{row_idx}'] = total_aktif_kadrolu
     ws_pano[f'C{row_idx}'].font = Font(bold=True)
+    ws_pano[f'D{row_idx}'] = total_aktif_gecici
+    ws_pano[f'D{row_idx}'].font = Font(bold=True)
     
     row_idx_pasif = 3
     pasif_sorted = sorted(pasif_data.items(), key=lambda x: (x[0][0], x[0][1]))
-    total_pasif = 0
-    for i, ((ust_birim, kisa_unvan), sayi) in enumerate(pasif_sorted):
-        ws_pano[f'E{row_idx_pasif}'] = ust_birim
-        ws_pano[f'F{row_idx_pasif}'] = kisa_unvan
-        ws_pano[f'G{row_idx_pasif}'] = sayi
-        total_pasif += sayi
+    total_pasif_kadrolu = 0
+    total_pasif_gecici = 0
+    for i, ((ust_birim, kisa_unvan), counts) in enumerate(pasif_sorted):
+        ws_pano[f'F{row_idx_pasif}'] = ust_birim
+        ws_pano[f'G{row_idx_pasif}'] = kisa_unvan
+        ws_pano[f'H{row_idx_pasif}'] = counts['kadrolu']
+        ws_pano[f'I{row_idx_pasif}'] = counts['gecici']
+        total_pasif_kadrolu += counts['kadrolu']
+        total_pasif_gecici += counts['gecici']
         if i % 2 == 1:
-            for col in ['E', 'F', 'G']:
+            for col in ['F', 'G', 'H', 'I']:
                 ws_pano[f'{col}{row_idx_pasif}'].fill = alt_fill
         row_idx_pasif += 1
         
-    ws_pano[f'F{row_idx_pasif}'] = "TOPLAM"
-    ws_pano[f'F{row_idx_pasif}'].font = Font(bold=True)
-    ws_pano[f'G{row_idx_pasif}'] = total_pasif
+    ws_pano[f'G{row_idx_pasif}'] = "TOPLAM"
     ws_pano[f'G{row_idx_pasif}'].font = Font(bold=True)
+    ws_pano[f'H{row_idx_pasif}'] = total_pasif_kadrolu
+    ws_pano[f'H{row_idx_pasif}'].font = Font(bold=True)
+    ws_pano[f'I{row_idx_pasif}'] = total_pasif_gecici
+    ws_pano[f'I{row_idx_pasif}'].font = Font(bold=True)
 
     pasif_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
     aktif_gecici_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
@@ -437,15 +464,19 @@ def personel_dashboard_export_xlsx(request):
             asil_kurum = aktif_gorev.asil_kurumu if aktif_gorev else ""
             bitis_tarihi = aktif_gorev.gecici_gorev_bitis if aktif_gorev else ""
             
-            durum = dr.durum
+            durum = dr.durum or ""
             is_pasif = "Pasif" in durum
             is_aktif_gecici = ("Aktif" in durum) and (dr.kadrolu_personel is False)
             
             if is_pasif:
+                row_durum = "Pasif"
                 asil_kurum = ""
-            if is_aktif_gecici:
+            elif dr.kadrolu_personel is not False:
+                row_durum = "Aktif (Kadrolu)"
+            else:
+                row_durum = "Aktif (Geçici)"
                 gorev_birimi = ""
-                
+
             row_data = [
                 row_num - 1,
                 dr.sicil_no,
@@ -458,6 +489,8 @@ def personel_dashboard_export_xlsx(request):
             if include_son_birim:
                 row_data.append(dr.son_birim_kaydi or "")
                 
+            row_data.append(row_durum)
+
             row_data.extend([
                 gorev_birimi,
                 asil_kurum,
@@ -475,14 +508,14 @@ def personel_dashboard_export_xlsx(request):
 
     # Sheet 2: Doktorlar
     doktor_headers = [
-        "Sıra No", "Sicil No", "T.C. Kimlik No", "Ad Soyad", "Unvan", "Branş", 
+        "Sıra No", "Sicil No", "T.C. Kimlik No", "Ad Soyad", "Unvan", "Branş", "Durum",
         "Görevlendirildiği Birim", "Asıl Kurumu", "Görevlendirme Bitiş Tarihi"
     ]
     ws_doktorlar = create_personel_sheet(wb, "Doktorlar", doktorlar_list, doktor_headers, include_son_birim=False)
 
     # Sheet 3: Memur 657
     genel_headers = [
-        "Sıra No", "Sicil No", "T.C. Kimlik No", "Ad Soyad", "Unvan", "Branş", "Son Birim Kaydı",
+        "Sıra No", "Sicil No", "T.C. Kimlik No", "Ad Soyad", "Unvan", "Branş", "Son Birim Kaydı", "Durum",
         "Görevlendirildiği Birim", "Asıl Kurumu", "Görevlendirme Bitiş Tarihi"
     ]
     ws_memur = create_personel_sheet(wb, "Memur 657", memur_657_list, genel_headers, include_son_birim=True)

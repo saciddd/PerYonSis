@@ -65,7 +65,8 @@
                     <label for="durum" class="form-label">Durum</label>
                     <select id="durum" name="durum" class="form-select">
                         <option value="">Tümü</option>
-                        <option value="Aktif" {% if arama.durum == "Aktif" %}selected{% endif %}>Aktif</option>
+                        <option value="Aktif (Kadrolu)" {% if arama.durum == "Aktif (Kadrolu)" %}selected{% endif %}>Aktif (Kadrolu)</option>
+                        <option value="Aktif (Geçici)" {% if arama.durum == "Aktif (Geçici)" %}selected{% endif %}>Aktif (Geçici)</option>
                         <option value="Pasif" {% if arama.durum == "Pasif" %}selected{% endif %}>Pasif</option>
                         <option value="Kurumdan Ayrıldı" {% if arama.durum == "Kurumdan Ayrıldı" %}selected{% endif %}>Kurumdan Ayrıldı</option>
                         <option value="Asıl Kurumuna Döndü" {% if arama.durum == "Asıl Kurumuna Döndü" %}selected{% endif %}>Asıl Kurumuna Döndü</option>
@@ -137,8 +138,10 @@
                                         <td>{{ personel.kisa_unvan|default:"-" }}</td>
                                         <td>{{ personel.goreve_baslama_tarihi|date:"d.m.Y" }}</td>
                                         <td>
-                                            {% if personel.durum == "Aktif" %}
+                                            {% if personel.durum == "Aktif (Kadrolu)" %}
                                                 <span class="badge bg-success">{{ personel.durum }}</span>
+                                            {% elif personel.durum == "Aktif (Geçici)" %}
+                                                <span class="badge bg-info">{{ personel.durum }}</span>
                                             {% elif personel.durum == "Pasif" %}
                                                 <span class="badge bg-warning text-dark">{{ personel.durum }}</span>
                                                 {% if personel.aktif_gecicigorev %}

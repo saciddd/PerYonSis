@@ -326,21 +326,15 @@ def personel_dashboard_export_xlsx(request):
     header_fill = PatternFill(start_color="0c0c2e", end_color="0c0c2e", fill_type="solid")
     header_font = Font(color="FFFFFF", bold=True)
     
-    ws_pano['A1'] = "Durum = 'Aktif'"
-    ws_pano['A1'].font = Font(bold=True)
+    ws_pano['A1'] = "Personel Özet Listesi (Pano)"
+    ws_pano['A1'].font = Font(bold=True, size=14)
     ws_pano['A2'] = "Üst Birim"
     ws_pano['B2'] = "Kısa Ünvan"
-    ws_pano['C2'] = "Kadrolu"
-    ws_pano['D2'] = "Geçici"
-    
-    ws_pano['F1'] = "Durum = 'Pasif'"
-    ws_pano['F1'].font = Font(bold=True)
-    ws_pano['F2'] = "Üst Birim"
-    ws_pano['G2'] = "Kısa Ünvan"
-    ws_pano['H2'] = "Kadrolu"
-    ws_pano['I2'] = "Geçici"
+    ws_pano['C2'] = "Kadrolu çalışan"
+    ws_pano['D2'] = "Geçici gelen"
+    ws_pano['E2'] = "Geçici giden"
 
-    for col in ['A', 'B', 'C', 'D', 'F', 'G', 'H', 'I']:
+    for col in ['A', 'B', 'C', 'D', 'E']:
         ws_pano[f'{col}2'].fill = header_fill
         ws_pano[f'{col}2'].font = header_font
 
@@ -348,8 +342,7 @@ def personel_dashboard_export_xlsx(request):
     eslestirmeler = UnvanBransEslestirme.objects.select_related('kisa_unvan__ust_birim').all()
     eslestirme_map = {(e.unvan_id, e.brans_id): e for e in eslestirmeler}
 
-    aktif_data = {} # (ust_birim, kisa_unvan) -> {'kadrolu': X, 'gecici': Y}
-    pasif_data = {}
+    pano_data = {} # (ust_birim, kisa_unvan) -> {'kadrolu': X, 'g_gelen': Y, 'g_giden': Z}
     doktorlar_list = []
     memur_657_list = []
     surekli_isci_list = []
@@ -373,14 +366,15 @@ def personel_dashboard_export_xlsx(request):
         key = (ust_birim_ad, kisa_unvan_ad)
         is_kadrolu = p.kadrolu_personel is not False
         
+        if key not in pano_data:
+            pano_data[key] = {'kadrolu': 0, 'g_gelen': 0, 'g_giden': 0}
+            
         if "Aktif" in durum:
-            if key not in aktif_data: aktif_data[key] = {'kadrolu': 0, 'gecici': 0}
-            if is_kadrolu: aktif_data[key]['kadrolu'] += 1
-            else: aktif_data[key]['gecici'] += 1
+            if is_kadrolu: pano_data[key]['kadrolu'] += 1
+            else: pano_data[key]['g_gelen'] += 1
         elif "Pasif" in durum:
-            if key not in pasif_data: pasif_data[key] = {'kadrolu': 0, 'gecici': 0}
-            if is_kadrolu: pasif_data[key]['kadrolu'] += 1
-            else: pasif_data[key]['gecici'] += 1
+            # Kullanıcı notu: Pasif & Geçici mümkün değil, bu yüzden tüm Pasifler "Geçici giden" sayılır.
+            pano_data[key]['g_giden'] += 1
             
         is_aktif_veya_pasif = ('Aktif' in durum or 'Pasif' in durum)
         is_tabip = p.unvan and 'tabip' in p.unvan.ad.lower()
@@ -402,50 +396,35 @@ def personel_dashboard_export_xlsx(request):
     alt_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
     
     row_idx = 3
-    aktif_sorted = sorted(aktif_data.items(), key=lambda x: (x[0][0], x[0][1]))
-    total_aktif_kadrolu = 0
-    total_aktif_gecici = 0
-    for i, ((ust_birim, kisa_unvan), counts) in enumerate(aktif_sorted):
+    pano_sorted = sorted(pano_data.items(), key=lambda x: (x[0][0], x[0][1]))
+    total_kadrolu = 0
+    total_g_gelen = 0
+    total_g_giden = 0
+    
+    for i, ((ust_birim, kisa_unvan), counts) in enumerate(pano_sorted):
         ws_pano[f'A{row_idx}'] = ust_birim
         ws_pano[f'B{row_idx}'] = kisa_unvan
         ws_pano[f'C{row_idx}'] = counts['kadrolu']
-        ws_pano[f'D{row_idx}'] = counts['gecici']
-        total_aktif_kadrolu += counts['kadrolu']
-        total_aktif_gecici += counts['gecici']
+        ws_pano[f'D{row_idx}'] = counts['g_gelen']
+        ws_pano[f'E{row_idx}'] = counts['g_giden']
+        
+        total_kadrolu += counts['kadrolu']
+        total_g_gelen += counts['g_gelen']
+        total_g_giden += counts['g_giden']
+        
         if i % 2 == 1:
-            for col in ['A', 'B', 'C', 'D']:
+            for col in ['A', 'B', 'C', 'D', 'E']:
                 ws_pano[f'{col}{row_idx}'].fill = alt_fill
         row_idx += 1
         
     ws_pano[f'B{row_idx}'] = "TOPLAM"
     ws_pano[f'B{row_idx}'].font = Font(bold=True)
-    ws_pano[f'C{row_idx}'] = total_aktif_kadrolu
+    ws_pano[f'C{row_idx}'] = total_kadrolu
     ws_pano[f'C{row_idx}'].font = Font(bold=True)
-    ws_pano[f'D{row_idx}'] = total_aktif_gecici
+    ws_pano[f'D{row_idx}'] = total_g_gelen
     ws_pano[f'D{row_idx}'].font = Font(bold=True)
-    
-    row_idx_pasif = 3
-    pasif_sorted = sorted(pasif_data.items(), key=lambda x: (x[0][0], x[0][1]))
-    total_pasif_kadrolu = 0
-    total_pasif_gecici = 0
-    for i, ((ust_birim, kisa_unvan), counts) in enumerate(pasif_sorted):
-        ws_pano[f'F{row_idx_pasif}'] = ust_birim
-        ws_pano[f'G{row_idx_pasif}'] = kisa_unvan
-        ws_pano[f'H{row_idx_pasif}'] = counts['kadrolu']
-        ws_pano[f'I{row_idx_pasif}'] = counts['gecici']
-        total_pasif_kadrolu += counts['kadrolu']
-        total_pasif_gecici += counts['gecici']
-        if i % 2 == 1:
-            for col in ['F', 'G', 'H', 'I']:
-                ws_pano[f'{col}{row_idx_pasif}'].fill = alt_fill
-        row_idx_pasif += 1
-        
-    ws_pano[f'G{row_idx_pasif}'] = "TOPLAM"
-    ws_pano[f'G{row_idx_pasif}'].font = Font(bold=True)
-    ws_pano[f'H{row_idx_pasif}'] = total_pasif_kadrolu
-    ws_pano[f'H{row_idx_pasif}'].font = Font(bold=True)
-    ws_pano[f'I{row_idx_pasif}'] = total_pasif_gecici
-    ws_pano[f'I{row_idx_pasif}'].font = Font(bold=True)
+    ws_pano[f'E{row_idx}'] = total_g_giden
+    ws_pano[f'E{row_idx}'].font = Font(bold=True)
 
     pasif_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
     aktif_gecici_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")

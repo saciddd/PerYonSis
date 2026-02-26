@@ -315,9 +315,11 @@ def birim_analiz_view(request):
     kisa_unvan_filter = request.GET.getlist('kisa_unvan', [])
     kadro_durumu_filter = request.GET.get('kadro_durumu', '')
     
+    export_format = request.GET.get('export', '')
+    
     # Varsayılan Filtreler
-    # Check if this is an AJAX request for data
-    load_data = request.GET.get('load_data') == '1'
+    # Check if this is an AJAX request for data or an export request
+    load_data = request.GET.get('load_data') == '1' or bool(export_format)
     
     context = {
         'ust_birimler': UstBirim.objects.all().order_by('ad'),
@@ -380,11 +382,12 @@ def birim_analiz_view(request):
 
     # Aggregations
     ust_birim_data = {}
-    bina_data = {}
+    kampus_data = {}
     all_kisa_unvans_set = set() # For compatibility
     
     filtered_personel_objects = []
 
+    # select_related'da bina__kampus'ü eklemek performans artırır ama prefetch'lendiği için şimdilik modele gidiyoruz.
     for p in personeller_list:
         if durum_filter and p.durum not in durum_filter:
             continue
@@ -428,41 +431,143 @@ def birim_analiz_view(request):
         ust_birim_data[ub_id]['birimler'][b_id]['count'] += 1
         ust_birim_data[ub_id]['total'] += 1
         
-        # Data for Tab 2
-        bina_ad = birim.bina.ad if birim.bina else 'Tanımsız'
-        birim_tipi = birim.birim_tipi or 'Tanımsız'
+        # Data for Tab 2 (Kampüs -> Bina -> Birim -> Unvanlar)
+        kampus_ad = birim.bina.kampus.ad if hasattr(birim, 'bina') and birim.bina and hasattr(birim.bina, 'kampus') and birim.bina.kampus else 'Tanımsız Kampüs'
+        bina_ad = birim.bina.ad if hasattr(birim, 'bina') and birim.bina else 'Tanımsız Bina'
         
-        if bina_ad not in bina_data:
-            bina_data[bina_ad] = {}
+        if kampus_ad not in kampus_data:
+            kampus_data[kampus_ad] = {'binalar': {}, 'total': 0}
             
-        if birim_tipi not in bina_data[bina_ad]:
-            bina_data[bina_ad][birim_tipi] = {'birimler': {}, 'total': 0}
+        if bina_ad not in kampus_data[kampus_ad]['binalar']:
+            kampus_data[kampus_ad]['binalar'][bina_ad] = {'birimler': {}, 'total': 0}
             
-        if b_id not in bina_data[bina_ad][birim_tipi]['birimler']:
-            bina_data[bina_ad][birim_tipi]['birimler'][b_id] = {'ad': b_ad, 'unvanlar': {}, 'total': 0}
+        if b_id not in kampus_data[kampus_ad]['binalar'][bina_ad]['birimler']:
+            kampus_data[kampus_ad]['binalar'][bina_ad]['birimler'][b_id] = {'ad': b_ad, 'unvanlar': {}, 'total': 0}
             
-        if ku_id not in bina_data[bina_ad][birim_tipi]['birimler'][b_id]['unvanlar']:
-            bina_data[bina_ad][birim_tipi]['birimler'][b_id]['unvanlar'][ku_id] = 0
+        if ku_id not in kampus_data[kampus_ad]['binalar'][bina_ad]['birimler'][b_id]['unvanlar']:
+            kampus_data[kampus_ad]['binalar'][bina_ad]['birimler'][b_id]['unvanlar'][ku_id] = 0
             
-        bina_data[bina_ad][birim_tipi]['birimler'][b_id]['unvanlar'][ku_id] += 1
-        bina_data[bina_ad][birim_tipi]['birimler'][b_id]['total'] += 1
-        bina_data[bina_ad][birim_tipi]['total'] += 1
+        kampus_data[kampus_ad]['binalar'][bina_ad]['birimler'][b_id]['unvanlar'][ku_id] += 1
+        kampus_data[kampus_ad]['binalar'][bina_ad]['birimler'][b_id]['total'] += 1
+        kampus_data[kampus_ad]['binalar'][bina_ad]['total'] += 1
+        kampus_data[kampus_ad]['total'] += 1
+
+        all_kisa_unvans_set.add((ku_id, ku_ad))
+
+    # Calculate flat export matrix and grouped PDF data
+    sorted_kisa_unvans = sorted(list(all_kisa_unvans_set), key=lambda x: str(x[1]))
+    export_headers = [ "Üst Birim", "Kampüs", "Bina", "Birim" ] + [ku_ad for ku_id, ku_ad in sorted_kisa_unvans] + ["Toplam"]
+    export_rows = []
+    pdf_grouped_data = {}
+
+    birim_flat = {}
+    for p in filtered_personel_objects:
+        pbs = sorted([pb for pb in p.personelbirim_set.all()], key=lambda x: (x.gecis_tarihi, x.creation_timestamp), reverse=True)
+        if not pbs: continue
+        birim = pbs[0].birim
+        b_id = birim.id
+        
+        ku_id = p._kisa_unvan_id_cache
+        ku_ad = p.kisa_unvan or 'Tanımsız'
+        
+        if b_id not in birim_flat:
+            birim_flat[b_id] = {
+                'ust_birim': birim.ust_birim.ad,
+                'kampus': birim.bina.kampus.ad if hasattr(birim, 'bina') and birim.bina and hasattr(birim.bina, 'kampus') and birim.bina.kampus else 'Tanımsız Kampüs',
+                'bina': birim.bina.ad if hasattr(birim, 'bina') and birim.bina else 'Tanımsız Bina',
+                'birim_ad': birim.ad,
+                'unvan_dict': {},
+                'unvanlar': {ku[0]: 0 for ku in sorted_kisa_unvans},
+                'total': 0
+            }
+        
+        birim_flat[b_id]['unvanlar'][ku_id] = birim_flat[b_id]['unvanlar'].get(ku_id, 0) + 1
+        birim_flat[b_id]['unvan_dict'][ku_ad] = birim_flat[b_id]['unvan_dict'].get(ku_ad, 0) + 1
+        birim_flat[b_id]['total'] += 1
+    
+    # Build export_rows and pdf_grouped_data
+    for b_id, data in birim_flat.items():
+        ub = data['ust_birim']
+        kp = data['kampus']
+        bn = data['bina']
+        br = data['birim_ad']
+        
+        row = [ub, kp, bn, br]
+        for ku_id, ku_ad in sorted_kisa_unvans:
+            row.append(data['unvanlar'].get(ku_id, 0))
+        row.append(data['total'])
+        export_rows.append(row)
+        
+        if ub not in pdf_grouped_data: pdf_grouped_data[ub] = {}
+        if kp not in pdf_grouped_data[ub]: pdf_grouped_data[ub][kp] = {}
+        if bn not in pdf_grouped_data[ub][kp]: pdf_grouped_data[ub][kp][bn] = {}
+        
+        # Format unvan counts to a list of tuples for easy iteration in template
+        sorted_unvans = sorted(data['unvan_dict'].items(), key=lambda x: str(x[0]))
+        pdf_grouped_data[ub][kp][bn][br] = {
+            'unvanlar': sorted_unvans,
+            'total': data['total']
+        }
+        
+    # Sort the spreadsheet rows by Ust Birim -> Kampus -> Bina -> Birim
+    export_rows.sort(key=lambda x: (x[0], x[1], x[2], x[3]))
 
     partial_context = context.copy()
     partial_context.update({
         'ust_birim_data': ust_birim_data,
-        'bina_data': bina_data,
+        'kampus_data': kampus_data,
+        'export_headers': export_headers,
+        'export_rows': export_rows,
         'all_kisa_unvans': KisaUnvan.objects.all(), # Passed as QS in original but can be list
     })
 
-    # Render Partial (Needs to be created, effectively content of tabs)
-    html_content = render_to_string('ik_core/partials/analiz_birim_content.html', partial_context, request)
-    personel_data = serialize_personel_list(filtered_personel_objects)
-    
-    return JsonResponse({
-        'html_content': html_content,
-        'personel_data': personel_data
-    })
+    if export_format == 'excel':
+        import openpyxl
+        from django.http import HttpResponse
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Birim Analiz Raporu"
+        ws.append(export_headers)
+        for row in export_rows:
+            ws.append(row)
+            
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="birim_analiz_raporu.xlsx"'
+        wb.save(response)
+        return response
+        
+    elif export_format == 'pdf':
+        import pdfkit
+        from django.http import HttpResponse
+        import os
+        
+        html = render_to_string('ik_core/analiz/pdf/birim_analiz_pdf.html', {
+            'pdf_grouped_data': pdf_grouped_data
+        })
+        
+        options = {
+            'page-size': 'A4',
+            'orientation': 'Landscape',
+            'encoding': 'UTF-8',
+        }
+        
+        pdfkit_config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
+        
+        pdf = pdfkit.from_string(html, False, options=options, configuration=pdfkit_config)
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="birim_analiz_raporu.pdf"'
+        return response
+        
+    else:
+        # Render Partial (Needs to be created, effectively content of tabs)
+        html_content = render_to_string('ik_core/partials/analiz_birim_content.html', partial_context, request)
+        personel_data = serialize_personel_list(filtered_personel_objects)
+        
+        return JsonResponse({
+            'html_content': html_content,
+            'personel_data': personel_data
+        })
 
 
 def personel_list_modal_view(request):

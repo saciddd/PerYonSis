@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Birim Analiz Raporu</title>
+    <style>
+        body { font-family: sans-serif; font-size: 11px; margin: 0; padding: 20px; color: #333; }
+        h2 { text-align: center; color: #2c3e50; border-bottom: 2px solid #aecae3; padding-bottom: 10px; margin-bottom: 30px; }
+        .ust-birim { font-size: 16px; font-weight: bold; padding: 8px; background-color: #34495e; color: #fff; margin-top: 20px; border-radius: 4px; }
+        .kampus { font-size: 14px; font-weight: bold; margin-top: 15px; margin-left: 10px; color: #c0392b; border-bottom: 1px solid #c0392b; padding-bottom: 4px; }
+        .bina { font-size: 13px; font-weight: bold; margin-top: 15px; margin-left: 20px; color: #2980b9; }
+        .birim { font-size: 12px; font-weight: bold; margin-top: 10px; margin-left: 30px; color: #27ae60; }
+        table { width: 90%; margin-left: 40px; border-collapse: collapse; margin-top: 10px; margin-bottom: 20px; }
+        th, td { border: 1px solid #bdc3c7; padding: 6px 12px; text-align: center; }
+        th { background-color: #ecf0f1; font-weight: bold; color: #2c3e50; }
+    </style>
+</head>
+<body>
+    <h2>Personel Görev Noktaları Analiz Raporu</h2>
+    
+    {% for ub_ad, k_dict in pdf_grouped_data.items %}
+        <div class="ust-birim">Üst Birim: {{ ub_ad }}</div>
+        
+        {% for k_ad, b_dict in k_dict.items %}
+            <div class="kampus">Kampüs: {{ k_ad }}</div>
+            
+            {% for b_ad, br_dict in b_dict.items %}
+                <div class="bina">Bina: {{ b_ad }}</div>
+                
+                {% for br_ad, d in br_dict.items %}
+                    <div class="birim">Birim: {{ br_ad }} (Toplam: {{ d.total }})</div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Ünvan</th>
+                                <th>Sayı</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in d.unvanlar %}
+                            <tr>
+                                <td style="text-align: left;">{{ u.0 }}</td>
+                                <td>{{ u.1 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="2">Veri bulunamadı.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endfor %}
+            {% endfor %}
+        {% endfor %}
+        <hr/>
+    {% empty %}
+        <p style="text-align:center;">Kayıt bulunamadı.</p>
+    {% endfor %}
+</body>
+</html>

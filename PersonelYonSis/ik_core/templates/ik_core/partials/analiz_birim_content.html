@@ -1,13 +1,5 @@
 <!-- Tab 1: Üst Birim Dağılımı -->
 <div class="tab-pane fade show active" id="tab-ustbirim" role="tabpanel">
-    <div class="d-flex justify-content-end mb-3">
-        <button class="btn btn-outline-primary btn-sm me-2" onclick="exportToPDF('tab-ustbirim')">
-            <i class="bi bi-file-earmark-pdf"></i> PDF Yazdır
-        </button>
-        <button class="btn btn-outline-success btn-sm" onclick="exportToExcel('tab-ustbirim')">
-            <i class="bi bi-file-earmark-excel"></i> Excel Aktar
-        </button>
-    </div>
      <div class="row">
          {% for ub_id, ub_data in ust_birim_data.items %}
          <div class="col-md-6 mb-4">
@@ -41,88 +33,106 @@
      </div>
 </div>
 
-<!-- Tab 2: Bina → Birim Tipi → Birim Ünvan Dağılımı -->
+<!-- Tab 2: Kampüs → Bina → Birim Ünvan Dağılımı -->
 <div class="tab-pane fade" id="tab-birimunvan" role="tabpanel">
-    <div class="d-flex justify-content-end mb-3">
-        <button class="btn btn-outline-primary btn-sm me-2" onclick="exportToPDF('tab-birimunvan')">
-            <i class="bi bi-file-earmark-pdf"></i> PDF Yazdır
-        </button>
-        <button class="btn btn-outline-success btn-sm" onclick="exportToExcel('tab-birimunvan')">
-            <i class="bi bi-file-earmark-excel"></i> Excel Aktar
-        </button>
-    </div>
-    <div class="accordion" id="binaAccordion">
-        {% for bina_ad, bina_tipi_data in bina_data.items %}
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="headingBina{{ forloop.counter }}">
-                <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBina{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapseBina{{ forloop.counter }}">
-                    <strong>{{ bina_ad }}</strong>
-                    <span class="badge bg-primary ms-2">{{ bina_tipi_data|length }} Birim Tipi</span>
-                </button>
-            </h2>
-            <div id="collapseBina{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="headingBina{{ forloop.counter }}" data-bs-parent="#binaAccordion">
-                <div class="accordion-body p-0">
-                    <div class="accordion" id="birimTipiAccordion{{ forloop.counter }}">
-                        {% for birim_tipi, tipi_data in bina_tipi_data.items %}
-                        <div class="accordion-item">
-                            <h3 class="accordion-header" id="headingTipi{{ forloop.parentloop.counter }}{{ forloop.counter }}">
-                                <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTipi{{ forloop.parentloop.counter }}{{ forloop.counter }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapseTipi{{ forloop.parentloop.counter }}{{ forloop.counter }}">
-                                <strong>{{ birim_tipi }}</strong>
-                                <span class="badge bg-secondary ms-2">{{ tipi_data.total }} Personel</span>
-                            </button>
-                        </h3>
-                        <div id="collapseTipi{{ forloop.parentloop.counter }}{{ forloop.counter }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="headingTipi{{ forloop.parentloop.counter }}{{ forloop.counter }}" data-bs-parent="#birimTipiAccordion{{ forloop.parentloop.counter }}">
-                            <div class="accordion-body p-0">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered table-hover mb-0 table-sm" style="font-size: 0.9rem;">
-                                        <thead class="table-light">
-                                            <tr>
-                                                <th>Birim</th>
-                                                <th>Ünvanlar / Personel Sayıları</th>
-                                                <th class="text-center" style="width: 80px;">Toplam</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for bid, data in tipi_data.birimler.items %}
-                                            <tr>
-                                                <td class="fw-bold align-middle clickable-row" data-birim-id="{{ bid }}" style="cursor: pointer;">{{ data.ad }}</td>
-                                                <td>
-                                                    <div class="d-flex flex-wrap gap-2">
-                                                        {% for ku_id, count in data.unvanlar.items %}
-                                                            <button class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 detail-btn p-1 px-2"
-                                                                    data-birim-id="{{ bid }}"
-                                                                    data-kisa-unvan-id="{{ ku_id }}">
-                                                                {% for ku in all_kisa_unvans %}
-                                                                    {% if ku.id == ku_id %}
-                                                                        <span>{{ ku.ad }}</span>
-                                                                    {% endif %}
-                                                                {% endfor %}
-                                                                 {% if ku_id == 'unknown' %}<span>Tanımsız</span>{% endif %}
-                                                                <span class="badge bg-secondary">{{ count }}</span>
-                                                            </button>
-                                                        {% endfor %}
-                                                    </div>
-                                                </td>
-                                                <td class="text-center align-middle fw-bold">{{ data.total }}</td>
-                                            </tr>
-                                            {% empty %}
-                                             <tr><td colspan="3" class="text-center py-4">Bu birim tipinde veri bulunamadı.</td></tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
+
+    <!-- Minimalist Kampüs -> Bina -> Birim Görünümü -->
+    {% for kampus_ad, k_data in kampus_data.items %}
+    <div class="mb-5">
+        <h4 class="fw-bold mb-4 text-secondary" style="border-bottom: 2px solid #f0f2f5; padding-bottom: 0.75rem;">
+            <i class="bi bi-geo-alt-fill text-danger me-1"></i> {{ kampus_ad }} 
+            <span class="badge bg-light text-dark border ms-2 fw-normal" style="font-size: 0.9rem;">{{ k_data.total }} Personel</span>
+        </h4>
+        
+        <div class="row g-4">
+            {% for bina_ad, b_data in k_data.binalar.items %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border-0 shadow-sm" style="border-radius: 16px; transition: all 0.3s ease; cursor: pointer; background-color: #ffffff;" 
+                     data-bs-toggle="modal" data-bs-target="#modalBina-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"
+                     onmouseover="this.style.transform='translateY(-6px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.08)'" 
+                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 4px rgba(0,0,0,0.05)'">
+                    <div class="card-body text-center p-4 d-flex flex-column justify-content-center">
+                        <div class="mb-3">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle" style="width: 70px; height: 70px;">
+                                <i class="bi bi-building fs-3"></i>
                             </div>
                         </div>
-                    </div>
-                    {% empty %}
-                    <div class="text-center py-5 text-muted">Bu binada birim tipi bulunamadı.</div>
-                    {% endfor %}
+                        <h5 class="card-title fw-bold text-dark mb-1">{{ bina_ad }}</h5>
+                        <p class="card-text text-muted small mb-3">{{ b_data.birimler|length }} Birim</p>
+                        
+                        <div class="mt-auto pt-3 border-top w-75 mx-auto">
+                            <span class="fw-bold text-primary fs-4">{{ b_data.total }}</span> 
+                            <span class="text-muted small">Personel</span>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Modal for Bina -->
+            <div class="modal fade" id="modalBina-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" tabindex="-1" aria-labelledby="modalLabel-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" aria-hidden="true">
+                <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+                        <div class="modal-header bg-white border-bottom py-3 px-4">
+                            <h5 class="modal-title fw-bold text-dark w-100 d-flex justify-content-between align-items-center" id="modalLabel-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                                <span><i class="bi bi-building text-primary me-2"></i> {{ bina_ad }} <span class="text-muted fw-normal ms-2" style="font-size: 1rem;">({{ kampus_ad }})</span></span>
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                        </div>
+                        <div class="modal-body p-0 bg-light">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0 bg-white" style="font-size: 0.95rem;">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th class="ps-4 py-3 text-uppercase text-muted" style="font-size: 0.8rem; letter-spacing: 0.5px;">Birim Adı</th>
+                                            <th class="py-3 text-uppercase text-muted" style="font-size: 0.8rem; letter-spacing: 0.5px;">Ünvan Dağılımı</th>
+                                            <th class="text-center pe-4 py-3 text-uppercase text-muted" style="font-size: 0.8rem; letter-spacing: 0.5px; width: 100px;">Toplam</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for bid, data in b_data.birimler.items %}
+                                        <tr>
+                                            <td class="ps-4 py-3 fw-medium text-dark align-middle clickable-row" data-birim-id="{{ bid }}" data-bs-dismiss="modal" style="cursor: pointer;">{{ data.ad }}</td>
+                                            <td class="py-3 align-middle">
+                                                <div class="d-flex flex-wrap gap-2">
+                                                    {% for ku_id, count in data.unvanlar.items %}
+                                                        <button class="btn btn-sm text-secondary bg-white border d-inline-flex align-items-center detail-btn rounded-pill px-3 py-1"
+                                                                style="font-size: 0.85rem; border-color: #dee2e6 !important;"
+                                                                data-birim-id="{{ bid }}"
+                                                                data-kisa-unvan-id="{{ ku_id }}"
+                                                                data-bs-dismiss="modal">
+                                                            {% for ku in all_kisa_unvans %}
+                                                                {% if ku.id == ku_id %}
+                                                                    <span class="fw-medium me-2 text-dark">{{ ku.ad }}</span>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                            {% if ku_id == 'unknown' %}<span class="fw-medium me-2 text-dark">Tanımsız</span>{% endif %}
+                                                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill">{{ count }}</span>
+                                                        </button>
+                                                    {% endfor %}
+                                                </div>
+                                            </td>
+                                            <td class="text-center pe-4 py-3 align-middle fw-bold fs-6 text-dark">{{ data.total }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr><td colspan="3" class="text-center py-5 text-muted">Bu binada personel bulunamadı.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
         </div>
-        {% empty %}
-        <div class="text-center py-5 text-muted">Veri bulunamadı.</div>
-        {% endfor %}
     </div>
+    {% empty %}
+    <div class="text-center py-5">
+        <div class="d-inline-flex justify-content-center align-items-center bg-light rounded-circle mb-3" style="width: 80px; height: 80px;">
+            <i class="bi bi-inbox text-muted" style="font-size: 2.5rem;"></i>
+        </div>
+        <p class="text-muted fs-5">Veri bulunamadı.</p>
+    </div>
+
+    {% endfor %}
 </div>

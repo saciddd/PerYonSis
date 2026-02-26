@@ -106,6 +106,14 @@
                         <button type="submit" class="btn btn-primary btn-sm w-100 mt-2">
                             <i class="bi bi-search"></i> Uygula
                         </button>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="submit" name="export" value="pdf" class="btn btn-outline-danger btn-sm flex-fill">
+                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                            </button>
+                            <button type="submit" name="export" value="excel" class="btn btn-outline-success btn-sm flex-fill">
+                                <i class="bi bi-file-earmark-excel"></i> Excel
+                            </button>
+                        </div>
                     </div>
                 </div>
             </form>
@@ -119,7 +127,7 @@
             <button class="nav-link active" id="tab-ustbirim-tab" data-bs-toggle="tab" data-bs-target="#tab-ustbirim" type="button" role="tab">Üst Birim → Birim Dağılımı</button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-birimunvan-tab" data-bs-toggle="tab" data-bs-target="#tab-birimunvan" type="button" role="tab">Bina → Birim Tipi → Birim Ünvan Dağılımı</button>
+            <button class="nav-link" id="tab-birimunvan-tab" data-bs-toggle="tab" data-bs-target="#tab-birimunvan" type="button" role="tab">Kampüs → Bina → Birim Ünvan Dağılımı</button>
         </li>
     </ul>
 
@@ -144,6 +152,7 @@
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="{% static 'js/excel_export_helper.js' %}"></script>
 <script>
@@ -152,6 +161,24 @@
     document.addEventListener('DOMContentLoaded', function() {
         
         loadData();
+
+        // Modal stacking logic: Re-open parent modal when personelListModal is closed
+        const personelListModalEl = document.getElementById('personelListModal');
+        if (personelListModalEl) {
+            personelListModalEl.addEventListener('hidden.bs.modal', function () {
+                if (window.lastOpenedBinaModalId) {
+                    const m = document.getElementById(window.lastOpenedBinaModalId);
+                    if (m) {
+                        // Small delay to ensure body class 'modal-open' triggers correctly
+                        setTimeout(() => {
+                            const bModal = bootstrap.Modal.getOrCreateInstance(m);
+                            bModal.show();
+                        }, 50);
+                    }
+                    window.lastOpenedBinaModalId = null; // Clear after use
+                }
+            });
+        }
 
         // --- Filters Collapse Icon Toggle ---
         const filtersCollapse = document.getElementById('filtersCollapse');
@@ -250,6 +277,12 @@
             const kuId = btn.dataset.kisaUnvanId;
             
             if (birimId || kuId) {
+                // Record the parent Modal ID before we open the detail modal
+                const parentModal = btn.closest('.modal');
+                if (parentModal && parentModal.id && parentModal.id.startsWith('modalBina-')) {
+                    window.lastOpenedBinaModalId = parentModal.id;
+                }
+
                 let params = {};
                 if (birimId) params['birim_id'] = birimId;
                 if (kuId) params['kisa_unvan_id'] = kuId;
@@ -574,35 +607,6 @@
     }
 
     // Export functions
-    window.exportToPDF = function (tabId) {
-        const element = document.getElementById(tabId);
-        if (!element) { alert('Tab bulunamadı'); return; }
-        
-        html2canvas(element, { scale: 2, useCORS: true, allowTaint: true }).then(canvas => {
-            const imgData = canvas.toDataURL('image/png');
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgWidth = 210; 
-            const pageHeight = 295; 
-            const imgHeight = canvas.height * imgWidth / canvas.width;
-            let heightLeft = imgHeight;
-            let position = 0;
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-            while (heightLeft >= 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-            }
-            pdf.save('birim_analiz_export.pdf');
-        });
-    }
-
-    window.exportToExcel = function (tabId) {
-        ExcelExport.exportTable(tabId, 'birim_analiz_export');
-    }
-
     window.exportModalToPDF = function () {
         const modalBody = document.getElementById('personelListModalBody');
         if (!modalBody) return;

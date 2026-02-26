@@ -30,8 +30,14 @@
                         <label class="form-label small fw-bold">Personel Durumu</label>
                         <div>
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="durum" value="Aktif" id="durum_aktif" {% if "Aktif" in selected_durum %}checked{% endif %}>
-                                <label class="form-check-label" for="durum_aktif">Aktif</label>
+                                <input class="form-check-input" type="checkbox" name="durum" value="Aktif (Kadrolu)"
+                                    id="durum_aktif" {% if "Aktif (Kadrolu)" in selected_durum %}checked{% endif %}>
+                                <label class="form-check-label" for="durum_aktif">Aktif (Kadrolu)</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="durum" value="Aktif (Geçici)"
+                                    id="durum_aktif" {% if "Aktif (Geçici)" in selected_durum %}checked{% endif %}>
+                                <label class="form-check-label" for="durum_aktif">Aktif (Geçici)</label>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="durum" value="Pasif" id="durum_pasif" {% if "Pasif" in selected_durum %}checked{% endif %}>

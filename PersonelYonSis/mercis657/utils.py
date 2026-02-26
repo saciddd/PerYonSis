@@ -179,6 +179,8 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 if not is_tatil_gunu:
                     per_day = Decimal('7.0') if radyasyon_calisani else Decimal('8.0')
                     izin_azaltimi += per_day
+                elif tatil_map_month.get(mesai_tarih):
+                    izin_azaltimi += Decimal('5.0')
 
     # 3. Mazeret Hesapla (Ortak - Erken hesaplama gerekli)
     mazeret_azaltimi = Decimal('0.0')
@@ -763,6 +765,10 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
                 if not is_resmi_tatil:
                     per_day = Decimal('7.0') if radyasyon_calisani else Decimal('8.0')
                     izin_azaltimi += per_day
+                else:
+                    is_arefe = resmi_tatiller.filter(TatilTarihi=mesai_tarih, ArefeMi=True).exists()
+                    if is_arefe:
+                        izin_azaltimi += Decimal('5.0')
 
     # Mazeret azaltımını hesapla
     mazeret_azaltimi = Decimal('0.0')

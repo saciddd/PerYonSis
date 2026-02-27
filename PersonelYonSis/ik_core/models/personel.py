@@ -217,14 +217,6 @@ class Personel(models.Model):
             gecici_gorev_baslangic__lte=today
         ).first()
 
-    def memuriyet_durumu(self):
-        if self.teskilat == "İşçi Personel 696 (Döner Sermaye)":
-            return "Sürekli İşçi (696)"
-        elif self.teskilat == "İşçi Personel (Genel Bütçe)":
-            return "İşçi Personel"
-        else:
-            return "Memur (657)"
-
     @property
     def sinif(self):
         return self.unvan.sinif if self.unvan else ""

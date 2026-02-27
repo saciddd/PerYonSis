@@ -328,6 +328,7 @@ def personel_dashboard_export_xlsx(request):
 
     header_fill = PatternFill(start_color="0c0c2e", end_color="0c0c2e", fill_type="solid")
     header_font = Font(color="FFFFFF", bold=True)
+    isci_fill = PatternFill(start_color="C6E0B4", end_color="C6E0B4", fill_type="solid")  # Yeşil dolgu
     
     ws_pano['A1'] = "Personel Özet Listesi (Pano)"
     ws_pano['A1'].font = Font(bold=True, size=14)
@@ -344,6 +345,9 @@ def personel_dashboard_export_xlsx(request):
     # Eşleştirme haritasını oluştur (Kısa Ünvan property olduğu için manuel eşleştirme yapıyoruz)
     eslestirmeler = UnvanBransEslestirme.objects.select_related('kisa_unvan__ust_birim').all()
     eslestirme_map = {(e.unvan_id, e.brans_id): e for e in eslestirmeler}
+
+    # İşçi unvanlarını belirle (Hangi kısa unvanların işçi unvanı olduğunu set olarak tutalım)
+    isci_unvanlari = {ku.ad for ku in KisaUnvan.objects.prefetch_related('unvanbranseslestirme_set__unvan').all() if ku.isci_unvani}
 
     pano_data = {} # (ust_birim, kisa_unvan) -> {'kadrolu': X, 'g_gelen': Y, 'g_giden': Z}
     doktorlar_list = []
@@ -415,7 +419,12 @@ def personel_dashboard_export_xlsx(request):
         total_g_gelen += counts['g_gelen']
         total_g_giden += counts['g_giden']
         
-        if i % 2 == 1:
+        is_isci = kisa_unvan in isci_unvanlari
+        
+        if is_isci:
+            for col in ['A', 'B', 'C', 'D', 'E']:
+                ws_pano[f'{col}{row_idx}'].fill = isci_fill
+        elif i % 2 == 1:
             for col in ['A', 'B', 'C', 'D', 'E']:
                 ws_pano[f'{col}{row_idx}'].fill = alt_fill
         row_idx += 1

@@ -71,6 +71,7 @@ def personel_list(request):
         ('tahsil_durumu', 'Öğrenim Durumu'),
         ('memuriyet_durumu', 'Memuriyet Durumu'),
         ('ozel_durumu', 'Özel Durumu'),
+        ('son_birim_kaydi', 'Çalıştığı Birim'),
         ('son_mercis657_listesi', 'Son Mercis657 Listesi'),
         ('son_hizmet_sunum_bildirimi', 'Son Hizmet Sunum Bildirimi'),
     ]
@@ -251,6 +252,7 @@ def personel_export_xlsx(request):
         'tahsil_durumu': 'Öğrenim Durumu',
         'memuriyet_durumu': 'Memuriyet Durumu',
         'ozel_durumu': 'Özel Durumu',
+        'son_birim_kaydi': 'Çalıştığı Birim',
         'son_mercis657_listesi': 'Son Mercis657 Listesi',
         'son_hizmet_sunum_bildirimi': 'Son Hizmet Sunum Bildirimi',
     }
@@ -288,6 +290,7 @@ def personel_export_xlsx(request):
             elif field == 'memuriyet_durumu': val = p.memuriyet_durumu
             elif field == 'ozel_durumu':
                 val = ", ".join([od.ad for od in p.ozel_durumu.all()]) if p.pk else ""
+            elif field == 'son_birim_kaydi': val = p.son_birim_kaydi
             elif field == 'son_mercis657_listesi': 
                 m = p.son_mercis657_listesi
                 val = f"{m['yil']}/{m['ay']} {m['birim']}" if m else "-"

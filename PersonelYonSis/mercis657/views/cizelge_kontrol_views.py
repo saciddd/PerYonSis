@@ -220,13 +220,19 @@ def sabit_mesai_kontrol(liste, year, month):
             MesaiDate__month=month
         ).select_related('MesaiTanim')
         
-        matched_sabit_mesai = None
+        sabit_mesai_counts = {}
         
-        # Mesailer içinde sabit mesai aralığı ile eşleşen var mı?
+        # Mesailer içinde sabit mesai aralığı ile eşleşenleri say
         for mesai in mesailer:
             if mesai.MesaiTanim and mesai.MesaiTanim.Saat in sabit_mesai_map:
-                matched_sabit_mesai = sabit_mesai_map[mesai.MesaiTanim.Saat]
-                break
+                saat = mesai.MesaiTanim.Saat
+                sabit_mesai_counts[saat] = sabit_mesai_counts.get(saat, 0) + 1
+                
+        matched_sabit_mesai = None
+        if sabit_mesai_counts:
+            # En çok eşleşen saati bul
+            most_common_saat = max(sabit_mesai_counts, key=sabit_mesai_counts.get)
+            matched_sabit_mesai = sabit_mesai_map[most_common_saat]
         
         # Eşleşme varsa ve mevcut kayıttan farklıysa güncelle
         if matched_sabit_mesai:

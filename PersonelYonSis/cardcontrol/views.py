@@ -2,6 +2,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db.models import Q
 from django.core.paginator import Paginator
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+import openpyxl
+
 from .models import Cihaz, CihazKullanici, CihazLog
 from .forms import CihazForm
 from .ZKBaglanti import (
@@ -305,3 +310,60 @@ def cihaz_loglari(request):
         'logs': logs,
         'storage_info': storage_info
     })
+
+def cihaz_kullanici_excele_aktar(request, cihaz_id):
+    cihaz = get_object_or_404(Cihaz, id=cihaz_id)
+    kullanicilar = CihazKullanici.objects.filter(cihaz=cihaz).order_by('name')
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Kullanıcılar"
+    
+    # Başlıklar
+    ws.append(["Ad Soyad", "Kart ID", "User ID", "UID", "Yetki"])
+    
+    # Veriler
+    for k in kullanicilar:
+        ws.append([k.name, k.card, k.user_id, k.uid, k.privilege])
+    
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="{cihaz.kapi_adi}_Kullanicilar.xlsx"'
+    
+    wb.save(response)
+    return response
+
+@csrf_exempt
+def api_kullanici_ekle(request, cihaz_id):
+    if request.method == 'POST':
+        cihaz = get_object_or_404(Cihaz, id=cihaz_id)
+        try:
+            data = json.loads(request.body)
+            name = data.get('name')
+            card_id = data.get('card_id')
+            
+            if not name or not card_id:
+                return JsonResponse({"status": "error", "message": "Ad Soyad ve Kart ID zorunludur."})
+                
+            # Cihaza ekle
+            zk_user = add_user(
+                name=name,
+                card_id=card_id,
+                ip=cihaz.ip,
+                port=cihaz.port
+            )
+            
+            # Veritabanına kaydet
+            CihazKullanici.objects.create(
+                cihaz=cihaz,
+                uid=zk_user.uid,
+                user_id=zk_user.user_id,
+                name=zk_user.name,
+                card=zk_user.card,
+                privilege=zk_user.privilege
+            )
+            
+            return JsonResponse({"status": "success", "message": "Kullanıcı eklendi."})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)})
+            
+    return JsonResponse({"status": "error", "message": "Geçersiz istek metodu."})

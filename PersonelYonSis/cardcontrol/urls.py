@@ -11,4 +11,6 @@ urlpatterns = [
     path('cihaz-kullanici-sil/<int:cihaz_id>/', views.cihaz_kullanici_sil, name='cihaz_kullanici_sil'),
     path('cihaz-sync/<int:cihaz_id>/', views.cihaz_sync, name='cihaz_sync'),
     path('cihaz-loglari/', views.cihaz_loglari, name='cihaz_loglari'),
+    path('cihaz-kullanici-excele-aktar/<int:cihaz_id>/', views.cihaz_kullanici_excele_aktar, name='cihaz_kullanici_excele_aktar'),
+    path('api-kullanici-ekle/<int:cihaz_id>/', views.api_kullanici_ekle, name='api_kullanici_ekle'),
 ]

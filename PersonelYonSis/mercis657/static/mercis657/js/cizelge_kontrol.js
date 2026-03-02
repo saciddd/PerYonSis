@@ -250,6 +250,8 @@ function checkCizelgeErrorsBackend() {
                     text: 'Tüm kayıtlar tutarlı!',
                     icon: 'success',
                     confirmButtonText: 'Tamam'
+                }).then(() => {
+                    window.location.reload();
                 });
             } else {
                 // Hata ve bilgi mesajlarını ayır
@@ -258,28 +260,34 @@ function checkCizelgeErrorsBackend() {
                 
                 let title = 'Hata Tespit Edildi';
                 let icon = 'warning';
+                let successPrefix = '';
                 
                 if (realErrors.length === 0 && infoMessages.length > 0) {
-                    title = 'Bilgilendirme';
-                    icon = 'info';
+                    title = 'Kontrol Tamamlandı';
+                    icon = 'success';
+                    successPrefix = '<div class="text-success fw-bold mb-3"><i class="bi bi-check-circle"></i> Tüm kayıtlar tutarlı!</div>';
                 } else if (realErrors.length > 0 && infoMessages.length > 0) {
                     title = 'Hata ve Bilgilendirme';
                 }
 
                 const messagesHtml = errors.map(e => {
                     const color = e.type === 'info' ? 'text-primary' : 'text-danger';
-                    const icon = e.type === 'info' ? '<i class="bi bi-info-circle me-2"></i>' : '<i class="bi bi-exclamation-triangle me-2"></i>';
-                    return `<div class="${color} mb-2" style="font-size: 0.95rem;">${icon}${e.message}</div>`;
+                    const listIcon = e.type === 'info' ? '<i class="bi bi-info-circle me-2"></i>' : '<i class="bi bi-exclamation-triangle me-2"></i>';
+                    return `<div class="${color} mb-2" style="font-size: 0.95rem;">${listIcon}${e.message}</div>`;
                 }).join('');
 
-                // initializeFazlaMesaiCalculation fonksiyonunu tekrar çalıştır
-                initializeFazlaMesaiCalculation();
+                // Fazla mesai güncellemeleri veya benzer işlemler için
+                if (typeof initializeFazlaMesaiCalculation === 'function') {
+                    try { initializeFazlaMesaiCalculation(); } catch(e) { console.error(e); }
+                }
 
                 Swal.fire({
                     title: title,
-                    html: `<div class="text-start">${messagesHtml}</div>`,
+                    html: `<div class="text-start">${successPrefix}${messagesHtml}</div>`,
                     icon: icon,
                     confirmButtonText: 'Tamam'
+                }).then(() => {
+                    window.location.reload();
                 });
             }
         } else {

@@ -1,0 +1,70 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S.Y.S.T.E.M. // JARVIS</title>
+    
+    <!-- Google Fonts for Hacker/Terminal styles -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="{% static 'jarvis_app/jarvis.css' %}">
+</head>
+<body>
+    <!-- Matrix Rain Canvas -->
+    <canvas id="matrix-bg"></canvas>
+    
+    <!-- CRT Overlay -->
+    <div class="crt-overlay"></div>
+
+    <div class="jarvis-container">
+        <!-- Sol/Orta Kısım: Orb (Main Interface) -->
+        <div class="orb-wrapper" id="orb-wrapper">
+            <div class="hud-top">
+                <a href="{% url 'index' %}" class="back-link">[ E-X-I-T ]</a>
+                <span class="hud-text">SYS_CORE // G-3.4B ONLINE</span>
+            </div>
+            
+            <div class="orb idle" id="jarvis-orb">
+                <div class="orb-core"></div>
+                <div class="orb-ring ring1"></div>
+                <div class="orb-ring ring2"></div>
+                <div class="orb-ring ring3"></div>
+            </div>
+            
+            <div class="status-container">
+                <div class="status-bracket">[</div>
+                <div class="status-text" id="status-text">A_W_A_I_T_I_N_G_I_N_P_U_T</div>
+                <div class="status-bracket">]</div>
+            </div>
+            <div class="hint-text">>> INITIATE_VOICE_PROTOCOL (CLICK_CORE)</div>
+        </div>
+
+        <!-- Sağ Kısım: Terminal Messages -->
+        <div class="panel-right">
+            <div class="terminal-header">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+                <span class="term-title">usr/bin/jarvis --interact</span>
+            </div>
+            <div class="chat-history" id="chat-history">
+                <div class="msg ai"><span class="prompt">JARVIS@SYS:~$</span> <span class="text">Sistem devrede. Veri dinleniyor. Emirlerinizi bekliyorum...</span></div>
+            </div>
+            <div class="input-area">
+                <span class="input-prompt">USER@SYS:~$</span>
+                <input type="text" id="manual-input" placeholder="komut_girin..." autocomplete="off" />
+                <button id="send-btn">EXEC</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = "{% url 'jarvis_app:api_chat' %}";
+    </script>
+    <script src="{% static 'jarvis_app/jarvis.js' %}"></script>
+</body>
+</html>

@@ -39,6 +39,7 @@ urlpatterns = [
 	path('nobet_defteri/', include('nobet_defteri.urls')),
 	path('cardcontrol/', include('cardcontrol.urls')),
 	path('ik_core/', include('ik_core.urls')),
+	path('jarvis/', include('jarvis_app.urls')),
 	path('admin/', admin.site.urls),
 	# Bildirim işlemleri
 	path('notifications/unread/', views.unread_notifications, name='unread_notifications'),

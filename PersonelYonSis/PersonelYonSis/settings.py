@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'nobet_defteri',
     'mercis696',
     'cardcontrol',
+    'jarvis_app',
 ]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"

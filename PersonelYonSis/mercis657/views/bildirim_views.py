@@ -801,3 +801,64 @@ def bildirim_form(request, birim_id):
     response['Content-Disposition'] = f'inline; filename="{filename}"'
     return response
 
+@login_required
+@require_POST
+def bildirim_riskli_sure_guncelle(request):
+    """
+    Manuel girilen riskli mesai sürelerini kaydeder ve normal mesai sürelerini düşer.
+    """
+    if not request.user.has_permission('ÇS 657 Bildirim İşlemleri'):
+        return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
+        
+    try:
+        data = json.loads(request.body)
+        guncellemeler = data.get('guncellemeler', [])
+    except Exception:
+        return JsonResponse({'status': 'error', 'message': 'Geçersiz parametre.'}, status=400)
+
+    count = 0
+    with transaction.atomic():
+        for item in guncellemeler:
+            bildirim_id = item.get('bildirim_id')
+            if not bildirim_id:
+                continue
+            
+            bildirim = Bildirim.objects.filter(pk=bildirim_id, MutemetKilit=False, OnayDurumu=0).first()
+            if not bildirim:
+                continue
+
+            # Parse inputs into Decimal
+            rnormal = Decimal(str(item.get('riskli_normal', 0.0)))
+            rbayram = Decimal(str(item.get('riskli_bayram', 0.0)))
+            grnormal = Decimal(str(item.get('gece_riskli_normal', 0.0)))
+            grbayram = Decimal(str(item.get('gece_riskli_bayram', 0.0)))
+            
+            # 1. Havuz mantığı: orijinal toplamı bul (Normal + Daha önce riskli yapılan)
+            original_normal = bildirim.NormalFazlaMesai + bildirim.RiskliNormalFazlaMesai
+            original_bayram = bildirim.BayramFazlaMesai + bildirim.RiskliBayramFazlaMesai
+            original_gnormal = bildirim.GeceNormalFazlaMesai + bildirim.GeceRiskliNormalFazlaMesai
+            original_gbayram = bildirim.GeceBayramFazlaMesai + bildirim.GeceRiskliBayramFazlaMesai
+
+            # 2. Girilen sayı orijinali aşamaz, aşarsa cap'le
+            if rnormal > original_normal: rnormal = original_normal
+            if rbayram > original_bayram: rbayram = original_bayram
+            if grnormal > original_gnormal: grnormal = original_gnormal
+            if grbayram > original_gbayram: grbayram = original_gbayram
+
+            # 3. Yeni değerleri tanımla ve normal sureleri azalt (original - riskli_yeni)
+            bildirim.RiskliNormalFazlaMesai = rnormal
+            bildirim.NormalFazlaMesai = original_normal - rnormal
+
+            bildirim.RiskliBayramFazlaMesai = rbayram
+            bildirim.BayramFazlaMesai = original_bayram - rbayram
+
+            bildirim.GeceRiskliNormalFazlaMesai = grnormal
+            bildirim.GeceNormalFazlaMesai = original_gnormal - grnormal
+
+            bildirim.GeceRiskliBayramFazlaMesai = grbayram
+            bildirim.GeceBayramFazlaMesai = original_gbayram - grbayram
+
+            bildirim.save()
+            count += 1
+
+    return JsonResponse({'status': 'success', 'message': f'{count} bildirim başarıyla güncellendi.', 'count': count})

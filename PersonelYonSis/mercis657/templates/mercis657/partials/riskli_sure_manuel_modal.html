@@ -1,0 +1,330 @@
+<!-- Riskli Süreleri Manuel Belirle Modal -->
+<div class="modal fade" id="riskliSureManuelModal" tabindex="-1" aria-labelledby="riskliSureManuelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="riskliSureManuelModalLabel">Riskli Süreleri Manuel Belirle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-end mb-2">
+                    <button class="btn btn-warning btn-sm shadow-sm" id="btnTumunuRiskliYap">
+                        <i class="bi bi-magic"></i> Tümünü Riskliye Çevir
+                    </button>
+                </div>
+                <!-- Bildirimler Yüklenirken Loading -->
+                <div id="riskliSureLoading" class="text-center my-4 d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Yükleniyor...</span>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered table-hover align-middle" id="riskliSureTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th rowspan="2">Personel</th>
+                                <th colspan="2" class="text-center border-bottom border-dark">Normal Mesai</th>
+                                <th colspan="2" class="text-center border-bottom border-dark">Bayram Mesaisi</th>
+                            </tr>
+                            <tr>
+                                <!-- Normal -->
+                                <th class="text-center" style="width: 15%">Normal Gündüz/Gece</th>
+                                <th class="text-center bg-warning bg-opacity-10" style="width: 20%">Riskli Normal Gündüz/Gece</th>
+                                <!-- Bayram -->
+                                <th class="text-center" style="width: 15%">Bayram Gündüz/Gece</th>
+                                <th class="text-center bg-warning bg-opacity-10" style="width: 20%">Riskli Bayram Gündüz/Gece</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Veriler JS ile doldurulacak -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-success" id="btnRiskliSureKaydet">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let riskliModalData = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnOpen = document.getElementById('btnRiskliSureManuelOpen');
+        if (btnOpen) {
+            btnOpen.addEventListener('click', function() {
+                const birimId = document.getElementById('selectBirim').value;
+                const donemValue = document.getElementById('selectDonem').value;
+
+                if (!birimId || birimId === "0" || !donemValue) {
+                    Swal.fire('Hata', 'Lütfen geçerli Birim ve Dönem seçin.', 'error');
+                    return;
+                }
+
+                let year, month;
+                try {
+                    let parts = donemValue.includes('/') ? donemValue.split('/') : donemValue.split('-');
+                    year = parseInt(parts[0], 10);
+                    month = parseInt(parts[1], 10);
+                } catch(e) {
+                    Swal.fire('Hata','Geçersiz dönem.','error');
+                    return;
+                }
+
+                openRiskliSureModal(year, month, birimId);
+            });
+        }
+
+        const btnTum = document.getElementById('btnTumunuRiskliYap');
+        if (btnTum) {
+            btnTum.addEventListener('click', function() {
+                // Table daki tüm riskli alan inputlarına maksimum değeri basarız
+                const tbody = document.querySelector('#riskliSureTable tbody');
+                const inputs = tbody.querySelectorAll('input.r-input');
+                inputs.forEach(input => {
+                    const maxVal = parseFloat(input.dataset.max);
+                    if (maxVal > 0) {
+                        input.value = maxVal;
+                        // Trigger event to update the "Normal" text
+                        input.dispatchEvent(new Event('input'));
+                    }
+                });
+            });
+        }
+
+        const btnKaydet = document.getElementById('btnRiskliSureKaydet');
+        if (btnKaydet) {
+            btnKaydet.addEventListener('click', function() {
+                saveRiskliSureler();
+            });
+        }
+    });
+
+    function openRiskliSureModal(year, month, birimId) {
+        const modal = new bootstrap.Modal(document.getElementById('riskliSureManuelModal'));
+        modal.show();
+        
+        const tbody = document.querySelector('#riskliSureTable tbody');
+        const loader = document.getElementById('riskliSureLoading');
+
+        tbody.innerHTML = '';
+        loader.classList.remove('d-none');
+        document.getElementById('btnRiskliSureKaydet').disabled = true;
+
+        fetch(`/mercis657/bildirim/listele/${year}/${month}/${birimId}/`)
+            .then(res => res.json())
+            .then(data => {
+                loader.classList.add('d-none');
+                document.getElementById('btnRiskliSureKaydet').disabled = false;
+                
+                if (data.status === 'success' && data.data) {
+                    riskliModalData = data.data.filter(item => item.bildirim_id && !item.mutemet_kilit && item.onay_durumu === 0);
+                    renderRiskliSureTable(riskliModalData);
+                    if (riskliModalData.length === 0) {
+                         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Açık, kilitli olmayan veya onaylanmamış bir bildirim bulunamadı.</td></tr>';
+                    }
+                } else {
+                    Swal.fire('Hata', data.message || 'Veriler alınamadı.', 'error');
+                    modal.hide();
+                }
+            })
+            .catch(err => {
+                loader.classList.add('d-none');
+                console.error(err);
+                Swal.fire('Hata', 'Sunucu ile iletişim hatası.', 'error');
+                modal.hide();
+            });
+    }
+
+    function renderRiskliSureTable(dataList) {
+        const tbody = document.querySelector('#riskliSureTable tbody');
+        tbody.innerHTML = '';
+
+        dataList.forEach(item => {
+            // Asıl toplam potansiyel olan süreler
+            const totN = (item.normal_mesai || 0) + (item.riskli_normal || 0);
+            const totNg = (item.gece_normal_mesai || 0) + (item.gece_riskli_normal || 0);
+            
+            const totB = (item.bayram_mesai || 0) + (item.riskli_bayram || 0);
+            const totBg = (item.gece_bayram_mesai || 0) + (item.gece_riskli_bayram || 0);
+
+            // Eğer toplam yapı hiç yoksa row'u koymamıza çok da gerek kalmayabilir
+            if (totN === 0 && totNg === 0 && totB === 0 && totBg === 0) {
+                return;
+            }
+
+            const tr = document.createElement('tr');
+            tr.dataset.bildirimId = item.bildirim_id;
+
+            tr.innerHTML = `
+                <td class="fw-bold">${item.personel_name}</td>
+                
+                <!-- Normal -->
+                <td class="text-center align-middle">
+                    <div class="mb-1 text-warning fw-bold d-flex justify-content-between px-2">
+                        <span><i class="bi bi-sun-fill"></i></span>
+                        <span class="val-display" id="disp_n_${item.bildirim_id}">${Math.round(item.normal_mesai || 0)}</span>
+                    </div>
+                    <div class="text-primary fw-bold d-flex justify-content-between px-2">
+                        <span><i class="bi bi-moon-stars-fill"></i></span>
+                        <span class="val-display" id="disp_ng_${item.bildirim_id}">${Math.round(item.gece_normal_mesai || 0)}</span>
+                    </div>
+                </td>
+                <td class="text-center bg-warning bg-opacity-10 py-2">
+                    <div class="input-group input-group-sm mb-1 px-1">
+                        <span class="input-group-text"><i class="bi bi-sun-fill text-warning"></i></span>
+                        <input type="number" class="form-control r-input" min="0" step="1"
+                               data-type="n" 
+                               data-max="${totN}" 
+                               data-bid="${item.bildirim_id}" 
+                               value="${Math.round(item.riskli_normal || 0)}">
+                    </div>
+                    <div class="input-group input-group-sm px-1">
+                        <span class="input-group-text"><i class="bi bi-moon-stars-fill text-primary"></i></span>
+                        <input type="number" class="form-control r-input" min="0" step="1"
+                               data-type="ng" 
+                               data-max="${totNg}" 
+                               data-bid="${item.bildirim_id}" 
+                               value="${Math.round(item.gece_riskli_normal || 0)}">
+                    </div>
+                </td>
+
+                <!-- Bayram -->
+                <td class="text-center align-middle">
+                    <div class="mb-1 text-warning fw-bold d-flex justify-content-between px-2">
+                        <span><i class="bi bi-sun-fill"></i></span>
+                        <span class="val-display" id="disp_b_${item.bildirim_id}">${Math.round(item.bayram_mesai || 0)}</span>
+                    </div>
+                    <div class="text-primary fw-bold d-flex justify-content-between px-2">
+                        <span><i class="bi bi-moon-stars-fill"></i></span>
+                        <span class="val-display" id="disp_bg_${item.bildirim_id}">${Math.round(item.gece_bayram_mesai || 0)}</span>
+                    </div>
+                </td>
+                <td class="text-center bg-warning bg-opacity-10 py-2">
+                    <div class="input-group input-group-sm mb-1 px-1">
+                        <span class="input-group-text"><i class="bi bi-sun-fill text-warning"></i></span>
+                        <input type="number" class="form-control r-input" min="0" step="1"
+                               data-type="b" 
+                               data-max="${totB}" 
+                               data-bid="${item.bildirim_id}" 
+                               value="${Math.round(item.riskli_bayram || 0)}">
+                    </div>
+                    <div class="input-group input-group-sm px-1">
+                        <span class="input-group-text"><i class="bi bi-moon-stars-fill text-primary"></i></span>
+                        <input type="number" class="form-control r-input" min="0" step="1"
+                               data-type="bg" 
+                               data-max="${totBg}" 
+                               data-bid="${item.bildirim_id}" 
+                               value="${Math.round(item.gece_riskli_bayram || 0)}">
+                    </div>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+
+        // Event listeners for inputs to constrain values and update displays
+        const inputs = tbody.querySelectorAll('.r-input');
+        inputs.forEach(inp => {
+            // Eğer max = 0 ise input readonly olsun
+            if (parseFloat(inp.dataset.max) === 0) {
+                inp.readOnly = true;
+                inp.classList.add('bg-light');
+            }
+
+            inp.addEventListener('input', function() {
+                let val = parseFloat(this.value);
+                const max = parseFloat(this.dataset.max);
+                const typ = this.dataset.type; // n, ng, b, bg
+                const bid = this.dataset.bid;
+
+                if (isNaN(val) || val < 0) {
+                    val = 0;
+                }
+                if (val > max) {
+                    val = max;
+                    this.value = max;
+                }
+
+                // Update display 
+                const disp = document.getElementById(`disp_${typ}_${bid}`);
+                if (disp) {
+                    disp.textContent = Math.round(max - val);
+                }
+            });
+        });
+    }
+
+    function saveRiskliSureler() {
+        const tbody = document.querySelector('#riskliSureTable tbody');
+        const rows = tbody.querySelectorAll('tr[data-bildirim-id]');
+        
+        const guncellemeler = [];
+
+        rows.forEach(tr => {
+            const bid = tr.dataset.bildirimId;
+            const inputs = tr.querySelectorAll('input.r-input');
+            let itemData = { bildirim_id: bid };
+
+            inputs.forEach(inp => {
+                const typ = inp.dataset.type;
+                const val = parseFloat(inp.value) || 0;
+                if (typ === 'n') itemData.riskli_normal = val;
+                if (typ === 'ng') itemData.gece_riskli_normal = val;
+                if (typ === 'b') itemData.riskli_bayram = val;
+                if (typ === 'bg') itemData.gece_riskli_bayram = val;
+            });
+            guncellemeler.push(itemData);
+        });
+
+        if (guncellemeler.length === 0) {
+            Swal.fire('Bilgi', 'Kaydedilecek bir değişiklik bulunamadı.', 'info');
+            return;
+        }
+
+        document.getElementById('btnRiskliSureKaydet').innerHTML = '<span class="spinner-border spinner-border-sm"></span> Bekleyiniz...';
+        document.getElementById('btnRiskliSureKaydet').disabled = true;
+
+        fetch("/mercis657/bildirim/riskli-sure-guncelle/", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ guncellemeler: guncellemeler })
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('btnRiskliSureKaydet').innerHTML = 'Kaydet';
+            document.getElementById('btnRiskliSureKaydet').disabled = false;
+
+            if (data.status === 'success') {
+                Swal.fire('Başarılı', data.message, 'success').then(() => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('riskliSureManuelModal'));
+                    if (modal) modal.hide();
+                    
+                    // Refresh Main Table
+                    const birimId = document.getElementById('selectBirim').value;
+                    const donemValue = document.getElementById('selectDonem').value;
+                    if (typeof fetchBildirimler === 'function') {
+                        fetchBildirimler(donemValue, birimId);
+                    } else {
+                        window.location.reload();
+                    }
+                });
+            } else {
+                Swal.fire('Hata', data.message, 'error');
+            }
+        })
+        .catch(err => {
+            document.getElementById('btnRiskliSureKaydet').innerHTML = 'Kaydet';
+            document.getElementById('btnRiskliSureKaydet').disabled = false;
+
+            console.error(err);
+            Swal.fire('Hata', 'Sunucu bağlantı hatası.', 'error');
+        });
+    }
+</script>

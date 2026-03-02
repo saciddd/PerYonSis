@@ -121,6 +121,7 @@ urlpatterns = [
     path('bildirim/toplu-olustur/<int:birim_id>/', views.bildirim_toplu_olustur, name='bildirim_toplu_olustur'),
     path('bildirim/tekil-onay/<int:bildirim_id>/', views.bildirim_tekil_onay, name='bildirim_tekil_onay'),
     path('bildirim/toplu-onay/<int:birim_id>/', views.bildirim_toplu_onay, name='bildirim_toplu_onay'),
+    path('bildirim/riskli-sure-guncelle/', views.bildirim_riskli_sure_guncelle, name='bildirim_riskli_sure_guncelle'),
     
     # Riskli Çalışma Yönetimi
     path('riskli-calisma/<int:birim_id>/', riskli_calisma_views.riskli_calisma_yonetim, name='riskli_calisma_yonetim'),

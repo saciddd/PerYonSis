@@ -28,17 +28,21 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-4">
             <br>
-            <button class="btn btn-secondary" id="queryBtn">
-                <i class="bi bi-search"></i> Sorgula
-            </button>
-            <!-- Çizelge sayfasına git butonu -->
-            <button class="btn btn-primary me-2" id="cizelgeBtn">
-                <i class="bi bi-calendar"></i> Çizelge
-            </button>
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="queryBtn">
+                    <i class="bi bi-search"></i> Sorgula
+                </button>
+                <button class="btn btn-primary" id="cizelgeBtn">
+                    <i class="bi bi-calendar"></i> Çizelge
+                </button>
+                <button type="button" class="btn btn-warning" id="btnRiskliSureManuelOpen">
+                    <i class="bi bi-pencil-square"></i> Riskli Süreleri Manuel Belirle
+                </button>
+            </div>
         </div>
-        <div class="col-md-6 text-end">
+        <div class="col-md-4 text-end">
             <div class="btn-group btn-group-sm mt-3">
             <a href="{% url 'mercis657:riskli_calisma_yonetim' selected_birim.BirimID|default:0 %}?year={{ selected_donem|slice:':4' }}&month={{ selected_donem|slice:'5:' }}" class="btn btn-outline-warning" title="Riskli Çalışmaları Belirle">
                 <i class="bi bi-exclamation-triangle"></i> Riskli Çalışmaları Belirle
@@ -156,7 +160,7 @@
                 {% endif %}
             </tbody>
         </table>
-    </div>
+{% include "mercis657/partials/riskli_sure_manuel_modal.html" %}
 </div>
 {% endblock %}
 

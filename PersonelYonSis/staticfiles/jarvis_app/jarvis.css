@@ -1,0 +1,331 @@
+/* Color Palette: Matrix Hacker */
+:root {
+    --matrix-green: #0da742; /* A little softer than pure green */
+    --bright-green: #00ff41;
+    --dark-green: #008f11;
+    --bg-black: #030303;
+    --panel-bg: rgba(0, 0, 0, 0.85);
+    --border-color: #008f11;
+    --red-alert: #ff003c;
+    --cyan-think: #00e5ff;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background-color: var(--bg-black);
+    color: var(--matrix-green);
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    overflow: hidden;
+}
+
+/* Background Canvas */
+#matrix-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    opacity: 0.15;
+}
+
+/* CRT Scanline Effect */
+.crt-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 4px, 6px 100%;
+    pointer-events: none;
+}
+
+.jarvis-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+    z-index: 10;
+}
+
+/* HUD System */
+.hud-top {
+    position: absolute;
+    top: 30px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 50px;
+    box-sizing: border-box;
+    font-size: 1.3rem;
+    text-shadow: 0 0 5px var(--matrix-green);
+    font-family: 'VT323', monospace;
+    letter-spacing: 2px;
+}
+
+.back-link {
+    color: var(--matrix-green);
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.back-link:hover {
+    color: var(--bright-green);
+    text-shadow: 0 0 10px var(--bright-green);
+}
+
+/* Center Orb Section */
+.orb-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+/* Hacker Radar/Orb */
+.orb {
+    width: 250px;
+    height: 250px;
+    position: relative;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.orb-core {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background-color: var(--matrix-green);
+    box-shadow: 0 0 40px var(--matrix-green), inset 0 0 20px #000;
+    z-index: 5;
+    transition: all 0.3s ease;
+}
+
+.orb-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid var(--matrix-green);
+    opacity: 0.5;
+    transition: all 0.3s ease;
+}
+
+.ring1 { width: 130px; height: 130px; border: 2px dashed var(--bright-green); animation: spin-clockwise 20s linear infinite; }
+.ring2 { width: 180px; height: 180px; border: 2px dotted var(--dark-green); animation: spin-counter 15s linear infinite; }
+.ring3 { width: 230px; height: 230px; border-top: 2px solid transparent; border-bottom: 2px solid transparent; animation: spin-clockwise 10s linear infinite; }
+
+/* States */
+.orb.idle .orb-core { animation: pulse-core 3s infinite alternate; }
+
+.orb.listening .orb-core { 
+    background-color: var(--red-alert); 
+    box-shadow: 0 0 60px var(--red-alert), inset 0 0 20px #000;
+}
+.orb.listening .orb-ring { border-color: var(--red-alert); }
+
+.orb.thinking .orb-core { 
+    background-color: var(--cyan-think); 
+    box-shadow: 0 0 60px var(--cyan-think), inset 0 0 20px #000;
+}
+.orb.thinking .orb-ring { border-color: var(--cyan-think); }
+.orb.thinking .ring1, .orb.thinking .ring2, .orb.thinking .ring3 { animation-duration: 1.5s; }
+
+.orb.speaking .orb-core { animation: audio-wave 0.3s infinite alternate; background-color: var(--bright-green); box-shadow: 0 0 60px var(--bright-green);}
+.orb.speaking .ring1 { animation: ring-pump 0.4s infinite alternate; border-color: var(--bright-green); }
+
+.status-container {
+    margin-top: 60px;
+    display: flex;
+    align-items: center;
+    font-size: 2rem;
+    font-family: 'VT323', monospace;
+    text-shadow: 0 0 10px var(--matrix-green);
+    letter-spacing: 5px;
+}
+
+.status-bracket {
+    color: var(--dark-green);
+    margin: 0 15px;
+    animation: blink 1s infinite alternate;
+}
+
+.hint-text {
+    margin-top: 15px;
+    font-size: 1rem;
+    color: rgba(0, 143, 17, 0.7);
+    animation: blink 2s infinite;
+}
+
+/* Right Panel: Terminal Shell */
+.panel-right {
+    width: 600px; /* Made wider for command line feel */
+    background-color: var(--panel-bg);
+    border-left: 2px solid var(--dark-green);
+    display: flex;
+    flex-direction: column;
+    backdrop-filter: blur(8px);
+    box-shadow: -10px 0 40px rgba(0, 255, 65, 0.05);
+}
+
+.terminal-header {
+    background-color: #080808;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--dark-green);
+}
+
+.dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+.dot.red { background-color: #ff5f56; }
+.dot.yellow { background-color: #ffbd2e; }
+.dot.green { background-color: #27c93f; }
+
+.term-title {
+    margin-left: 15px;
+    color: #666;
+    font-size: 1rem;
+    font-family: 'VT323', monospace;
+    letter-spacing: 2px;
+}
+
+.chat-history {
+    flex: 1;
+    padding: 25px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Custom Scrollbar */
+.chat-history::-webkit-scrollbar { width: 8px; }
+.chat-history::-webkit-scrollbar-track { background: #050505; border-left: 1px solid #111; }
+.chat-history::-webkit-scrollbar-thumb { background: var(--dark-green); }
+.chat-history::-webkit-scrollbar-thumb:hover { background: var(--bright-green); }
+
+.msg {
+    font-size: 1.15rem;
+    line-height: 1.5;
+    word-break: break-word;
+    display: flex;
+}
+
+.prompt {
+    font-weight: bold;
+    margin-right: 12px;
+    white-space: nowrap;
+}
+
+.text {
+    flex: 1;
+    white-space: pre-wrap;
+}
+
+.msg.ai .prompt { color: var(--bright-green); text-shadow: 0 0 5px var(--bright-green); }
+.msg.ai .text { color: #d4d4d4; }
+
+.msg.user .prompt { color: #888; }
+.msg.user .text { color: #fff; text-shadow: 0 0 2px #fff;}
+
+.msg.error .prompt { color: var(--red-alert); text-shadow: 0 0 5px var(--red-alert); }
+.msg.error .text { color: var(--red-alert); font-weight: bold; }
+
+/* Cursor for typing effect */
+.cursor {
+    display: inline-block;
+    width: 10px;
+    height: 1.2em;
+    background-color: var(--bright-green);
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+    margin-left: 4px;
+    box-shadow: 0 0 5px var(--bright-green);
+}
+
+.input-area {
+    display: flex;
+    align-items: center;
+    padding: 20px 25px;
+    background-color: #030303;
+    border-top: 1px solid var(--dark-green);
+}
+
+.input-prompt {
+    color: #888;
+    margin-right: 12px;
+    font-weight: bold;
+    font-size: 1.15rem;
+}
+
+.input-area input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-family: inherit;
+    font-size: 1.15rem;
+    outline: none;
+    caret-color: var(--bright-green);
+}
+.input-area input::placeholder {
+    color: #333;
+}
+
+.input-area button {
+    margin-left: 20px;
+    padding: 10px 20px;
+    border: 1px solid var(--matrix-green);
+    background: transparent;
+    color: var(--matrix-green);
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: all 0.2s;
+}
+
+.input-area button:hover {
+    background: var(--matrix-green);
+    color: #000;
+    box-shadow: 0 0 15px var(--matrix-green);
+}
+
+.input-area button:active {
+    transform: scale(0.95);
+}
+
+/* Base Terminal Text Selection */
+::selection { background: var(--matrix-green); color: #000; }
+
+/* Keyframes */
+@keyframes spin-clockwise { 100% { transform: rotate(360deg); } }
+@keyframes spin-counter { 100% { transform: rotate(-360deg); } }
+@keyframes pulse-core {
+    0% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 20px var(--matrix-green), inset 0 0 10px #000; }
+    100% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 50px var(--matrix-green), inset 0 0 30px #000; }
+}
+@keyframes audio-wave {
+    0% { transform: scale(0.9); }
+    100% { transform: scale(1.4); }
+}
+@keyframes ring-pump {
+    0% { transform: scale(1); border-width: 2px; }
+    100% { transform: scale(1.15); border-width: 5px; opacity: 1; }
+}
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}

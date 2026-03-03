@@ -8,7 +8,7 @@ import re
 LLM_MODE = "local"
 
 # --- GEMINI (Online) AYARLARI ---
-GEMINI_API_KEY = "AIzaSyAmCRstjotgr49FJa35MYxBpMd3hiZmaQE"
+GEMINI_API_KEY = "AIzaSyC7Nhpa55UmoLBGtXWGE1ItB_t8atoFY08"
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
 

@@ -45,6 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatHistory = document.getElementById("chat-history");
     const manualInput = document.getElementById("manual-input");
     const sendBtn = document.getElementById("send-btn");
+    const stopBtn = document.getElementById("stop-btn");
     
     // Web Speech API Initialization
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -62,6 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
+            abortTyping = false;
             addMessage(transcript, 'user');
             sendToBackend(transcript);
         };
@@ -116,9 +118,23 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    let abortTyping = false;
+
+    stopBtn.addEventListener("click", () => {
+        abortTyping = true;
+        if (synth.speaking) synth.cancel();
+        
+        // Change orb back to idle if it was speaking or thinking
+        setOrbState('idle');
+        
+        // Optionally show a halted message
+        addMessage("[ SİSTEM_DURDURULDU_HALT_KOMUTU ]", 'error');
+    });
+
     sendBtn.addEventListener("click", () => {
         const text = manualInput.value.trim();
         if (text) {
+            abortTyping = false;
             addMessage(text, 'user');
             sendToBackend(text);
             manualInput.value = '';
@@ -176,6 +192,13 @@ document.addEventListener("DOMContentLoaded", () => {
         let isTyping = true;
         
         const typeChar = () => {
+            if (abortTyping && senderType === 'ai') {
+                isTyping = false;
+                cursor.style.display = 'none';
+                textSpan.textContent += " [...HALTED]";
+                return;
+            }
+            
             if (i < text.length) {
                 textSpan.textContent += text.charAt(i);
                 i++;
@@ -221,6 +244,9 @@ document.addEventListener("DOMContentLoaded", () => {
       speechSynthesis.onvoiceschanged = () => {};
     }
 
+    // Sohbet belleğini tut (Sadece son 5 konuşma)
+    let chatMemory = [];
+
     const sendToBackend = async (message) => {
         setOrbState('thinking');
         
@@ -228,7 +254,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch(API_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: message })
+                body: JSON.stringify({ message: message, history: chatMemory })
             });
 
             const data = await response.json();
@@ -236,6 +262,22 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.status === "success" || data.status === "action") {
                 typeEffect(data.response, 'ai');
                 speakText(data.response);
+                
+                // Action handling
+                if (data.status === "action" && data.action && data.action.action_name === "download_excel") {
+                    setTimeout(() => {
+                        window.location.href = "/jarvis/api/export_excel";
+                    }, 1000);
+                }
+                
+                // Belleğe ekle (User ve Model olarak)
+                chatMemory.push({"role": "user", "text": message});
+                chatMemory.push({"role": "model", "text": data.response});
+                
+                // Belleği çok şişirmemek için son 10 logu (5 diyalog) tut
+                if (chatMemory.length > 10) {
+                    chatMemory = chatMemory.slice(chatMemory.length - 10);
+                }
             } else {
                 typeEffect("HATA_KODU: [" + data.message + "]", 'error');
                 setOrbState('idle');

@@ -6,4 +6,5 @@ app_name = 'jarvis_app'
 urlpatterns = [
     path('', views.chat_view, name='chat'),
     path('api/chat', views.api_chat, name='api_chat'),
+    path('api/export_excel', views.export_excel_view, name='export_excel'),
 ]

@@ -154,6 +154,10 @@ urlpatterns = [
     path('vardiya-dagilim/kaydet/', views.vardiya_dagilim_kaydet, name='vardiya_dagilim_kaydet'),
     path('vardiya-dagilim/pdf/', views.vardiya_dagilim_pdf, name='vardiya_dagilim_pdf'),
     
+    # Günlük İzin Takibi
+    path('gunluk-izin-takibi/', views.gunluk_izin_takibi, name='gunluk_izin_takibi'),
+    path('gunluk-izin-takibi/search/', views.gunluk_izin_takibi_search, name='gunluk_izin_takibi_search'),
+    
     # Çalışma Statüsü Kontrolü
     path('calisma-statusu-list/<int:liste_id>/', views.get_calisma_statusu_list, name='get_calisma_statusu_list'),
     path('calisma-statusu-guncelle/<int:liste_id>/', views.update_calisma_statusu_list, name='update_calisma_statusu_list'),

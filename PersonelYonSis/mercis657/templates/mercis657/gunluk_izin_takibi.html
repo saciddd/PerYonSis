@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Günlük İzin Takibi</h5>
+                </div>
+                <div class="card-body">
+                    <form id="filterForm" class="row g-3">
+                        <div class="col-md-2">
+                            <label for="kurum" class="form-label">Kurum</label>
+                            <select id="kurum" class="form-select">
+                                <option value="">Tümü</option>
+                                {% for k in kurumlar %}
+                                <option value="{{ k.id }}">{{ k.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="ust_birim" class="form-label">Üst Birim</label>
+                            <select id="ust_birim" class="form-select">
+                                <option value="">Tümü</option>
+                                {% for ub in ust_birimler %}
+                                <option value="{{ ub.id }}">{{ ub.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="idareci" class="form-label">İdareci</label>
+                            <select id="idareci" class="form-select">
+                                <option value="">Tümü</option>
+                                {% for i in idareciler %}
+                                <option value="{{ i.id }}">{{ i.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="bina" class="form-label">Bina</label>
+                            <select id="bina" class="form-select">
+                                <option value="">Tümü</option>
+                                {% for b in binalar %}
+                                <option value="{{ b.id }}">{{ b.ad }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="tarih" class="form-label">Tarih</label>
+                            <input type="date" id="tarih" class="form-control" value="{{ bugun }}">
+                        </div>
+                        
+                        <div class="col-12 text-end">
+                            <button type="button" id="btnSorgula" class="btn btn-primary">
+                                <i class="bi bi-search me-1"></i> Sorgula
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sonucAlani" class="row">
+        <!-- Sonuçlar buraya yüklenecek -->
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnSorgula = document.getElementById('btnSorgula');
+    const sonucAlani = document.getElementById('sonucAlani');
+    
+    // CSRF Token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    btnSorgula.addEventListener('click', function() {
+        const filters = {
+            kurum_id: document.getElementById('kurum').value,
+            ust_birim_id: document.getElementById('ust_birim').value,
+            idareci_id: document.getElementById('idareci').value,
+            bina_id: document.getElementById('bina').value,
+            tarih: document.getElementById('tarih').value
+        };
+
+        sonucAlani.innerHTML = '<div class="col-12 text-center"><div class="spinner-border text-primary" role="status"></div></div>';
+
+        fetch('{% url "mercis657:gunluk_izin_takibi_search" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken
+            },
+            body: JSON.stringify(filters)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                renderResults(data.results);
+            } else {
+                alert('Hata: ' + data.message);
+                sonucAlani.innerHTML = '';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            sonucAlani.innerHTML = '<div class="col-12 text-center text-danger">Bir hata oluştu.</div>';
+        });
+    });
+
+    function renderResults(results) {
+        if (results.length === 0) {
+            sonucAlani.innerHTML = '<div class="col-12"><div class="alert alert-info">Kayıt bulunamadı.</div></div>';
+            return;
+        }
+
+        let html = '<div class="col-12"><div class="table-responsive"><table class="table table-bordered table-hover table-sm">';
+        html += '<thead class="table-light"><tr><th>Birim</th><th>Personel</th><th>Ünvan</th><th class="text-center">Sisteme Girildi</th></tr></thead><tbody>';
+
+        results.forEach(p => {
+            const trClass = p.sisteme_girildi ? 'table-success' : '';
+            const girildiText = p.sisteme_girildi ? 'Evet' : 'Hayır';
+            
+            html += `
+            <tr class="${trClass}">
+                <td>${p.birim}</td>
+                <td>${p.personel_ad}</td>
+                <td>${p.unvan}</td>
+                <td class="text-center">${girildiText}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div></div>';
+        sonucAlani.innerHTML = html;
+    }
+});
+</script>
+{% endblock %}

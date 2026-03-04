@@ -8,6 +8,11 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Günlük İzin Takibi</h5>
+                    {% if last_sync %}
+                    <small class="text-muted">
+                        <i class="bi bi-clock-history"></i> En son güncellenme: <strong>{{ last_sync.time }}</strong> ({{ last_sync.count }} mesai kaydı güncellendi)
+                    </small>
+                    {% endif %}
                 </div>
                 <div class="card-body">
                     <form id="filterForm" class="row g-3">

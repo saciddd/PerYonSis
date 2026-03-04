@@ -1,3 +1,5 @@
+import os
+from django.conf import settings
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -11,12 +13,22 @@ def gunluk_izin_takibi(request):
     """
     Günlük İzin Takibi sayfası.
     """
+    sync_file_path = os.path.join(settings.BASE_DIR, 'mercis657', 'last_izin_sync.json')
+    last_sync = None
+    if os.path.exists(sync_file_path):
+        try:
+            with open(sync_file_path, 'r', encoding='utf-8') as f:
+                last_sync = json.load(f)
+        except Exception:
+            pass
+
     context = {
         'kurumlar': Kurum.objects.filter(aktif=True),
         'ust_birimler': UstBirim.objects.filter(aktif=True),
         'idareciler': Idareci.objects.filter(aktif=True),
         'binalar': Bina.objects.filter(aktif=True),
         'bugun': datetime.now().strftime('%Y-%m-%d'),
+        'last_sync': last_sync,
     }
     return render(request, 'mercis657/gunluk_izin_takibi.html', context)
 

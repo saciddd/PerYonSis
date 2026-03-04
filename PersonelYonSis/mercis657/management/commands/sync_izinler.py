@@ -1,3 +1,6 @@
+import os
+import json
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from datetime import datetime, date, timedelta
 from mercis657.models import Mesai, Personel, Izin
@@ -75,6 +78,18 @@ class Command(BaseCommand):
                         mesai.save(update_fields=["SistemdekiIzin"])
                         updated_count += 1
                         
+            # Son güncellenme verisini dosyaya yaz
+            sync_file_path = os.path.join(settings.BASE_DIR, 'mercis657', 'last_izin_sync.json')
+            sync_data = {
+                'time': datetime.now().strftime('%d.%m.%Y %H:%M'),
+                'count': updated_count
+            }
+            try:
+                with open(sync_file_path, 'w', encoding='utf-8') as f:
+                    json.dump(sync_data, f)
+            except Exception as file_exp:
+                self.stdout.write(self.style.WARNING(f"Log dosyası yazılamadı: {str(file_exp)}"))
+
             self.stdout.write(self.style.SUCCESS(f"Başarıyla {updated_count} mesai kaydı güncellendi."))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f"İşlem sırasında hata oluştu: {str(e)}"))

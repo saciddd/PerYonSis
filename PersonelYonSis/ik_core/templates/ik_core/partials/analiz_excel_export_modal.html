@@ -1,0 +1,47 @@
+<!-- Analiz Excel Export Modal -->
+<div class="modal fade" id="analizExcelExportModal" tabindex="-1" aria-hidden="true" style="z-index: 1080;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="{% url 'ik_core:personel_export_xlsx' %}" method="post" id="analizExportForm">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Excel'e Aktar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Dışa aktarmak istediğiniz alanları seçiniz:</p>
+                    <div class="row">
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="tc_kimlik_no" id="a_field_tc_kimlik_no" checked><label class="form-check-label" for="a_field_tc_kimlik_no">T.C. Kimlik No</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="ad" id="a_field_ad" checked><label class="form-check-label" for="a_field_ad">Ad</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="soyad" id="a_field_soyad" checked><label class="form-check-label" for="a_field_soyad">Soyad</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="yas" id="a_field_yas"><label class="form-check-label" for="a_field_yas">Yaş</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="dogum_tarihi" id="a_field_dogum_tarihi"><label class="form-check-label" for="a_field_dogum_tarihi">Doğum Tarihi</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="cinsiyet" id="a_field_cinsiyet"><label class="form-check-label" for="a_field_cinsiyet">Cinsiyet</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="telefon" id="a_field_telefon"><label class="form-check-label" for="a_field_telefon">Telefon</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="kisa_unvan" id="a_field_kisa_unvan" checked><label class="form-check-label" for="a_field_kisa_unvan">Kısa Unvan</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="baslangic_tarihi" id="a_field_baslangic_tarihi"><label class="form-check-label" for="a_field_baslangic_tarihi">Başlangıç Tarihi</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="durum" id="a_field_durum" checked><label class="form-check-label" for="a_field_durum">Durum</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="unvan" id="a_field_unvan" checked><label class="form-check-label" for="a_field_unvan">Unvan</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="brans" id="a_field_brans"><label class="form-check-label" for="a_field_brans">Branş</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="sicil_no" id="a_field_sicil_no"><label class="form-check-label" for="a_field_sicil_no">Sicil No</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="kurum" id="a_field_kurum"><label class="form-check-label" for="a_field_kurum">Kurum</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="kadro_yeri" id="a_field_kadro_yeri"><label class="form-check-label" for="a_field_kadro_yeri">Kadro Yeri</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="fiili_gorev_yeri" id="a_field_fiili_gorev_yeri"><label class="form-check-label" for="a_field_fiili_gorev_yeri">Görev Yeri</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="tahsil_durumu" id="a_field_tahsil_durumu"><label class="form-check-label" for="a_field_tahsil_durumu">Öğrenim</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="memuriyet_durumu" id="a_field_memuriyet_durumu"><label class="form-check-label" for="a_field_memuriyet_durumu">Memuriyet</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="ozel_durumu" id="a_field_ozel_durumu"><label class="form-check-label" for="a_field_ozel_durumu">Özel Durum</label></div></div>
+                        <div class="col-6 mb-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="fields" value="son_birim_kaydi" id="a_field_son_birim_kaydi"><label class="form-check-label" for="a_field_son_birim_kaydi">Birim Kaydı</label></div></div>
+                    </div>
+                    <!-- Hidden field to store selected personnel IDs -->
+                    <input type="hidden" name="personel_ids" id="exportPersonelIds">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-download"></i> İndir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

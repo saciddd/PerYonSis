@@ -146,6 +146,7 @@
 
 {% include 'ik_core/partials/personel_list_modal.html' %}
 {% include 'ik_core/partials/yeni_birim_belirle_modal.html' %}
+{% include 'ik_core/partials/analiz_excel_export_modal.html' %}
 
 {% endblock %}
 
@@ -623,7 +624,24 @@
 
     window.exportModalToExcel = function () {
         const modalBody = document.getElementById('personelListModalBody');
-        if (modalBody) ExcelExport.exportTable(modalBody, 'personel_listesi');
+        if (!modalBody) return;
+        
+        let ids = [];
+        modalBody.querySelectorAll('.set-yeni-birim-btn').forEach(el => {
+            const id = el.getAttribute('data-personel-id');
+            if (id && !ids.includes(id)) {
+                ids.push(id);
+            }
+        });
+        
+        if (ids.length === 0) {
+            alert('Dışa aktarılacak personel bulunamadı.');
+            return;
+        }
+
+        document.getElementById('exportPersonelIds').value = JSON.stringify(ids);
+        var exportModal = new bootstrap.Modal(document.getElementById('analizExcelExportModal'));
+        exportModal.show();
     }
 </script>
 {% endblock %}

@@ -220,6 +220,8 @@ def _get_filtered_personel_list(data, limit_limitless=True):
 def personel_export_xlsx(request):
     import openpyxl
     from openpyxl.utils import get_column_letter
+    from openpyxl.styles import PatternFill, Font, Alignment
+    import json
 
     # Seçili alanları al (checkbox name="fields")
     selected_fields = request.POST.getlist('fields')
@@ -227,8 +229,23 @@ def personel_export_xlsx(request):
         # Default fields if none selected
         selected_fields = ['tc_kimlik_no', 'ad', 'soyad', 'unvan', 'durum']
 
-    # Filtrelenmiş listeyi al (limit_limitless=False -> tüm kayıtlar)
-    personeller = _get_filtered_personel_list(request.POST, limit_limitless=False)
+    personel_ids_json = request.POST.get('personel_ids')
+    
+    if personel_ids_json:
+        try:
+            ids = json.loads(personel_ids_json)
+            personeller = Personel.objects.filter(id__in=ids).select_related(
+                'unvan', 'kurum', 'brans', 'kadro_yeri', 'fiili_gorev_yeri'
+            ).prefetch_related('ozel_durumu')
+            
+            # Sorted by logic if needed, but fetch order is fine
+            personeller = list(personeller)
+        except json.JSONDecodeError:
+            personeller = []
+    else:
+        # Filtrelenmiş listeyi al (limit_limitless=False -> tüm kayıtlar)
+        personeller = _get_filtered_personel_list(request.POST, limit_limitless=False)
+
 
     # Alan Tanımları
     FIELD_MAP = {
@@ -262,47 +279,67 @@ def personel_export_xlsx(request):
     ws.title = "Personel Listesi"
 
     # Başlıklar
-    headers = [FIELD_MAP.get(f, f) for f in selected_fields]
+    headers = ["S/N"] + [FIELD_MAP.get(f, f) for f in selected_fields]
     ws.append(headers)
 
+    header_fill = PatternFill(start_color="4F4F4F", end_color="4F4F4F", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+
+    odd_row_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    even_row_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+
     # Veriler
-    for p in personeller:
-        row = []
+    for idx, p in enumerate(personeller, 1):
+        row = [idx]
         for field in selected_fields:
             val = ""
             if field == 'tc_kimlik_no': val = p.tc_kimlik_no
             elif field == 'ad': val = p.ad
             elif field == 'soyad': val = p.soyad
             elif field == 'telefon': val = p.telefon
-            elif field == 'kisa_unvan': val = p.kisa_unvan
+            elif field == 'kisa_unvan': val = getattr(p, 'kisa_unvan', "")
             elif field == 'baslangic_tarihi': val = p.goreve_baslama_tarihi
             elif field == 'durum': val = p.durum
             elif field == 'unvan': val = p.unvan.ad if p.unvan else ""
             elif field == 'brans': val = p.brans.ad if p.brans else ""
-            elif field == 'sicil_no': val = p.sicil_no
+            elif field == 'sicil_no': val = getattr(p, 'sicil_no', "")
             elif field == 'kurum': val = p.kurum.ad if p.kurum else ""
             elif field == 'kadro_yeri': val = p.kadro_yeri.ad if p.kadro_yeri else ""
-            elif field == 'fiili_gorev_yeri': val = p.fiili_gorev_yeri.ad if p.fiili_gorev_yeri else ""
+            elif field == 'fiili_gorev_yeri': val = p.fiili_gorev_yeri.ad if getattr(p, 'fiili_gorev_yeri', None) else ""
             elif field == 'dogum_tarihi': val = p.dogum_tarihi
-            elif field == 'yas': val = p.yas
+            elif field == 'yas': val = getattr(p, 'yas', "")
             elif field == 'cinsiyet': val = p.cinsiyet
             elif field == 'tahsil_durumu': val = p.tahsil_durumu
             elif field == 'memuriyet_durumu': val = p.memuriyet_durumu
             elif field == 'ozel_durumu':
                 val = ", ".join([od.ad for od in p.ozel_durumu.all()]) if p.pk else ""
-            elif field == 'son_birim_kaydi': val = p.son_birim_kaydi
+            elif field == 'son_birim_kaydi': val = getattr(p, 'son_birim_kaydi', "")
             elif field == 'son_mercis657_listesi': 
-                m = p.son_mercis657_listesi
+                m = getattr(p, 'son_mercis657_listesi', None)
                 val = f"{m['yil']}/{m['ay']} {m['birim']}" if m else "-"
             elif field == 'son_hizmet_sunum_bildirimi': 
-                h = p.son_hizmet_sunum_bildirimi
+                h = getattr(p, 'son_hizmet_sunum_bildirimi', None)
                 val = f"{h['yil']}/{h['ay']} {h['birim']}" if h else "-"
             row.append(val)
         ws.append(row)
+        
+        current_row_idx = ws.max_row
+        current_fill = odd_row_fill if current_row_idx % 2 == 1 else even_row_fill
+        for cell in ws[current_row_idx]:
+            cell.fill = current_fill
     
+    # Otomatik Filtre
+    ws.auto_filter.ref = ws.dimensions
+
     # Sütun Genişlikleri Ayarla
     for i, column_cells in enumerate(ws.columns, 1):
-        length = max(len(str(cell.value) or "") for cell in column_cells)
+        if not column_cells: continue
+        length = max((len(str(cell.value) or "") for cell in column_cells), default=0)
         ws.column_dimensions[get_column_letter(i)].width = length + 2
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')

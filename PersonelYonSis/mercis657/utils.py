@@ -37,7 +37,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     radyasyon_calisani = personel_listesi_kayit.radyasyon_calisani
     sabit_mesai = personel_listesi_kayit.sabit_mesai
     is_gunduz_personeli = getattr(personel_listesi_kayit, 'is_gunduz_personeli', True)
-    
+
     # O dönemdeki yarim_zamanli_calisma durumu
     ilk_gun = date(year, month, 1)
     # Ayın son günü
@@ -92,7 +92,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             is_resmi_tatil = current_date in tatil_map_month
             if not is_resmi_tatil:
                 calisma_gunleri += 1
-            
+
             # Arefe kontrolü (ResmiTatil tablosunda varsa)
             if is_resmi_tatil and tatil_map_month[current_date]:
                 arefe_gunleri += 1
@@ -105,7 +105,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     # ==========================================
     # 2. Fiili Çalışma ve Detaylı Dağılım
     # ==========================================
-    
+
     # Genişletilmiş Tatil Map (Sarkmalar için +2 gün)
     extended_end = son_gun + timedelta(days=2)
     resmi_tatiller_genis = ResmiTatil.objects.filter(
@@ -116,16 +116,6 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         rt.TatilTarihi: {'ArefeMi': rt.ArefeMi, 'BayramMi': rt.BayramMi}
         for rt in resmi_tatiller_genis
     }
-
-    bucket_bayram_gece = Decimal('0.0')
-    bucket_bayram_gunduz = Decimal('0.0')
-    bucket_normal_gece = Decimal('0.0')
-    bucket_normal_gunduz = Decimal('0.0')
-    
-    riskli_bucket_bayram_gece = Decimal('0.0')
-    riskli_bucket_bayram_gunduz = Decimal('0.0')
-    riskli_bucket_normal_gece = Decimal('0.0')
-    riskli_bucket_normal_gunduz = Decimal('0.0')
 
     stop_suresi = Decimal('0.0')
     fiili_calisma_suresi = Decimal('0.0')
@@ -141,16 +131,16 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         """Verilen datetime için status döner: is_bayram, is_gece"""
         d = dt.date()
         t = dt.time()
-        
+
         # Gece: 20:00 - 08:00
         is_gece = (t >= time(20, 0)) or (t < time(8, 0))
-        
+
         is_bayram = False
         if d in tatil_map_genis:
             info = tatil_map_genis[d]
             arefe_mi = info['ArefeMi']
             bayram_mi = info['BayramMi']
-            
+
             if arefe_mi:
                 # Arefe günü 13:00'den sonra bayram
                 if t >= time(13, 0) and bayram_mi:
@@ -158,10 +148,8 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             else:
                 if bayram_mi:
                     is_bayram = True
-                
+
         return is_bayram, is_gece
-
-
 
     # İzin Azaltımı Hesapla (Ortak)
     for mesai in mesailer:
@@ -172,7 +160,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             fiili_calisma_suresi += mesai.MesaiTanim.Sure
         izin_field = getattr(mesai, 'Izin', None)
         mesai_tarih = getattr(mesai, 'MesaiDate', None)
-        
+
         if izin_field and mesai_tarih:
             if mesai_tarih.weekday() < 5:  # hafta içi
                 is_tatil_gunu = mesai_tarih in tatil_map_month
@@ -196,288 +184,246 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         curr = baslangic
         while curr <= bitis:
             if curr.weekday() < 5 and curr not in tatil_map_month:
-                 izinli_mi = Mesai.objects.filter(Personel=personel, MesaiDate=curr).exclude(Izin=False).exclude(Izin__isnull=True).exists()
-                 if not izinli_mi:
-                     mazeret_gunleri += 1
+                izinli_mi = Mesai.objects.filter(Personel=personel, MesaiDate=curr).exclude(Izin=False).exclude(Izin__isnull=True).exists()
+                if not izinli_mi:
+                    mazeret_gunleri += 1
             curr += timedelta(days=1)
         mazeret_azaltimi += mazeret_gunleri * mazeret.gunluk_azaltim_saat
 
     # İzin düşümü (olması gerekenden)
     effective_olmasi_gereken = olmasi_gereken_sure - izin_azaltimi - mazeret_azaltimi
 
+    # ==========================================
+    # YENİ ORTAK HESAPLAMA MANTIĞI
+    # ==========================================
+    #
+    # Tüm mesai segmentleri (stopsuz) tarih sırasına göre işlenir.
+    # Her segment şu bilgileri taşır:
+    #   - seg_start, seg_end (datetime)
+    #   - is_bayram, is_gece (context)
+    #   - is_gunduz_08_16: 08:00-16:00 arasında mı?
+    #   - duration
+    #   - riskli bilgileri
+    #
+    # Doldurma önceliği:
+    #   1. Pass: 08:00-16:00 segmentleri ile effective_olmasi_gereken'i doldur
+    #   2. Pass: Kalan limiti diğer segmentlerle (gece + diğer gündüz) doldur
+    #
+    # Limit dolduktan sonra gelen her segment:
+    #   - is_gece → gece fazla mesai (bayram/normal)
+    #   - değilse → gündüz fazla mesai (bayram/normal)
+    # ==========================================
 
-    if is_gunduz_personeli:
-        # ----------------------------------------------------------------
-        # GÜNDÜZ PERSONELİ (Mevcut Mantık: Bucket Havuzu)
-        # ----------------------------------------------------------------
-        
-        # Sabit Mesai Bitiş Saati Analizi (Nobet riskli için)
-        sabit_mesai_bitis = None
-        if sabit_mesai and sabit_mesai.aralik:
-             try:
-                 parts = sabit_mesai.aralik.strip().split()
-                 if len(parts) >= 2:
-                     end_s = parts[1] # "17:00"
-                     eh, em = map(int, end_s.split(':'))
-                     sabit_mesai_bitis = time(eh, em)
-             except (ValueError, IndexError):
-                 pass
-
-        # Mazereti havuza ekle
-        # bucket_normal_gunduz += mazeret_azaltimi
-        
-        for mesai in mesailer:
-            if not mesai.MesaiTanim or not mesai.MesaiTanim.Saat:
-                continue
-            
-            # Zaman aralığı bul
-            try:
-                saat_str = mesai.MesaiTanim.Saat.strip()
-                start_s, end_s = saat_str.split()
-                sh, sm = map(int, start_s.split(':'))
+    # Sabit Mesai Bitiş Saati (Riskli NOBET için)
+    sabit_mesai_bitis = None
+    if sabit_mesai and sabit_mesai.aralik:
+        try:
+            parts = sabit_mesai.aralik.strip().split()
+            if len(parts) >= 2:
+                end_s = parts[1]
                 eh, em = map(int, end_s.split(':'))
-                if sh == 24: sh = 0
-                if eh == 24: eh = 0
-                start_dt = datetime.combine(mesai.MesaiDate, time(sh, sm))
-                end_dt = datetime.combine(mesai.MesaiDate, time(eh, em))
-                if getattr(mesai.MesaiTanim, 'SonrakiGuneSarkiyor', False) or end_dt <= start_dt:
-                    end_dt += timedelta(days=1)
-            except ValueError:
+                sabit_mesai_bitis = time(eh, em)
+        except (ValueError, IndexError):
+            pass
+
+    # Tüm mesailerden segmentleri çıkar
+    all_segments = []  # list of dicts
+
+    for mesai in mesailer:
+        if not mesai.MesaiTanim:
+            continue
+
+        # Saat tanımlı değilse Sure üzerinden basit segment oluştur (fallback)
+        if not mesai.MesaiTanim.Saat:
+            if getattr(mesai.MesaiTanim, 'Sure', None):
+                sure = Decimal(str(mesai.MesaiTanim.Sure))
+                # Fallback: gündüz normal segment kabul et, is_gunduz_08_16=True
+                all_segments.append({
+                    'seg_start': None,
+                    'seg_end': None,
+                    'duration': sure,
+                    'is_bayram': False,
+                    'is_gece': False,
+                    'is_gunduz_08_16': True,
+                    'mesai': mesai,
+                    'risky_duration': sure if mesai.riskli_calisma in (Mesai.RISKLI_TAM, Mesai.RISKLI_NOBET) else Decimal('0.0'),
+                })
+            continue
+
+        # Mesai aralığını belirle
+        try:
+            saat_str = mesai.MesaiTanim.Saat.strip()
+            start_s, end_s = saat_str.split()
+            sh, sm = map(int, start_s.split(':'))
+            eh, em = map(int, end_s.split(':'))
+            if sh == 24: sh = 0
+            if eh == 24: eh = 0
+            start_dt = datetime.combine(mesai.MesaiDate, time(sh, sm))
+            end_dt = datetime.combine(mesai.MesaiDate, time(eh, em))
+            if getattr(mesai.MesaiTanim, 'SonrakiGuneSarkiyor', False) or end_dt <= start_dt:
+                end_dt += timedelta(days=1)
+        except ValueError:
+            continue
+
+        # Stopları belirle
+        stops_intervals = []
+        stopler = list(mesai.mercis657_stoplar.all())
+        for stop in stopler:
+            if stop.StopBaslangic and stop.StopBitis:
+                sb, se = stop.StopBaslangic, stop.StopBitis
+                stop_start_dt = datetime.combine(mesai.MesaiDate, sb)
+                if stop_start_dt < start_dt: stop_start_dt += timedelta(days=1)
+                stop_end_dt = datetime.combine(mesai.MesaiDate, se)
+                if stop_end_dt < stop_start_dt: stop_end_dt += timedelta(days=1)
+                stop_start_dt = max(start_dt, stop_start_dt)
+                stop_end_dt = min(end_dt, stop_end_dt)
+                if stop_end_dt > stop_start_dt:
+                    stops_intervals.append((stop_start_dt, stop_end_dt))
+                    stop_suresi += Decimal((stop_end_dt - stop_start_dt).total_seconds() / 3600)
+
+        # Timeline milestones: saat sınırları 0, 8, 13, 16, 20
+        milestones = set([start_dt, end_dt])
+        d_ptr, end_date = start_dt.date(), end_dt.date()
+        while d_ptr <= end_date:
+            for h in [0, 8, 13, 16, 20]:
+                check_dt = datetime.combine(d_ptr, time(h, 0))
+                if start_dt < check_dt < end_dt:
+                    milestones.add(check_dt)
+            d_ptr += timedelta(days=1)
+
+        sorted_points = sorted(list(milestones))
+
+        for i in range(len(sorted_points) - 1):
+            seg_start, seg_end = sorted_points[i], sorted_points[i + 1]
+            mid = seg_start + (seg_end - seg_start) / 2
+
+            # Stop içinde mi?
+            in_stop = any(s_start <= mid <= s_end for s_start, s_end in stops_intervals)
+            if in_stop:
                 continue
 
-            # Stopları işle
-            stopler = list(mesai.mercis657_stoplar.all())
-            stops_intervals = []
-            for stop in stopler:
-                if stop.StopBaslangic and stop.StopBitis:
-                    sb, se = stop.StopBaslangic, stop.StopBitis
-                    stop_start_dt = datetime.combine(mesai.MesaiDate, sb)
-                    if stop_start_dt < start_dt: stop_start_dt += timedelta(days=1)
-                    stop_end_dt = datetime.combine(mesai.MesaiDate, se)
-                    if stop_end_dt < stop_start_dt: stop_end_dt += timedelta(days=1)
-                    stop_start_dt = max(start_dt, stop_start_dt)
-                    stop_end_dt = min(end_dt, stop_end_dt)
-                    if stop_end_dt > stop_start_dt:
-                        stops_intervals.append((stop_start_dt, stop_end_dt))
-                        stop_suresi += Decimal((stop_end_dt - stop_start_dt).total_seconds() / 3600)
+            duration = Decimal((seg_end - seg_start).total_seconds() / 3600)
+            is_bayram, is_gece = get_context(mid)
 
-            # Timeline analizi
-            milestones = set([start_dt, end_dt])
-            d_ptr, end_date = start_dt.date(), end_dt.date()
-            while d_ptr <= end_date:
-                for h in [0, 8, 13, 20]:
-                    check_dt = datetime.combine(d_ptr, time(h, 0))
-                    if start_dt < check_dt < end_dt: milestones.add(check_dt)
-                d_ptr += timedelta(days=1)
-            
-            sorted_points = sorted(list(milestones))
-            for i in range(len(sorted_points) - 1):
-                seg_start, seg_end = sorted_points[i], sorted_points[i+1]
-                mid = seg_start + (seg_end - seg_start) / 2
-                
-                in_stop = any(s_start <= mid <= s_end for s_start, s_end in stops_intervals)
-                if in_stop: continue
-                    
-                duration = Decimal((seg_end - seg_start).total_seconds() / 3600)
-                is_bayram, is_gece = get_context(mid)
-                
-                if is_bayram and is_gece: bucket_bayram_gece += duration
-                elif is_bayram and not is_gece: bucket_bayram_gunduz += duration
-                elif not is_bayram and is_gece: bucket_normal_gece += duration
-                else: bucket_normal_gunduz += duration
-                
-                # --- Riskli Bucket Ekleme ---
-                risky_duration = Decimal('0.0')
-                if mesai.riskli_calisma == Mesai.RISKLI_TAM:
+            # 08:00-16:00 arasında mı?
+            seg_start_t = seg_start.time()
+            seg_end_t = seg_end.time()
+            # Tüm segmentin 08-16 içinde olması gerekiyor
+            is_gunduz_08_16 = (
+                not is_bayram
+                and not is_gece
+                and seg_start_t >= time(8, 0)
+                and seg_end_t <= time(16, 0)
+            )
+
+            # Riskli süre hesabı
+            risky_duration = Decimal('0.0')
+            if mesai.riskli_calisma == Mesai.RISKLI_TAM:
+                risky_duration = duration
+            elif mesai.riskli_calisma == Mesai.RISKLI_NOBET:
+                if is_gunduz_personeli:
+                    # Gündüz personeli: sabit mesai bitişinden sonrası riskli
+                    if mesai.MesaiDate.weekday() < 5 and mesai.MesaiDate not in tatil_map_month:
+                        if sabit_mesai_bitis:
+                            r_start_dt = datetime.combine(mesai.MesaiDate, sabit_mesai_bitis)
+                            r_start = max(seg_start, r_start_dt)
+                            r_end = seg_end
+                            if r_end > r_start:
+                                risky_duration = Decimal((r_end - r_start).total_seconds() / 3600)
+                else:
+                    # Nöbetli personel: vardiyanın tamamı riskli
                     risky_duration = duration
-                elif mesai.riskli_calisma == Mesai.RISKLI_NOBET:
-                     if mesai.MesaiDate.weekday() < 5 and mesai.MesaiDate not in tatil_map_month:
-                          if sabit_mesai_bitis:
-                                r_start_dt = datetime.combine(mesai.MesaiDate, sabit_mesai_bitis)
-                                r_start = max(seg_start, r_start_dt)
-                                r_end = seg_end
-                                if r_end > r_start:
-                                     risky_duration = Decimal((r_end - r_start).total_seconds() / 3600)
 
-                if risky_duration > 0:
-                    if is_bayram and is_gece: riskli_bucket_bayram_gece += risky_duration
-                    elif is_bayram and not is_gece: riskli_bucket_bayram_gunduz += risky_duration
-                    elif not is_bayram and is_gece: riskli_bucket_normal_gece += risky_duration
-                    else: riskli_bucket_normal_gunduz += risky_duration
+            all_segments.append({
+                'seg_start': seg_start,
+                'seg_end': seg_end,
+                'duration': duration,
+                'is_bayram': is_bayram,
+                'is_gece': is_gece,
+                'is_gunduz_08_16': is_gunduz_08_16,
+                'mesai': mesai,
+                'risky_duration': risky_duration,
+            })
 
+    # ==========================================
+    # İki Pasla Limit Doldurma + Fazla Mesai Hesabı
+    # ==========================================
 
-        fazla_mesai = fiili_calisma_suresi - effective_olmasi_gereken
-        
-        # Dağıtım (Best Benefit)
-        res_bayram_gece, res_bayram_gunduz = Decimal('0.0'), Decimal('0.0')
-        res_normal_gece, res_normal_gunduz = Decimal('0.0'), Decimal('0.0')
-        
-        if fazla_mesai > 0:
-            rem = fazla_mesai
-            take = min(rem, bucket_bayram_gece)
-            res_bayram_gece = take
-            rem -= take
-            if rem > 0:
-                take = min(rem, bucket_bayram_gunduz)
-                res_bayram_gunduz = take
-                rem -= take
-            if rem > 0:
-                take = min(rem, bucket_normal_gece)
-                res_normal_gece = take
-                rem -= take
-            if rem > 0:
-                res_normal_gunduz = rem
-        
-        # --- Riskli Fazla Mesai Hesaplama (Min Logic) ---
-        res_riskli_bayram_gece = min(riskli_bucket_bayram_gece, res_bayram_gece)
-        res_riskli_bayram_gunduz = min(riskli_bucket_bayram_gunduz, res_bayram_gunduz)
-        res_riskli_normal_gece = min(riskli_bucket_normal_gece, res_normal_gece)
-        res_riskli_normal_gunduz = min(riskli_bucket_normal_gunduz, res_normal_gunduz)
+    # Bucketlar: (bayram, gece) -> (fazla, riskli_fazla)
+    res_bayram_gece = Decimal('0.0')
+    res_bayram_gunduz = Decimal('0.0')
+    res_normal_gece = Decimal('0.0')
+    res_normal_gunduz = Decimal('0.0')
 
-        # --- Risksiz Fazla Mesai Düzeltmesi (Düşüm) ---
-        res_bayram_gece -= res_riskli_bayram_gece
-        res_bayram_gunduz -= res_riskli_bayram_gunduz
-        res_normal_gece -= res_riskli_normal_gece
-        res_normal_gunduz -= res_riskli_normal_gunduz
+    res_riskli_bayram_gece = Decimal('0.0')
+    res_riskli_bayram_gunduz = Decimal('0.0')
+    res_riskli_normal_gece = Decimal('0.0')
+    res_riskli_normal_gunduz = Decimal('0.0')
 
-    else:
-        # ----------------------------------------------------------------
-        # NÖBETLİ ÇALIŞAN (Kronolojik Hesaplama)
-        # ----------------------------------------------------------------
-        # Mazereti başlangıç working accumulation olarak kabul ediyoruz
-        accumulated_hours = Decimal('0.0')
-        limit = effective_olmasi_gereken
-        
-        # Fazla mesai bucketları (Bunlar direkt olarak sonuç olacak)
-        res_bayram_gece = Decimal('0.0')
-        res_bayram_gunduz = Decimal('0.0')
-        res_normal_gece = Decimal('0.0')
-        res_normal_gunduz = Decimal('0.0')
-        
-        # Riskli Fazla Mesai Bucketları
-        res_riskli_bayram_gece = Decimal('0.0')
-        res_riskli_bayram_gunduz = Decimal('0.0')
-        res_riskli_normal_gece = Decimal('0.0')
-        res_riskli_normal_gunduz = Decimal('0.0')
-        
-        for mesai in mesailer:
-            if not mesai.MesaiTanim:
-                continue
+    remaining_limit = effective_olmasi_gereken
 
-            # Eğer Saat tanımlı değilse, Süre üzerinden hesapla (Fallback)
-            if not mesai.MesaiTanim.Saat:
-                if getattr(mesai.MesaiTanim, 'Sure', None):
-                    sure = mesai.MesaiTanim.Sure
-                    accumulated_hours += sure
-                    
-                    # Limit aşımı kontrolü (Basit)
-                    if accumulated_hours > limit:
-                        excess = accumulated_hours - limit
-                        ot_part = min(excess, sure)
-                        res_normal_gunduz += ot_part
-                continue
-                
-            # Mesai aralığını belirle (Saat tanımlıysa)
-            try:
-                saat_str = mesai.MesaiTanim.Saat.strip()
-                start_s, end_s = saat_str.split()
-                sh, sm = map(int, start_s.split(':'))
-                eh, em = map(int, end_s.split(':'))
-                if sh == 24: sh = 0
-                if eh == 24: eh = 0
-                start_dt = datetime.combine(mesai.MesaiDate, time(sh, sm))
-                end_dt = datetime.combine(mesai.MesaiDate, time(eh, em))
-                if getattr(mesai.MesaiTanim, 'SonrakiGuneSarkiyor', False) or end_dt <= start_dt:
-                    end_dt += timedelta(days=1)
-            except ValueError:
-                continue
+    # Her segmentin "limit doldurmada kullanılan" miktarını takip et
+    # ki 2. pasda yeniden işlemeyelim
+    segment_used_for_limit = [Decimal('0.0')] * len(all_segments)
 
-            # Stopları belirle
-            stops_intervals = []
-            stopler = list(mesai.mercis657_stoplar.all())
-            for stop in stopler:
-                if stop.StopBaslangic and stop.StopBitis:
-                    sb, se = stop.StopBaslangic, stop.StopBitis
-                    stop_start_dt = datetime.combine(mesai.MesaiDate, sb)
-                    if stop_start_dt < start_dt: stop_start_dt += timedelta(days=1)
-                    stop_end_dt = datetime.combine(mesai.MesaiDate, se)
-                    if stop_end_dt < stop_start_dt: stop_end_dt += timedelta(days=1)
-                    
-                    stop_start_dt = max(start_dt, stop_start_dt)
-                    stop_end_dt = min(end_dt, stop_end_dt)
-                    
-                    if stop_end_dt > stop_start_dt:
-                        stops_intervals.append((stop_start_dt, stop_end_dt))
-                        stop_suresi += Decimal((stop_end_dt - stop_start_dt).total_seconds() / 3600)
+    # --- 1. PASS: Önce 08:00-16:00 segmentleri ile limiti doldur ---
+    for idx, seg in enumerate(all_segments):
+        if remaining_limit <= 0:
+            break
+        if not seg['is_gunduz_08_16']:
+            continue
+        use = min(remaining_limit, seg['duration'])
+        segment_used_for_limit[idx] = use
+        remaining_limit -= use
 
-            # Bu vardiyayı segmentlere ayır ve işle
-            # Ancak önce toplam süresini bulup birikmişe eklemeli, sonra taşma var mı bakmalıyız.
-            
-            # Vardiyayı timeline parçalarına ayıralım (stopsuz)
-            milestones = set([start_dt, end_dt])
-            d_ptr, end_date = start_dt.date(), end_dt.date()
-            while d_ptr <= end_date:
-                for h in [0, 8, 13, 20]:
-                    check_dt = datetime.combine(d_ptr, time(h, 0))
-                    if start_dt < check_dt < end_dt: milestones.add(check_dt)
-                d_ptr += timedelta(days=1)
-            
-            sorted_points = sorted(list(milestones))
-            
-            # Bu vardiyanın her bir segmentini kronolojik olarak işle
-            for i in range(len(sorted_points) - 1):
-                seg_start, seg_end = sorted_points[i], sorted_points[i+1]
-                mid = seg_start + (seg_end - seg_start) / 2
-                
-                # Stop içinde mi?
-                in_stop = any(s_start <= mid <= s_end for s_start, s_end in stops_intervals)
-                if in_stop: continue
-                
-                seg_duration = Decimal((seg_end - seg_start).total_seconds() / 3600)
-                
-                current_acc_start = accumulated_hours
-                accumulated_hours += seg_duration
-                
-                # Limit aşımı kontrolü
-                if accumulated_hours > limit:
-                     # Bu segmentin bir kısmı veya tamamı fazla mesai
-                     excess = accumulated_hours - limit
-                     
-                     # Eğer önceki birikim zaten limitin üzerindeyse, tüm segment fazla mesai
-                     # Değilse, sadece taşan kısım fazla mesai
-                     ot_part = min(excess, seg_duration)
-                     
-                     # OT kısmını analiz et
-                     is_bayram, is_gece = get_context(mid)
-                     
-                     # Nöbetli personelde RISKLI_NOBET = vardiyanın tamamı risklidir
-                     is_risky_segment = (
-                         mesai.riskli_calisma == Mesai.RISKLI_TAM
-                         or mesai.riskli_calisma == Mesai.RISKLI_NOBET
-                     )
+    # --- 2. PASS: Kalan limiti gece ve diğer gündüz segmentlerle doldur ---
+    for idx, seg in enumerate(all_segments):
+        if remaining_limit <= 0:
+            break
+        if seg['is_gunduz_08_16']:
+            continue  # 1. pasda zaten işlendi
+        use = min(remaining_limit, seg['duration'])
+        segment_used_for_limit[idx] = use
+        remaining_limit -= use
 
-                     if is_risky_segment:
-                         if is_bayram and is_gece:
-                             res_riskli_bayram_gece += ot_part
-                         elif is_bayram:
-                             res_riskli_bayram_gunduz += ot_part
-                         elif is_gece:
-                             res_riskli_normal_gece += ot_part
-                         else:
-                             res_riskli_normal_gunduz += ot_part
-                     else:
-                         if is_bayram and is_gece:
-                             res_bayram_gece += ot_part
-                         elif is_bayram:
-                             res_bayram_gunduz += ot_part
-                         elif is_gece:
-                             res_normal_gece += ot_part
-                         else:
-                             res_normal_gunduz += ot_part
+    # --- FAZ MESAI HESABI: Limit üzerinde kalan kısımlar ---
+    for idx, seg in enumerate(all_segments):
+        used = segment_used_for_limit[idx]
+        ot_part = seg['duration'] - used
 
-        fiili_calisma_suresi = accumulated_hours
-        fazla_mesai = max(Decimal('0.0'), fiili_calisma_suresi - limit)
-    
+        if ot_part <= 0:
+            continue
+
+        is_bayram = seg['is_bayram']
+        is_gece = seg['is_gece']
+        risky_duration = seg['risky_duration']
+
+        # Riskli oranı: fazla mesai kısmına düşen riskli süre oranla hesapla
+        # (segment içinde used kısmı normal, ot_part fazla mesai - riskli oranı koru)
+        if seg['duration'] > 0:
+            risky_ratio = risky_duration / seg['duration']
+        else:
+            risky_ratio = Decimal('0.0')
+        risky_ot = ot_part * risky_ratio
+        normal_ot = ot_part - risky_ot
+
+        if is_bayram and is_gece:
+            res_bayram_gece += normal_ot
+            res_riskli_bayram_gece += risky_ot
+        elif is_bayram and not is_gece:
+            res_bayram_gunduz += normal_ot
+            res_riskli_bayram_gunduz += risky_ot
+        elif not is_bayram and is_gece:
+            res_normal_gece += normal_ot
+            res_riskli_normal_gece += risky_ot
+        else:
+            res_normal_gunduz += normal_ot
+            res_riskli_normal_gunduz += risky_ot
+
+    # Fiili çalışma süresi: tüm segmentlerin toplamı
+    fiili_calisma_suresi = sum(seg['duration'] for seg in all_segments)
+    fazla_mesai = max(Decimal('0.0'), fiili_calisma_suresi - effective_olmasi_gereken)
+
     return {
         'olması_gereken_sure': olmasi_gereken_sure,
         'fiili_calisma_suresi': fiili_calisma_suresi,

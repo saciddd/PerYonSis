@@ -1000,67 +1000,61 @@ td.toplam-icap.has-value {
                         return;
                 }
 
-                if (typeof CalismaStatusuApp !== 'undefined') {
-                    let yearNum, monthNum;
-                    try {
-                        let parts = donemValue.includes('/') ? donemValue.split('/') : donemValue.split('-');
-                        yearNum = parseInt(parts[0], 10);
-                        monthNum = parseInt(parts[1], 10);
-                        if (!yearNum || !monthNum) throw new Error('Invalid donem');
-                    } catch (e) {
-                         // Fallback or alert, but try to proceed
-                         console.error(e);
-                    }
-
-                    CalismaStatusuApp.openModal(selectedBirim, function() {
-                        if (!yearNum || !monthNum) {
-                            Swal.fire('Hata', 'Geçersiz dönem seçimi.', 'error');
-                            return;
-                        }
-
-                        Swal.fire({
-                            title: 'Emin misiniz?',
-                            text: `Seçili birimdeki tüm personel için ${donemValue} dönemi bildirimleri (yeniden) oluşturulacak. Mevcut onaylanmamış bildirimler güncellenecektir.`,
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Evet, oluştur!',
-                            cancelButtonText: 'İptal'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                fetch("{% url 'mercis657:bildirim_toplu_olustur' 999 %}".replace('999', selectedBirim), {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-CSRFToken': '{{ csrf_token }}'
-                                    },
-                                    body: JSON.stringify({
-                                        year: yearNum,
-                                        month: monthNum
-                                    })
-                                })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (data.status === 'success') {
-                                        Swal.fire('Başarılı!', `Bildirimler oluşturuldu/güncellendi. Etkilenen personel sayısı: ${data.count}`, 'success');
-                                        if (typeof fetchBildirimler === 'function') {
-                                            fetchBildirimler(donemValue, selectedBirim);
-                                        } else {
-                                            location.reload();
-                                        }
-                                    } else {
-                                        Swal.fire('Hata', 'Bir hata oluştu: ' + data.message, 'error');
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('Toplu bildirim oluşturma hatası:', error);
-                                    Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
-                                });
-                            }
-                        });
-                    }, { year: yearNum, month: monthNum }); // Pass extra params here
-                } else {
-                     console.error('CalismaStatusuApp definition not found');
+                let yearNum, monthNum;
+                try {
+                    let parts = donemValue.includes('/') ? donemValue.split('/') : donemValue.split('-');
+                    yearNum = parseInt(parts[0], 10);
+                    monthNum = parseInt(parts[1], 10);
+                    if (!yearNum || !monthNum) throw new Error('Invalid donem');
+                } catch (e) {
+                     // Fallback or alert, but try to proceed
+                     console.error(e);
                 }
+
+                if (!yearNum || !monthNum) {
+                    Swal.fire('Hata', 'Geçersiz dönem seçimi.', 'error');
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Emin misiniz?',
+                    text: `Seçili birimdeki tüm personel için ${donemValue} dönemi bildirimleri (yeniden) oluşturulacak. Mevcut onaylanmamış bildirimler güncellenecektir.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Evet, oluştur!',
+                    cancelButtonText: 'İptal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch("{% url 'mercis657:bildirim_toplu_olustur' 999 %}".replace('999', selectedBirim), {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify({
+                                year: yearNum,
+                                month: monthNum
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                Swal.fire('Başarılı!', `Bildirimler oluşturuldu/güncellendi. Etkilenen personel sayısı: ${data.count}`, 'success');
+                                if (typeof fetchBildirimler === 'function') {
+                                    fetchBildirimler(donemValue, selectedBirim);
+                                } else {
+                                    location.reload();
+                                }
+                            } else {
+                                Swal.fire('Hata', 'Bir hata oluştu: ' + data.message, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Toplu bildirim oluşturma hatası:', error);
+                            Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
+                        });
+                    }
+                });
             });
         }
     });

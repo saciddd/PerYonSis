@@ -328,8 +328,10 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 # Sabit mesai aralığı içinde: bayram değil, sabit bitiş saatinden önce
                 is_gunduz_08_16 = (
                     not is_bayram
+                    and not is_gece
                     and seg_start_t >= time(8, 0)
                     and seg_end_t <= sabit_mesai_bitis
+                    and seg_start_t < seg_end_t
                 )
             else:
                 # Sabit mesai yok: 08:00-16:00 arası gündüz segmentler
@@ -338,6 +340,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                     and not is_gece
                     and seg_start_t >= time(8, 0)
                     and seg_end_t <= time(16, 0)
+                    and seg_start_t < seg_end_t
                 )
 
             # Riskli süre hesabı
@@ -447,6 +450,24 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     # Fiili çalışma süresi: tüm segmentlerin toplamı
     fiili_calisma_suresi = sum(seg['duration'] for seg in all_segments)
     fazla_mesai = max(Decimal('0.0'), fiili_calisma_suresi - effective_olmasi_gereken)
+
+    # Debug
+    print(f"Fiili çalışma süresi: {fiili_calisma_suresi}")
+    print(f"Fazla mesai: {fazla_mesai}")
+    print(f"Olması gereken süre: {effective_olmasi_gereken}")
+    print(f"Çalışma günleri: {calisma_gunleri}")
+    print(f"Arefe günleri: {arefe_gunleri}")
+    print(f"Mazeret azaltımı: {mazeret_azaltimi}")
+    print(f"Bayram fazla mesai: {res_bayram_gunduz}")
+    print(f"Normal fazla mesai: {res_normal_gunduz}")
+    print(f"Bayram gece fazla mesai: {res_bayram_gece}")
+    print(f"Normal gece fazla mesai: {res_normal_gece}")
+    print(f"Stop süresi: {stop_suresi}")
+    print(f"Riskli bayram fazla mesai: {res_riskli_bayram_gunduz}")
+    print(f"Riskli normal fazla mesai: {res_riskli_normal_gunduz}")
+    print(f"Riskli bayram gece fazla mesai: {res_riskli_bayram_gece}")
+    print(f"Riskli normal gece fazla mesai: {res_riskli_normal_gece}")
+    
 
     return {
         'olması_gereken_sure': olmasi_gereken_sure,

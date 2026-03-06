@@ -4,7 +4,6 @@ import calendar
 from django.db import models
 from .models import ResmiTatil, MazeretKaydi, Mesai, Mesai_Tanimlari, SabitMesai, UserMesaiFavori, YarimZamanliCalisma
 
-
 def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     """
     Personel için aylık fazla mesai hesaplar.
@@ -153,11 +152,6 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
 
     # İzin Azaltımı Hesapla (Ortak)
     for mesai in mesailer:
-        # Fiili çalışma süresine ekleme
-        if mesai.MesaiTanim and getattr(mesai.MesaiTanim, 'Sure', None):
-            if sabit_mesai and mesai.MesaiTanim.Sure > 8 and mesai.MesaiDate.weekday() < 5:
-                fiili_calisma_suresi -= sabit_mesai.ara_dinlenme
-            fiili_calisma_suresi += mesai.MesaiTanim.Sure
         izin_field = getattr(mesai, 'Izin', None)
         mesai_tarih = getattr(mesai, 'MesaiDate', None)
 
@@ -190,8 +184,23 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             curr += timedelta(days=1)
         mazeret_azaltimi += mazeret_gunleri * mazeret.gunluk_azaltim_saat
 
-    # İzin düşümü (olması gerekenden)
-    effective_olmasi_gereken = olmasi_gereken_sure - izin_azaltimi - mazeret_azaltimi
+    # Sabit mesai ara dinlenme toplamı: hafta içi tatil olmayan çalışılan her gün için
+    # ara_dinlenme fiili çalışmaya dahildir ama "çalışılması gereken" süreye sayılmaz.
+    # Limiti artırarak dengeliyoruz: fazla mesai = fiili - (limit + ara_din_toplam)
+    ara_dinlenme_toplam = Decimal('0.0')
+    if sabit_mesai and getattr(sabit_mesai, 'ara_dinlenme', None) and sabit_mesai.ara_dinlenme > 0:
+        ara_din_per_gun = Decimal(str(sabit_mesai.ara_dinlenme))
+        for mesai in mesailer:
+            if (
+                mesai.MesaiDate.weekday() < 5
+                and mesai.MesaiDate not in tatil_map_month
+                and not getattr(mesai, 'Izin', None)
+                and mesai.MesaiTanim
+                and getattr(mesai.MesaiTanim, 'Saat', None)
+            ):
+                ara_dinlenme_toplam += ara_din_per_gun
+
+    effective_olmasi_gereken = olmasi_gereken_sure - izin_azaltimi - mazeret_azaltimi + ara_dinlenme_toplam
 
     # ==========================================
     # YENİ ORTAK HESAPLAMA MANTIĞI
@@ -282,6 +291,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                     stop_suresi += Decimal((stop_end_dt - stop_start_dt).total_seconds() / 3600)
 
         # Timeline milestones: saat sınırları 0, 8, 13, 16, 20
+        # Sabit mesai bitiş saati de milestone olarak eklenir
         milestones = set([start_dt, end_dt])
         d_ptr, end_date = start_dt.date(), end_dt.date()
         while d_ptr <= end_date:
@@ -289,6 +299,10 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 check_dt = datetime.combine(d_ptr, time(h, 0))
                 if start_dt < check_dt < end_dt:
                     milestones.add(check_dt)
+            if sabit_mesai_bitis:
+                sm_dt = datetime.combine(d_ptr, sabit_mesai_bitis)
+                if start_dt < sm_dt < end_dt:
+                    milestones.add(sm_dt)
             d_ptr += timedelta(days=1)
 
         sorted_points = sorted(list(milestones))
@@ -305,16 +319,26 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             duration = Decimal((seg_end - seg_start).total_seconds() / 3600)
             is_bayram, is_gece = get_context(mid)
 
-            # 08:00-16:00 arasında mı?
+            # 1. Pass öncelikli segment mi?
+            # Sabit mesaisi olan personelde: sabit mesai aralığı (08:00 - sabit_bitis) içinde
+            # Sabit mesaisi yoksa: 08:00-16:00 arası (eski mantık)
             seg_start_t = seg_start.time()
             seg_end_t = seg_end.time()
-            # Tüm segmentin 08-16 içinde olması gerekiyor
-            is_gunduz_08_16 = (
-                not is_bayram
-                and not is_gece
-                and seg_start_t >= time(8, 0)
-                and seg_end_t <= time(16, 0)
-            )
+            if sabit_mesai_bitis:
+                # Sabit mesai aralığı içinde: bayram değil, sabit bitiş saatinden önce
+                is_gunduz_08_16 = (
+                    not is_bayram
+                    and seg_start_t >= time(8, 0)
+                    and seg_end_t <= sabit_mesai_bitis
+                )
+            else:
+                # Sabit mesai yok: 08:00-16:00 arası gündüz segmentler
+                is_gunduz_08_16 = (
+                    not is_bayram
+                    and not is_gece
+                    and seg_start_t >= time(8, 0)
+                    and seg_end_t <= time(16, 0)
+                )
 
             # Riskli süre hesabı
             risky_duration = Decimal('0.0')

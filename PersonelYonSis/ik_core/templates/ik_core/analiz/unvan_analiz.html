@@ -600,7 +600,15 @@
     }
 
     window.exportToExcel = function (tabId) {
-        ExcelExport.exportTable(tabId, 'analiz_export');
+        const tabEl = document.getElementById(tabId);
+        if (tabEl) {
+            const excelOnlyEls = tabEl.querySelectorAll('.excel-only');
+            excelOnlyEls.forEach(el => el.classList.remove('d-none'));
+            ExcelExport.exportTable(tabId, 'analiz_export');
+            excelOnlyEls.forEach(el => el.classList.add('d-none'));
+        } else {
+            ExcelExport.exportTable(tabId, 'analiz_export');
+        }
     }
 
     window.exportModalToPDF = function () {

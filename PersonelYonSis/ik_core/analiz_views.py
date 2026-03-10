@@ -217,15 +217,25 @@ def unvan_analiz_view(request):
         if current_pb:
             birim_id = current_pb.birim.id
             birim_ad = current_pb.birim.ad
+            bina_ad = current_pb.birim.bina.ad if hasattr(current_pb.birim, 'bina') and current_pb.birim.bina else 'Tanımsız Bina'
+            kampus_ad = current_pb.birim.bina.kampus.ad if hasattr(current_pb.birim, 'bina') and current_pb.birim.bina and hasattr(current_pb.birim.bina, 'kampus') and current_pb.birim.bina.kampus else 'Tanımsız Kampüs'
         else:
             birim_id = 'unknown'
             birim_ad = 'Tanımsız Birim'
+            bina_ad = 'Tanımsız Bina'
+            kampus_ad = 'Tanımsız Kampüs'
             
         ku_id = p._kisa_unvan_id_cache
         ku_ad = p.kisa_unvan or 'Tanımsız Ünvan'
             
         if birim_id not in matrix_data:
-            matrix_data[birim_id] = {'birim_ad': birim_ad, 'counts': {}, 'total': 0}
+            matrix_data[birim_id] = {
+                'birim_ad': birim_ad, 
+                'bina_ad': bina_ad,
+                'kampus_ad': kampus_ad,
+                'counts': {}, 
+                'total': 0
+            }
             
         if ku_id not in matrix_data[birim_id]['counts']:
              matrix_data[birim_id]['counts'][ku_id] = 0
@@ -242,6 +252,8 @@ def unvan_analiz_view(request):
     for bid, data in matrix_data.items():
         row = {
             'birim_ad': data['birim_ad'],
+            'kampus_ad': data['kampus_ad'],
+            'bina_ad': data['bina_ad'],
             'birim_id': bid,
             'total': data['total'],
             'cols': []

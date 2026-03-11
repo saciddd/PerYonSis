@@ -1553,8 +1553,8 @@ def birim_ekle(request):
         try:
             birim = Birim.objects.get(id=birim_id)
             # İsim çakışması kontrolü (kendisi hariç)
-            if Birim.objects.filter(bina=bina, ad=ad).exclude(id=birim_id).exists():
-                return JsonResponse({'success': False, 'message': 'Bu birim adı bu binada zaten mevcut.'})
+            if Birim.objects.filter(bina=bina, ad=ad, ust_birim=ust_birim).exclude(id=birim_id).exists():
+                return JsonResponse({'success': False, 'message': 'Bu birim adı bu binada ve üst birimde zaten mevcut.'})
             
             birim.bina = bina
             birim.ust_birim = ust_birim
@@ -1566,8 +1566,8 @@ def birim_ekle(request):
              return JsonResponse({'success': False, 'message': 'Güncellenecek birim bulunamadı.'})
     else:
         # Ekleme
-        if Birim.objects.filter(bina=bina, ad=ad).exists():
-            return JsonResponse({'success': False, 'message': 'Bu birim adı bu binada zaten mevcut.'})
+        if Birim.objects.filter(bina=bina, ad=ad, ust_birim=ust_birim).exists():
+            return JsonResponse({'success': False, 'message': 'Bu birim adı bu binada ve üst birimde zaten mevcut.'})
         
         birim = Birim.objects.create(bina=bina, ust_birim=ust_birim, ad=ad, aciklama=aciklama)
         message = 'Birim başarıyla eklendi.'

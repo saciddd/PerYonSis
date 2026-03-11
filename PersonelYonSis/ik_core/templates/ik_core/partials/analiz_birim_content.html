@@ -76,11 +76,14 @@
                             <h5 class="modal-title fw-bold text-dark w-100 d-flex justify-content-between align-items-center" id="modalLabel-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
                                 <span><i class="bi bi-building text-primary me-2"></i> {{ bina_ad }} <span class="text-muted fw-normal ms-2" style="font-size: 1rem;">({{ kampus_ad }})</span></span>
                             </h5>
+                            <button type="button" class="btn btn-outline-success btn-sm me-3" onclick="exportBinaTableToExcel('modalTable-{{ forloop.parentloop.counter }}-{{ forloop.counter }}', '{{ kampus_ad }} - {{ bina_ad }}')" title="Excele Aktar">
+                                <i class="bi bi-file-earmark-excel"></i> Excele Aktar
+                            </button>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
                         </div>
                         <div class="modal-body p-0 bg-light">
                             <div class="table-responsive">
-                                <table class="table table-hover mb-0 bg-white" style="font-size: 0.95rem;">
+                                <table id="modalTable-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" class="table table-hover mb-0 bg-white" style="font-size: 0.95rem;">
                                     <thead class="table-light sticky-top">
                                         <tr>
                                             <th class="ps-4 py-3 text-uppercase text-muted" style="font-size: 0.8rem; letter-spacing: 0.5px;">Birim Adı</th>

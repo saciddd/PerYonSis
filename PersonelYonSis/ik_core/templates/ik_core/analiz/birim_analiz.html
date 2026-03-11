@@ -643,5 +643,59 @@
         var exportModal = new bootstrap.Modal(document.getElementById('analizExcelExportModal'));
         exportModal.show();
     }
+
+    window.exportBinaTableToExcel = function(tableId, title) {
+        const table = document.getElementById(tableId);
+        if (!table) return;
+
+        let xlsRows = [];
+        xlsRows.push([title]);
+        xlsRows.push([""]); // Spacing row
+        xlsRows.push(["Birim Adı", "Ünvan Dağılımı", "Toplam"]);
+
+        const trs = table.querySelectorAll('tbody tr');
+        trs.forEach(tr => {
+            const cells = tr.querySelectorAll('td');
+            if (cells.length >= 3) {
+                const birimAdi = cells[0].innerText.trim();
+
+                const unvanBtns = cells[1].querySelectorAll('.detail-btn');
+                let unvanText = [];
+                unvanBtns.forEach(btn => {
+                    const unvanName = btn.querySelector('.fw-medium') ? btn.querySelector('.fw-medium').innerText.trim() : '';
+                    const count = btn.querySelector('.badge') ? btn.querySelector('.badge').innerText.trim() : '';
+                    if (unvanName && count) {
+                        unvanText.push(`${unvanName} (${count})`);
+                    }
+                });
+                const unvanD = unvanText.join(', ');
+
+                const toplam = cells[2].innerText.trim();
+
+                xlsRows.push([birimAdi, unvanD, parseInt(toplam) || 0]);
+            } else if (cells.length === 1) {
+                xlsRows.push([cells[0].innerText.trim(), '', '']);
+            }
+        });
+
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.aoa_to_sheet(xlsRows);
+
+        // Adjust column widths for better readability
+        worksheet['!cols'] = [
+            {wch: 40}, // Birim Adı
+            {wch: 80}, // Ünvan Dağılımı
+            {wch: 15}  // Toplam
+        ];
+
+        // Merge title row
+        if(!worksheet['!merges']) worksheet['!merges'] = [];
+        worksheet['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } });
+
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Dağılım');
+
+        let filename = title ? title.replace(/[^a-zA-ZğüşıöçĞÜŞİÖÇ0-9]/g, '_').replace(/_+/g, '_').toLowerCase() : 'bina_dagilimi';
+        XLSX.writeFile(workbook, filename + '.xlsx');
+    };
 </script>
 {% endblock %}

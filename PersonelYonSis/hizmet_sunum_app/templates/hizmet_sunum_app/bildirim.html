@@ -162,6 +162,7 @@
                     <th>Özel Alan Kodu</th>
                     <th>Sorumlu</th>
                     <th>Sertifika</th>
+                    <th style="min-width: 400px;">Sertifika Bilgileri</th>
                     <th>İşlem</th>
                     <th>Durum</th>
                 </tr>
@@ -187,8 +188,21 @@
                                {% if bildirim.sorumlu %}checked{% endif %} {% if bildirim.kesinlesmis %}disabled{% endif %}>
                     </td>
                     <td class="text-center">
-                        <input type="checkbox" class="form-check-input" 
-                               {% if bildirim.sertifika %}checked{% endif %} {% if bildirim.kesinlesmis %}disabled{% endif %}>
+                        <input type="checkbox" class="form-check-input sertifika-readonly" 
+                               {% if bildirim.sertifika_gecerli %}checked{% endif %} disabled>
+                    </td>
+                    <td>
+                        <div class="d-flex flex-column gap-1 sertifika-form" data-tc="{{ bildirim.tc_kimlik_no }}" data-personel-id="{{ bildirim.personel_id }}">
+                            <input type="text" class="form-control form-control-sm cert-aciklama" placeholder="Açıklama" value="{{ bildirim.sertifika_obj.sertifika_aciklamasi|default:'' }}" {% if bildirim.kesinlesmis %}disabled{% endif %}>
+                            <div class="d-flex gap-1">
+                                <input type="date" class="form-control form-control-sm cert-baslangic" value="{{ bildirim.sertifika_obj.baslangic_tarihi|date:'Y-m-d'|default:'' }}" {% if bildirim.kesinlesmis %}disabled{% endif %} title="Başlangıç Tarihi">
+                                <input type="date" class="form-control form-control-sm cert-bitis" value="{{ bildirim.sertifika_obj.bitis_tarihi|date:'Y-m-d'|default:'' }}" {% if bildirim.kesinlesmis %}disabled{% endif %} title="Bitiş Tarihi">
+                                <div class="form-check d-flex align-items-center mb-0">
+                                    <input type="checkbox" class="form-check-input cert-alanda mt-0" {% if bildirim.sertifika_obj.alanda_kullaniliyor %}checked{% endif %} {% if bildirim.kesinlesmis %}disabled{% endif %} title="Alanda Kullanılıyor">
+                                </div>
+                                <button type="button" class="btn btn-sm btn-success p-1 cert-save-btn" {% if bildirim.kesinlesmis %}disabled{% endif %} title="Kaydet"><i class="bi bi-check2"></i></button>
+                            </div>
+                        </div>
                     </td>
                     <td class="text-center">
                         <button class="btn btn-danger btn-sm" onclick="kayitSil('{{ bildirim.id }}')" {% if bildirim.kesinlesmis %}disabled{% endif %}>
@@ -1262,6 +1276,12 @@
             return;
         }
         bildirimler.forEach((b, idx) => {
+            const certObj = b.sertifika_obj || {};
+            const aciklama = certObj.sertifika_aciklamasi || '';
+            const baslangic_cert = certObj.baslangic_tarihi || '';
+            const bitis_cert = certObj.bitis_tarihi || '';
+            const alandaChecked = certObj.alanda_kullaniliyor ? 'checked' : '';
+            
             tbody.innerHTML += `
                 <tr>
                     <td class="text-center">${idx + 1}</td>
@@ -1272,7 +1292,20 @@
                     <td><input type="date" class="form-control form-control-sm" value="${b.bitis || ''}" ${b.kesinlesmis ? 'readonly disabled' : ''}></td>
                     <td>${b.ozel_alan_kodu || ''}</td>
                     <td class="text-center"><input type="checkbox" class="form-check-input" ${b.sorumlu ? 'checked' : ''} ${b.kesinlesmis ? 'disabled' : ''}></td>
-                    <td class="text-center"><input type="checkbox" class="form-check-input" ${b.sertifika ? 'checked' : ''} ${b.kesinlesmis ? 'disabled' : ''}></td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input sertifika-readonly" ${b.sertifika_gecerli ? 'checked' : ''} disabled></td>
+                    <td>
+                        <div class="d-flex flex-column gap-1 sertifika-form" data-tc="${b.tc_kimlik_no || ''}" data-personel-id="${b.personel_id || ''}">
+                            <input type="text" class="form-control form-control-sm cert-aciklama" placeholder="Açıklama" value="${aciklama}" ${b.kesinlesmis ? 'disabled' : ''}>
+                            <div class="d-flex gap-1">
+                                <input type="date" class="form-control form-control-sm cert-baslangic" value="${baslangic_cert}" ${b.kesinlesmis ? 'disabled' : ''} title="Başlangıç Tarihi">
+                                <input type="date" class="form-control form-control-sm cert-bitis" value="${bitis_cert}" ${b.kesinlesmis ? 'disabled' : ''} title="Bitiş Tarihi">
+                                <div class="form-check d-flex align-items-center mb-0">
+                                    <input type="checkbox" class="form-check-input cert-alanda mt-0" ${alandaChecked} ${b.kesinlesmis ? 'disabled' : ''} title="Alanda Kullanılıyor">
+                                </div>
+                                <button type="button" class="btn btn-sm btn-success p-1 cert-save-btn" ${b.kesinlesmis ? 'disabled' : ''} title="Kaydet"><i class="bi bi-check2"></i></button>
+                            </div>
+                        </div>
+                    </td>
                     <td class="text-center">
                         <button class="btn btn-danger btn-sm" onclick="kayitSil('${b.id || ''}')" ${b.kesinlesmis ? 'disabled' : ''}>
                             <i class="bi bi-trash"></i>
@@ -1285,6 +1318,65 @@
             `;
         });
     }
+
+    // Sertifika kaydetme event delegation
+    document.getElementById('bildirimlerTableBody').addEventListener('click', function(e) {
+        if (e.target.closest('.cert-save-btn')) {
+            const btn = e.target.closest('.cert-save-btn');
+            const form = btn.closest('.sertifika-form');
+            const tcKimlik = form.dataset.tc;
+            const aciklama = form.querySelector('.cert-aciklama').value;
+            const baslangic = form.querySelector('.cert-baslangic').value;
+            const bitis = form.querySelector('.cert-bitis').value;
+            const alanda = form.querySelector('.cert-alanda').checked;
+            
+            if (!aciklama || !baslangic || !bitis) {
+                alert('Lütfen sertifika açıklaması ve tarih alanlarını doldurunuz.');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            
+            fetch('/ik_core/sertifika-guncelle/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    tc_kimlik_no: tcKimlik,
+                    sertifika_aciklamasi: aciklama,
+                    baslangic_tarihi: baslangic,
+                    bitis_tarihi: bitis,
+                    alanda_kullaniliyor: alanda
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update table optionally or just revert button
+                    btn.innerHTML = '<i class="bi bi-check2"></i>';
+                    btn.classList.replace('btn-success', 'btn-outline-success');
+                    setTimeout(() => {
+                        btn.classList.replace('btn-outline-success', 'btn-success');
+                        btn.disabled = false;
+                        fetchBildirimlerForSelected();
+                    }, 1000);
+                } else {
+                    alert('Hata: ' + data.message);
+                    btn.innerHTML = '<i class="bi bi-check2"></i>';
+                    btn.disabled = false;
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Sertifika güncellenirken bir hata oluştu.');
+                btn.innerHTML = '<i class="bi bi-check2"></i>';
+                btn.disabled = false;
+            });
+        }
+    });
 
     // Aktif birim bilgisini güncelle
     function updateAktifBirimBilgisi(birimId) {

@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST, require_GET
 from datetime import datetime, date
 from .models import Birim, HizmetSunumAlani, UserBirim, HizmetSunumCalismasi, Personel, Kurum, Idare
+from ik_core.models import Sertifika
 import json
 import calendar
 from django.utils.timezone import now as django_now
@@ -331,18 +332,44 @@ def bildirimler_listele(request, year, month, birim_id):
 
         data = []
         for b in bildirimler:
-            # getattr kullanımı yerine doğrudan erişim daha okunaklı olabilir
             personel = b.PersonelId
+            
+            sertifika_obj = None
+            sertifika_gecerli = False
+            if personel:
+                sertifika = Sertifika.objects.filter(personel__tc_kimlik_no=personel.TCKimlikNo).first()
+                if sertifika:
+                    sertifika_obj = {
+                        'sertifika_aciklamasi': sertifika.sertifika_aciklamasi,
+                        'baslangic_tarihi': sertifika.baslangic_tarihi.strftime('%Y-%m-%d') if sertifika.baslangic_tarihi else '',
+                        'bitis_tarihi': sertifika.bitis_tarihi.strftime('%Y-%m-%d') if sertifika.bitis_tarihi else '',
+                        'alanda_kullaniliyor': sertifika.alanda_kullaniliyor,
+                    }
+                    
+                    # Seçili dönemi kapsıyor mu?
+                    import calendar
+                    ay_sonu_gunu = calendar.monthrange(year, month)[1]
+                    donem_baslangic = date(year, month, 1)
+                    donem_bitis = date(year, month, ay_sonu_gunu)
+                    
+                    if (sertifika.baslangic_tarihi and sertifika.bitis_tarihi and 
+                        sertifika.baslangic_tarihi <= donem_bitis and 
+                        sertifika.bitis_tarihi >= donem_baslangic and 
+                        sertifika.alanda_kullaniliyor):
+                        sertifika_gecerli = True
+
             data.append({
                 'id': b.CalismaId,
                 'tc_kimlik_no': personel.TCKimlikNo if personel else '',
+                'personel_id': personel.PersonelId if personel else '',
                 'ad': personel.PersonelAdi if personel else '',
                 'soyad': personel.PersonelSoyadi if personel else '',
                 'baslangic': b.HizmetBaslangicTarihi.strftime('%Y-%m-%d') if b.HizmetBaslangicTarihi else '',
                 'bitis': b.HizmetBitisTarihi.strftime('%Y-%m-%d') if b.HizmetBitisTarihi else '',
                 'ozel_alan_kodu': b.OzelAlanKodu,
                 'sorumlu': b.Sorumlu,
-                'sertifika': b.Sertifika,
+                'sertifika_obj': sertifika_obj,
+                'sertifika_gecerli': sertifika_gecerli,
                 'kesinlesmis': b.Kesinlestirme,
             })
 

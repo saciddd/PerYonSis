@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sertifikalı Personeller Raporu{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>Sertifikalı Personeller Raporu</h4>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered table-striped" id="sertifikaTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Sıra No</th>
+                            <th>T.C. Kimlik No</th>
+                            <th>Adı Soyadı</th>
+                            <th>Sertifika Açıklaması</th>
+                            <th>Başlangıç Tarihi</th>
+                            <th>Bitiş Tarihi</th>
+                            <th>Alanda Kullanılıyor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sertifika in sertifikalar %}
+                        <tr>
+                            <td class="text-center">{{ forloop.counter }}</td>
+                            <td>{{ sertifika.personel.TCKimlikNo|default:'' }}</td>
+                            <td>{{ sertifika.personel.PersonelAdi }} {{ sertifika.personel.PersonelSoyadi }}</td>
+                            <td>{{ sertifika.sertifika_aciklamasi }}</td>
+                            <td>{{ sertifika.baslangic_tarihi|date:"d.m.Y" }}</td>
+                            <td>{{ sertifika.bitis_tarihi|date:"d.m.Y" }}</td>
+                            <td class="text-center">
+                                {% if sertifika.alanda_kullaniliyor %}
+                                    <span class="badge bg-success">Evet</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Hayır</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">Kayıt bulunamadı.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Implement default simple sorting or datatables if needed.
+    });
+</script>
+{% endblock %}

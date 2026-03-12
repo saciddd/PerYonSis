@@ -33,6 +33,7 @@ class Menu:
             MenuItem('Tanımlamalar', 'ik_core:tanimlamalar', 'bi bi-octagon', 'İK Modülü Tanımlamalar', parent_menu='İK Modülü'),
             MenuItem('Birim Yönetimi', 'ik_core:birim_yonetimi', 'bi bi-octagon', 'İK Modülü Tanımlamalar', parent_menu='İK Modülü'),
             MenuItem('Gelen-Giden Personeller', 'ik_core:gelen_giden_personel_list', 'bi bi-octagon', 'İK Modülü Gelen-Giden Personeller', parent_menu='İK Modülü'),
+            MenuItem('Sertifikalı Personeller', 'ik_core:sertifikali_personeller_raporu', 'bi bi-octagon', 'İK Modülü Sertifikalı Personeller', parent_menu='İK Modülü'),
             # İzin Modülü ve Alt Menüleri
             MenuItem('İzin Modülü', '#', 'bi bi-calendar-check', 'İzin Modülü', is_parent=True),
             MenuItem('İzin Tanımları', 'kullanici_tanimlari', 'bi bi-octagon', 'İzin Modülü', parent_menu='İzin Modülü'),

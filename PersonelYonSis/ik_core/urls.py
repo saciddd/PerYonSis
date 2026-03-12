@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views, resmi_yazi_views, durum_belgesi_views, analiz_views, kampus_views, analiz_utils_views
+from . import views, resmi_yazi_views, durum_belgesi_views, analiz_views, kampus_views, analiz_utils_views, sertifika_views
 from ik_core.api import views as api_views
 
 app_name = 'ik_core'
@@ -83,4 +83,7 @@ urlpatterns = [
     # API endpoints
     path('api/personel_aktar/', api_views.filemaker_personel_aktar, name='filemaker_personel_aktar'),
 
+    # Sertifika Endpointleri
+    path('sertifika-guncelle/', sertifika_views.sertifika_guncelle, name='sertifika_guncelle'),
+    path('sertifikali-personeller/', sertifika_views.sertifikali_personeller_raporu, name='sertifikali_personeller_raporu'),
 ]

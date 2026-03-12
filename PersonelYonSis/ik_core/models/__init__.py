@@ -4,3 +4,4 @@ from .Teblig import TebligImzasi, TebligMetni
 from .BirimYonetimi import UstBirim, Bina, Birim, PersonelBirim, Kampus
 from .ResmiYazi import ResmiYazi
 from .DurumBelgesi import DurumBelgesi
+from .Sertifika import Sertifika

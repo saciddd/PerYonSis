@@ -9,9 +9,50 @@
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
+      <div class="modal-body pb-0">
+          <h6 class="mb-3">Mevcut Kayıtlar</h6>
+          <div class="table-responsive mb-0">
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Başlangıç</th>
+                  <th>Bitiş</th>
+                  <th>Haftalık Plan (Özet)</th>
+                  <th>İşlem</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for yz in yarim_zamanli_calismalar %}
+                <tr>
+                  <td>{{ yz.baslangic_tarihi|date:"d.m.Y" }}</td>
+                  <td>{% if yz.bitis_tarihi %}{{ yz.bitis_tarihi|date:"d.m.Y" }}{% else %}Devam Ediyor{% endif %}</td>
+                  <td>
+                    <small>
+                    {% for gun, mesai in yz.haftalik_plan.items %}
+                      {{ gun }},
+                    {% endfor %}
+                    </small>
+                  </td>
+                  <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteYariZamanli({{ yz.id }})" title="Sil">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center text-muted">Kayıt Bulunamadı</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <hr class="mt-3 mb-4">
+          <h6 class="mb-3">Yeni Kayıt Ekle</h6>
+      </div>
       <form id="yarimZamanliForm" method="post">
         {% csrf_token %}
-        <div class="modal-body">
+        <div class="modal-body pt-0">
           <div class="row mb-3">
             <div class="col">
               <label class="form-label">Çalışma Başlangıç:</label>
@@ -147,4 +188,23 @@ document.getElementById('yarimZamanliModal').addEventListener('shown.bs.modal', 
     });
   });
 });
+
+function deleteYariZamanli(id) {
+    if(confirm("Bu kaydı silmek istediğinize emin misiniz?")) {
+        fetch(`/mercis657/yarim-zamanli-sil/${id}/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCookie('csrftoken')
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.status === "success") {
+                location.reload();
+            } else {
+                alert("Hata: " + (data.message || data.errors));
+            }
+        });
+    }
+}
 </script>

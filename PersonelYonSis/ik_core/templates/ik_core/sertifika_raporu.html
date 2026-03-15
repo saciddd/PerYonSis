@@ -7,6 +7,9 @@
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4>Sertifikalı Personeller Raporu</h4>
+        <a href="{% url 'ik_core:sertifikali_personeller_excel_export' %}" class="btn btn-success shadow-sm">
+            <i class="fas fa-file-excel me-2"></i> Excel'e Aktar
+        </a>
     </div>
 
     <div class="card shadow-sm">
@@ -28,8 +31,8 @@
                         {% for sertifika in sertifikalar %}
                         <tr>
                             <td class="text-center">{{ forloop.counter }}</td>
-                            <td>{{ sertifika.personel.TCKimlikNo|default:'' }}</td>
-                            <td>{{ sertifika.personel.PersonelAdi }} {{ sertifika.personel.PersonelSoyadi }}</td>
+                            <td>{{ sertifika.personel.tc_kimlik_no|default:'' }}</td>
+                            <td>{{ sertifika.personel.ad_soyad }}</td>
                             <td>{{ sertifika.sertifika_aciklamasi }}</td>
                             <td>{{ sertifika.baslangic_tarihi|date:"d.m.Y" }}</td>
                             <td>{{ sertifika.bitis_tarihi|date:"d.m.Y" }}</td>

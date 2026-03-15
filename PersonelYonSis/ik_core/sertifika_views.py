@@ -1,9 +1,12 @@
 import json
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from .models import Sertifika, Personel
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from datetime import datetime
 
 @csrf_exempt
 @login_required
@@ -20,7 +23,7 @@ def sertifika_guncelle(request):
             if not all([tc_kimlik_no, aciklama, baslangic, bitis]):
                 return JsonResponse({'status': 'error', 'message': 'Eksik veri gönderildi.'}, status=400)
 
-            personel = Personel.objects.filter(TCKimlikNo=tc_kimlik_no).first()
+            personel = Personel.objects.filter(tc_kimlik_no=tc_kimlik_no).first()
             if not personel:
                 return JsonResponse({'status': 'error', 'message': 'Personel bulunamadı.'}, status=404)
 
@@ -47,3 +50,81 @@ def sertifikali_personeller_raporu(request):
     return render(request, 'ik_core/sertifika_raporu.html', {
         'sertifikalar': sertifikalar
     })
+
+@login_required
+def sertifikali_personeller_excel_export(request):
+    sertifikalar = Sertifika.objects.select_related('personel').all()
+    
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sertifikalı Personeller"
+
+    # Header styles
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    alignment_center = Alignment(horizontal="center", vertical="center")
+    
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    headers = [
+        "Sıra No", "T.C. Kimlik No", "Adı Soyadı", 
+        "Sertifika Açıklaması", "Başlangıç Tarihi", 
+        "Bitiş Tarihi", "Alanda Kullanılıyor"
+    ]
+    
+    ws.append(headers)
+    
+    for col in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = alignment_center
+        cell.border = thin_border
+
+    for index, sertifika in enumerate(sertifikalar, start=1):
+        baslangic = sertifika.baslangic_tarihi.strftime("%d.%m.%Y") if sertifika.baslangic_tarihi else ""
+        bitis = sertifika.bitis_tarihi.strftime("%d.%m.%Y") if sertifika.bitis_tarihi else ""
+        alanda_kullanim = "Evet" if sertifika.alanda_kullaniliyor else "Hayır"
+        
+        row = [
+            index,
+            sertifika.personel.tc_kimlik_no if sertifika.personel and sertifika.personel.tc_kimlik_no else "",
+            sertifika.personel.ad_soyad if sertifika.personel else "",
+            sertifika.sertifika_aciklamasi,
+            baslangic,
+            bitis,
+            alanda_kullanim
+        ]
+        ws.append(row)
+        
+        # Apply borders to the row
+        for col in range(1, len(row) + 1):
+            cell = ws.cell(row=index + 1, column=col)
+            cell.border = thin_border
+            if col in [1, 2, 5, 6, 7]:  # Center some columns
+                cell.alignment = alignment_center
+
+    # Adjust column widths
+    column_widths = {
+        'A': 10,  # Sıra No
+        'B': 15,  # T.C. Kimlik No
+        'C': 25,  # Adı Soyadı
+        'D': 35,  # Sertifika Açıklaması
+        'E': 15,  # Başlangıç Tarihi
+        'F': 15,  # Bitiş Tarihi
+        'G': 20   # Alanda Kullanılıyor
+    }
+
+    for col_letter, width in column_widths.items():
+        ws.column_dimensions[col_letter].width = width
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename="sertifikali_personeller_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx"'
+    wb.save(response)
+    
+    return response

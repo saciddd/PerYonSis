@@ -74,6 +74,7 @@ def mazeret_guncelle(request, mazeret_id):
         mazeret.aciklama = data.get('aciklama', mazeret.aciklama)
         mazeret.save()
         
+        messages.success(request, f"{mazeret.personel.PersonelName} için mazeret kaydı güncellendi.")
         return JsonResponse({'status': 'success', 'message': 'Mazeret kaydı güncellendi.'})
         
     except Exception as e:
@@ -90,6 +91,7 @@ def mazeret_sil(request, mazeret_id):
         mazeret = get_object_or_404(MazeretKaydi, pk=mazeret_id)
         mazeret.delete()
         
+        messages.success(request, f"{mazeret.personel.PersonelName} için mazeret kaydı silindi.")
         return JsonResponse({'status': 'success', 'message': 'Mazeret kaydı silindi.'})
         
     except Exception as e:
@@ -107,6 +109,7 @@ def radyasyon_toggle(request, personel_id, liste_id):
         kayit.radyasyon_calisani = not kayit.radyasyon_calisani
         kayit.save()
         
+        messages.success(request, f"{kayit.personel.PersonelName} için radyasyon çalışanı durumu güncellendi.")
         return JsonResponse({
             'status': 'success',
             'message': 'Radyasyon çalışanı durumu güncellendi.',

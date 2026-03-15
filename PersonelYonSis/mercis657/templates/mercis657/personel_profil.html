@@ -147,7 +147,11 @@
                                         </thead>
                                         <tbody id="mazeretTableBody">
                                             {% for mazeret in mazeret_kayitlari %}
-                                            <tr data-mazeret-id="{{ mazeret.id }}">
+                                            <tr data-mazeret-id="{{ mazeret.id }}"
+                                                data-baslangic="{{ mazeret.baslangic_tarihi|date:'Y-m-d' }}"
+                                                data-bitis="{{ mazeret.bitis_tarihi|date:'Y-m-d' }}"
+                                                data-azaltim="{{ mazeret.gunluk_azaltim_saat|stringformat:'s' }}"
+                                                data-aciklama="{{ mazeret.aciklama|default:'' }}">
                                                 <td>{{ mazeret.baslangic_tarihi|date:"d.m.Y" }}</td>
                                                 <td>{{ mazeret.bitis_tarihi|date:"d.m.Y" }}</td>
                                                 <td>{{ mazeret.gunluk_azaltim_saat }} saat</td>
@@ -301,10 +305,87 @@ document.getElementById('mazeretEkleForm').addEventListener('submit', function(e
 });
 
 
-// Mazeret düzenleme (basit implementasyon)
+// Mazeret düzenleme (in-line)
 function editMazeret(mazeretId) {
-    // Bu fonksiyon daha gelişmiş bir modal ile implement edilebilir
-    alert('Mazeret düzenleme özelliği yakında eklenecek.');
+    const row = document.querySelector(`tr[data-mazeret-id="${mazeretId}"]`);
+    if(row.classList.contains('editing')) return;
+    
+    row.classList.add('editing');
+    
+    const baslangic_val = row.dataset.baslangic;
+    const bitis_val = row.dataset.bitis;
+    const azaltim_val = row.dataset.azaltim.replace(',', '.'); // Noktalara dikkat
+    const aciklama_val = row.dataset.aciklama;
+    
+    const tdBaslangic = row.cells[0];
+    const tdBitis = row.cells[1];
+    const tdAzaltim = row.cells[2];
+    const tdAciklama = row.cells[3];
+    const tdIslem = row.cells[4];
+    
+    // Orijinal HTML'i yedekle
+    row.dataset.originalHtml = row.innerHTML;
+    
+    // Verileri input'lara dönüştür
+    tdBaslangic.innerHTML = `<input type="date" class="form-control form-control-sm mazeret-edit-baslangic" value="${baslangic_val}">`;
+    tdBitis.innerHTML = `<input type="date" class="form-control form-control-sm mazeret-edit-bitis" value="${bitis_val}">`;
+    tdAzaltim.innerHTML = `<input type="number" step="0.5" class="form-control form-control-sm mazeret-edit-azaltim" value="${azaltim_val}" max="24" min="-24">`;
+    tdAciklama.innerHTML = `<input type="text" class="form-control form-control-sm mazeret-edit-aciklama" value="${aciklama_val}">`;
+    
+    tdIslem.innerHTML = `
+        <button class="btn btn-sm btn-success" onclick="saveMazeret(${mazeretId})" title="Kaydet">
+            <i class="bi bi-check-lg"></i>
+        </button>
+        <button class="btn btn-sm btn-secondary" onclick="cancelEditMazeret(${mazeretId})" title="İptal">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    `;
+}
+
+function cancelEditMazeret(mazeretId) {
+    const row = document.querySelector(`tr[data-mazeret-id="${mazeretId}"]`);
+    row.innerHTML = row.dataset.originalHtml;
+    row.classList.remove('editing');
+}
+
+function saveMazeret(mazeretId) {
+    const row = document.querySelector(`tr[data-mazeret-id="${mazeretId}"]`);
+    const baslangic = row.querySelector('.mazeret-edit-baslangic').value;
+    const bitis = row.querySelector('.mazeret-edit-bitis').value;
+    const azaltim = row.querySelector('.mazeret-edit-azaltim').value;
+    const aciklama = row.querySelector('.mazeret-edit-aciklama').value;
+    
+    if(!baslangic || !bitis || !azaltim) {
+        alert('Lütfen tarihleri ve azaltım değerini eksiksiz girin.');
+        return;
+    }
+    
+    fetch(`{% url 'mercis657:mazeret_guncelle' 0 %}`.replace('0', mazeretId), {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            baslangic_tarihi: baslangic,
+            bitis_tarihi: bitis,
+            gunluk_azaltim_saat: parseFloat(azaltim.replace(',', '.')),
+            aciklama: aciklama
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            location.reload(); // Değişiklikler için sayfayı yenile
+        } else {
+            alert(data.message || 'Hata oluştu');
+            cancelEditMazeret(mazeretId);
+        }
+    })
+    .catch(err => {
+        alert('Hata: ' + err);
+        cancelEditMazeret(mazeretId);
+    });
 }
 
 // Mazeret silme

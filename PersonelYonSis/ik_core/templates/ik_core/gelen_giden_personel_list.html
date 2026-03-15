@@ -92,8 +92,10 @@
                                     {% if son_birim %}{{ son_birim.birim.ad }}{% else %}Tanımsız{% endif %}
                                 </td>
                                 <td>
-                                    {% if personel.durum == 'Aktif' %}
-                                        <span class="badge status-badge status-active">Aktif</span>
+                                    {% if personel.durum == 'Aktif (Kadrolu)' %}
+                                        <span class="badge status-badge status-active">Aktif (Kadrolu)</span>
+                                    {% elif personel.durum == 'Aktif (Geçici)' %}
+                                        <span class="badge status-badge status-active">Aktif (Geçici)</span>
                                     {% elif personel.durum == 'Pasif' %}
                                         <span class="badge status-badge status-passive">Pasif</span>
                                     {% else %}

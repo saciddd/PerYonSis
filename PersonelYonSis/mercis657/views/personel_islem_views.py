@@ -93,7 +93,8 @@ def personel_profil(request, personel_id, liste_id, year, month):
         personel=personel
     ).order_by('-baslangic_tarihi')
 
-    yarim_zamanli_calisma = YarimZamanliCalisma.objects.filter( personel=personel ).first()
+    yarim_zamanli_calismalar = YarimZamanliCalisma.objects.filter( personel=personel ).order_by('-baslangic_tarihi')
+    yarim_zamanli_calisma = yarim_zamanli_calismalar.first()
 
     # year ve month'u integer'a çevir
     year = int(year)
@@ -131,6 +132,7 @@ def personel_profil(request, personel_id, liste_id, year, month):
         'liste': liste,
         'kayit': kayit,
         'mazeret_kayitlari': mazeret_kayitlari,
+        'yarim_zamanli_calismalar': yarim_zamanli_calismalar,
         'yarim_zamanli_calisma': yarim_zamanli_calisma,
         'hesaplama': hesaplama,
         'mesai_tanimlari': mesai_tanimlari,

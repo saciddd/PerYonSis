@@ -1,3 +1,4 @@
+from mercis657.models import YarimZamanliCalisma
 from io import BytesIO
 import os
 from django.db import IntegrityError
@@ -328,11 +329,45 @@ def yarim_zamanli_calisma_kaydet(request, personel_id):
 
     if form.is_valid():
         yz = form.save(commit=False)
+        bas = yz.baslangic_tarihi
+        bit = yz.bitis_tarihi
+        
+        cakisan = False
+        for mevcut in YarimZamanliCalisma.objects.filter(personel=personel):
+            m_bas = mevcut.baslangic_tarihi
+            m_bit = mevcut.bitis_tarihi
+            if not bit and not m_bit:
+                cakisan = True; break
+            if not bit:
+                if m_bit and bas <= m_bit:
+                    cakisan = True; break
+            elif not m_bit:
+                if bit >= m_bas:
+                    cakisan = True; break
+            else:
+                if bas <= m_bit and bit >= m_bas:
+                    cakisan = True; break
+        
+        if cakisan:
+            return JsonResponse({"status": "error", "errors": "Bu tarihler arasında sistemde aktif veya çakışan bir yarım zamanlı çalışma kaydı bulunmaktadır!"})
+
         yz.personel = personel
         yz.haftalik_plan = json.loads(request.POST.get("haftalik_plan", "{}"))
         yz.save()
+        messages.success(request, "Kayıt başarıyla kaydedildi!")
         return JsonResponse({"status": "success"})
-    return JsonResponse({"status": "error", "errors": form.errors})
+    return JsonResponse({"status": "error", "errors": str(form.errors)})
+
+
+@login_required
+@require_POST
+def yarim_zamanli_calisma_sil(request, pk):
+    try:
+        yz = get_object_or_404(YarimZamanliCalisma, pk=pk)
+        yz.delete()
+        return JsonResponse({"status": "success", "message": "Kayıt başarıyla silindi."})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)})
 
 
 @login_required

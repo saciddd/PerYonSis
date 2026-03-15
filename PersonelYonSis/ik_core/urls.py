@@ -86,4 +86,5 @@ urlpatterns = [
     # Sertifika Endpointleri
     path('sertifika-guncelle/', sertifika_views.sertifika_guncelle, name='sertifika_guncelle'),
     path('sertifikali-personeller/', sertifika_views.sertifikali_personeller_raporu, name='sertifikali_personeller_raporu'),
+    path('sertifikali-personeller/excel/', sertifika_views.sertifikali_personeller_excel_export, name='sertifikali_personeller_excel_export'),
 ]

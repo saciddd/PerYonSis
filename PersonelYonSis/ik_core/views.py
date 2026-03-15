@@ -1779,7 +1779,7 @@ def gelen_giden_personel_list(request):
     for p in qs:
         p_durum = p.durum
         if filter_type == 'gelen':
-            if p_durum == 'Aktif':
+            if p_durum == 'Aktif (Kadrolu)' or p_durum == 'Aktif (Geçici)':
                 personeller.append(p)
         else: # giden
             if p_durum in ['Pasif', 'Kurumdan Ayrıldı']:

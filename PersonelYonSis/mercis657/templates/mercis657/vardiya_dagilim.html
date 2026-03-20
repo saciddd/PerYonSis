@@ -51,14 +51,22 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label for="tarih" class="form-label">Tarih</label>
-                            <input type="date" id="tarih" class="form-control" value="{{ bugun }}">
+                            <label for="tarih1" class="form-label">Başlangıç</label>
+                            <input type="date" id="tarih1" class="form-control" value="{{ bugun }}">
                         </div>
                         <div class="col-md-2">
+                            <label for="tarih2" class="form-label">Bitiş</label>
+                            <input type="date" id="tarih2" class="form-control" value="{{ bugun }}">
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label">Vardiya Tipi</label>
                             <div class="d-flex gap-2">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="vardiya" id="v_gunduz" value="gunduz" checked>
+                                    <input class="form-check-input" type="radio" name="vardiya" id="v_tumu" value="tumu" checked>
+                                    <label class="form-check-label" for="v_tumu">Tümü</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="vardiya" id="v_gunduz" value="gunduz">
                                     <label class="form-check-label" for="v_gunduz">Gündüz</label>
                                 </div>
                                 <div class="form-check">
@@ -70,6 +78,17 @@
                                     <label class="form-check-label" for="v_gece">Gece</label>
                                 </div>
                             </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="mesaiNotuSelection" class="form-label">Mesai Notu</label>
+                            <select id="mesaiNotuSelection" class="form-select" multiple>
+                                <option value="★">★</option>
+                                <option value="★★">★★</option>
+                                <option value="★★★">★★★</option>
+                                <option value="TAK">TAK</option>
+                                <option value="M1">M1</option>
+                                <option value="M2">M2</option>
+                            </select>
                         </div>
                         <div class="col-12 text-end">
                             <button type="button" id="btnSorgula" class="btn btn-primary">
@@ -161,8 +180,12 @@ document.addEventListener('DOMContentLoaded', function() {
             ust_birim_id: document.getElementById('ust_birim').value,
             idareci_id: document.getElementById('idareci').value,
             bina_id: document.getElementById('bina').value,
-            tarih: document.getElementById('tarih').value,
-            vardiya: document.querySelector('input[name="vardiya"]:checked').value
+            tarih1: document.getElementById('tarih1').value,
+            tarih2: document.getElementById('tarih2').value,
+            vardiya: document.querySelector('input[name="vardiya"]:checked').value,
+            mesai_notu: Array.from(document.getElementById('mesaiNotuSelection').selectedOptions)
+                            .map(opt => opt.value)
+                            .filter(val => val !== "" && val !== "TEMIZLE")
         };
 
         sonucAlani.innerHTML = '<div class="col-12 text-center"><div class="spinner-border text-primary" role="status"></div></div>';
@@ -217,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td></td>
                         <td>${p.personel_ad}</td>
                         <td>${p.unvan}</td>
-                        <td><span>${p.mesai_saat}</span></td>
+                        <td><span>${p.mesai_tarih} - <small class="text-muted">${p.mesai_saat}</small>${p.mesai_notu != null ? " - " + p.mesai_notu : ""}</span></td>
                         <td class="text-center">
                             <div class="btn-group" role="group">
                                 <input type="radio" class="btn-check kontrol-radio" name="kontrol_${p.mesai_id}" id="k_e_${p.mesai_id}" value="true" ${checkedEvet}>
@@ -240,14 +263,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     btnYazdir.addEventListener('click', function() {
-        const params = new URLSearchParams({
+        const paramsArgs = {
             kurum_id: document.getElementById('kurum').value,
             ust_birim_id: document.getElementById('ust_birim').value,
             idareci_id: document.getElementById('idareci').value,
             bina_id: document.getElementById('bina').value,
-            tarih: document.getElementById('tarih').value,
+            tarih1: document.getElementById('tarih1').value,
+            tarih2: document.getElementById('tarih2').value,
             vardiya: document.querySelector('input[name="vardiya"]:checked').value
-        });
+        };
+        const params = new URLSearchParams(paramsArgs);
+        
+        const notlar = Array.from(document.getElementById('mesaiNotuSelection').selectedOptions)
+                            .map(opt => opt.value)
+                            .filter(val => val !== "" && val !== "TEMIZLE");
+        notlar.forEach(n => params.append('mesai_notu', n));
         const url = '{% url "mercis657:vardiya_dagilim_pdf" %}?' + params.toString();
         window.open(url, '_blank');
     });

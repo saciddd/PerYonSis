@@ -38,12 +38,17 @@ def vardiya_dagilim_search(request):
         ust_birim_id = data.get('ust_birim_id')
         idareci_id = data.get('idareci_id')
         bina_id = data.get('bina_id')
-        tarih = data.get('tarih')
-        vardiya_tipi = data.get('vardiya')  # 'gunduz', 'aksam', 'gece'
+        tarih1 = data.get('tarih1')
+        tarih2 = data.get('tarih2')
+        vardiya_tipi = data.get('vardiya')  # 'gunduz', 'aksam', 'gece', 'tumu'
+        mesai_notu = data.get('mesai_notu', [])
 
-        # Temel sorgu: Tarih ve geçerli mesai tanımı
+        if not tarih1 or not tarih2:
+            return JsonResponse({'status': 'error', 'message': 'Tarih aralığı eksik'}, status=400)
+
+        # Temel sorgu: Tarih aralığı ve geçerli mesai tanımı
         mesai_qs = Mesai.objects.filter(
-            MesaiDate=tarih,
+            MesaiDate__range=[tarih1, tarih2],
             MesaiTanim__isnull=False,
             Izin__isnull=True  # İzinli olanlar hariç
         ).select_related(
@@ -59,14 +64,15 @@ def vardiya_dagilim_search(request):
         elif vardiya_tipi == 'gece':
             mesai_qs = mesai_qs.filter(MesaiTanim__GeceMesaisi=True)
 
+        if mesai_notu and len(mesai_notu) > 0:
+            mesai_qs = mesai_qs.filter(MesaiNotu__in=mesai_notu)
+
         # PersonelListesiKayit üzerinden birim/bina filtreleme
-        # Not: PersonelListesiKayit -> PersonelListesi -> Birim -> (Kurum, UstBirim, Idareci, Bina)
-        # Bu ilişkiyi tersinden kurmak performanslı olabilir veya direkt filter chaining.
+        yil1, ay1 = int(tarih1.split('-')[0]), int(tarih1.split('-')[1])
+        yil2, ay2 = int(tarih2.split('-')[0]), int(tarih2.split('-')[1])
         
-        # Önce ilgili personelleri bulalım (filtrelere uyan birimlerdeki)
         kayit_qs = PersonelListesiKayit.objects.filter(
-            liste__yil=int(tarih.split('-')[0]),
-            liste__ay=int(tarih.split('-')[1])
+            Q(liste__yil=yil1, liste__ay=ay1) | Q(liste__yil=yil2, liste__ay=ay2)
         ).select_related('liste__birim', 'liste__birim__Bina', 'personel')
 
         if kurum_id:
@@ -122,7 +128,9 @@ def vardiya_dagilim_search(request):
                 'mesai_id': mesai.MesaiID,
                 'personel_ad': f"{mesai.Personel.PersonelName} {mesai.Personel.PersonelSurname}",
                 'unvan': p_info['unvan'],
+                'mesai_tarih': mesai.MesaiDate.strftime('%d.%m.%Y'),
                 'mesai_saat': mesai.MesaiTanim.Saat,
+                'mesai_notu': mesai.MesaiNotu,
                 'kontrol': kontrol_durumu
             })
 
@@ -192,15 +200,19 @@ def vardiya_dagilim_pdf(request):
         ust_birim_id = request.GET.get('ust_birim_id')
         idareci_id = request.GET.get('idareci_id')
         bina_id = request.GET.get('bina_id')
-        tarih = request.GET.get('tarih')
+        tarih1 = request.GET.get('tarih1')
+        tarih2 = request.GET.get('tarih2')
         vardiya_tipi = request.GET.get('vardiya')
+        mesai_notu = request.GET.getlist('mesai_notu')
         
-        if not tarih:
-            tarih = datetime.now().strftime('%Y-%m-%d')
+        if not tarih1 or not tarih2:
+            bugun = datetime.now().strftime('%Y-%m-%d')
+            tarih1 = bugun
+            tarih2 = bugun
 
         # --- Filtreleme Mantığı (Search ile aynı) ---
         mesai_qs = Mesai.objects.filter(
-            MesaiDate=tarih,
+            MesaiDate__range=[tarih1, tarih2],
             MesaiTanim__isnull=False,
             Izin__isnull=True
         ).select_related(
@@ -215,9 +227,14 @@ def vardiya_dagilim_pdf(request):
         elif vardiya_tipi == 'gece':
             mesai_qs = mesai_qs.filter(MesaiTanim__GeceMesaisi=True)
 
+        if mesai_notu and len(mesai_notu) > 0:
+            mesai_qs = mesai_qs.filter(MesaiNotu__in=mesai_notu)
+
+        yil1, ay1 = int(tarih1.split('-')[0]), int(tarih1.split('-')[1])
+        yil2, ay2 = int(tarih2.split('-')[0]), int(tarih2.split('-')[1])
+        
         kayit_qs = PersonelListesiKayit.objects.filter(
-            liste__yil=int(tarih.split('-')[0]),
-            liste__ay=int(tarih.split('-')[1])
+            Q(liste__yil=yil1, liste__ay=ay1) | Q(liste__yil=yil2, liste__ay=ay2)
         ).select_related('liste__birim', 'liste__birim__Bina', 'personel')
 
         if kurum_id:
@@ -263,6 +280,7 @@ def vardiya_dagilim_pdf(request):
                 'mesai_id': mesai.MesaiID,
                 'personel_ad': f"{mesai.Personel.PersonelName} {mesai.Personel.PersonelSurname}",
                 'unvan': p_info['unvan'],
+                'mesai_tarih': mesai.MesaiDate.strftime('%d.%m.%Y'),
                 'mesai_saat': mesai.MesaiTanim.Saat,
                 'kontrol': kontrol_durumu
             })
@@ -286,7 +304,8 @@ def vardiya_dagilim_pdf(request):
         # --- PDF Oluşturma ---
         context = {
             'results': final_results,
-            'tarih': tarih,
+            'tarih1': tarih1,
+            'tarih2': tarih2,
             'vardiya': vardiya_tipi
         }
         html_string = render_to_string('mercis657/pdf/vardiya_dagilim_pdf.html', context)
@@ -305,7 +324,7 @@ def vardiya_dagilim_pdf(request):
         pdf = pdfkit.from_string(html_string, False, configuration=config, options=options)
         
         response = HttpResponse(pdf, content_type='application/pdf')
-        response['Content-Disposition'] = f'inline; filename="vardiya_dagilim_{tarih}.pdf"'
+        response['Content-Disposition'] = f'inline; filename="vardiya_dagilim_{tarih1}_{tarih2}.pdf"'
         return response
 
     except Exception as e:

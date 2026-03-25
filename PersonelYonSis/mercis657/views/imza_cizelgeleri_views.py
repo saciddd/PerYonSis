@@ -44,8 +44,8 @@ def imza_cizelgeleri_yazdir(request):
         'form_adi': 'Personel Günlük İmza Cetveli',
         'yayin_tarihi': 'Haziran 2018',
         'kurum': 'KAYSERİ DEVLET HASTANESİ',
-        'revizyon_tarihi': 'Aralık 2018',
-        'revizyon_no': '01',
+        'revizyon_tarihi': 'Mart 2026',
+        'revizyon_no': '04',
         'sayfa_no': '1',
         'pdf_logo': file_url,
     }

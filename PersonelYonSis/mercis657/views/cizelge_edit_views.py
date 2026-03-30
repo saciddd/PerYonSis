@@ -193,6 +193,7 @@ def cizelge_kaydet(request):
     if request.method == 'POST':
         changes = json.loads(request.body)
         errors = []
+        listeler_to_sync = set()
 
         for key, data in changes.items():
             personel_id, mesai_date = key.split('_')
@@ -203,13 +204,17 @@ def cizelge_kaydet(request):
             icap = data.get('icap', False)
 
             # Kayıtlı mı kontrol et
-            if not PersonelListesiKayit.objects.filter(
+            kayit_obj = PersonelListesiKayit.objects.filter(
                 personel_id=personel_id,
                 liste__yil=mesai_date.year,
                 liste__ay=mesai_date.month
-            ).exists():
+            ).first()
+            
+            if not kayit_obj:
                 errors.append(f"Personel {personel_id} o ay listede değil.")
                 continue
+
+            listeler_to_sync.add(kayit_obj.liste_id)
 
             # Mevcut mesai kaydını bul
             try:
@@ -300,6 +305,12 @@ def cizelge_kaydet(request):
 
         if errors:
             return JsonResponse({'status': 'partial', 'errors': errors})
+            
+        if listeler_to_sync:
+            from ..sync_kayseri_api import sync_kayseri_mesai_async
+            for liste_id in listeler_to_sync:
+                sync_kayseri_mesai_async(liste_id)
+
         return JsonResponse({'status': 'success'})
 
     return JsonResponse({'status': 'failed'}, status=400)

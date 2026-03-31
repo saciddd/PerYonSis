@@ -1,30 +1,20 @@
-import threading
 import json
 import requests
-from django.db import close_old_connections
 
 API_URL = "http://10.38.8.115:5000/api/v1/kayseri/mesai/sync"
 API_KEY = "dkod_kayseri_7b3f9a2e1d5c8f4061e2b7a9d3c5f812"
 
-def sync_kayseri_mesai_async(liste_id: int):
+def sync_kayseri_mesai(liste_id: int):
     """
-    Kayseri entegrasyonu için asenkron mesai gönderimi başlatır.
+    Kayseri entegrasyonu için senkron mesai gönderimi yapar ve API sonucunu döner.
     """
-    thread = threading.Thread(target=_sync_mesai_task, args=(liste_id,))
-    thread.daemon = True
-    thread.start()
-
-def _sync_mesai_task(liste_id: int):
-    # Veritabanı bağlantılarının thread güvenliği için temizlenmesi
-    close_old_connections()
-    
     try:
         from .models import PersonelListesi, Mesai
         
         try:
             liste = PersonelListesi.objects.select_related('birim').get(id=liste_id)
         except PersonelListesi.DoesNotExist:
-            return
+            return {"durum": "HATA", "mesaj": "Personel listesi bulunamadı."}
             
         birim_id = liste.birim.BirimID
         birim_adi = liste.birim.BirimAdi
@@ -44,7 +34,6 @@ def _sync_mesai_task(liste_id: int):
         mesailar_payload = []
         
         for m in mesailer:
-            # baslangic ve bitis MesaiTanim objesinden alınır.
             baslangic = ""
             bitis = ""
             if m.MesaiTanim and m.MesaiTanim.Saat:
@@ -59,7 +48,6 @@ def _sync_mesai_task(liste_id: int):
                 except Exception:
                     pass
             
-            # API zorunlu alanlarını kontrol et
             if not baslangic or not bitis:
                 continue
                 
@@ -73,6 +61,10 @@ def _sync_mesai_task(liste_id: int):
                 "izinli": bool(m.SistemdekiIzin or getattr(m, 'Izin_id', None))
             })
             
+        # Eğer gönderilecek hiç M1 veya M2 notlu kayıt yoksa işlemi atla
+        if not mesailar_payload:
+            return {"durum": "BOS", "mesaj": "Gönderilecek M1/M2 notu olan kayıt bulunamadı."}
+            
         payload = {
             "birimId": birim_id,
             "birimAdi": birim_adi,
@@ -85,12 +77,16 @@ def _sync_mesai_task(liste_id: int):
             "x-api-key": API_KEY
         }
         
-        # Sadece hata fırlatmamasını sağlıyoruz.
-        requests.post(API_URL, json=payload, headers=headers, timeout=10)
+        response = requests.post(API_URL, json=payload, headers=headers, timeout=15)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"durum": "HATA", "mesaj": f"API Bağlantı Hatası: HTTP {response.status_code}"}
 
+    except requests.exceptions.Timeout:
+         return {"durum": "HATA", "mesaj": "Sunucuya bağlanırken zaman aşımı meydana geldi."}
+    except requests.exceptions.RequestException as e:
+         return {"durum": "HATA", "mesaj": f"Sunucuya bağlanırken ağ hatası oluştu: {str(e)}"}
     except Exception as e:
-        # Thread içindeki hataları sessizce yutuyoruz, projeyi kırmaması için
-        pass
-    finally:
-        # Thread sonlanırken connections temizleyelim
-        close_old_connections()
+         return {"durum": "HATA", "mesaj": f"Beklenmeyen bir hata oluştu: {str(e)}"}

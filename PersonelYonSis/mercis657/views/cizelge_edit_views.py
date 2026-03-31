@@ -306,12 +306,15 @@ def cizelge_kaydet(request):
         if errors:
             return JsonResponse({'status': 'partial', 'errors': errors})
             
+        sync_results = []
         if listeler_to_sync:
-            from ..sync_kayseri_api import sync_kayseri_mesai_async
+            from ..sync_kayseri_api import sync_kayseri_mesai
             for liste_id in listeler_to_sync:
-                sync_kayseri_mesai_async(liste_id)
+                res = sync_kayseri_mesai(liste_id)
+                if res and res.get('durum') != 'BOS':
+                    sync_results.append({'liste_id': liste_id, 'result': res})
 
-        return JsonResponse({'status': 'success'})
+        return JsonResponse({'status': 'success', 'sync_results': sync_results})
 
     return JsonResponse({'status': 'failed'}, status=400)
 
@@ -653,3 +656,19 @@ def toplu_mesai_degistir(request, liste_id, year, month):
 
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
+
+@login_required
+@require_POST
+def kayseri_sync_retry_view(request, liste_id):
+    """
+    Kullanıcının Kayseri API senkronizasyonunu manuel olarak yeniden denemesi için endpoint.
+    """
+    if not request.user.has_permission('ÇS 657 Çizelge Sayfası'):
+        return JsonResponse({'status': 'error', 'message': 'Yetkiniz yok.'}, status=403)
+        
+    try:
+        from ..sync_kayseri_api import sync_kayseri_mesai
+        res = sync_kayseri_mesai(liste_id)
+        return JsonResponse({'status': 'success', 'result': res})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})

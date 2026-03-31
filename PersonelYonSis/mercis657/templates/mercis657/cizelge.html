@@ -28,6 +28,7 @@
 
 {% block content %}
 <div class="container-fluid mt-3">
+    <div id="kayseriSyncAlertContainer"></div>
     <div class="row">
         <div class="col-12 text-center" style="width: 100%;">
             <span class="alert alert-warning alert-dismissible fade show p-1 text-center" style="width: 100%;" role="alert">
@@ -382,6 +383,7 @@
 {% include 'mercis657/partials/birim_yetkili_kullanicilar_modal.html' %}
 {% include 'mercis657/partials/ilk_liste_goruntuleme_modal.html' %}
 {% include 'mercis657/partials/calisma_statusu_modal.html' %}
+{% include 'mercis657/partials/kayseri_sync_modal.html' %}
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -454,6 +456,153 @@
             });
         }
     });
+
+    // Kayseri Entegrasyon Yükleme ve Render
+    document.addEventListener('DOMContentLoaded', function() {
+        const syncResultsJson = sessionStorage.getItem('kayseriSyncResults');
+        if (syncResultsJson) {
+            sessionStorage.removeItem('kayseriSyncResults');
+            try {
+                const results = JSON.parse(syncResultsJson);
+                if (results && results.length > 0) {
+                    const resObj = results[0];
+                    showKayseriSyncResult(resObj.result, resObj.liste_id);
+                }
+            } catch (e) {
+                console.error('Kayseri Sync render hatası:', e);
+            }
+        }
+    });
+
+    function showKayseriSyncResult(res, listeId) {
+        const container = document.getElementById('kayseriSyncAlertContainer');
+        if (!container) return;
+        
+        // Hata durumunda container içerisine alert olarak basılır
+        let alertClass = 'alert-info';
+        let icon = 'bi-info-circle-fill';
+        let title = 'Kayseri Entegrasyonu';
+        let message = '';
+        let showDetailBtn = false;
+        let showRetryBtn = false;
+        
+        if (res.durum === 'BASARILI') {
+            alertClass = 'alert-success';
+            icon = 'bi-check-circle-fill';
+            title = 'Senkronizasyon Başarılı';
+            message = `Kayıtlar Kayseri sistemine başarıyla gönderildi. (Eklenen: ${res.eklenen || 0}, Toplam: ${res.toplam || 0})`;
+        } else if (res.durum === 'KISMI') {
+            alertClass = 'alert-warning';
+            icon = 'bi-exclamation-triangle-fill';
+            title = 'Kısmi Başarılı';
+            message = `Bazı personeller eşleşmedi! (Eklenen: ${res.eklenen || 0}, Toplam: ${res.toplam || 0})`;
+            showDetailBtn = true;
+            showRetryBtn = true;
+        } else if (res.durum === 'BEKLEMEDE') {
+            alertClass = 'alert-info';
+            icon = 'bi-clock-fill';
+            title = 'Beklemede';
+            message = res.mesaj || 'Birim sisteme kaydedildi. DahiKOD yöneticisi eşleştirmeyi yaptıktan sonra tekrar gönderin.';
+            showRetryBtn = true;
+        } else if (res.durum === 'HATA') {
+            alertClass = 'alert-danger';
+            icon = 'bi-x-circle-fill';
+            title = 'Senkronizasyon Hatası';
+            message = res.mesaj || 'Bilinmeyen bir hata oluştu.';
+            showRetryBtn = true;
+        } else {
+            return;
+        }
+        
+        let buttonsHtml = '';
+        if (showRetryBtn) {
+            buttonsHtml += `<button class="btn btn-sm btn-outline-primary fw-bold text-decoration-none shadow-sm kayseri-retry-btn" onclick="retryKayseriSync(${listeId})"><i class="bi bi-arrow-repeat me-1"></i>Yeniden Dene</button>`;
+        }
+        if (showDetailBtn) {
+            window.currentKayseriSyncResult = Object.assign({}, res, {listeId: listeId});
+            buttonsHtml += `<button class="btn btn-sm btn-danger fw-bold ms-2 shadow-sm" onclick="openKayseriSyncModal()"><i class="bi bi-search me-1"></i>Detaylar</button>`;
+        }
+
+        container.innerHTML = `
+            <div class="alert ${alertClass} alert-dismissible fade show d-flex align-items-center mb-3 shadow-sm border-0 rounded-3" role="alert">
+                <i class="bi ${icon} fs-3 me-3"></i>
+                <div class="flex-grow-1">
+                    <h6 class="alert-heading fw-bold mb-1">${title}</h6>
+                    <span class="mb-0 text-dark">${message}</span>
+                </div>
+                <div class="ms-3">
+                    ${buttonsHtml}
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
+            </div>
+        `;
+    }
+
+    function retryKayseriSync(listeId) {
+        if(!window.Swal) return;
+        
+        Swal.fire({
+            title: 'Senkronize Ediliyor...',
+            text: 'M1 ve M2 notuna sahip kayıtlar sisteme iletiliyor.',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        fetch(`/mercis657/kayseri-sync-retry/${listeId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.status === 'success' && data.result) {
+                Swal.close();
+                showKayseriSyncResult(data.result, listeId);
+            } else {
+                Swal.fire('Hata', data.message || 'Bilinmeyen bir hata oluştu', 'error');
+            }
+        })
+        .catch(err => {
+            Swal.fire('Hata', err.toString(), 'error');
+        });
+    }
+
+    function openKayseriSyncModal() {
+        const res = window.currentKayseriSyncResult;
+        if(!res) return;
+        
+        const modalEl = document.getElementById('kayseriSyncModal');
+        if(!modalEl) return;
+        
+        const durumP = document.getElementById('kayseriSyncDurumMesaj');
+        const container = document.getElementById('kayseriSyncEslesmeyenlerContainer');
+        const tbody = document.getElementById('kayseriSyncEslesmeyenlerBody');
+        const retryBtn = document.getElementById('kayseriSyncRetryModalBtn');
+        
+        durumP.innerText = res.mesaj || 'Personel eşleştirmelerinde farklılıklar var. DahiKOD yöneticisi eşleştirmeyi düzelttikten sonra tekrar deneyiniz.';
+        tbody.innerHTML = '';
+        
+        if (res.eslesmeyenler && res.eslesmeyenler.length > 0) {
+            container.classList.remove('d-none');
+            res.eslesmeyenler.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td class="ps-3 fw-bold">${item.tckn || 'Bilinmiyor'}</td><td class="text-danger fw-medium">${item.sebep || 'Sebep bildirilmedi'}</td>`;
+                tbody.appendChild(tr);
+            });
+        } else {
+            container.classList.add('d-none');
+        }
+        
+        retryBtn.onclick = function() {
+            bootstrap.Modal.getInstance(modalEl).hide();
+            retryKayseriSync(res.listeId);
+        };
+        
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
 </script>
 
 <!-- Personel Profil Modal -->
@@ -1190,6 +1339,9 @@
         .then(response => response.json().then(data => ({status: response.status, body: data})))
         .then(({status, body}) => {
             if (body.status === 'success') {
+                if (body.sync_results && body.sync_results.length > 0) {
+                    sessionStorage.setItem('kayseriSyncResults', JSON.stringify(body.sync_results));
+                }
                 // Başarılıysa başlangıç durumunu güncelle
                 Object.keys(changes).forEach(k => {
                     initialMap[k] = JSON.stringify({

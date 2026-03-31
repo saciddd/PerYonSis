@@ -162,4 +162,7 @@ urlpatterns = [
     # Çalışma Statüsü Kontrolü
     path('calisma-statusu-list/<int:liste_id>/', views.get_calisma_statusu_list, name='get_calisma_statusu_list'),
     path('calisma-statusu-guncelle/<int:liste_id>/', views.update_calisma_statusu_list, name='update_calisma_statusu_list'),
+    
+    # Kayseri Entegrasyonu
+    path('kayseri-sync-retry/<int:liste_id>/', views.kayseri_sync_retry_view, name='kayseri_sync_retry'),
 ]

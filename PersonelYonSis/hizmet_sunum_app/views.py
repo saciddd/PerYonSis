@@ -337,7 +337,7 @@ def bildirimler_listele(request, year, month, birim_id):
             sertifika_obj = None
             sertifika_gecerli = False
             if personel:
-                sertifika = Sertifika.objects.filter(personel__tc_kimlik_no=personel.TCKimlikNo).first()
+                sertifika = Sertifika.objects.filter(personel__TCKimlikNo=personel.TCKimlikNo).first()
                 if sertifika:
                     sertifika_obj = {
                         'sertifika_aciklamasi': sertifika.sertifika_aciklamasi,

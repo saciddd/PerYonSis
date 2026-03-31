@@ -31,8 +31,8 @@
                         {% for sertifika in sertifikalar %}
                         <tr>
                             <td class="text-center">{{ forloop.counter }}</td>
-                            <td>{{ sertifika.personel.tc_kimlik_no|default:'' }}</td>
-                            <td>{{ sertifika.personel.ad_soyad }}</td>
+                            <td>{{ sertifika.personel.TCKimlikNo|default:'' }}</td>
+                            <td>{{ sertifika.personel.PersonelAdi }} {{ sertifika.personel.PersonelSoyadi }}</td>
                             <td>{{ sertifika.sertifika_aciklamasi }}</td>
                             <td>{{ sertifika.baslangic_tarihi|date:"d.m.Y" }}</td>
                             <td>{{ sertifika.bitis_tarihi|date:"d.m.Y" }}</td>

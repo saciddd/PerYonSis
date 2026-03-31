@@ -3,7 +3,8 @@ from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
-from .models import Sertifika, Personel
+from .models import Sertifika
+from hizmet_sunum_app.models import Personel
 import openpyxl
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from datetime import datetime
@@ -23,7 +24,7 @@ def sertifika_guncelle(request):
             if not all([tc_kimlik_no, aciklama, baslangic, bitis]):
                 return JsonResponse({'status': 'error', 'message': 'Eksik veri gönderildi.'}, status=400)
 
-            personel = Personel.objects.filter(tc_kimlik_no=tc_kimlik_no).first()
+            personel = Personel.objects.filter(TCKimlikNo=tc_kimlik_no).first()
             if not personel:
                 return JsonResponse({'status': 'error', 'message': 'Personel bulunamadı.'}, status=404)
 
@@ -93,8 +94,8 @@ def sertifikali_personeller_excel_export(request):
         
         row = [
             index,
-            sertifika.personel.tc_kimlik_no if sertifika.personel and sertifika.personel.tc_kimlik_no else "",
-            sertifika.personel.ad_soyad if sertifika.personel else "",
+            sertifika.personel.TCKimlikNo if sertifika.personel and sertifika.personel.TCKimlikNo else "",
+            f"{sertifika.personel.PersonelAdi} {sertifika.personel.PersonelSoyadi}" if sertifika.personel else "",
             sertifika.sertifika_aciklamasi,
             baslangic,
             bitis,

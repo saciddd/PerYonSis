@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from .models import HizmetSunumCalismasi, UserBirim, Birim, Personel
+from ik_core.models import Sertifika
 import json
 
 @require_POST
@@ -138,6 +139,14 @@ def bildirimler_kaydet(request):
                 })
                 processed_indices.add(current_b['index'])
                 continue
+
+            sertifika = Sertifika.objects.filter(personel__TCKimlikNo=current_b['tc_kimlik_no']).first()
+            if sertifika:
+                if (sertifika.baslangic_tarihi and sertifika.bitis_tarihi and 
+                    sertifika.baslangic_tarihi <= donem_bitis and 
+                    sertifika.bitis_tarihi >= donem_baslangic and 
+                    sertifika.alanda_kullaniliyor):
+                    current_b['sertifika'] = True
 
             # Kayıt/Güncelleme
             try:

@@ -277,6 +277,16 @@ def personel_kaydet(request):
                         defaults={'PersonelAdi': adi, 'PersonelSoyadi': soyadi}
                     )
                     
+                    # Check certificate
+                    sertifika_gecerli = False
+                    sertifika = Sertifika.objects.filter(personel__TCKimlikNo=tc_kimlik).first()
+                    if sertifika:
+                        if (sertifika.baslangic_tarihi and sertifika.bitis_tarihi and 
+                            sertifika.baslangic_tarihi <= bitis and 
+                            sertifika.bitis_tarihi >= baslangic and 
+                            sertifika.alanda_kullaniliyor):
+                            sertifika_gecerli = True
+                            
                     # Her zaman yeni HizmetSunumCalismasi kaydı oluştur
                     HizmetSunumCalismasi.objects.create(
                         PersonelId=personel,
@@ -287,7 +297,7 @@ def personel_kaydet(request):
                         CreatedBy=request.user,
                         OzelAlanKodu=alan_kodu,
                         Sorumlu=False,
-                        Sertifika=False,
+                        Sertifika=sertifika_gecerli,
                         Kesinlestirme=False
                     )
                     created_count += 1
@@ -433,6 +443,18 @@ def bildirimler_kesinlestir(request):
                         hata_mesaji = "Kesinleştirilemedi, çakışan kayıtlar: " + "; ".join([f"{c.CalisilanBirimId.BirimAdi} {c.HizmetBaslangicTarihi.strftime('%d.%m')}-{c.HizmetBitisTarihi.strftime('%d.%m.%Y')}" for c in cakisan_kayitlar])
                         errors.append({'id': bildirim_id, 'message': hata_mesaji})
                         continue
+
+                    ay_sonu_gunu = calendar.monthrange(donem_date.year, donem_date.month)[1]
+                    donem_baslangic = date(donem_date.year, donem_date.month, 1)
+                    donem_bitis = date(donem_date.year, donem_date.month, ay_sonu_gunu)
+                    
+                    sertifika = Sertifika.objects.filter(personel__TCKimlikNo=bildirim.PersonelId.TCKimlikNo).first()
+                    if sertifika:
+                        if (sertifika.baslangic_tarihi and sertifika.bitis_tarihi and 
+                            sertifika.baslangic_tarihi <= donem_bitis and 
+                            sertifika.bitis_tarihi >= donem_baslangic and 
+                            sertifika.alanda_kullaniliyor):
+                            bildirim_data['sertifika'] = True
 
                     # Verileri güncelle ve kesinleştir
                     bildirim.HizmetBaslangicTarihi = datetime.strptime(bildirim_data['baslangic'], '%Y-%m-%d').date()

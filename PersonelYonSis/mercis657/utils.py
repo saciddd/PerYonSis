@@ -451,23 +451,60 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     fiili_calisma_suresi = sum(seg['duration'] for seg in all_segments)
     fazla_mesai = max(Decimal('0.0'), fiili_calisma_suresi - effective_olmasi_gereken)
 
-    # Debug
-    print(f"Fiili çalışma süresi: {fiili_calisma_suresi}")
-    print(f"Fazla mesai: {fazla_mesai}")
-    print(f"Olması gereken süre: {effective_olmasi_gereken}")
-    print(f"Çalışma günleri: {calisma_gunleri}")
-    print(f"Arefe günleri: {arefe_gunleri}")
-    print(f"Mazeret azaltımı: {mazeret_azaltimi}")
-    print(f"Bayram fazla mesai: {res_bayram_gunduz}")
-    print(f"Normal fazla mesai: {res_normal_gunduz}")
-    print(f"Bayram gece fazla mesai: {res_bayram_gece}")
-    print(f"Normal gece fazla mesai: {res_normal_gece}")
-    print(f"Stop süresi: {stop_suresi}")
-    print(f"Riskli bayram fazla mesai: {res_riskli_bayram_gunduz}")
-    print(f"Riskli normal fazla mesai: {res_riskli_normal_gunduz}")
-    print(f"Riskli bayram gece fazla mesai: {res_riskli_bayram_gece}")
-    print(f"Riskli normal gece fazla mesai: {res_riskli_normal_gece}")
-    
+    # --- BAYRAM AYRIŞTIRMA VE ÖNCELİK MANTIĞI ---
+    # 1. Segmentlerden çalışılan tüm bayram sürelerini hesapla
+    tot_bayram_gece = Decimal('0.0')
+    tot_bayram_gunduz = Decimal('0.0')
+    tot_riskli_bayram_gece = Decimal('0.0')
+    tot_riskli_bayram_gunduz = Decimal('0.0')
+
+    for seg in all_segments:
+        if seg['is_bayram']:
+            dur = seg['duration']
+            r_dur = seg['risky_duration']
+            n_dur = dur - r_dur
+            if seg['is_gece']:
+                tot_bayram_gece += n_dur
+                tot_riskli_bayram_gece += r_dur
+            else:
+                tot_bayram_gunduz += n_dur
+                tot_riskli_bayram_gunduz += r_dur
+
+    # 2. Eski 2-pass mantığından gelen havuzları birleştir
+    pool_gunduz_normal = res_normal_gunduz + res_bayram_gunduz
+    pool_gece_normal = res_normal_gece + res_bayram_gece
+    pool_gunduz_riskli = res_riskli_normal_gunduz + res_riskli_bayram_gunduz
+    pool_gece_riskli = res_riskli_normal_gece + res_riskli_bayram_gece
+
+    total_ot_pool = pool_gunduz_normal + pool_gece_normal + pool_gunduz_riskli + pool_gece_riskli
+    total_bayram_worked = tot_bayram_gece + tot_bayram_gunduz + tot_riskli_bayram_gece + tot_riskli_bayram_gunduz
+
+    if total_ot_pool <= 0:
+        res_bayram_gunduz = res_bayram_gece = res_riskli_bayram_gunduz = res_riskli_bayram_gece = Decimal('0.0')
+        res_normal_gunduz = res_normal_gece = res_riskli_normal_gunduz = res_riskli_normal_gece = Decimal('0.0')
+    else:
+        # Öncelik Bayram Mesaisi: Verebileceğimiz bayram, toplam fazla mesaiyi (total_ot_pool) aşamaz
+        bayram_ratio = min(Decimal('1.0'), total_ot_pool / total_bayram_worked if total_bayram_worked > 0 else Decimal('1.0'))
+        
+        # Kullanıcının çalıştığı bayram sürelerini (üst limite kadar) atayalım
+        res_bayram_gunduz = tot_bayram_gunduz * bayram_ratio
+        res_bayram_gece = tot_bayram_gece * bayram_ratio
+        res_riskli_bayram_gunduz = tot_riskli_bayram_gunduz * bayram_ratio
+        res_riskli_bayram_gece = tot_riskli_bayram_gece * bayram_ratio
+        
+        assigned_bayram = res_bayram_gunduz + res_bayram_gece + res_riskli_bayram_gunduz + res_riskli_bayram_gece
+        remaining_ot = total_ot_pool - assigned_bayram
+        
+        # Kalan fazla mesaiyi 2-pass mantığının oluşturduğu havuz oranlarında normal mesai olarak dağıtıyoruz.
+        pool_sum = pool_gunduz_normal + pool_gece_normal + pool_gunduz_riskli + pool_gece_riskli
+        if pool_sum > 0:
+            res_normal_gunduz = remaining_ot * (pool_gunduz_normal / pool_sum)
+            res_normal_gece = remaining_ot * (pool_gece_normal / pool_sum)
+            res_riskli_normal_gunduz = remaining_ot * (pool_gunduz_riskli / pool_sum)
+            res_riskli_normal_gece = remaining_ot * (pool_gece_riskli / pool_sum)
+        else:
+            res_normal_gunduz = res_normal_gece = res_riskli_normal_gunduz = res_riskli_normal_gece = Decimal('0.0')
+
 
     return {
         'olması_gereken_sure': olmasi_gereken_sure,

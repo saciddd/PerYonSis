@@ -197,6 +197,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 and not getattr(mesai, 'Izin', None)
                 and mesai.MesaiTanim
                 and getattr(mesai.MesaiTanim, 'Saat', None)
+                and getattr(mesai.MesaiTanim, 'Sure', 0) > 8
             ):
                 ara_dinlenme_toplam += ara_din_per_gun
 
@@ -373,86 +374,13 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             })
 
     # ==========================================
-    # İki Pasla Limit Doldurma + Fazla Mesai Hesabı
+    # Yeni Kronolojik Fazla Mesai Dağıtımı
     # ==========================================
 
-    # Bucketlar: (bayram, gece) -> (fazla, riskli_fazla)
-    res_bayram_gece = Decimal('0.0')
-    res_bayram_gunduz = Decimal('0.0')
-    res_normal_gece = Decimal('0.0')
-    res_normal_gunduz = Decimal('0.0')
-
-    res_riskli_bayram_gece = Decimal('0.0')
-    res_riskli_bayram_gunduz = Decimal('0.0')
-    res_riskli_normal_gece = Decimal('0.0')
-    res_riskli_normal_gunduz = Decimal('0.0')
-
-    remaining_limit = effective_olmasi_gereken
-
-    # Her segmentin "limit doldurmada kullanılan" miktarını takip et
-    # ki 2. pasda yeniden işlemeyelim
-    segment_used_for_limit = [Decimal('0.0')] * len(all_segments)
-
-    # --- 1. PASS: Önce 08:00-16:00 segmentleri ile limiti doldur ---
-    for idx, seg in enumerate(all_segments):
-        if remaining_limit <= 0:
-            break
-        if not seg['is_gunduz_08_16']:
-            continue
-        use = min(remaining_limit, seg['duration'])
-        segment_used_for_limit[idx] = use
-        remaining_limit -= use
-
-    # --- 2. PASS: Kalan limiti gece ve diğer gündüz segmentlerle doldur ---
-    for idx, seg in enumerate(all_segments):
-        if remaining_limit <= 0:
-            break
-        if seg['is_gunduz_08_16']:
-            continue  # 1. pasda zaten işlendi
-        use = min(remaining_limit, seg['duration'])
-        segment_used_for_limit[idx] = use
-        remaining_limit -= use
-
-    # --- FAZ MESAI HESABI: Limit üzerinde kalan kısımlar ---
-    for idx, seg in enumerate(all_segments):
-        used = segment_used_for_limit[idx]
-        ot_part = seg['duration'] - used
-
-        if ot_part <= 0:
-            continue
-
-        is_bayram = seg['is_bayram']
-        is_gece = seg['is_gece']
-        risky_duration = seg['risky_duration']
-
-        # Riskli oranı: fazla mesai kısmına düşen riskli süre oranla hesapla
-        # (segment içinde used kısmı normal, ot_part fazla mesai - riskli oranı koru)
-        if seg['duration'] > 0:
-            risky_ratio = risky_duration / seg['duration']
-        else:
-            risky_ratio = Decimal('0.0')
-        risky_ot = ot_part * risky_ratio
-        normal_ot = ot_part - risky_ot
-
-        if is_bayram and is_gece:
-            res_bayram_gece += normal_ot
-            res_riskli_bayram_gece += risky_ot
-        elif is_bayram and not is_gece:
-            res_bayram_gunduz += normal_ot
-            res_riskli_bayram_gunduz += risky_ot
-        elif not is_bayram and is_gece:
-            res_normal_gece += normal_ot
-            res_riskli_normal_gece += risky_ot
-        else:
-            res_normal_gunduz += normal_ot
-            res_riskli_normal_gunduz += risky_ot
-
-    # Fiili çalışma süresi: tüm segmentlerin toplamı
     fiili_calisma_suresi = sum(seg['duration'] for seg in all_segments)
     fazla_mesai = max(Decimal('0.0'), fiili_calisma_suresi - effective_olmasi_gereken)
 
-    # --- BAYRAM AYRIŞTIRMA VE ÖNCELİK MANTIĞI ---
-    # 1. Segmentlerden çalışılan tüm bayram sürelerini hesapla
+    # 1. Total Bayram Mesailerini Hesapla
     tot_bayram_gece = Decimal('0.0')
     tot_bayram_gunduz = Decimal('0.0')
     tot_riskli_bayram_gece = Decimal('0.0')
@@ -470,41 +398,78 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 tot_bayram_gunduz += n_dur
                 tot_riskli_bayram_gunduz += r_dur
 
-    # 2. Eski 2-pass mantığından gelen havuzları birleştir
-    pool_gunduz_normal = res_normal_gunduz + res_bayram_gunduz
-    pool_gece_normal = res_normal_gece + res_bayram_gece
-    pool_gunduz_riskli = res_riskli_normal_gunduz + res_riskli_bayram_gunduz
-    pool_gece_riskli = res_riskli_normal_gece + res_riskli_bayram_gece
-
-    total_ot_pool = pool_gunduz_normal + pool_gece_normal + pool_gunduz_riskli + pool_gece_riskli
     total_bayram_worked = tot_bayram_gece + tot_bayram_gunduz + tot_riskli_bayram_gece + tot_riskli_bayram_gunduz
 
-    if total_ot_pool <= 0:
-        res_bayram_gunduz = res_bayram_gece = res_riskli_bayram_gunduz = res_riskli_bayram_gece = Decimal('0.0')
-        res_normal_gunduz = res_normal_gece = res_riskli_normal_gunduz = res_riskli_normal_gece = Decimal('0.0')
-    else:
-        # Öncelik Bayram Mesaisi: Verebileceğimiz bayram, toplam fazla mesaiyi (total_ot_pool) aşamaz
-        bayram_ratio = min(Decimal('1.0'), total_ot_pool / total_bayram_worked if total_bayram_worked > 0 else Decimal('1.0'))
-        
-        # Kullanıcının çalıştığı bayram sürelerini (üst limite kadar) atayalım
-        res_bayram_gunduz = tot_bayram_gunduz * bayram_ratio
-        res_bayram_gece = tot_bayram_gece * bayram_ratio
-        res_riskli_bayram_gunduz = tot_riskli_bayram_gunduz * bayram_ratio
-        res_riskli_bayram_gece = tot_riskli_bayram_gece * bayram_ratio
-        
-        assigned_bayram = res_bayram_gunduz + res_bayram_gece + res_riskli_bayram_gunduz + res_riskli_bayram_gece
-        remaining_ot = total_ot_pool - assigned_bayram
-        
-        # Kalan fazla mesaiyi 2-pass mantığının oluşturduğu havuz oranlarında normal mesai olarak dağıtıyoruz.
-        pool_sum = pool_gunduz_normal + pool_gece_normal + pool_gunduz_riskli + pool_gece_riskli
-        if pool_sum > 0:
-            res_normal_gunduz = remaining_ot * (pool_gunduz_normal / pool_sum)
-            res_normal_gece = remaining_ot * (pool_gece_normal / pool_sum)
-            res_riskli_normal_gunduz = remaining_ot * (pool_gunduz_riskli / pool_sum)
-            res_riskli_normal_gece = remaining_ot * (pool_gece_riskli / pool_sum)
-        else:
-            res_normal_gunduz = res_normal_gece = res_riskli_normal_gunduz = res_riskli_normal_gece = Decimal('0.0')
+    # Bayram Mesaisi Önceliği
+    bayram_ratio = min(Decimal('1.0'), fazla_mesai / total_bayram_worked if total_bayram_worked > 0 else Decimal('1.0'))
 
+    res_bayram_gunduz = tot_bayram_gunduz * bayram_ratio
+    res_bayram_gece = tot_bayram_gece * bayram_ratio
+    res_riskli_bayram_gunduz = tot_riskli_bayram_gunduz * bayram_ratio
+    res_riskli_bayram_gece = tot_riskli_bayram_gece * bayram_ratio
+
+    assigned_bayram = res_bayram_gunduz + res_bayram_gece + res_riskli_bayram_gunduz + res_riskli_bayram_gece
+    remaining_ot = fazla_mesai - assigned_bayram
+
+    # Normal Mesailerin Dağılımı: Eskiden Yeniye, 16:00-08:00 saatlerine öncelik
+    res_normal_gece = Decimal('0.0')
+    res_normal_gunduz = Decimal('0.0')
+    res_riskli_normal_gece = Decimal('0.0')
+    res_riskli_normal_gunduz = Decimal('0.0')
+
+    # Pass 1: Sadece 16:00-08:00 arasındaki (Standart dışı) verileri kullanarak limit harca
+    for seg in all_segments:
+        if remaining_ot <= 0:
+            break
+        if seg['is_bayram']:
+            continue
+        if seg['is_gunduz_08_16']:
+            continue # 08:00-16:00 arası standart olanları Pass 1'de alma
+
+        dur = seg['duration']
+        if dur <= 0:
+            continue
+            
+        alloc = min(remaining_ot, dur)
+        r_ratio = seg['risky_duration'] / dur
+        r_alloc = alloc * r_ratio
+        n_alloc = alloc - r_alloc
+        
+        if seg['is_gece']:
+            res_normal_gece += n_alloc
+            res_riskli_normal_gece += r_alloc
+        else:
+            res_normal_gunduz += n_alloc
+            res_riskli_normal_gunduz += r_alloc
+            
+        remaining_ot -= alloc
+
+    # Pass 2: Hâlâ limit kalmışsa (tamamı hafta sonu 08-16 olan çok fazla mesai varsa)
+    for seg in all_segments:
+        if remaining_ot <= 0:
+            break
+        if seg['is_bayram']:
+            continue
+        if not seg['is_gunduz_08_16']:
+            continue # Pass 1'de zaten işlendi
+
+        dur = seg['duration']
+        if dur <= 0:
+            continue
+            
+        alloc = min(remaining_ot, dur)
+        r_ratio = seg['risky_duration'] / dur
+        r_alloc = alloc * r_ratio
+        n_alloc = alloc - r_alloc
+        
+        if seg['is_gece']:
+            res_normal_gece += n_alloc
+            res_riskli_normal_gece += r_alloc
+        else:
+            res_normal_gunduz += n_alloc
+            res_riskli_normal_gunduz += r_alloc
+            
+        remaining_ot -= alloc
 
     return {
         'olması_gereken_sure': olmasi_gereken_sure,

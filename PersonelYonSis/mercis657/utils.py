@@ -142,7 +142,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
 
             if arefe_mi:
                 # Arefe günü 13:00'den sonra bayram
-                if t >= time(13, 0) and bayram_mi:
+                if t >= time(13, 0):
                     is_bayram = True
             else:
                 if bayram_mi:

@@ -411,7 +411,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     assigned_bayram = res_bayram_gunduz + res_bayram_gece + res_riskli_bayram_gunduz + res_riskli_bayram_gece
     remaining_ot = fazla_mesai - assigned_bayram
 
-    # Normal Mesailerin Dağılımı: Yeniden Eskiye (Sondan Geriye), ancak aynı gün içinde saat 16:00'dan 08:00'e doğru
+    # Normal Mesailerin Dağılımı: Yeniden Eskiye (Sondan Geriye), aynı vardiya içinde en son saatten geriye doğru
     res_normal_gece = Decimal('0.0')
     res_normal_gunduz = Decimal('0.0')
     res_riskli_normal_gece = Decimal('0.0')
@@ -419,10 +419,10 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     
     # Sıralamayı:
     # 1. Mesai tarihi GÜN bazında BÜYÜKTEN KÜÇÜĞE (Yeni -> Eski)
-    # 2. Aynı gün içindeki saat dilimleri KÜÇÜKTEN BÜYÜĞE (Erken -> Geç)
+    # 2. Aynı gün içindeki saat dilimleri BÜYÜKTEN KÜÇÜĞE (Geriye doğru, Mesai bitiminden başlangıca)
     sorted_segments_for_allocation = sorted(all_segments, key=lambda s: (
         -(s['mesai'].MesaiDate.toordinal()) if s['mesai'] else (-(s['seg_start'].date().toordinal()) if s['seg_start'] else -999999),
-        s['seg_start'] if s['seg_start'] else datetime.min
+        -(s['seg_start'].timestamp()) if s['seg_start'] else -9999999999
     ))
 
     # Pass 1: Sadece 16:00-08:00 arasındaki (Standart dışı) verileri kullanarak limit harca

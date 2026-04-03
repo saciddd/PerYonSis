@@ -411,14 +411,22 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     assigned_bayram = res_bayram_gunduz + res_bayram_gece + res_riskli_bayram_gunduz + res_riskli_bayram_gece
     remaining_ot = fazla_mesai - assigned_bayram
 
-    # Normal Mesailerin Dağılımı: Eskiden Yeniye, 16:00-08:00 saatlerine öncelik
+    # Normal Mesailerin Dağılımı: Yeniden Eskiye (Sondan Geriye), ancak aynı gün içinde saat 16:00'dan 08:00'e doğru
     res_normal_gece = Decimal('0.0')
     res_normal_gunduz = Decimal('0.0')
     res_riskli_normal_gece = Decimal('0.0')
     res_riskli_normal_gunduz = Decimal('0.0')
+    
+    # Sıralamayı:
+    # 1. Mesai tarihi GÜN bazında BÜYÜKTEN KÜÇÜĞE (Yeni -> Eski)
+    # 2. Aynı gün içindeki saat dilimleri KÜÇÜKTEN BÜYÜĞE (Erken -> Geç)
+    sorted_segments_for_allocation = sorted(all_segments, key=lambda s: (
+        -(s['mesai'].MesaiDate.toordinal()) if s['mesai'] else (-(s['seg_start'].date().toordinal()) if s['seg_start'] else -999999),
+        s['seg_start'] if s['seg_start'] else datetime.min
+    ))
 
     # Pass 1: Sadece 16:00-08:00 arasındaki (Standart dışı) verileri kullanarak limit harca
-    for seg in all_segments:
+    for seg in sorted_segments_for_allocation:
         if remaining_ot <= 0:
             break
         if seg['is_bayram']:
@@ -445,7 +453,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         remaining_ot -= alloc
 
     # Pass 2: Hâlâ limit kalmışsa (tamamı hafta sonu 08-16 olan çok fazla mesai varsa)
-    for seg in all_segments:
+    for seg in sorted_segments_for_allocation:
         if remaining_ot <= 0:
             break
         if seg['is_bayram']:

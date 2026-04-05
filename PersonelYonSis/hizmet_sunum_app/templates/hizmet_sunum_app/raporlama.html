@@ -1,6 +1,22 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block extra_head %}
+<style>
+    .highlight-update {
+        animation: highlightFade 2s ease-out;
+        font-weight: bold;
+    }
+    @keyframes highlightFade {
+        0% { background-color: #ffe87a; color: #b71c1c; transform: scale(1.05); border-radius: 4px; box-shadow: 0 0 10px rgba(255,235,59,0.7); }
+        100% { background-color: transparent; transform: scale(1); }
+    }
+    .durum-hucresi {
+        transition: all 0.5s;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <br>
 <div class="container-fluid">
@@ -109,7 +125,7 @@
                                 </thead>
                                 <tbody>
                                     {% for calisma in birim_data.calismalar %}
-                                    <tr>
+                                    <tr data-calisma-id="{{ calisma.CalismaId }}">
                                         <td>{{ forloop.counter }}</td>
                                         <td>{{ calisma.PersonelId.TCKimlikNo }}</td>
                                         <td>{{ calisma.PersonelId.PersonelAdi }}</td>
@@ -119,7 +135,7 @@
                                         <td>{{ calisma.OzelAlanKodu|default:"-" }}</td>
                                         <td>{% if calisma.Sorumlu %}Evet{% else %}Hayır{% endif %}</td>
                                         <td>{% if calisma.Sertifika %}Evet{% else %}Hayır{% endif %}</td>
-                                        <td>{% if calisma.Kesinlestirme %}Kesinleşti{% else %}Beklemede{% endif %}</td>
+                                        <td class="durum-hucresi">{% if calisma.Kesinlestirme %}Kesinleşti{% else %}Beklemede{% endif %}</td>
                                         <td>
                                             {% if 'HSA Bildirim Kesinleştirme' in user_permissions %}
                                                 {% if not calisma.Kesinlestirme %}
@@ -184,11 +200,22 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     // Sayfayı yenilemeden verileri güncelle (Accordion açık durumunu korur)
     function refreshPageSilently() {
         const activeAccordionBodies = document.querySelectorAll('.accordion-collapse.show');
         const openIds = Array.from(activeAccordionBodies).map(el => el.id);
+
+        // Eski durumları saklayalım
+        const oldDurumMap = {};
+        document.querySelectorAll('tr[data-calisma-id]').forEach(tr => {
+            const cid = tr.getAttribute('data-calisma-id');
+            const durumTd = tr.querySelector('.durum-hucresi');
+            if (cid && durumTd) {
+                oldDurumMap[cid] = durumTd.textContent.trim();
+            }
+        });
 
         fetch(window.location.href, {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -200,19 +227,51 @@
             const currentAccordion = document.getElementById('birimAccordion');
             
             if (newAccordion && currentAccordion) {
-                currentAccordion.innerHTML = newAccordion.innerHTML;
-                
-                // Açık olanları geri aç
-                openIds.forEach(id => {
-                    const target = document.getElementById(id);
-                    if (target) {
-                        target.classList.add('show');
-                        const btn = document.querySelector(`[data-bs-target="#${id}"]`);
-                        if (btn) btn.classList.remove('collapsed');
-                        // Expand attributes override
-                        if (btn) btn.setAttribute('aria-expanded', 'true');
+                // Backend'in default "ilk sekme açık gelsin" davranışını temizle
+                const newShows = newAccordion.querySelectorAll('.accordion-collapse.show');
+                newShows.forEach(el => {
+                    if (!openIds.includes(el.id)) {
+                        el.classList.remove('show');
+                        const btn = newAccordion.querySelector(`[data-bs-target="#${el.id}"]`);
+                        if (btn) {
+                            btn.classList.add('collapsed');
+                            btn.setAttribute('aria-expanded', 'false');
+                        }
                     }
                 });
+
+                // Bizde açık olanları geri aç
+                openIds.forEach(id => {
+                    const target = newAccordion.querySelector(`#${id}`);
+                    if (target) {
+                        target.classList.add('show');
+                        const btn = newAccordion.querySelector(`[data-bs-target="#${id}"]`);
+                        if (btn) {
+                            btn.classList.remove('collapsed');
+                            btn.setAttribute('aria-expanded', 'true');
+                        }
+                    }
+                });
+
+                // Değişim kontrolü
+                newAccordion.querySelectorAll('tr[data-calisma-id]').forEach(tr => {
+                    const cid = tr.getAttribute('data-calisma-id');
+                    const durumTd = tr.querySelector('.durum-hucresi');
+                    if (cid && durumTd && oldDurumMap[cid]) {
+                        if (oldDurumMap[cid] !== durumTd.textContent.trim()) {
+                            durumTd.classList.add('highlight-update');
+                        }
+                    }
+                });
+
+                currentAccordion.innerHTML = newAccordion.innerHTML;
+                
+                // Efektin 2 sn sonra css'inin kaldırılması
+                setTimeout(() => {
+                    document.querySelectorAll('.highlight-update').forEach(el => {
+                        el.classList.remove('highlight-update');
+                    });
+                }, 2000);
             }
         })
         .catch(err => console.error('Sessiz yenileme hatası:', err));

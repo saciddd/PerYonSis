@@ -19,6 +19,8 @@
                     <thead class="table-light">
                         <tr>
                             <th>Sıra No</th>
+                            <th>Kurum</th>
+                            <th>Birim</th>
                             <th>T.C. Kimlik No</th>
                             <th>Adı Soyadı</th>
                             <th>Sertifika Açıklaması</th>
@@ -31,6 +33,8 @@
                         {% for sertifika in sertifikalar %}
                         <tr>
                             <td class="text-center">{{ forloop.counter }}</td>
+                            <td>{{ sertifika.personel.Birim.KurumAdi|default:'-' }}</td>
+                            <td>{{ sertifika.personel.Birim.BirimAdi|default:'-' }}</td>
                             <td>{{ sertifika.personel.TCKimlikNo|default:'' }}</td>
                             <td>{{ sertifika.personel.PersonelAdi }} {{ sertifika.personel.PersonelSoyadi }}</td>
                             <td>{{ sertifika.sertifika_aciklamasi }}</td>
@@ -46,7 +50,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="7" class="text-center">Kayıt bulunamadı.</td>
+                            <td colspan="9" class="text-center">Kayıt bulunamadı.</td>
                         </tr>
                         {% endfor %}
                     </tbody>

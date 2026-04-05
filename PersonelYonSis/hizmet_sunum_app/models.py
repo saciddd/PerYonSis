@@ -24,6 +24,13 @@ class Personel(models.Model):
     def __str__(self):
         return f"{self.PersonelAdi} {self.PersonelSoyadi}"
 
+    @property
+    def Birim(self):
+        son_calisma = HizmetSunumCalismasi.objects.filter(PersonelId=self).order_by('-HizmetBitisTarihi').first()
+        if son_calisma:
+            return son_calisma.CalisilanBirimId
+        return None
+
 class HizmetSunumAlani(models.Model):
     AlanAdi = models.CharField(max_length=100, verbose_name="Alan Adı")
     AlanKodu = models.CharField(max_length=50, unique=True, verbose_name="Alan Kodu")

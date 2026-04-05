@@ -46,7 +46,16 @@ def sertifika_guncelle(request):
 
 @login_required
 def sertifikali_personeller_raporu(request):
-    sertifikalar = Sertifika.objects.select_related('personel').all()
+    sertifikalar = list(Sertifika.objects.select_related('personel').all())
+    
+    def get_sort_key(s):
+        personel = s.personel
+        if personel and personel.Birim:
+            b = personel.Birim
+            return (b.KurumAdi or "", b.IdareAdi or "", b.BirimAdi or "", personel.PersonelAdi or "")
+        return ("ZZZ", "ZZZ", "ZZZ", personel.PersonelAdi if personel else "")
+        
+    sertifikalar.sort(key=get_sort_key)
     
     return render(request, 'ik_core/sertifika_raporu.html', {
         'sertifikalar': sertifikalar
@@ -54,7 +63,16 @@ def sertifikali_personeller_raporu(request):
 
 @login_required
 def sertifikali_personeller_excel_export(request):
-    sertifikalar = Sertifika.objects.select_related('personel').all()
+    sertifikalar = list(Sertifika.objects.select_related('personel').all())
+    
+    def get_sort_key(s):
+        personel = s.personel
+        if personel and personel.Birim:
+            b = personel.Birim
+            return (b.KurumAdi or "", b.IdareAdi or "", b.BirimAdi or "", personel.PersonelAdi or "")
+        return ("ZZZ", "ZZZ", "ZZZ", personel.PersonelAdi if personel else "")
+        
+    sertifikalar.sort(key=get_sort_key)
     
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -73,7 +91,7 @@ def sertifikali_personeller_excel_export(request):
     )
 
     headers = [
-        "Sıra No", "T.C. Kimlik No", "Adı Soyadı", 
+        "Sıra No", "Kurum", "İdare", "Birim", "T.C. Kimlik No", "Adı Soyadı", 
         "Sertifika Açıklaması", "Başlangıç Tarihi", 
         "Bitiş Tarihi", "Alanda Kullanılıyor"
     ]
@@ -91,11 +109,16 @@ def sertifikali_personeller_excel_export(request):
         baslangic = sertifika.baslangic_tarihi.strftime("%d.%m.%Y") if sertifika.baslangic_tarihi else ""
         bitis = sertifika.bitis_tarihi.strftime("%d.%m.%Y") if sertifika.bitis_tarihi else ""
         alanda_kullanim = "Evet" if sertifika.alanda_kullaniliyor else "Hayır"
+        personel = sertifika.personel
+        birim = personel.Birim if personel else None
         
         row = [
             index,
-            sertifika.personel.TCKimlikNo if sertifika.personel and sertifika.personel.TCKimlikNo else "",
-            f"{sertifika.personel.PersonelAdi} {sertifika.personel.PersonelSoyadi}" if sertifika.personel else "",
+            birim.KurumAdi if birim else "-",
+            birim.IdareAdi if birim else "-",
+            birim.BirimAdi if birim else "-",
+            personel.TCKimlikNo if personel else "",
+            f"{personel.PersonelAdi} {personel.PersonelSoyadi}" if personel else "",
             sertifika.sertifika_aciklamasi,
             baslangic,
             bitis,
@@ -107,18 +130,21 @@ def sertifikali_personeller_excel_export(request):
         for col in range(1, len(row) + 1):
             cell = ws.cell(row=index + 1, column=col)
             cell.border = thin_border
-            if col in [1, 2, 5, 6, 7]:  # Center some columns
+            if col in [1, 5, 8, 9, 10]:  # Center some columns
                 cell.alignment = alignment_center
 
     # Adjust column widths
     column_widths = {
         'A': 10,  # Sıra No
-        'B': 15,  # T.C. Kimlik No
-        'C': 25,  # Adı Soyadı
-        'D': 35,  # Sertifika Açıklaması
-        'E': 15,  # Başlangıç Tarihi
-        'F': 15,  # Bitiş Tarihi
-        'G': 20   # Alanda Kullanılıyor
+        'B': 20,  # Kurum
+        'C': 20,  # İdare
+        'D': 25,  # Birim
+        'E': 15,  # T.C. Kimlik No
+        'F': 25,  # Adı Soyadı
+        'G': 35,  # Sertifika Açıklaması
+        'H': 15,  # Başlangıç Tarihi
+        'I': 15,  # Bitiş Tarihi
+        'J': 20   # Alanda Kullanılıyor
     }
 
     for col_letter, width in column_widths.items():

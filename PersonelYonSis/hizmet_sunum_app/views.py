@@ -456,11 +456,10 @@ def bildirimler_kesinlestir(request):
                             sertifika.alanda_kullaniliyor):
                             bildirim_data['sertifika'] = True
 
-                    # Verileri güncelle ve kesinleştir
                     bildirim.HizmetBaslangicTarihi = datetime.strptime(bildirim_data['baslangic'], '%Y-%m-%d').date()
                     bildirim.HizmetBitisTarihi = datetime.strptime(bildirim_data['bitis'], '%Y-%m-%d').date()
-                    bildirim.Sorumlu = bildirim_data['sorumlu']
-                    bildirim.Sertifika = bildirim_data['sertifika']
+                    bildirim.Sorumlu = bildirim_data.get('sorumlu', False)
+                    bildirim.Sertifika = bildirim_data.get('sertifika', False)
                     bildirim.Kesinlestirme = True
                     bildirim.save()
                     kaydedilenler += 1

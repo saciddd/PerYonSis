@@ -185,6 +185,38 @@
 
 {% block extra_js %}
 <script>
+    // Sayfayı yenilemeden verileri güncelle (Accordion açık durumunu korur)
+    function refreshPageSilently() {
+        const activeAccordionBodies = document.querySelectorAll('.accordion-collapse.show');
+        const openIds = Array.from(activeAccordionBodies).map(el => el.id);
+
+        fetch(window.location.href, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.text())
+        .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const newAccordion = doc.getElementById('birimAccordion');
+            const currentAccordion = document.getElementById('birimAccordion');
+            
+            if (newAccordion && currentAccordion) {
+                currentAccordion.innerHTML = newAccordion.innerHTML;
+                
+                // Açık olanları geri aç
+                openIds.forEach(id => {
+                    const target = document.getElementById(id);
+                    if (target) {
+                        target.classList.add('show');
+                        const btn = document.querySelector(`[data-bs-target="#${id}"]`);
+                        if (btn) btn.classList.remove('collapsed');
+                        // Expand attributes override
+                        if (btn) btn.setAttribute('aria-expanded', 'true');
+                    }
+                });
+            }
+        })
+        .catch(err => console.error('Sessiz yenileme hatası:', err));
+    }
     
     // Son 6 dönemi oluşturan fonksiyon (bildirim.html'den alındı)
     function getDosyaDonemler() {
@@ -319,13 +351,13 @@
                         .then(resp => resp.json())
                         .then(data => {
                             if (data.status === 'success') {
-                                Swal.fire('Başarılı', 'Tüm kayıtlar kesinleştirildi.', 'success').then(() => location.reload());
+                                Swal.fire('Başarılı', 'Tüm kayıtlar kesinleştirildi.', 'success').then(() => refreshPageSilently());
                             } else if (data.status === 'partial') {
                                 let msg = (data.message || 'Bazı kayıtlar kesinleştirilemedi.') + '\n';
                                 if (data.errors && Array.isArray(data.errors)) {
                                     msg += data.errors.map(e => (e.tc_kimlik_no ? e.tc_kimlik_no + ': ' : '') + (e.message || '')).join('\n');
                                 }
-                                Swal.fire('Kısmen Başarılı', msg, 'warning').then(() => location.reload());
+                                Swal.fire('Kısmen Başarılı', msg, 'warning').then(() => refreshPageSilently());
                             } else {
                                 let msg = (data.message || 'Kesinleştirme başarısız.');
                                 if (data.errors && Array.isArray(data.errors)) {
@@ -376,7 +408,7 @@
                 .then(resp => resp.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        Swal.fire('Başarılı', data.message || 'Kesinleştirme kaldırıldı.', 'success').then(() => location.reload());
+                        Swal.fire('Başarılı', data.message || 'Kesinleştirme kaldırıldı.', 'success').then(() => refreshPageSilently());
                     } else {
                         Swal.fire('Hata', data.message || 'İşlem başarısız.', 'error');
                     }
@@ -437,7 +469,7 @@
                 .then(resp => resp.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        Swal.fire('Başarılı', 'Kayıt kesinleştirildi.', 'success').then(() => location.reload());
+                        Swal.fire('Başarılı', 'Kayıt kesinleştirildi.', 'success').then(() => refreshPageSilently());
                     } else {
                         Swal.fire('Hata', data.message || 'Kesinleştirme başarısız.', 'error');
                     }
@@ -473,7 +505,7 @@
                 .then(resp => resp.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        Swal.fire('Başarılı', data.message || 'Kesinleştirme kaldırıldı.', 'success').then(() => location.reload());
+                        Swal.fire('Başarılı', data.message || 'Kesinleştirme kaldırıldı.', 'success').then(() => refreshPageSilently());
                     } else {
                         Swal.fire('Hata', data.message || 'İşlem başarısız.', 'error');
                     }

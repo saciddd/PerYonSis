@@ -48,6 +48,22 @@ def sertifika_guncelle(request):
 def sertifikali_personeller_raporu(request):
     sertifikalar = list(Sertifika.objects.select_related('personel').all())
     
+    today = datetime.now().date()
+    kurumlar = set()
+    birimler = set()
+    
+    for s in sertifikalar:
+        if s.bitis_tarihi:
+            s.kalan_gun = (s.bitis_tarihi - today).days
+        else:
+            s.kalan_gun = None
+            
+        if s.personel and s.personel.Birim:
+            if s.personel.Birim.KurumAdi:
+                kurumlar.add(s.personel.Birim.KurumAdi)
+            if s.personel.Birim.BirimAdi:
+                birimler.add(s.personel.Birim.BirimAdi)
+                
     def get_sort_key(s):
         personel = s.personel
         if personel and personel.Birim:
@@ -58,7 +74,9 @@ def sertifikali_personeller_raporu(request):
     sertifikalar.sort(key=get_sort_key)
     
     return render(request, 'ik_core/sertifika_raporu.html', {
-        'sertifikalar': sertifikalar
+        'sertifikalar': sertifikalar,
+        'kurumlar': sorted(list(kurumlar)),
+        'birimler': sorted(list(birimler)),
     })
 
 @login_required

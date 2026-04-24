@@ -162,14 +162,18 @@
                     <th>Özel Alan Kodu</th>
                     <th>Sorumlu</th>
                     <th>Sertifika</th>
-                    <th style="min-width: 400px;">Sertifika Bilgileri</th>
+                    <th>Sertifika Adı</th>
+                    <th>Sertifika Başlangıç</th>
+                    <th>Sertifika Bitiş</th>
+                    <th title="Alanda Kullanılıyor mu?">Alanda Mı?</th>
+                    <th>Sertifika Kaydet</th>
                     <th>İşlem</th>
                     <th>Durum</th>
                 </tr>
             </thead>
             <tbody id="bildirimlerTableBody">
                 {% for bildirim in bildirimler %}
-                <tr>
+                <tr class="sertifika-form" data-tc="{{ bildirim.tc_kimlik_no }}" data-personel-id="{{ bildirim.personel_id }}">
                     <td class="text-center">{{ forloop.counter }}</td>
                     <td>{{ bildirim.tc_kimlik_no }}</td>
                     <td>{{ bildirim.ad }}</td>
@@ -192,17 +196,19 @@
                                {% if bildirim.sertifika_gecerli %}checked{% endif %} disabled>
                     </td>
                     <td>
-                        <div class="d-flex flex-column gap-1 sertifika-form" data-tc="{{ bildirim.tc_kimlik_no }}" data-personel-id="{{ bildirim.personel_id }}">
-                            <input type="text" class="form-control form-control-sm cert-aciklama" placeholder="Açıklama" value="{{ bildirim.sertifika_obj.sertifika_aciklamasi|default:'' }}" {% if bildirim.kesinlesmis %}disabled{% endif %}>
-                            <div class="d-flex gap-1">
-                                <input type="date" class="form-control form-control-sm cert-baslangic" value="{{ bildirim.sertifika_obj.baslangic_tarihi|date:'Y-m-d'|default:'' }}" {% if bildirim.kesinlesmis %}disabled{% endif %} title="Başlangıç Tarihi">
-                                <input type="date" class="form-control form-control-sm cert-bitis" value="{{ bildirim.sertifika_obj.bitis_tarihi|date:'Y-m-d'|default:'' }}" {% if bildirim.kesinlesmis %}disabled{% endif %} title="Bitiş Tarihi">
-                                <div class="form-check d-flex align-items-center mb-0">
-                                    <input type="checkbox" class="form-check-input cert-alanda mt-0" {% if bildirim.sertifika_obj.alanda_kullaniliyor %}checked{% endif %} {% if bildirim.kesinlesmis %}disabled{% endif %} title="Alanda Kullanılıyor">
-                                </div>
-                                <button type="button" class="btn btn-sm btn-success p-1 cert-save-btn" {% if bildirim.kesinlesmis %}disabled{% endif %} title="Kaydet"><i class="bi bi-check2"></i></button>
-                            </div>
-                        </div>
+                        <input type="text" style="min-width: 150px;" class="form-control form-control-sm cert-aciklama" placeholder="Açıklama" value="{{ bildirim.sertifika_obj.sertifika_aciklamasi|default:'' }}" {% if bildirim.kesinlesmis %}disabled{% endif %}>
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm cert-baslangic" value="{{ bildirim.sertifika_obj.baslangic_tarihi|date:'Y-m-d'|default:'' }}" {% if bildirim.kesinlesmis %}disabled{% endif %} title="Başlangıç Tarihi">
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm cert-bitis" value="{{ bildirim.sertifika_obj.bitis_tarihi|date:'Y-m-d'|default:'' }}" {% if bildirim.kesinlesmis %}disabled{% endif %} title="Bitiş Tarihi">
+                    </td>
+                    <td class="text-center align-middle">
+                        <input type="checkbox" class="form-check-input cert-alanda" {% if bildirim.sertifika_obj.alanda_kullaniliyor %}checked{% endif %} {% if bildirim.kesinlesmis %}disabled{% endif %} title="Alanda Kullanılıyor">
+                    </td>
+                    <td class="text-center align-middle">
+                        <button type="button" class="btn btn-sm btn-success p-1 cert-save-btn" {% if bildirim.kesinlesmis %}disabled{% endif %} title="Kaydet"><i class="bi bi-check2"></i></button>
                     </td>
                     <td class="text-center">
                         <button class="btn btn-danger btn-sm" onclick="kayitSil('{{ bildirim.id }}')" {% if bildirim.kesinlesmis %}disabled{% endif %}>
@@ -1272,7 +1278,7 @@
         const tbody = document.getElementById('bildirimlerTableBody');
         tbody.innerHTML = '';
         if (!bildirimler || bildirimler.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="11" class="text-center">Kayıt bulunamadı.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="15" class="text-center">Kayıt bulunamadı.</td></tr>`;
             return;
         }
         bildirimler.forEach((b, idx) => {
@@ -1283,7 +1289,7 @@
             const alandaChecked = certObj.alanda_kullaniliyor ? 'checked' : '';
             
             tbody.innerHTML += `
-                <tr>
+                <tr class="sertifika-form" data-tc="${b.tc_kimlik_no || ''}" data-personel-id="${b.personel_id || ''}">
                     <td class="text-center">${idx + 1}</td>
                     <td>${b.tc_kimlik_no || ''}</td>
                     <td>${b.ad || ''}</td>
@@ -1294,17 +1300,19 @@
                     <td class="text-center"><input type="checkbox" class="form-check-input" ${b.sorumlu ? 'checked' : ''} ${b.kesinlesmis ? 'disabled' : ''}></td>
                     <td class="text-center"><input type="checkbox" class="form-check-input sertifika-readonly" ${b.sertifika_gecerli ? 'checked' : ''} disabled></td>
                     <td>
-                        <div class="d-flex flex-column gap-1 sertifika-form" data-tc="${b.tc_kimlik_no || ''}" data-personel-id="${b.personel_id || ''}">
-                            <input type="text" class="form-control form-control-sm cert-aciklama" placeholder="Açıklama" value="${aciklama}" ${b.kesinlesmis ? 'disabled' : ''}>
-                            <div class="d-flex gap-1">
-                                <input type="date" class="form-control form-control-sm cert-baslangic" value="${baslangic_cert}" ${b.kesinlesmis ? 'disabled' : ''} title="Başlangıç Tarihi">
-                                <input type="date" class="form-control form-control-sm cert-bitis" value="${bitis_cert}" ${b.kesinlesmis ? 'disabled' : ''} title="Bitiş Tarihi">
-                                <div class="form-check d-flex align-items-center mb-0">
-                                    <input type="checkbox" class="form-check-input cert-alanda mt-0" ${alandaChecked} ${b.kesinlesmis ? 'disabled' : ''} title="Alanda Kullanılıyor">
-                                </div>
-                                <button type="button" class="btn btn-sm btn-success p-1 cert-save-btn" ${b.kesinlesmis ? 'disabled' : ''} title="Kaydet"><i class="bi bi-check2"></i></button>
-                            </div>
-                        </div>
+                        <input type="text" style="min-width: 150px;" class="form-control form-control-sm cert-aciklama" placeholder="Açıklama" value="${aciklama}" ${b.kesinlesmis ? 'disabled' : ''}>
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm cert-baslangic" value="${baslangic_cert}" ${b.kesinlesmis ? 'disabled' : ''} title="Başlangıç Tarihi">
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm cert-bitis" value="${bitis_cert}" ${b.kesinlesmis ? 'disabled' : ''} title="Bitiş Tarihi">
+                    </td>
+                    <td class="text-center align-middle">
+                        <input type="checkbox" class="form-check-input cert-alanda" ${alandaChecked} ${b.kesinlesmis ? 'disabled' : ''} title="Alanda Kullanılıyor">
+                    </td>
+                    <td class="text-center align-middle">
+                        <button type="button" class="btn btn-sm btn-success p-1 cert-save-btn" ${b.kesinlesmis ? 'disabled' : ''} title="Kaydet"><i class="bi bi-check2"></i></button>
                     </td>
                     <td class="text-center">
                         <button class="btn btn-danger btn-sm" onclick="kayitSil('${b.id || ''}')" ${b.kesinlesmis ? 'disabled' : ''}>

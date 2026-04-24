@@ -3,6 +3,15 @@
 
 {% block title %}Sertifikalı Personeller Raporu{% endblock %}
 
+{% block extra_css %}
+<!-- DataTables CSS -->
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css"/>
+<style>
+    .kalan-gun-red { color: white !important; background-color: #dc3545 !important; }
+    .kalan-gun-yellow { color: black !important; background-color: #ffc107 !important; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -10,6 +19,47 @@
         <a href="{% url 'ik_core:sertifikali_personeller_excel_export' %}" class="btn btn-success shadow-sm">
             <i class="fas fa-file-excel me-2"></i> Excel'e Aktar
         </a>
+    </div>
+
+    <!-- Filtreler -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Kurum</label>
+                    <select id="filterKurum" class="form-select">
+                        <option value="">Tümü</option>
+                        {% for k in kurumlar %}
+                            <option value="{{ k }}">{{ k }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Birim</label>
+                    <select id="filterBirim" class="form-select">
+                        <option value="">Tümü</option>
+                        {% for b in birimler %}
+                            <option value="{{ b }}">{{ b }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Bitiş Tarihi Başlangıç</label>
+                    <input type="date" id="filterDateMin" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Bitiş Tarihi Bitiş</label>
+                    <input type="date" id="filterDateMax" class="form-control">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12 text-end">
+                    <button class="btn btn-secondary" id="btnTemizle">
+                        <i class="fas fa-eraser me-1"></i> Filtreleri Temizle
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="card shadow-sm">
@@ -26,6 +76,7 @@
                             <th>Sertifika Açıklaması</th>
                             <th>Başlangıç Tarihi</th>
                             <th>Bitiş Tarihi</th>
+                            <th>Kalan Gün</th>
                             <th>Alanda Kullanılıyor</th>
                         </tr>
                     </thead>
@@ -39,7 +90,23 @@
                             <td>{{ sertifika.personel.PersonelAdi }} {{ sertifika.personel.PersonelSoyadi }}</td>
                             <td>{{ sertifika.sertifika_aciklamasi }}</td>
                             <td>{{ sertifika.baslangic_tarihi|date:"d.m.Y" }}</td>
-                            <td>{{ sertifika.bitis_tarihi|date:"d.m.Y" }}</td>
+                            <td data-order="{{ sertifika.bitis_tarihi|date:'Y-m-d' }}">{{ sertifika.bitis_tarihi|date:"d.m.Y" }}</td>
+                            
+                            <!-- KALAN GUN -->
+                            {% if sertifika.kalan_gun != None %}
+                                {% if sertifika.kalan_gun <= 30 and sertifika.kalan_gun >= 0 %}
+                                    <td class="text-center kalan-gun-red fw-bold">{{ sertifika.kalan_gun }}</td>
+                                {% elif sertifika.kalan_gun <= 90 and sertifika.kalan_gun > 30 %}
+                                    <td class="text-center kalan-gun-yellow fw-bold">{{ sertifika.kalan_gun }}</td>
+                                {% elif sertifika.kalan_gun < 0 %}
+                                    <td class="text-center bg-dark text-white fw-bold" data-order="-999999">Süresi Doldu</td>
+                                {% else %}
+                                    <td class="text-center fw-bold">{{ sertifika.kalan_gun }}</td>
+                                {% endif %}
+                            {% else %}
+                                <td class="text-center">-</td>
+                            {% endif %}
+                            
                             <td class="text-center">
                                 {% if sertifika.alanda_kullaniliyor %}
                                     <span class="badge bg-success">Evet</span>
@@ -47,10 +114,6 @@
                                     <span class="badge bg-secondary">Hayır</span>
                                 {% endif %}
                             </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="9" class="text-center">Kayıt bulunamadı.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -62,9 +125,84 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- DataTables JS -->
+<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script type="text/javascript" src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Implement default simple sorting or datatables if needed.
+        // Custom Date Range Filtering for Bitiş Tarihi (Column index 7)
+        $.fn.dataTable.ext.search.push(
+            function( settings, data, dataIndex ) {
+                var minStr = $('#filterDateMin').val();
+                var maxStr = $('#filterDateMax').val();
+                
+                var bitisDateStr = data[7]; 
+                
+                if (!bitisDateStr || bitisDateStr.trim() === "" || bitisDateStr.trim() === "None" || bitisDateStr.trim() === "-") {
+                    if (minStr || maxStr) return false;
+                    return true;
+                }
+                
+                var parts = bitisDateStr.split('.');
+                if(parts.length !== 3) return true;
+                
+                // Format dd.mm.yyyy -> js Date
+                var bitisDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                
+                if (minStr) {
+                    var minDate = new Date(minStr);
+                    // set to start of day
+                    minDate.setHours(0,0,0,0);
+                    if (bitisDate < minDate) return false;
+                }
+                
+                if (maxStr) {
+                    var maxDate = new Date(maxStr);
+                    // set to end of day
+                    maxDate.setHours(23,59,59,999);
+                    if (bitisDate > maxDate) return false;
+                }
+                
+                return true;
+            }
+        );
+
+        var table = $('#sertifikaTable').DataTable({
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/tr.json"
+            },
+            "pageLength": 25,
+            "order": [[7, "asc"]], // Sort by Bitiş Tarihi ascending default
+            "columnDefs": [
+                { "orderable": false, "targets": 0 }
+            ]
+        });
+
+        // Filter events
+        $('#filterKurum').on('change', function () {
+            table.column(1).search(this.value).draw();
+        });
+
+        $('#filterBirim').on('change', function () {
+            table.column(2).search(this.value).draw();
+        });
+
+        $('#filterDateMin, #filterDateMax').on('change', function () {
+            table.draw();
+        });
+        
+        // Clear filters
+        $('#btnTemizle').on('click', function() {
+            $('#filterKurum').val('');
+            $('#filterBirim').val('');
+            $('#filterDateMin').val('');
+            $('#filterDateMax').val('');
+            table.column(1).search('');
+            table.column(2).search('');
+            table.search(''); // clear global search
+            table.draw();
+        });
     });
 </script>
 {% endblock %}

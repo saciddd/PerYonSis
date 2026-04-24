@@ -133,6 +133,9 @@
                                 </ul>
                                 <div class="tab-content" id="notifTabContent" style="padding:0;">
                                     <div class="tab-pane fade show active" id="unread-pane" role="tabpanel" aria-labelledby="unread-tab">
+                                        <div class="p-2 text-end border-bottom" id="markAllReadContainer" style="display:none;">
+                                            <button class="btn btn-sm btn-light text-primary py-0 px-2" id="markAllReadBtn" style="font-size:0.85rem;"><i class="bi bi-check2-all"></i> Tümünü Okundu Yap</button>
+                                        </div>
                                         <div id="notificationItems" style="max-height:300px;overflow-y:auto;">
                                             <div class="text-center text-muted py-2">Yükleniyor...</div>
                                         </div>
@@ -244,8 +247,10 @@ function fetchNotifications() {
         if (data.notifications.length === 0) {
             items = '<div class="text-center text-muted py-2">Yeni bildiriminiz yok.</div>';
             $('#notificationCount').hide();
+            $('#markAllReadContainer').hide();
         } else {
             $('#notificationCount').text(data.notifications.length).show();
+            $('#markAllReadContainer').show();
             data.notifications.forEach(function(n) {
                 items += `
                 <div class="dropdown-item notification-item" data-id="${n.id}" style="cursor:pointer;">
@@ -285,6 +290,19 @@ function fetchReadNotifications() {
 $(document).ready(function() {
     // Bildirimleri ilk yükle
     fetchNotifications();
+
+    // Tümünü okundu yap butonu işlevi
+    $(document).on('click', '#markAllReadBtn', function(e) {
+        e.stopPropagation(); // Dropdown'un kapanmasını engellemek için
+        var btn = $(this);
+        var originalHtml = btn.html();
+        btn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>').prop('disabled', true);
+        $.post('/notifications/read-all/', {'csrfmiddlewaretoken': '{{ csrf_token }}'}, function() {
+            fetchNotifications();
+            fetchReadNotifications();
+            btn.html(originalHtml).prop('disabled', false);
+        });
+    });
 
     // Bildirimler açıldığında tekrar yükle
     $('#notificationDropdown').on('show.bs.dropdown', function () {

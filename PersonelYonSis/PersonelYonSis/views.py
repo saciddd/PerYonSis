@@ -225,6 +225,14 @@ def read_notification(request, notif_id):
 	Notification.objects.filter(id=notif_id, recipient=request.user).update(is_read=True)
 	return JsonResponse({'status': 'ok'})
 
+@csrf_exempt
+@login_required
+def read_all_notifications(request):
+	if request.method == 'POST':
+		Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+		return JsonResponse({'status': 'ok'})
+	return JsonResponse({'status': 'error'}, status=400)
+
 def kullanici_tanimlari(request):
 	query = request.GET.get('q', '')
 	page_number = request.GET.get('page', 1)

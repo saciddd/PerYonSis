@@ -17,6 +17,7 @@ Cihaz Konfigürasyonu:
 """
 
 import logging
+import os
 from datetime import datetime
 
 from django.http import HttpResponse
@@ -27,6 +28,17 @@ from django.views.decorators.http import require_http_methods
 from .models import Cihaz, CihazLog, CihazKullanici, ADMSKomutKuyrugu, ADMSHamLog
 
 logger = logging.getLogger(__name__)
+
+# Debug: Dosyaya log yazma (cihazdan istek gelip gelmediğini görmek için)
+ADMS_LOG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'adms_debug.log')
+
+def _adms_debug_log(message):
+    """Her ADMS isteğini dosyaya yazar — debug amaçlı."""
+    try:
+        with open(ADMS_LOG_FILE, 'a', encoding='utf-8') as f:
+            f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}\n")
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -146,9 +158,18 @@ def iclock_cdata(request):
         table: Veri tablosu (ATTLOG, OPERLOG, USERINFO vb.)
         Stamp: Zaman damgası
     """
+    # Debug: Gelen her isteği dosyaya yaz
+    _adms_debug_log(
+        f">>> CDATA {request.method} | Path={request.get_full_path()} | "
+        f"IP={request.META.get('REMOTE_ADDR')} | "
+        f"Headers={dict(request.headers)}"
+    )
+
     seri_no = request.GET.get('SN', '')
     table = request.GET.get('table', '')
     stamp = request.GET.get('Stamp', '')
+
+    _adms_debug_log(f"    CDATA parsed: SN={seri_no}, table={table}, Stamp={stamp}")
 
     logger.info(
         f"ADMS cdata [{request.method}]: SN={seri_no}, table={table}, "
@@ -232,7 +253,14 @@ def iclock_getrequest(request):
         - Komut varsa: "C:<KomutID>:<KomutTipi> <Parametreler>"
         - Komut yoksa: "OK"
     """
+    # Debug: Gelen her isteği dosyaya yaz
+    _adms_debug_log(
+        f">>> GETREQUEST {request.method} | Path={request.get_full_path()} | "
+        f"IP={request.META.get('REMOTE_ADDR')}"
+    )
+
     seri_no = request.GET.get('SN', '')
+    _adms_debug_log(f"    GETREQUEST parsed: SN={seri_no}")
 
     cihaz = _get_cihaz_by_sn(seri_no)
     if not cihaz:
@@ -275,6 +303,12 @@ def iclock_devicecmd(request):
     
     Cihaz, bir komutu uyguladıktan sonra sonucu bu endpoint'e bildirir.
     """
+    # Debug: Gelen her isteği dosyaya yaz
+    _adms_debug_log(
+        f">>> DEVICECMD {request.method} | Path={request.get_full_path()} | "
+        f"IP={request.META.get('REMOTE_ADDR')}"
+    )
+
     seri_no = request.GET.get('SN', '')
 
     logger.info(f"ADMS devicecmd: SN={seri_no}")
@@ -297,3 +331,25 @@ def iclock_devicecmd(request):
         )
 
     return HttpResponse("OK", content_type="text/plain")
+
+
+@csrf_exempt
+def iclock_catchall(request, subpath=''):
+    """
+    Catch-all: Cihaz beklenmedik bir /iclock/ path'ine istek atarsa yakala ve logla.
+    Debug amaçlı — hangi endpoint'e istek geldiğini görmek için.
+    """
+    _adms_debug_log(
+        f">>> CATCHALL {request.method} | Path={request.get_full_path()} | "
+        f"subpath={subpath} | IP={request.META.get('REMOTE_ADDR')} | "
+        f"Headers={dict(request.headers)}"
+    )
+    try:
+        body = request.body.decode('utf-8', errors='replace')
+        if body:
+            _adms_debug_log(f"    CATCHALL body: {body[:500]}")
+    except Exception:
+        pass
+
+    return HttpResponse("OK", content_type="text/plain")
+

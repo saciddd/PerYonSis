@@ -9,8 +9,13 @@ urlpatterns = [
 	# ADMS/Push Protokol Endpointleri (Root seviye - cihaz sadece IP:PORT girebildiği için)
 	# Cihaz ayarları: Sunucu Adresi = 10.38.12.59, Port = 16151
 	path('iclock/cdata', adms_views.iclock_cdata, name='root_iclock_cdata'),
+	path('iclock/cdata/', adms_views.iclock_cdata, name='root_iclock_cdata_slash'),
 	path('iclock/getrequest', adms_views.iclock_getrequest, name='root_iclock_getrequest'),
+	path('iclock/getrequest/', adms_views.iclock_getrequest, name='root_iclock_getrequest_slash'),
 	path('iclock/devicecmd', adms_views.iclock_devicecmd, name='root_iclock_devicecmd'),
+	path('iclock/devicecmd/', adms_views.iclock_devicecmd, name='root_iclock_devicecmd_slash'),
+	# Catch-all: Cihaz farklı bir path'e istek atarsa yakalayalım
+	path('iclock/<path:subpath>', adms_views.iclock_catchall, name='root_iclock_catchall'),
 
 	path('', views.index, name='index'),
 	path('istek/sil/<int:istek_id>/', views.istek_sil, name='istek_sil'),

@@ -3,8 +3,15 @@ from django.urls import include, path
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
+from cardcontrol import adms_views  # ADMS/Push protokolü
 
 urlpatterns = [
+	# ADMS/Push Protokol Endpointleri (Root seviye - cihaz sadece IP:PORT girebildiği için)
+	# Cihaz ayarları: Sunucu Adresi = 10.38.12.59, Port = 16151
+	path('iclock/cdata', adms_views.iclock_cdata, name='root_iclock_cdata'),
+	path('iclock/getrequest', adms_views.iclock_getrequest, name='root_iclock_getrequest'),
+	path('iclock/devicecmd', adms_views.iclock_devicecmd, name='root_iclock_devicecmd'),
+
 	path('', views.index, name='index'),
 	path('istek/sil/<int:istek_id>/', views.istek_sil, name='istek_sil'),
 	path('istek/guncelle/<int:istek_id>/', views.istek_guncelle, name='istek_guncelle'),

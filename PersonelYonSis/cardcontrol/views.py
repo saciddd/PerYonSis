@@ -367,3 +367,109 @@ def api_kullanici_ekle(request, cihaz_id):
             return JsonResponse({"status": "error", "message": str(e)})
             
     return JsonResponse({"status": "error", "message": "Geçersiz istek metodu."})
+
+
+# ---------------------------------------------------------------------------
+# ADMS Monitoring Views
+# ---------------------------------------------------------------------------
+
+def adms_ham_loglar(request):
+    """ADMS Ham Loglarını listeler — debug ve denetim amaçlı."""
+    from .models import ADMSHamLog
+    
+    cihazlar = Cihaz.objects.filter(adms_aktif=True)
+    selected_cihaz = None
+    logs = []
+    
+    cihaz_id = request.GET.get('cihaz_id')
+    tablo_filter = request.GET.get('tablo', '')
+    durum_filter = request.GET.get('durum', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    
+    if cihaz_id:
+        selected_cihaz = get_object_or_404(Cihaz, id=cihaz_id)
+        qs = ADMSHamLog.objects.filter(cihaz=selected_cihaz).order_by('-olusturulma')
+        
+        if tablo_filter:
+            qs = qs.filter(tablo=tablo_filter)
+        if durum_filter:
+            qs = qs.filter(islem_durumu=durum_filter)
+        if start_date:
+            qs = qs.filter(olusturulma__gte=start_date)
+        if end_date:
+            qs = qs.filter(olusturulma__lte=end_date)
+        
+        paginator = Paginator(qs, 30)
+        page_number = request.GET.get('page')
+        logs = paginator.get_page(page_number)
+    
+    return render(request, 'cardcontrol/adms_ham_loglar.html', {
+        'cihazlar': cihazlar,
+        'selected_cihaz': selected_cihaz,
+        'logs': logs,
+        'tablo_filter': tablo_filter,
+        'durum_filter': durum_filter,
+    })
+
+
+def adms_komut_kuyrugu(request):
+    """ADMS Komut Kuyruğunu listeler ve yeni komut göndermeye izin verir."""
+    from .models import ADMSKomutKuyrugu
+    
+    cihazlar = Cihaz.objects.filter(adms_aktif=True)
+    selected_cihaz = None
+    komutlar = []
+    
+    cihaz_id = request.GET.get('cihaz_id')
+    durum_filter = request.GET.get('durum', '')  # 'bekleyen' veya 'gonderilmis'
+    
+    if cihaz_id:
+        selected_cihaz = get_object_or_404(Cihaz, id=cihaz_id)
+        qs = ADMSKomutKuyrugu.objects.filter(cihaz=selected_cihaz).order_by('-olusturulma')
+        
+        if durum_filter == 'bekleyen':
+            qs = qs.filter(gonderildi=False)
+        elif durum_filter == 'gonderilmis':
+            qs = qs.filter(gonderildi=True)
+        
+        paginator = Paginator(qs, 30)
+        page_number = request.GET.get('page')
+        komutlar = paginator.get_page(page_number)
+    
+    return render(request, 'cardcontrol/adms_komut_kuyrugu.html', {
+        'cihazlar': cihazlar,
+        'selected_cihaz': selected_cihaz,
+        'komutlar': komutlar,
+        'durum_filter': durum_filter,
+        'komut_tipleri': ADMSKomutKuyrugu.KOMUT_TIPLERI,
+    })
+
+
+def adms_komut_gonder(request):
+    """Seçili cihaza yeni komut ekler."""
+    from .models import ADMSKomutKuyrugu
+    
+    if request.method == 'POST':
+        cihaz_id = request.POST.get('cihaz_id')
+        komut_tipi = request.POST.get('komut_tipi')
+        parametreler = request.POST.get('parametreler', '')
+        
+        cihaz = get_object_or_404(Cihaz, id=cihaz_id, adms_aktif=True)
+        
+        # Sonraki komut_id'yi belirle
+        son_komut = ADMSKomutKuyrugu.objects.filter(cihaz=cihaz).order_by('-komut_id').first()
+        yeni_komut_id = (son_komut.komut_id + 1) if son_komut else 1
+        
+        ADMSKomutKuyrugu.objects.create(
+            cihaz=cihaz,
+            komut_id=yeni_komut_id,
+            komut_tipi=komut_tipi,
+            parametreler=parametreler,
+        )
+        
+        messages.success(request, f'Komut kuyruğa eklendi: {komut_tipi}')
+        return redirect(f'/cardcontrol/adms-komut-kuyrugu/?cihaz_id={cihaz_id}')
+    
+    return redirect('cardcontrol:adms_komut_kuyrugu')
+

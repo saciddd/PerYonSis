@@ -2,11 +2,28 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <!-- ADMS Hızlı Navigasyon -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0"><i class="bi bi-router"></i> Cihaz Yönetimi</h4>
+            <div>
+                <a href="{% url 'cardcontrol:adms_ham_loglar' %}" class="btn btn-outline-info btn-sm">
+                    <i class="bi bi-journal-text"></i> ADMS Ham Loglar
+                </a>
+                <a href="{% url 'cardcontrol:adms_komut_kuyrugu' %}" class="btn btn-outline-warning btn-sm">
+                    <i class="bi bi-send"></i> Komut Kuyruğu
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-md-4">
         <div class="card">
             <div class="card-header bg-primary text-white">
-                Cihaz Ekle
+                <i class="bi bi-plus-circle"></i> Cihaz Ekle
             </div>
             <div class="card-body">
                 <form method="post">
@@ -20,16 +37,21 @@
     
     <div class="col-md-8">
         <div class="card">
-            <div class="card-header bg-secondary text-white">
-                Kayıtlı Cihazlar
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-hdd-network"></i> Kayıtlı Cihazlar</span>
+                <span class="badge bg-light text-dark">{{ cihazlar|length }} cihaz</span>
             </div>
-            <div class="card-body">
-                <table class="table table-bordered table-hover">
-                    <thead>
+            <div class="card-body table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-light">
                         <tr>
                             <th>Kapı Adı</th>
                             <th>IP</th>
                             <th>Port</th>
+                            <th>Seri No</th>
+                            <th class="text-center">ADMS</th>
+                            <th class="text-center">Durum</th>
+                            <th>Son Heartbeat</th>
                             <th>Açıklama</th>
                             <th>İşlem</th>
                         </tr>
@@ -37,21 +59,75 @@
                     <tbody>
                         {% for cihaz in cihazlar %}
                         <tr>
-                            <td>{{ cihaz.kapi_adi }}</td>
-                            <td>{{ cihaz.ip }}</td>
+                            <td class="fw-bold">{{ cihaz.kapi_adi }}</td>
+                            <td><code>{{ cihaz.ip }}</code></td>
                             <td>{{ cihaz.port }}</td>
-                            <td>{{ cihaz.aciklama }}</td>
                             <td>
-                                <a href="{% url 'cardcontrol:kapi_yonetimi' %}?cihaz_id={{ cihaz.id }}" class="btn btn-info btn-sm">Yönet</a>
-                                <button type="button" class="btn btn-warning btn-sm" 
-                                    onclick="editCihaz('{{ cihaz.id }}', '{{ cihaz.kapi_adi }}', '{{ cihaz.ip }}', '{{ cihaz.port }}', '{{ cihaz.aciklama|escapejs }}')">
-                                    Düzenle
-                                </button>
+                                {% if cihaz.seri_no %}
+                                    <code>{{ cihaz.seri_no }}</code>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if cihaz.adms_aktif %}
+                                    <span class="badge bg-success"><i class="bi bi-cloud-check"></i> Aktif</span>
+                                {% else %}
+                                    <span class="badge bg-secondary"><i class="bi bi-cloud-slash"></i> Pasif</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if cihaz.adms_aktif %}
+                                    {% if cihaz.adms_cevrimici %}
+                                        <span class="badge bg-success"><i class="bi bi-circle-fill"></i> Çevrimiçi</span>
+                                    {% else %}
+                                        <span class="badge bg-danger"><i class="bi bi-circle-fill"></i> Çevrimdışı</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if cihaz.son_heartbeat %}
+                                    <small>{{ cihaz.son_heartbeat|date:"d.m.Y H:i:s" }}</small>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ cihaz.aciklama|default:"—" }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'cardcontrol:kapi_yonetimi' %}?cihaz_id={{ cihaz.id }}" 
+                                       class="btn btn-info" title="Kapı Yönetimi">
+                                        <i class="bi bi-people"></i>
+                                    </a>
+                                    <a href="{% url 'cardcontrol:cihaz_loglari' %}?cihaz_id={{ cihaz.id }}" 
+                                       class="btn btn-dark" title="Loglar">
+                                        <i class="bi bi-journal-text"></i>
+                                    </a>
+                                    {% if cihaz.adms_aktif %}
+                                    <a href="{% url 'cardcontrol:adms_ham_loglar' %}?cihaz_id={{ cihaz.id }}" 
+                                       class="btn btn-outline-info" title="ADMS Loglar">
+                                        <i class="bi bi-cloud-arrow-down"></i>
+                                    </a>
+                                    <a href="{% url 'cardcontrol:adms_komut_kuyrugu' %}?cihaz_id={{ cihaz.id }}" 
+                                       class="btn btn-outline-warning" title="Komut Kuyruğu">
+                                        <i class="bi bi-send"></i>
+                                    </a>
+                                    {% endif %}
+                                    <button type="button" class="btn btn-warning" title="Düzenle"
+                                        onclick="editCihaz('{{ cihaz.id }}', '{{ cihaz.kapi_adi }}', '{{ cihaz.ip }}', '{{ cihaz.port }}', '{{ cihaz.aciklama|escapejs }}', '{{ cihaz.seri_no|default:""|escapejs }}', {{ cihaz.adms_aktif|yesno:"true,false" }})">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center">Kayıtlı cihaz bulunamadı.</td>
+                            <td colspan="9" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                <br>Kayıtlı cihaz bulunamadı.
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -66,7 +142,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="editCihazModalLabel">Cihaz Düzenle</h5>
+        <h5 class="modal-title" id="editCihazModalLabel"><i class="bi bi-pencil-square"></i> Cihaz Düzenle</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form method="post" id="editCihazForm">
@@ -85,6 +161,15 @@
                     <input type="number" class="form-control" id="edit_port" name="port" required>
                 </div>
                 <div class="mb-3">
+                    <label for="edit_seri_no" class="form-label">Seri Numarası</label>
+                    <input type="text" class="form-control" id="edit_seri_no" name="seri_no" placeholder="ADMS Push için gerekli">
+                    <small class="form-text text-muted">Cihaz menüsü → System Info → Serial Number</small>
+                </div>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="edit_adms_aktif" name="adms_aktif">
+                    <label class="form-check-label" for="edit_adms_aktif">ADMS Push Modu Aktif</label>
+                </div>
+                <div class="mb-3">
                     <label for="edit_aciklama" class="form-label">Açıklama</label>
                     <textarea class="form-control" id="edit_aciklama" name="aciklama" rows="3"></textarea>
                 </div>
@@ -99,20 +184,15 @@
 </div>
 
 <script>
-function editCihaz(id, kapi_adi, ip, port, aciklama) {
-    // Form action URL'sini güncelle
-    var url = "{% url 'cardcontrol:cihaz_list' %}".replace("cihazlar/", "cihaz-guncelle/" + id + "/"); 
-    // URL patterninizi kontrol edin, cihaz_guncelle için /cardcontrol/cihaz-guncelle/ID/ tanımladık mı?
-    // Ancak django template tag'i JS içinde render edilemez (argumentsiz).
-    // Basitçe string replace yapabiliriz veya data attribute kullanabiliriz.
-    // Şimdilik hardcoded path kullanacağım: /cardcontrol/cihaz-guncelle/<id>/
-    
+function editCihaz(id, kapi_adi, ip, port, aciklama, seri_no, adms_aktif) {
     document.getElementById('editCihazForm').action = "/cardcontrol/cihaz-guncelle/" + id + "/";
     
     document.getElementById('edit_kapi_adi').value = kapi_adi;
     document.getElementById('edit_ip').value = ip;
     document.getElementById('edit_port').value = port;
     document.getElementById('edit_aciklama').value = aciklama;
+    document.getElementById('edit_seri_no').value = seri_no;
+    document.getElementById('edit_adms_aktif').checked = adms_aktif;
     
     var myModal = new bootstrap.Modal(document.getElementById('editCihazModal'));
     myModal.show();

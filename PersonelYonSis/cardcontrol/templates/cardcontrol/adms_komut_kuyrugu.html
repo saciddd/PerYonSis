@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0"><i class="bi bi-send-check"></i> ADMS Komut Kuyruğu</h4>
+            <div>
+                <a href="{% url 'cardcontrol:cihaz_list' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Cihazlar
+                </a>
+                <a href="{% url 'cardcontrol:adms_ham_loglar' %}" class="btn btn-outline-info btn-sm">
+                    <i class="bi bi-journal-text"></i> Ham Loglar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtre ve Cihaz Seçimi -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-funnel"></i> Cihaz & Filtre
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label">Cihaz Seçimi</label>
+                        <select name="cihaz_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">Cihaz Seçiniz...</option>
+                            {% for c in cihazlar %}
+                            <option value="{{ c.id }}" {% if selected_cihaz and selected_cihaz.id == c.id %}selected{% endif %}>
+                                {{ c.kapi_adi }} ({{ c.seri_no|default:"SN yok" }})
+                                {% if c.adms_cevrimici %}🟢{% else %}🔴{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if selected_cihaz %}
+                    <div class="col-md-4">
+                        <label class="form-label">Durum Filtresi</label>
+                        <select name="durum" class="form-select">
+                            <option value="">Tümü</option>
+                            <option value="bekleyen" {% if durum_filter == 'bekleyen' %}selected{% endif %}>⏳ Bekleyen</option>
+                            <option value="gonderilmis" {% if durum_filter == 'gonderilmis' %}selected{% endif %}>✓ Gönderilmiş</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-filter"></i> Filtrele
+                        </button>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if selected_cihaz %}
+<!-- Cihaz Durum Bilgisi -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="alert {% if selected_cihaz.adms_cevrimici %}alert-success{% else %}alert-warning{% endif %} d-flex align-items-center" role="alert">
+            <i class="bi {% if selected_cihaz.adms_cevrimici %}bi-cloud-check{% else %}bi-cloud-slash{% endif %} me-2" style="font-size: 1.5rem;"></i>
+            <div>
+                <strong>{{ selected_cihaz.kapi_adi }}</strong>
+                (SN: {{ selected_cihaz.seri_no|default:"Tanımsız" }})
+                —
+                {% if selected_cihaz.adms_cevrimici %}
+                    <span class="text-success fw-bold">Çevrimiçi</span>
+                    <small class="text-muted ms-2">Komutlar sonraki heartbeat'te cihaza iletilir.</small>
+                {% else %}
+                    <span class="text-danger fw-bold">Çevrimdışı</span>
+                    <small class="text-muted ms-2">Cihaz çevrimiçi olduğunda bekleyen komutlar iletilecek.</small>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Yeni Komut Gönder -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-terminal"></i> Yeni Komut Gönder
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'cardcontrol:adms_komut_gonder' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="cihaz_id" value="{{ selected_cihaz.id }}">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Komut Tipi</label>
+                        <select name="komut_tipi" class="form-select" required>
+                            {% for value, label in komut_tipleri %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Parametreler</label>
+                        <input type="text" name="parametreler" class="form-control" placeholder="Opsiyonel parametreler">
+                        <small class="form-text text-muted">
+                            Örn: CHECK için → <code>Time=20260429100000</code>
+                        </small>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-send"></i> Kuyruğa Ekle
+                    </button>
+                </form>
+            </div>
+            <div class="card-footer">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i> 
+                    Komutlar cihaz bir sonraki <code>getrequest</code> yaptığında (genelde 30-60sn) otomatik iletilir.
+                </small>
+            </div>
+        </div>
+
+        <!-- Hızlı Komutlar -->
+        <div class="card mt-3">
+            <div class="card-header bg-dark text-white">
+                <i class="bi bi-lightning-charge"></i> Hızlı Komutlar
+            </div>
+            <div class="list-group list-group-flush">
+                <form method="post" action="{% url 'cardcontrol:adms_komut_gonder' %}" class="list-group-item list-group-item-action p-0">
+                    {% csrf_token %}
+                    <input type="hidden" name="cihaz_id" value="{{ selected_cihaz.id }}">
+                    <input type="hidden" name="komut_tipi" value="CHECK">
+                    <button type="submit" class="btn btn-link text-start w-100 text-decoration-none p-3">
+                        <i class="bi bi-clock text-primary"></i> Saat Senkronizasyonu
+                    </button>
+                </form>
+                <form method="post" action="{% url 'cardcontrol:adms_komut_gonder' %}" class="list-group-item list-group-item-action p-0">
+                    {% csrf_token %}
+                    <input type="hidden" name="cihaz_id" value="{{ selected_cihaz.id }}">
+                    <input type="hidden" name="komut_tipi" value="INFO">
+                    <button type="submit" class="btn btn-link text-start w-100 text-decoration-none p-3">
+                        <i class="bi bi-info-circle text-info"></i> Cihaz Bilgisi Al
+                    </button>
+                </form>
+                <form method="post" action="{% url 'cardcontrol:adms_komut_gonder' %}" class="list-group-item list-group-item-action p-0">
+                    {% csrf_token %}
+                    <input type="hidden" name="cihaz_id" value="{{ selected_cihaz.id }}">
+                    <input type="hidden" name="komut_tipi" value="REBOOT">
+                    <button type="submit" class="btn btn-link text-start w-100 text-decoration-none p-3" 
+                            onclick="return confirm('Cihazı yeniden başlatmak istediğinize emin misiniz?')">
+                        <i class="bi bi-arrow-clockwise text-warning"></i> Cihazı Yeniden Başlat
+                    </button>
+                </form>
+                <form method="post" action="{% url 'cardcontrol:adms_komut_gonder' %}" class="list-group-item list-group-item-action p-0">
+                    {% csrf_token %}
+                    <input type="hidden" name="cihaz_id" value="{{ selected_cihaz.id }}">
+                    <input type="hidden" name="komut_tipi" value="CLEAR LOG">
+                    <button type="submit" class="btn btn-link text-start w-100 text-decoration-none p-3"
+                            onclick="return confirm('Cihaz loglarını temizlemek istediğinize emin misiniz? Bu işlem geri alınamaz!')">
+                        <i class="bi bi-trash text-danger"></i> Cihaz Loglarını Temizle
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Komut Listesi -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-check"></i> Komut Geçmişi</span>
+                {% if komutlar %}
+                <span class="badge bg-light text-dark">
+                    Sayfa {{ komutlar.number }} / {{ komutlar.paginator.num_pages }}
+                    (Toplam {{ komutlar.paginator.count }} komut)
+                </span>
+                {% endif %}
+            </div>
+            <div class="card-body table-responsive p-0">
+                <table class="table table-striped table-hover table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Komut</th>
+                            <th>Parametreler</th>
+                            <th class="text-center">Durum</th>
+                            <th>Oluşturulma</th>
+                            <th>Gönderilme</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cmd in komutlar %}
+                        <tr>
+                            <td><code>C:{{ cmd.komut_id }}</code></td>
+                            <td>
+                                {% if cmd.komut_tipi == 'CHECK' %}
+                                    <span class="badge bg-primary"><i class="bi bi-clock"></i> {{ cmd.komut_tipi }}</span>
+                                {% elif cmd.komut_tipi == 'REBOOT' %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-arrow-clockwise"></i> {{ cmd.komut_tipi }}</span>
+                                {% elif cmd.komut_tipi == 'INFO' %}
+                                    <span class="badge bg-info"><i class="bi bi-info-circle"></i> {{ cmd.komut_tipi }}</span>
+                                {% elif cmd.komut_tipi == 'CLEAR LOG' %}
+                                    <span class="badge bg-danger"><i class="bi bi-trash"></i> {{ cmd.komut_tipi }}</span>
+                                {% elif cmd.komut_tipi == 'CLEAR DATA' %}
+                                    <span class="badge bg-danger"><i class="bi bi-trash"></i> {{ cmd.komut_tipi }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ cmd.komut_tipi }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if cmd.parametreler %}
+                                    <code>{{ cmd.parametreler|truncatechars:50 }}</code>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if cmd.gonderildi %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Gönderildi</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Bekliyor</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ cmd.olusturulma|date:"d.m.Y H:i:s" }}</small></td>
+                            <td>
+                                {% if cmd.gonderilme_zamani %}
+                                    <small>{{ cmd.gonderilme_zamani|date:"d.m.Y H:i:s" }}</small>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                <br>Komut kaydı bulunamadı.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination -->
+            {% if komutlar.has_other_pages %}
+            <div class="card-footer clearfix">
+                <ul class="pagination pagination-sm m-0 float-end">
+                    {% if komutlar.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&durum={{ durum_filter }}&page=1">
+                            &laquo; İlk
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&durum={{ durum_filter }}&page={{ komutlar.previous_page_number }}">
+                            Geri
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#">Sayfa {{ komutlar.number }} / {{ komutlar.paginator.num_pages }}</a>
+                    </li>
+                    {% if komutlar.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&durum={{ durum_filter }}&page={{ komutlar.next_page_number }}">
+                            İleri
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&durum={{ durum_filter }}&page={{ komutlar.paginator.num_pages }}">
+                            Son &raquo;
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% elif not cihazlar %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle"></i> 
+            ADMS aktif cihaz bulunmuyor. Önce <a href="{% url 'cardcontrol:cihaz_list' %}" class="alert-link">cihaz listesinden</a> bir cihazın ADMS modunu aktifleştirin.
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

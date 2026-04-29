@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0"><i class="bi bi-journal-code"></i> ADMS Ham Loglar</h4>
+            <div>
+                <a href="{% url 'cardcontrol:cihaz_list' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Cihazlar
+                </a>
+                <a href="{% url 'cardcontrol:adms_komut_kuyrugu' %}" class="btn btn-outline-warning btn-sm">
+                    <i class="bi bi-send"></i> Komut Kuyruğu
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtre Kartı -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-funnel"></i> Filtre
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Cihaz Seçimi</label>
+                        <select name="cihaz_id" class="form-select" onchange="this.form.submit()">
+                            <option value="">Cihaz Seçiniz...</option>
+                            {% for c in cihazlar %}
+                            <option value="{{ c.id }}" {% if selected_cihaz and selected_cihaz.id == c.id %}selected{% endif %}>
+                                {{ c.kapi_adi }} ({{ c.seri_no|default:"SN yok" }})
+                                {% if c.adms_cevrimici %}🟢{% else %}🔴{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if selected_cihaz %}
+                    <div class="col-md-2">
+                        <label class="form-label">Tablo</label>
+                        <select name="tablo" class="form-select">
+                            <option value="">Tümü</option>
+                            <option value="ATTLOG" {% if tablo_filter == 'ATTLOG' %}selected{% endif %}>ATTLOG</option>
+                            <option value="OPERLOG" {% if tablo_filter == 'OPERLOG' %}selected{% endif %}>OPERLOG</option>
+                            <option value="USERINFO" {% if tablo_filter == 'USERINFO' %}selected{% endif %}>USERINFO</option>
+                            <option value="DEVICECMD_RESPONSE" {% if tablo_filter == 'DEVICECMD_RESPONSE' %}selected{% endif %}>DEVICECMD</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">İşlem Durumu</label>
+                        <select name="durum" class="form-select">
+                            <option value="">Tümü</option>
+                            <option value="BEKLEMEDE" {% if durum_filter == 'BEKLEMEDE' %}selected{% endif %}>Beklemede</option>
+                            <option value="ISLENDI" {% if durum_filter == 'ISLENDI' %}selected{% endif %}>İşlendi</option>
+                            <option value="HATA" {% if durum_filter == 'HATA' %}selected{% endif %}>Hata</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Başlangıç</label>
+                        <input type="datetime-local" name="start_date" class="form-control" value="{{ request.GET.start_date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Bitiş</label>
+                        <input type="datetime-local" name="end_date" class="form-control" value="{{ request.GET.end_date }}">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-filter"></i>
+                        </button>
+                    </div>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if selected_cihaz %}
+<!-- Cihaz Durum Bilgisi -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="alert {% if selected_cihaz.adms_cevrimici %}alert-success{% else %}alert-warning{% endif %} d-flex align-items-center" role="alert">
+            <i class="bi {% if selected_cihaz.adms_cevrimici %}bi-cloud-check{% else %}bi-cloud-slash{% endif %} me-2" style="font-size: 1.5rem;"></i>
+            <div>
+                <strong>{{ selected_cihaz.kapi_adi }}</strong>
+                (SN: {{ selected_cihaz.seri_no|default:"Tanımsız" }})
+                —
+                {% if selected_cihaz.adms_cevrimici %}
+                    <span class="text-success fw-bold">Çevrimiçi</span>
+                {% else %}
+                    <span class="text-danger fw-bold">Çevrimdışı</span>
+                {% endif %}
+                {% if selected_cihaz.son_heartbeat %}
+                    | Son Heartbeat: {{ selected_cihaz.son_heartbeat|date:"d.m.Y H:i:s" }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Log Listesi -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-journal-code"></i> Ham Veri Kayıtları</span>
+                {% if logs %}
+                <span class="badge bg-light text-dark">
+                    Sayfa {{ logs.number }} / {{ logs.paginator.num_pages }}
+                    (Toplam {{ logs.paginator.count }} kayıt)
+                </span>
+                {% endif %}
+            </div>
+            <div class="card-body table-responsive p-0">
+                <table class="table table-striped table-hover table-sm mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th style="width: 120px;">Tablo</th>
+                            <th style="width: 100px;">Durum</th>
+                            <th>Ham Veri (Önizleme)</th>
+                            <th style="width: 100px;">Hata</th>
+                            <th style="width: 160px;">Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td><small class="text-muted">{{ log.id }}</small></td>
+                            <td>
+                                {% if log.tablo == 'ATTLOG' %}
+                                    <span class="badge bg-primary">ATTLOG</span>
+                                {% elif log.tablo == 'OPERLOG' %}
+                                    <span class="badge bg-secondary">OPERLOG</span>
+                                {% elif log.tablo == 'DEVICECMD_RESPONSE' %}
+                                    <span class="badge bg-warning text-dark">DEVICECMD</span>
+                                {% else %}
+                                    <span class="badge bg-info">{{ log.tablo }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.islem_durumu == 'ISLENDI' %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> İşlendi</span>
+                                {% elif log.islem_durumu == 'HATA' %}
+                                    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Hata</span>
+                                {% else %}
+                                    <span class="badge bg-secondary"><i class="bi bi-hourglass-split"></i> Beklemede</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                        data-bs-toggle="collapse" data-bs-target="#rawData{{ log.id }}">
+                                    <i class="bi bi-eye"></i> Göster
+                                </button>
+                                <small class="text-muted ms-2">{{ log.ham_veri|truncatechars:80 }}</small>
+                                <div class="collapse mt-2" id="rawData{{ log.id }}">
+                                    <pre class="bg-light p-2 rounded" style="max-height: 300px; overflow-y: auto; font-size: 0.8rem; white-space: pre-wrap; word-break: break-all;">{{ log.ham_veri }}</pre>
+                                </div>
+                            </td>
+                            <td>
+                                {% if log.hata_mesaji %}
+                                    <button class="btn btn-sm btn-outline-danger" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#error{{ log.id }}">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                    </button>
+                                    <div class="collapse mt-2" id="error{{ log.id }}">
+                                        <pre class="bg-light text-danger p-2 rounded" style="font-size: 0.8rem;">{{ log.hata_mesaji }}</pre>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ log.olusturulma|date:"d.m.Y H:i:s" }}</small></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                <br>Ham log kaydı bulunamadı.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination -->
+            {% if logs.has_other_pages %}
+            <div class="card-footer clearfix">
+                <ul class="pagination pagination-sm m-0 float-end">
+                    {% if logs.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&tablo={{ tablo_filter }}&durum={{ durum_filter }}&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}&page=1">
+                            &laquo; İlk
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&tablo={{ tablo_filter }}&durum={{ durum_filter }}&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}&page={{ logs.previous_page_number }}">
+                            Geri
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#">Sayfa {{ logs.number }} / {{ logs.paginator.num_pages }}</a>
+                    </li>
+                    {% if logs.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&tablo={{ tablo_filter }}&durum={{ durum_filter }}&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}&page={{ logs.next_page_number }}">
+                            İleri
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?cihaz_id={{ selected_cihaz.id }}&tablo={{ tablo_filter }}&durum={{ durum_filter }}&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}&page={{ logs.paginator.num_pages }}">
+                            Son &raquo;
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% elif not cihazlar %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle"></i> 
+            ADMS aktif cihaz bulunmuyor. Önce <a href="{% url 'cardcontrol:cihaz_list' %}" class="alert-link">cihaz listesinden</a> bir cihazın ADMS modunu aktifleştirin.
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

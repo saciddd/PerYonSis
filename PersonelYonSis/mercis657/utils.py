@@ -2,7 +2,7 @@ from datetime import date, timedelta, datetime, time
 from decimal import Decimal
 import calendar
 from django.db import models
-from .models import ResmiTatil, MazeretKaydi, Mesai, Mesai_Tanimlari, SabitMesai, UserMesaiFavori, YarimZamanliCalisma
+from .models import ResmiTatil, MazeretKaydi, Mesai, Mesai_Tanimlari, SabitMesai, UserMesaiFavori, YarimZamanliCalisma, EkMesai
 
 def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     """
@@ -124,7 +124,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         Personel=personel,
         MesaiDate__year=year,
         MesaiDate__month=month
-    ).select_related('MesaiTanim').prefetch_related('mercis657_stoplar').order_by('MesaiDate')
+    ).select_related('MesaiTanim').prefetch_related('mercis657_stoplar', 'mercis657_ek_mesailer').order_by('MesaiDate')
 
     def get_context(dt):
         """Verilen datetime için status döner: is_bayram, is_gece"""
@@ -372,6 +372,55 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 'mesai': mesai,
                 'risky_duration': risky_duration,
             })
+
+        # ==========================================
+        # 3.2. Ek Mesai Segmentleri
+        # ==========================================
+        for em in mesai.mercis657_ek_mesailer.all():
+            try:
+                em_start_dt = datetime.combine(mesai.MesaiDate, em.Baslangic)
+                em_end_dt = datetime.combine(mesai.MesaiDate, em.Bitis)
+                if em_end_dt <= em_start_dt:
+                    em_end_dt += timedelta(days=1)
+                
+                # Ek mesai için de milestone'lara bölerek segment oluştur
+                em_milestones = set([em_start_dt, em_end_dt])
+                d_ptr, em_end_date = em_start_dt.date(), em_end_dt.date()
+                while d_ptr <= em_end_date:
+                    for h in [0, 8, 13, 16, 20]:
+                        check_dt = datetime.combine(d_ptr, time(h, 0))
+                        if em_start_dt < check_dt < em_end_dt:
+                            em_milestones.add(check_dt)
+                    d_ptr += timedelta(days=1)
+                
+                em_sorted = sorted(list(em_milestones))
+                for j in range(len(em_sorted)-1):
+                    es, ee = em_sorted[j], em_sorted[j+1]
+                    em_mid = es + (ee - es) / 2
+                    em_dur = Decimal((ee - es).total_seconds() / 3600)
+                    em_bayram, em_gece = get_context(em_mid)
+                    
+                    # 08-16 Gündüz mü?
+                    es_t, ee_t = es.time(), ee.time()
+                    is_gunduz_08_16 = (
+                        not em_bayram and not em_gece
+                        and es_t >= time(8, 0) and ee_t <= (sabit_mesai_bitis or time(16, 0))
+                        and es_t < ee_t
+                    )
+                    
+                    all_segments.append({
+                        'seg_start': es,
+                        'seg_end': ee,
+                        'duration': em_dur,
+                        'is_bayram': em_bayram,
+                        'is_gece': em_gece,
+                        'is_gunduz_08_16': is_gunduz_08_16,
+                        'mesai': mesai,
+                        'risky_duration': em_dur if em.Riskli else Decimal('0.0'),
+                        'is_ek_mesai': True
+                    })
+            except Exception:
+                continue
 
     # ==========================================
     # Yeni Kronolojik Fazla Mesai Dağıtımı
@@ -734,7 +783,7 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
         Personel=personel,
         MesaiDate__year=year,
         MesaiDate__month=month
-    ).select_related('MesaiTanim').prefetch_related('mercis657_stoplar')
+    ).select_related('MesaiTanim').prefetch_related('mercis657_stoplar', 'mercis657_ek_mesailer')
 
     # İzin kaynaklı azaltım
     izin_azaltimi = Decimal('0.0')
@@ -756,6 +805,15 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
                 stop_hours = Decimal('0.0')
             fiili_calisma_suresi -= stop_hours
             stop_suresi += stop_hours
+
+        # Ek Mesai sürelerini ekle
+        ek_mesailer = list(getattr(mesai, 'mercis657_ek_mesailer').all())
+        for ek in ek_mesailer:
+            try:
+                ek_hours = Decimal(str(ek.Sure)) if ek.Sure is not None else Decimal('0.0')
+            except Exception:
+                ek_hours = Decimal('0.0')
+            fiili_calisma_suresi += ek_hours
 
         # İzin azaltımı
         izin_field = getattr(mesai, 'Izin', None)

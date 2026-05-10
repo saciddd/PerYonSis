@@ -187,7 +187,7 @@ def cizelge(request):
         Personel__in=personeller,
         MesaiDate__year=current_year,
         MesaiDate__month=current_month
-    ).select_related('MesaiTanim', 'Izin').prefetch_related('yedekler', 'mercis657_stoplar')
+    ).select_related('MesaiTanim', 'Izin').prefetch_related('yedekler', 'mercis657_stoplar', 'mercis657_ek_mesailer')
 
     # Resmi tatilleri al
     resmi_tatiller = ResmiTatil.objects.filter(
@@ -254,6 +254,34 @@ def cizelge(request):
             }
         else:
             mesai_map[key]['StopKaydi'] = None
+
+        # get latest ek mesai if any
+        last_ek = None
+        try:
+            last_ek = mesai.mercis657_ek_mesailer.order_by('-created_at').first()
+        except Exception:
+            last_ek = None
+        
+        if last_ek:
+            try:
+                eb = last_ek.Baslangic.strftime('%H:%M')
+            except Exception:
+                eb = str(last_ek.Baslangic)
+            try:
+                ee = last_ek.Bitis.strftime('%H:%M')
+            except Exception:
+                ee = str(last_ek.Bitis)
+            
+            mesai_map[key]['EkMesai'] = {
+                'Baslangic': eb,
+                'Bitis': ee,
+                'Sure': last_ek.Sure,
+                'Riskli': last_ek.Riskli,
+                'id': last_ek.id,
+                'created_by': str(last_ek.created_by) if last_ek.created_by else ''
+            }
+        else:
+            mesai_map[key]['EkMesai'] = None
 
     # Personel nesnesine mesai bilgisi ekleyelim
     for idx, p in enumerate(personeller):

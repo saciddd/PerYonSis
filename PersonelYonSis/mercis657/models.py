@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.db import models
+import datetime
 from datetime import date, timedelta
 from django.utils import timezone
 from django.utils.timezone import now
@@ -391,7 +392,7 @@ class StopKaydi(models.Model):
     mesai = models.ForeignKey('Mesai', on_delete=models.CASCADE, related_name="mercis657_stoplar")
     StopBaslangic = models.TimeField()
     StopBitis = models.TimeField()
-    Sure = models.PositiveIntegerField(null=True, blank=True)  # dakika/saat türüne göre
+    Sure = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # saat cinsinden (örn: 1.5)
     Aciklama = models.TextField(blank=True,)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
@@ -399,14 +400,27 @@ class StopKaydi(models.Model):
     def hesapla_sure(self):
         """Stop süresini saat cinsinden hesaplar."""
         if self.StopBaslangic and self.StopBitis:
-            if self.StopBitis > self.StopBaslangic:
-                delta = self.StopBitis - self.StopBaslangic
+            # datetime.time objelerini datetime.datetime objelerine çevirerek fark alalım
+            # Eşitlik durumunda (örn: create sırasında) zaten datetime olabilirler, 
+            # ancak TimeField'dan çekildiklerinde time objesi olurlar.
+            
+            if isinstance(self.StopBaslangic, datetime.datetime):
+                bas_dt = self.StopBaslangic
             else:
-                # Ertesi güne sarkıyorsa
-                delta = (self.StopBitis + timedelta(days=1)) - self.StopBaslangic
-            self.Sure = int(delta.total_seconds() // 3600)  # saat cinsinden
+                bas_dt = datetime.datetime.combine(date.today(), self.StopBaslangic)
+                
+            if isinstance(self.StopBitis, datetime.datetime):
+                bit_dt = self.StopBitis
+            else:
+                bit_dt = datetime.datetime.combine(date.today(), self.StopBitis)
+
+            if bit_dt <= bas_dt:
+                bit_dt += timedelta(days=1)
+                
+            delta = bit_dt - bas_dt
+            self.Sure = Decimal(delta.total_seconds() / 3600).quantize(Decimal("0.01"))
         else:
-            self.Sure = 0
+            self.Sure = Decimal('0.00')
         return self.Sure
 
     def save(self, *args, **kwargs):
@@ -415,6 +429,45 @@ class StopKaydi(models.Model):
 
     def __str__(self):
         return f"{self.mesai} stop: {self.Sure} saat"
+
+class EkMesai(models.Model):
+    mesai = models.ForeignKey('Mesai', on_delete=models.CASCADE, related_name="mercis657_ek_mesailer")
+    Baslangic = models.TimeField()
+    Bitis = models.TimeField()
+    Sure = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    Aciklama = models.TextField(blank=True)
+    Riskli = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def hesapla_sure(self):
+        """Ek mesai süresini saat cinsinden hesaplar."""
+        if self.Baslangic and self.Bitis:
+            if isinstance(self.Baslangic, datetime.datetime):
+                bas_dt = self.Baslangic
+            else:
+                bas_dt = datetime.datetime.combine(date.today(), self.Baslangic)
+                
+            if isinstance(self.Bitis, datetime.datetime):
+                bit_dt = self.Bitis
+            else:
+                bit_dt = datetime.datetime.combine(date.today(), self.Bitis)
+
+            if bit_dt <= bas_dt:
+                bit_dt += timedelta(days=1)
+                
+            delta = bit_dt - bas_dt
+            self.Sure = Decimal(delta.total_seconds() / 3600).quantize(Decimal("0.01"))
+        else:
+            self.Sure = Decimal('0.00')
+        return self.Sure
+
+    def save(self, *args, **kwargs):
+        self.hesapla_sure()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.mesai} ek mesai: {self.Sure} saat"
 
 class IlkListe(models.Model):
     PersonelListesi = models.ForeignKey(

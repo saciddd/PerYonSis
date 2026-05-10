@@ -127,6 +127,10 @@
                 <label class="form-check-label small" for="stopModeSwitch">Stoplama Modu</label>
             </div>
             <div class="form-check form-switch mt-1">
+                <input class="form-check-input" type="checkbox" id="ekMesaiModeSwitch">
+                <label class="form-check-label small" for="ekMesaiModeSwitch">Ek Mesai Modu</label>
+            </div>
+            <div class="form-check form-switch mt-1">
                 <input class="form-check-input" type="checkbox" id="icapModeSwitch" style="border-color: #198754;">
                 <label class="form-check-label small fw-bold text-success" for="icapModeSwitch">İcap Girişi <i class="bi bi-telephone-forward-fill"></i></label>
             </div>
@@ -341,6 +345,9 @@
                     {% endif %}
                     {% if mesai.StopKaydi %}
                         <i class="bi bi-pause-circle text-warning float-end ms-1" title="Stop kaydı: {{ mesai.StopKaydi.StopBaslangic }} - {{ mesai.StopKaydi.StopBitis }} | Süre: {{ mesai.StopKaydi.Sure }} saat | Oluşturan: {{ mesai.StopKaydi.created_by }}"></i>
+                    {% endif %}
+                    {% if mesai.EkMesai %}
+                        <i class="bi bi-plus-circle text-success float-end ms-1" title="Ek mesai: {{ mesai.EkMesai.Baslangic }} - {{ mesai.EkMesai.Bitis }} | Süre: {{ mesai.EkMesai.Sure }} saat | Oluşturan: {{ mesai.EkMesai.created_by }}{% if mesai.EkMesai.Riskli %} | RİSKLİ{% endif %}"></i>
                     {% endif %}
                     {% if mesai.Icap %}
                         <i class="bi bi-telephone-forward-fill text-success float-end ms-1 icap-indicator" title="İcap Nöbeti"></i>
@@ -896,6 +903,7 @@
     const mesaiNotuSelect = document.getElementById('mesaiNotuSelection');
     const stopModeSwitch = document.getElementById('stopModeSwitch');
     const icapModeSwitch = document.getElementById('icapModeSwitch');
+    const ekMesaiModeSwitch = document.getElementById('ekMesaiModeSwitch');
 
     // Alanlar arası ilişki: biri seçilince diğerleri temizlenir
     mesaiSelect.addEventListener('change', function() {
@@ -905,6 +913,7 @@
             alanBosalt.checked = false;
             stopModeSwitch.checked = false;
             icapModeSwitch.checked = false;
+            ekMesaiModeSwitch.checked = false;
         }
     });
     izinSelect.addEventListener('change', function() {
@@ -914,6 +923,7 @@
             alanBosalt.checked = false;
             stopModeSwitch.checked = false;
             icapModeSwitch.checked = false;
+            ekMesaiModeSwitch.checked = false;
         }
     });
     mesaiNotuSelect.addEventListener('change', function() {
@@ -923,6 +933,7 @@
             alanBosalt.checked = false;
             stopModeSwitch.checked = false;
             icapModeSwitch.checked = false;
+            ekMesaiModeSwitch.checked = false;
         }
     });
     alanBosalt.addEventListener('change', function() {
@@ -932,6 +943,7 @@
             mesaiNotuSelect.value = "";
             stopModeSwitch.checked = false;
             icapModeSwitch.checked = false;
+            ekMesaiModeSwitch.checked = false;
         }
     });
     // Stoplama modu etkinleştirildiğinde diğer seçimleri temizle
@@ -942,6 +954,7 @@
             mesaiNotuSelect.value = "";
             alanBosalt.checked = false;
             icapModeSwitch.checked = false;
+            ekMesaiModeSwitch.checked = false;
         }
     });
     // İcap modu etkinleştirildiğinde diğerlerini temizle
@@ -952,6 +965,18 @@
             mesaiNotuSelect.value = "";
             alanBosalt.checked = false;
             stopModeSwitch.checked = false;
+            ekMesaiModeSwitch.checked = false;
+        }
+    });
+    // Ek Mesai modu etkinleştirildiğinde diğerlerini temizle
+    ekMesaiModeSwitch.addEventListener('change', function() {
+        if (ekMesaiModeSwitch.checked) {
+            mesaiSelect.value = "";
+            izinSelect.value = "";
+            mesaiNotuSelect.value = "";
+            alanBosalt.checked = false;
+            stopModeSwitch.checked = false;
+            icapModeSwitch.checked = false;
         }
     });
 
@@ -1019,11 +1044,53 @@
                                 oldScript.parentNode.removeChild(oldScript);
                             });
                             const modalEl = container.querySelector('#stopModal');
-                            if (modalEl) new bootstrap.Modal(modalEl).show();
+                            if (modalEl) {
+                                const bsModal = new bootstrap.Modal(modalEl);
+                                modalEl.addEventListener('hidden.bs.modal', function() {
+                                    container.remove();
+                                });
+                                bsModal.show();
+                            }
                         })
                         .catch(err => { if (window.Swal) Swal.fire('Hata', err.toString(), 'error'); else alert(err); });
                 }
                 return;
+            }
+
+            // Eğer Ek Mesai modu açıksa, ilgili mesai için ek mesai modalını aç
+            if (ekMesaiModeSwitch && ekMesaiModeSwitch.checked) {
+                const mesaiPk = cell.dataset.mesaiPk;
+                if (!mesaiPk) {
+                    if (window.Swal) Swal.fire('Uyarı', 'Bu hücre için ek mesai eklenemez.', 'warning');
+                    else alert('Bu hücre için ek mesai eklenemez.');
+                    return;
+                }
+                
+                fetch(`/mercis657/ek-mesai-ekle/${mesaiPk}/`)
+                    .then(r => r.text())
+                    .then(html => {
+                        const container = document.createElement('div');
+                        container.innerHTML = html;
+                        document.body.appendChild(container);
+                        Array.from(container.querySelectorAll('script')).forEach(oldScript => {
+                            const newScript = document.createElement('script');
+                            if (oldScript.src) {
+                                newScript.src = oldScript.src; newScript.async = false; document.head.appendChild(newScript);
+                            } else {
+                                newScript.text = oldScript.innerHTML; document.body.appendChild(newScript);
+                            }
+                            oldScript.parentNode.removeChild(oldScript);
+                        });
+                        const modalEl = container.querySelector('#ekMesaiModal');
+                        if (modalEl) {
+                            const bsModal = new bootstrap.Modal(modalEl);
+                            modalEl.addEventListener('hidden.bs.modal', function() {
+                                container.remove();
+                            });
+                            bsModal.show();
+                        }
+                    })
+                    .catch(err => { if (window.Swal) Swal.fire('Hata', err.toString(), 'error'); else alert(err); });
                 return;
             }
 

@@ -97,6 +97,15 @@
     <small>* Sarı: Resmi tatil, Açık mavi: Arefe, Gri: Hafta sonu</small>
   </div>
   
+  {% if ek_mesai_list %}
+    <div style="margin-bottom:8px; font-size:11px; color:#444;">
+      <strong>İlgili dönemdeki Ek Mesailer:</strong><br>
+      {% for item in ek_mesai_list %}
+        {{ item }}<br>
+      {% endfor %}
+    </div>
+  {% endif %}
+
   {% if aciklama %}
     <div style="margin-bottom:8px; font-size:11px; color:#444;">
       <strong>Açıklama:</strong> {{ aciklama|linebreaksbr }}

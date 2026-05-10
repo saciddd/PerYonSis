@@ -81,10 +81,20 @@ function getCookieLocal(name) {
 }
 
 // Attach submit handler if form exists (create form)
-document.addEventListener('submit', function(ev){
-  if (ev.target && ev.target.id === 'stopForm') {
+const stopForm = document.getElementById('stopForm');
+if (stopForm) {
+  stopForm.addEventListener('submit', function(ev){
     ev.preventDefault();
-    const form = ev.target;
+    if (this.dataset.isSubmitting === 'true') return;
+    this.dataset.isSubmitting = 'true';
+    
+    const submitBtn = this.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Kaydediliyor...';
+    }
+
+    const form = this;
     fetch(form.action, {
       method: 'POST',
       headers: { 'X-CSRFToken': getCookieLocal('csrftoken') },
@@ -98,35 +108,53 @@ document.addEventListener('submit', function(ev){
           alertEl.classList.remove('d-none');
           alertEl.innerText = 'Kaydedildi. Stop süresi: ' + data.sure + ' saat.';
         }
-        // Optionally refresh modal contents by re-fetching endpoint
-        // Close modal after short delay
         setTimeout(()=>{ location.reload(); }, 1000);
       } else {
         alert(data.message || 'Kaydetme hatası');
+        this.dataset.isSubmitting = 'false';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-save"></i> Kaydet';
+        }
       }
     }).catch(err=>{
       alert('İstek hatası: ' + err);
+      this.dataset.isSubmitting = 'false';
+      if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="bi bi-save"></i> Kaydet';
+      }
     });
-  }
-});
+  });
+}
 
 // Delete handler for stop items
-document.addEventListener('click', function(ev){
-  if (ev.target && (ev.target.classList.contains('btn-stop-delete') || ev.target.closest('.btn-stop-delete'))) {
-    const btn = ev.target.closest('.btn-stop-delete');
-    const stopId = btn.dataset.stopId;
+document.querySelectorAll('.btn-stop-delete').forEach(btn => {
+  btn.addEventListener('click', function(ev){
+    if (this.disabled) return;
+    const stopId = this.dataset.stopId;
     if (!stopId) return;
     if (!confirm('Stop kaydını silmek istediğinizden emin misiniz?')) return;
+    
+    this.disabled = true;
+    const originalContent = this.innerHTML;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
     fetch(`/mercis657/stop-sil/${stopId}/`, {
       method: 'POST', headers: { 'X-CSRFToken': getCookieLocal('csrftoken') }
     }).then(r=>r.json()).then(data=>{
       if (data.status === 'deleted') {
-        // remove item from list
-        btn.closest('.list-group-item').remove();
+        this.closest('.list-group-item').remove();
       } else {
         alert(data.message || 'Silme başarısız');
+        this.disabled = false;
+        this.innerHTML = originalContent;
       }
-    }).catch(err=>alert(err));
-  }
+    }).catch(err=>{
+      alert(err);
+      this.disabled = false;
+      this.innerHTML = originalContent;
+    });
+  });
 });
 </script>

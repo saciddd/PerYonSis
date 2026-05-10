@@ -11,7 +11,7 @@ from django.conf import settings
 import re
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
-from ..models import Bildirim, PersonelListesi, UserBirim, Birim, Personel, PersonelListesiKayit, Mesai, ResmiTatil, Mesai_Tanimlari, Izin
+from ..models import Bildirim, PersonelListesi, UserBirim, Birim, Personel, PersonelListesiKayit, Mesai, ResmiTatil, Mesai_Tanimlari, Izin, EkMesai
 from PersonelYonSis.models import User
 import calendar # calendar modülü eklendi
 import json
@@ -751,6 +751,24 @@ def bildirim_form(request, birim_id):
             'onay_durumu': onay_durumu,
         })
 
+    # İlgili dönemdeki ek mesaileri topla
+    ek_mesai_list = []
+    if liste:
+        for kayit in liste.kayitlar.select_related('personel').order_by('sira_no', 'personel__PersonelName', 'personel__PersonelSurname'):
+            p = kayit.personel
+            ems = EkMesai.objects.filter(
+                mesai__Personel=p,
+                mesai__MesaiDate__year=year,
+                mesai__MesaiDate__month=month
+            ).order_by('mesai__MesaiDate', 'Baslangic')
+            
+            if ems.exists():
+                em_strings = []
+                for em in ems:
+                    sure_str = f"{int(em.Sure)}" if em.Sure % 1 == 0 else f"{em.Sure}".replace('.', ',')
+                    em_strings.append(f"{em.mesai.MesaiDate.strftime('%d.%m.%Y')}({em.Baslangic.strftime('%H:%M')}-{em.Bitis.strftime('%H:%M')}-{sure_str} Saat)")
+                ek_mesai_list.append(f"{p.PersonelName} {p.PersonelSurname}: {', '.join(em_strings)}")
+
     # prepare context matching the PDF template
     context_pdf = {
         'kurum': kurum,
@@ -770,6 +788,7 @@ def bildirim_form(request, birim_id):
         'year': year,
         'month': month,
         'aciklama': liste.aciklama if liste else '',
+        'ek_mesai_list': ek_mesai_list,
     }
 
     # Render PDF template and generate PDF (landscape)

@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .views import fazla_mesai_views, liste_views
-from .views import personel_yonetim_views, cizelge_kontrol_views, riskli_calisma_views
+from .views import personel_yonetim_views, cizelge_kontrol_views, riskli_calisma_views, ek_mesai_views
 # from .views import main_views
 
 app_name = 'mercis657'  # Namespace tanımlaması
@@ -91,6 +91,10 @@ urlpatterns = [
     # Stop işlemleri
     path('stop-ekle/<int:mesai_id>/', views.stop_ekle, name='stop_ekle'),
     path('stop-sil/<int:stop_id>/', views.stop_sil, name='stop_sil'),
+
+    # Ek Mesai işlemleri
+    path('ek-mesai-ekle/<int:mesai_id>/', ek_mesai_views.ek_mesai_ekle, name='ek_mesai_ekle'),
+    path('ek-mesai-sil/<int:ek_mesai_id>/', ek_mesai_views.ek_mesai_sil, name='ek_mesai_sil'),
 
     # Toplu işlemler
     path('toplu-islem/<int:liste_id>/<int:year>/<int:month>/', views.toplu_islem, name='toplu_islem'),

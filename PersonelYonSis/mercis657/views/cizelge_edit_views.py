@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, render
 from django.template.loader import get_template
 from django.conf import settings
 from pathlib import Path
-from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim, SabitMesai
+from ..models import Mesai, Personel, PersonelListesi, PersonelListesiKayit, MesaiYedek, Mesai_Tanimlari, Izin, ResmiTatil, UstBirim, SabitMesai, EkMesai
 from ..utils import hesapla_fazla_mesai, get_favori_mesailer, get_turkish_month_name, hesapla_fazla_mesai_sade
 from PersonelYonSis.FMConnection.KDHIzin import IzinSorgula
 import pdfkit
@@ -141,6 +141,24 @@ def cizelge_yazdir(request):
     ay_ismi = get_turkish_month_name(month)
     form_adi = f"{year} Yılı {ay_ismi} {birim.BirimAdi} Çalışma Listesi"
 
+    # İlgili dönemdeki ek mesaileri topla
+    ek_mesai_list = []
+    if liste:
+        for kayit in liste.kayitlar.select_related('personel').order_by('sira_no', 'personel__PersonelName', 'personel__PersonelSurname'):
+            p = kayit.personel
+            ems = EkMesai.objects.filter(
+                mesai__Personel=p,
+                mesai__MesaiDate__year=year,
+                mesai__MesaiDate__month=month
+            ).order_by('mesai__MesaiDate', 'Baslangic')
+            
+            if ems.exists():
+                em_strings = []
+                for em in ems:
+                    sure_str = f"{int(em.Sure)}" if em.Sure % 1 == 0 else f"{em.Sure}".replace('.', ',')
+                    em_strings.append(f"{em.mesai.MesaiDate.strftime('%d.%m.%Y')}({em.Baslangic.strftime('%H:%M')}-{em.Bitis.strftime('%H:%M')}-{sure_str} Saat)")
+                ek_mesai_list.append(f"{p.PersonelName} {p.PersonelSurname}: {', '.join(em_strings)}")
+
     context = {
         'kurum': kurum,
         'dokuman_kodu': dokuman_kodu,
@@ -159,6 +177,7 @@ def cizelge_yazdir(request):
         'month': month,
         'liste': liste if 'liste' in locals() else None,
         'aciklama': aciklama,
+        'ek_mesai_list': ek_mesai_list,
         'user': request.user,  # Giriş yapan kullanıcı bilgisi
     }
 

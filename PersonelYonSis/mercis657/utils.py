@@ -80,8 +80,8 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
         TatilTarihi__year=year,
         TatilTarihi__month=month
     )
-    # Tarih -> ArefeMi
-    tatil_map_month = {rt.TatilTarihi: rt.ArefeMi for rt in resmi_tatiller_q}
+    # Tarih -> TatilTipi (TAM veya YARIM)
+    tatil_map_month = {rt.TatilTarihi: rt.TatilTipi for rt in resmi_tatiller_q}
 
     for day in range(1, days_in_month + 1):
         current_date = date(year, month, day)
@@ -92,8 +92,8 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             if not is_resmi_tatil:
                 calisma_gunleri += 1
 
-            # Arefe kontrolü (ResmiTatil tablosunda varsa)
-            if is_resmi_tatil and tatil_map_month[current_date]:
+            # Yarım gün tatil kontrolü (Yarım gün ise olması gereken süreye 5 saat ekliyoruz)
+            if is_resmi_tatil and tatil_map_month[current_date] == 'YARIM':
                 arefe_gunleri += 1
 
     gunluk_saat = Decimal('7.0') if radyasyon_calisani else Decimal('8.0')
@@ -161,7 +161,7 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 if not is_tatil_gunu:
                     per_day = Decimal('7.0') if radyasyon_calisani else Decimal('8.0')
                     izin_azaltimi += per_day
-                elif tatil_map_month.get(mesai_tarih):
+                elif tatil_map_month.get(mesai_tarih) == 'YARIM':
                     izin_azaltimi += Decimal('5.0')
 
     # 3. Mazeret Hesapla (Ortak - Erken hesaplama gerekli)
@@ -749,6 +749,8 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
         TatilTarihi__year=year,
         TatilTarihi__month=month
     )
+    # Tarih -> TatilTipi (TAM veya YARIM)
+    tatil_map_month = {rt.TatilTarihi: rt.TatilTipi for rt in resmi_tatiller}
     
     # Hafta içi günleri say
     for day in range(1, days_in_month + 1):
@@ -756,15 +758,11 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
         weekday = current_date.weekday()
 
         if weekday < 5:  # Pazartesi-Cuma
-            is_resmi_tatil = resmi_tatiller.filter(TatilTarihi=current_date).exists()
+            is_resmi_tatil = current_date in tatil_map_month
             if not is_resmi_tatil:
                 calisma_gunleri += 1
 
-            is_arefe = resmi_tatiller.filter(
-                TatilTarihi=current_date,
-                ArefeMi=True
-            ).exists()
-            if is_arefe:
+            if is_resmi_tatil and tatil_map_month[current_date] == 'YARIM':
                 arefe_gunleri += 1
     
     # Günlük çalışma saati
@@ -820,14 +818,12 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
         mesai_tarih = getattr(mesai, 'MesaiDate', None)
         if izin_field and mesai_tarih:
             if mesai_tarih.weekday() < 5:  # hafta içi
-                is_resmi_tatil = resmi_tatiller.filter(TatilTarihi=mesai_tarih).exists()
+                is_resmi_tatil = mesai_tarih in tatil_map_month
                 if not is_resmi_tatil:
                     per_day = Decimal('7.0') if radyasyon_calisani else Decimal('8.0')
                     izin_azaltimi += per_day
-                else:
-                    is_arefe = resmi_tatiller.filter(TatilTarihi=mesai_tarih, ArefeMi=True).exists()
-                    if is_arefe:
-                        izin_azaltimi += Decimal('5.0')
+                elif tatil_map_month.get(mesai_tarih) == 'YARIM':
+                    izin_azaltimi += Decimal('5.0')
 
     # Mazeret azaltımını hesapla
     mazeret_azaltimi = Decimal('0.0')
@@ -845,7 +841,7 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
         current_date = baslangic
         while current_date <= bitis:
             if current_date.weekday() < 5:  # Hafta içi
-                is_resmi_tatil = resmi_tatiller.filter(TatilTarihi=current_date).exists()
+                is_resmi_tatil = current_date in tatil_map_month
                 if not is_resmi_tatil:
                     izinli_mi = Mesai.objects.filter(
                         Personel=personel,

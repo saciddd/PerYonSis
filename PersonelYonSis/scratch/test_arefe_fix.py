@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'PersonelYonSis.settings')
 django.setup()
 
-from mercis657.models import ResmiTatil, Personel, PersonelListesi, PersonelListesiKayit, SabitMesai
+from mercis657.models import ResmiTatil, Personel, PersonelListesi, PersonelListesiKayit, SabitMesai, Mesai
 from mercis657.utils import hesapla_fazla_mesai, hesapla_fazla_mesai_sade
 
 def run_test():
@@ -77,12 +77,24 @@ def run_test():
 
     # 3. Hesaplamayı çalıştır
     print("\n--- Hesaplama Sonucları ---")
+    
+    # İcap kaydı oluştur
+    Mesai.objects.filter(Personel=personel, MesaiDate=test_date).delete()
+    mesai_icap = Mesai.objects.create(
+        Personel=personel,
+        MesaiDate=test_date,
+        Icap=True,
+        OnayDurumu=True
+    )
+    
     res = hesapla_fazla_mesai(plk, 2026, 5)
     res_sade = hesapla_fazla_mesai_sade(plk, 2026, 5)
     
     print(f"hesapla_fazla_mesai -> olması_gereken_sure: {res['olması_gereken_sure']}")
     print(f"hesapla_fazla_mesai_sade -> olması_gereken_sure (normalde hesaplanan): {res_sade}")
     print(f"Çalışma Günleri: {res['calisma_gunleri']}, Arefe Günleri: {res['arefe_gunleri']}")
+    print(f"Normal İcap Süresi: {res['normal_icap']}, Bayram İcap Süresi: {res['bayram_icap']}, Toplam İcap: {res['toplam_icap']}")
+    print(f"İcap Detayları: {res['icap_detay']}")
     
     # 2026 Mayıs ayında 31 gün var.
     # Hafta sonları: 2, 3, 9, 10, 16, 17, 23, 24, 30, 31 (10 gün)
@@ -98,6 +110,9 @@ def run_test():
     # Assertions
     assert res['olması_gereken_sure'] == Decimal('112.0'), f"Error: {res['olması_gereken_sure']} != 112.0"
     assert res_sade == Decimal('-112.0'), f"Error: {res_sade} != -112.0"
+    assert res['normal_icap'] == Decimal('5.0'), f"Error: {res['normal_icap']} != 5.0"
+    assert res['bayram_icap'] == Decimal('19.0'), f"Error: {res['bayram_icap']} != 19.0"
+    assert res['toplam_icap'] == Decimal('24.0'), f"Error: {res['toplam_icap']} != 24.0"
     print("SUCCESS: All assertions passed!")
     print("=== END OF TEST ===")
 

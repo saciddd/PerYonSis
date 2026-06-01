@@ -626,7 +626,7 @@ def hesapla_icap_suresi(personel_listesi_kayit, year, month):
             start_dt = today_08
         elif is_resmi_tatil:
             rt = tatil_map[current_date]
-            if rt.ArefeMi:
+            if rt.ArefeMi and rt.TatilTipi == 'YARIM':
                 start_dt = today_13
             else:
                 start_dt = today_08

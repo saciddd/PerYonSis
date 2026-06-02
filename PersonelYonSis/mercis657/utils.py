@@ -18,7 +18,13 @@ def get_idari_izinler():
             for item in data:
                 b_dt = datetime.strptime(item['baslangic'], '%Y-%m-%d %H:%M:%S')
                 e_dt = datetime.strptime(item['bitis'], '%Y-%m-%d %H:%M:%S')
-                izinler.append((b_dt, e_dt))
+                eklenecek = Decimal(str(item.get('eklenecek_saat', 0.0)))
+                izinler.append({
+                    'baslangic': b_dt,
+                    'bitis': e_dt,
+                    'eklenecek_saat': eklenecek,
+                    'worked': False
+                })
             return izinler
     except Exception:
         return []
@@ -27,8 +33,8 @@ def is_in_idari_izin(dt, idari_izinler):
     """Verilen datetime'ın herhangi bir idari izin aralığına denk gelip gelmediğini döner."""
     if not dt or not idari_izinler:
         return False
-    for b_dt, e_dt in idari_izinler:
-        if b_dt <= dt <= e_dt:
+    for iz in idari_izinler:
+        if iz['baslangic'] <= dt <= iz['bitis']:
             return True
     return False
 
@@ -348,7 +354,12 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                 continue
 
             # İdari izin içinde mi?
-            if is_in_idari_izin(mid, idari_izinler):
+            in_idari_izin = False
+            for iz in idari_izinler:
+                if iz['baslangic'] <= mid <= iz['bitis']:
+                    iz['worked'] = True
+                    in_idari_izin = True
+            if in_idari_izin:
                 continue
 
             duration = Decimal((seg_end - seg_start).total_seconds() / 3600)
@@ -434,7 +445,12 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                     em_dur = Decimal((ee - es).total_seconds() / 3600)
                     
                     # İdari izin içinde mi?
-                    if is_in_idari_izin(em_mid, idari_izinler):
+                    in_idari_izin = False
+                    for iz in idari_izinler:
+                        if iz['baslangic'] <= em_mid <= iz['bitis']:
+                            iz['worked'] = True
+                            in_idari_izin = True
+                    if in_idari_izin:
                         continue
                         
                     em_bayram, em_gece = get_context(em_mid)
@@ -464,6 +480,10 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     # ==========================================
     # Yeni Kronolojik Fazla Mesai Dağıtımı
     # ==========================================
+
+    ekstra_olmasi_gereken = sum(iz['eklenecek_saat'] for iz in idari_izinler if iz['worked'])
+    olmasi_gereken_sure += ekstra_olmasi_gereken
+    effective_olmasi_gereken += ekstra_olmasi_gereken
 
     fiili_calisma_suresi = sum(seg['duration'] for seg in all_segments)
     fazla_mesai = max(Decimal('0.0'), fiili_calisma_suresi - effective_olmasi_gereken)
@@ -846,11 +866,14 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
                     end_dt += timedelta(days=1)
                 
                 # İdari izin overlap
-                for b_dt, e_dt in idari_izinler:
-                    overlap_start = max(start_dt, b_dt)
-                    overlap_end = min(end_dt, e_dt)
+                for iz in idari_izinler:
+                    overlap_start = max(start_dt, iz['baslangic'])
+                    overlap_end = min(end_dt, iz['bitis'])
                     if overlap_end > overlap_start:
-                        shift_overlap += Decimal(str((overlap_end - overlap_start).total_seconds() / 3600))
+                        overlap_hours = Decimal(str((overlap_end - overlap_start).total_seconds() / 3600))
+                        shift_overlap += overlap_hours
+                        if overlap_hours > 0:
+                            iz['worked'] = True
             except Exception:
                 pass
 
@@ -908,11 +931,14 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
                         if em_end_dt <= em_start_dt:
                             em_end_dt += timedelta(days=1)
                         
-                        for b_dt, e_dt in idari_izinler:
-                            overlap_start = max(em_start_dt, b_dt)
-                            overlap_end = min(em_end_dt, e_dt)
+                        for iz in idari_izinler:
+                            overlap_start = max(em_start_dt, iz['baslangic'])
+                            overlap_end = min(em_end_dt, iz['bitis'])
                             if overlap_end > overlap_start:
-                                ek_overlap += Decimal(str((overlap_end - overlap_start).total_seconds() / 3600))
+                                overlap_hours = Decimal(str((overlap_end - overlap_start).total_seconds() / 3600))
+                                ek_overlap += overlap_hours
+                                if overlap_hours > 0:
+                                    iz['worked'] = True
                     except Exception:
                         pass
                 
@@ -963,6 +989,9 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
 
     # Mazeret azaltımı fiili çalışma süresine ekleniyor
     # fiili_calisma_suresi += mazeret_azaltimi
+
+    ekstra_olmasi_gereken = sum(iz['eklenecek_saat'] for iz in idari_izinler if iz['worked'])
+    olmasi_gereken_sure += ekstra_olmasi_gereken
 
     # İzin azaltımını olması gereken süreden düş
     olmasi_gereken_sure -= (izin_azaltimi + mazeret_azaltimi)

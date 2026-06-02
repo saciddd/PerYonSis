@@ -131,14 +131,14 @@ def run_test():
     print(f"İcap Detayları: {res['icap_detay']}")
     print(f"Fazla Mesai Detayları: Bayram Gündüz: {res['bayram_fazla_mesai']}, Normal Gündüz: {res['normal_fazla_mesai']}, Toplam FM: {res['fazla_mesai']}")
     
-    print(f"\nBeklenen olması_gereken_sure: 112.0 saat.")
+    print(f"\nBeklenen olması_gereken_sure (Pozitif): 125.0 saat (112.0 base + 8.0 + 5.0).")
     print(f"Beklenen fiili çalışma süresi: 4.0 saat (25 Mayıs'ta 8 saatin tamamı, 26 Mayıs'ta 5 saat idari izin düştü).")
     
-    # Assertions
-    assert res['olması_gereken_sure'] == Decimal('112.0'), f"Error: {res['olması_gereken_sure']} != 112.0"
+    # Assertions (Pozitif)
+    assert res['olması_gereken_sure'] == Decimal('125.0'), f"Error: {res['olması_gereken_sure']} != 125.0"
     
-    # Sade metot fazla mesai = fiili_calisma - olması_gereken_sure = 4.0 - 112.0 = -108.0 olmalı
-    assert res_sade == Decimal('-108.0'), f"Error: res_sade {res_sade} != -108.0"
+    # Sade metot fazla mesai = fiili_calisma - olması_gereken_sure = 4.0 - 125.0 = -121.0 olmalı
+    assert res_sade == Decimal('-121.0'), f"Error: res_sade {res_sade} != -121.0"
     
     assert res['fiili_calisma_suresi'] == Decimal('4.0'), f"Error: fiili_calisma {res['fiili_calisma_suresi']} != 4.0"
     assert fiili_sade == Decimal('4.0'), f"Error: fiili_sade {fiili_sade} != 4.0"
@@ -146,7 +146,45 @@ def run_test():
     assert res['normal_icap'] == Decimal('5.0'), f"Error: {res['normal_icap']} != 5.0"
     assert res['bayram_icap'] == Decimal('19.0'), f"Error: {res['bayram_icap']} != 19.0"
     assert res['toplam_icap'] == Decimal('24.0'), f"Error: {res['toplam_icap']} != 24.0"
-    print("SUCCESS: All assertions passed!")
+    print("SUCCESS: Positive assertions passed!")
+
+    # 4. Negatif test için json'ı geçici olarak güncelle
+    import json
+    json_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'mercis657', 'idari_izinler.json')
+    with open(json_path, 'r', encoding='utf-8') as f:
+        original_data = json.load(f)
+    
+    try:
+        # Negatif süreleri yaz
+        negative_data = []
+        for item in original_data:
+            new_item = item.copy()
+            new_item['eklenecek_saat'] = -item['eklenecek_saat'] # 8.0 -> -8.0, 5.0 -> -5.0
+            negative_data.append(new_item)
+            
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(negative_data, f, indent=2)
+            
+        print("\n--- Hesaplama Sonucları (Negatif eklenecek_saat) ---")
+        res_neg = hesapla_fazla_mesai(plk, 2026, 5)
+        res_sade_neg = hesapla_fazla_mesai_sade(plk, 2026, 5)
+        
+        print(f"hesapla_fazla_mesai -> olması_gereken_sure: {res_neg['olması_gereken_sure']}")
+        print(f"hesapla_fazla_mesai_sade -> olması_gereken_sure (normalde hesaplanan): {res_sade_neg}")
+        
+        # Negatif case assertions:
+        # olması_gereken_sure = 112.0 (base) - 8.0 - 5.0 = 99.0
+        # res_sade_neg = 4.0 - 99.0 = -95.0
+        assert res_neg['olması_gereken_sure'] == Decimal('99.0'), f"Error: {res_neg['olması_gereken_sure']} != 99.0"
+        assert res_sade_neg == Decimal('-95.0'), f"Error: {res_sade_neg} != -95.0"
+        print("SUCCESS: Negative assertions passed!")
+        
+    finally:
+        # Orijinal json'ı geri yükle
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(original_data, f, indent=2)
+            
+    print("SUCCESS: All administrative leave assertions passed!")
     print("=== END OF TEST ===")
 
 if __name__ == "__main__":

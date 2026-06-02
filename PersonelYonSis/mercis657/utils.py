@@ -1,8 +1,36 @@
 from datetime import date, timedelta, datetime, time
 from decimal import Decimal
 import calendar
+import json
+import os
 from django.db import models
 from .models import ResmiTatil, MazeretKaydi, Mesai, Mesai_Tanimlari, SabitMesai, UserMesaiFavori, YarimZamanliCalisma, EkMesai
+
+def get_idari_izinler():
+    """idari_izinler.json dosyasından idari izin dönemlerini okur ve datetime objeleri olarak döner."""
+    json_path = os.path.join(os.path.dirname(__file__), 'idari_izinler.json')
+    if not os.path.exists(json_path):
+        return []
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            izinler = []
+            for item in data:
+                b_dt = datetime.strptime(item['baslangic'], '%Y-%m-%d %H:%M:%S')
+                e_dt = datetime.strptime(item['bitis'], '%Y-%m-%d %H:%M:%S')
+                izinler.append((b_dt, e_dt))
+            return izinler
+    except Exception:
+        return []
+
+def is_in_idari_izin(dt, idari_izinler):
+    """Verilen datetime'ın herhangi bir idari izin aralığına denk gelip gelmediğini döner."""
+    if not dt or not idari_izinler:
+        return False
+    for b_dt, e_dt in idari_izinler:
+        if b_dt <= dt <= e_dt:
+            return True
+    return False
 
 def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     """
@@ -42,6 +70,8 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
     # Ayın son günü
     days_in_month = calendar.monthrange(year, month)[1]
     son_gun = date(year, month, days_in_month)
+
+    idari_izinler = get_idari_izinler()
 
     yarim_zamanli_calisma = YarimZamanliCalisma.objects.filter(
         personel=personel,
@@ -317,6 +347,10 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
             if in_stop:
                 continue
 
+            # İdari izin içinde mi?
+            if is_in_idari_izin(mid, idari_izinler):
+                continue
+
             duration = Decimal((seg_end - seg_start).total_seconds() / 3600)
             is_bayram, is_gece = get_context(mid)
 
@@ -398,6 +432,11 @@ def hesapla_fazla_mesai(personel_listesi_kayit, year, month):
                     es, ee = em_sorted[j], em_sorted[j+1]
                     em_mid = es + (ee - es) / 2
                     em_dur = Decimal((ee - es).total_seconds() / 3600)
+                    
+                    # İdari izin içinde mi?
+                    if is_in_idari_izin(em_mid, idari_izinler):
+                        continue
+                        
                     em_bayram, em_gece = get_context(em_mid)
                     
                     # 08-16 Gündüz mü?
@@ -775,6 +814,7 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
 
     # Fiili çalışma süresini hesapla
     fiili_calisma_suresi = Decimal('0.0')
+    idari_izinler = get_idari_izinler()
 
     # O ayki mesai kayıtlarını al
     mesailer = Mesai.objects.filter(
@@ -788,30 +828,98 @@ def hesapla_fazla_mesai_sade(personel_listesi_kayit, year, month):
     stop_suresi = Decimal('0.0')
 
     for mesai in mesailer:
+        # İdari izin kesişimlerini hesapla
+        shift_overlap = Decimal('0.0')
+        start_dt = None
+        end_dt = None
+        if mesai.MesaiTanim and mesai.MesaiTanim.Saat:
+            try:
+                saat_str = mesai.MesaiTanim.Saat.strip()
+                start_s, end_s = saat_str.split()
+                sh, sm = map(int, start_s.split(':'))
+                eh, em = map(int, end_s.split(':'))
+                if sh == 24: sh = 0
+                if eh == 24: eh = 0
+                start_dt = datetime.combine(mesai.MesaiDate, time(sh, sm))
+                end_dt = datetime.combine(mesai.MesaiDate, time(eh, em))
+                if getattr(mesai.MesaiTanim, 'SonrakiGuneSarkiyor', False) or end_dt <= start_dt:
+                    end_dt += timedelta(days=1)
+                
+                # İdari izin overlap
+                for b_dt, e_dt in idari_izinler:
+                    overlap_start = max(start_dt, b_dt)
+                    overlap_end = min(end_dt, e_dt)
+                    if overlap_end > overlap_start:
+                        shift_overlap += Decimal(str((overlap_end - overlap_start).total_seconds() / 3600))
+            except Exception:
+                pass
+
         # Fiili çalışma süresine ekleme
         if mesai.MesaiTanim and getattr(mesai.MesaiTanim, 'Sure', None):
             if sabit_mesai and mesai.MesaiTanim.Sure > 8 and mesai.MesaiDate.weekday() < 5:
                 fiili_calisma_suresi -= sabit_mesai.ara_dinlenme
-            fiili_calisma_suresi += mesai.MesaiTanim.Sure
+            effective_shift_sure = max(Decimal('0.0'), mesai.MesaiTanim.Sure - shift_overlap)
+            fiili_calisma_suresi += effective_shift_sure
 
         # STOP sürelerini düş
         stopler = list(getattr(mesai, 'mercis657_stoplar').all())
         for stop in stopler:
             try:
                 stop_hours = Decimal(str(stop.Sure)) if stop.Sure is not None else Decimal('0.0')
+                
+                # Stop'un idari izinle overlap'i
+                stop_overlap = Decimal('0.0')
+                if stop.StopBaslangic and stop.StopBitis and start_dt and end_dt:
+                    try:
+                        sb, se = stop.StopBaslangic, stop.StopBitis
+                        stop_start_dt = datetime.combine(mesai.MesaiDate, sb)
+                        if stop_start_dt < start_dt: stop_start_dt += timedelta(days=1)
+                        stop_end_dt = datetime.combine(mesai.MesaiDate, se)
+                        if stop_end_dt < stop_start_dt: stop_end_dt += timedelta(days=1)
+                        stop_start_dt = max(start_dt, stop_start_dt)
+                        stop_end_dt = min(end_dt, stop_end_dt)
+                        
+                        for b_dt, e_dt in idari_izinler:
+                            overlap_start = max(stop_start_dt, b_dt)
+                            overlap_end = min(stop_end_dt, e_dt)
+                            if overlap_end > overlap_start:
+                                stop_overlap += Decimal(str((overlap_end - overlap_start).total_seconds() / 3600))
+                    except Exception:
+                        pass
+                
+                effective_stop = max(Decimal('0.0'), stop_hours - stop_overlap)
+                fiili_calisma_suresi -= effective_stop
+                stop_suresi += stop_hours
             except Exception:
-                stop_hours = Decimal('0.0')
-            fiili_calisma_suresi -= stop_hours
-            stop_suresi += stop_hours
+                pass
 
         # Ek Mesai sürelerini ekle
         ek_mesailer = list(getattr(mesai, 'mercis657_ek_mesailer').all())
         for ek in ek_mesailer:
             try:
                 ek_hours = Decimal(str(ek.Sure)) if ek.Sure is not None else Decimal('0.0')
+                
+                # Ek mesai'nin idari izinle overlap'i
+                ek_overlap = Decimal('0.0')
+                if ek.Baslangic and ek.Bitis:
+                    try:
+                        em_start_dt = datetime.combine(mesai.MesaiDate, ek.Baslangic)
+                        em_end_dt = datetime.combine(mesai.MesaiDate, ek.Bitis)
+                        if em_end_dt <= em_start_dt:
+                            em_end_dt += timedelta(days=1)
+                        
+                        for b_dt, e_dt in idari_izinler:
+                            overlap_start = max(em_start_dt, b_dt)
+                            overlap_end = min(em_end_dt, e_dt)
+                            if overlap_end > overlap_start:
+                                ek_overlap += Decimal(str((overlap_end - overlap_start).total_seconds() / 3600))
+                    except Exception:
+                        pass
+                
+                effective_ek = max(Decimal('0.0'), ek_hours - ek_overlap)
+                fiili_calisma_suresi += effective_ek
             except Exception:
-                ek_hours = Decimal('0.0')
-            fiili_calisma_suresi += ek_hours
+                pass
 
         # İzin azaltımı
         izin_field = getattr(mesai, 'Izin', None)

@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'PersonelYonSis.settings')
 django.setup()
 
-from mercis657.models import ResmiTatil, Personel, PersonelListesi, PersonelListesiKayit, SabitMesai, Mesai
+from mercis657.models import ResmiTatil, Personel, PersonelListesi, PersonelListesiKayit, SabitMesai, Mesai, Mesai_Tanimlari
 from mercis657.utils import hesapla_fazla_mesai, hesapla_fazla_mesai_sade
 
 def run_test():
@@ -78,11 +78,39 @@ def run_test():
     # 3. Hesaplamayı çalıştır
     print("\n--- Hesaplama Sonucları ---")
     
-    # İcap kaydı oluştur
-    Mesai.objects.filter(Personel=personel, MesaiDate=test_date).delete()
-    mesai_icap = Mesai.objects.create(
+    # Mesai tanımlarını bul/oluştur
+    tanim_8_16 = Mesai_Tanimlari.objects.filter(Saat="08:00 16:00").first()
+    if not tanim_8_16:
+        tanim_8_16 = Mesai_Tanimlari.objects.create(
+            Saat="08:00 16:00",
+            GunduzMesaisi=True,
+            CKYS_BTF_Karsiligi='Normal Mesai'
+        )
+    tanim_8_17 = Mesai_Tanimlari.objects.filter(Saat="08:00 17:00").first()
+    if not tanim_8_17:
+        tanim_8_17 = Mesai_Tanimlari.objects.create(
+            Saat="08:00 17:00",
+            GunduzMesaisi=True,
+            CKYS_BTF_Karsiligi='Nobet'
+        )
+
+    # Mevcut mesaileri temizle (Mayıs 2026'daki tüm kayıtları sıfırlayalım ki temiz bir test olsun)
+    Mesai.objects.filter(Personel=personel, MesaiDate__year=2026, MesaiDate__month=5).delete()
+    
+    # 25.05.2026 (08:00-16:00): İdari izin (08:00-16:00) olduğu için 0 saat fiili sayılmalı
+    Mesai.objects.create(
         Personel=personel,
-        MesaiDate=test_date,
+        MesaiDate=date(2026, 5, 25),
+        MesaiTanim=tanim_8_16,
+        OnayDurumu=True
+    )
+    
+    # 26.05.2026 (08:00-17:00): İdari izin (08:00-13:00) olduğu için 5 saat düşülüp sadece 4 saat sayılmalı
+    # Bu mesai aynı zamanda İcap da içersin (önceki testimiz için)
+    Mesai.objects.create(
+        Personel=personel,
+        MesaiDate=date(2026, 5, 26),
+        MesaiTanim=tanim_8_17,
         Icap=True,
         OnayDurumu=True
     )
@@ -91,25 +119,30 @@ def run_test():
     res_sade = hesapla_fazla_mesai_sade(plk, 2026, 5)
     
     print(f"hesapla_fazla_mesai -> olması_gereken_sure: {res['olması_gereken_sure']}")
-    print(f"hesapla_fazla_mesai_sade -> olması_gereken_sure (normalde hesaplanan): {res_sade}")
+    print(f"hesapla_fazla_mesai_sade -> olması_gereken_sure: {res_sade}")
+    print(f"Fiili Çalışma Süresi (Detaylı): {res['fiili_calisma_suresi']}")
+    
+    # Sadeleştirilmiş fiili çalışma süresini de sade metodun dönüşü olan fazla_mesai + olmasi_gereken_sure ile bulabiliriz
+    fiili_sade = res_sade + res['olması_gereken_sure']
+    print(f"Fiili Çalışma Süresi (Sadeleştirilmiş): {fiili_sade}")
+    
     print(f"Çalışma Günleri: {res['calisma_gunleri']}, Arefe Günleri: {res['arefe_gunleri']}")
     print(f"Normal İcap Süresi: {res['normal_icap']}, Bayram İcap Süresi: {res['bayram_icap']}, Toplam İcap: {res['toplam_icap']}")
     print(f"İcap Detayları: {res['icap_detay']}")
-    
-    # 2026 Mayıs ayında 31 gün var.
-    # Hafta sonları: 2, 3, 9, 10, 16, 17, 23, 24, 30, 31 (10 gün)
-    # Hafta içi gün sayısı: 21 gün.
-    # Hafta içi resmi tatil gün sayısı: 7 gün.
-    # Bu yüzden hafta içi resmi tatil olmayan gün sayısı: 14 gün.
-    # expected_hours = 14 * 8.0 = 112.0 saat.
-    # Eğer ArefeMi = True olduğu için arefe_arttirimi = 5.0 saat eklenirse, 117.0 saat olur (Bug'lı durum).
-    # Bizim düzeltmemizle arefe_arttirimi = 0.0 olmalı ve 112.0 saat hesaplanmalıdır!
+    print(f"Fazla Mesai Detayları: Bayram Gündüz: {res['bayram_fazla_mesai']}, Normal Gündüz: {res['normal_fazla_mesai']}, Toplam FM: {res['fazla_mesai']}")
     
     print(f"\nBeklenen olması_gereken_sure: 112.0 saat.")
+    print(f"Beklenen fiili çalışma süresi: 4.0 saat (25 Mayıs'ta 8 saatin tamamı, 26 Mayıs'ta 5 saat idari izin düştü).")
     
     # Assertions
     assert res['olması_gereken_sure'] == Decimal('112.0'), f"Error: {res['olması_gereken_sure']} != 112.0"
-    assert res_sade == Decimal('-112.0'), f"Error: {res_sade} != -112.0"
+    
+    # Sade metot fazla mesai = fiili_calisma - olması_gereken_sure = 4.0 - 112.0 = -108.0 olmalı
+    assert res_sade == Decimal('-108.0'), f"Error: res_sade {res_sade} != -108.0"
+    
+    assert res['fiili_calisma_suresi'] == Decimal('4.0'), f"Error: fiili_calisma {res['fiili_calisma_suresi']} != 4.0"
+    assert fiili_sade == Decimal('4.0'), f"Error: fiili_sade {fiili_sade} != 4.0"
+    
     assert res['normal_icap'] == Decimal('5.0'), f"Error: {res['normal_icap']} != 5.0"
     assert res['bayram_icap'] == Decimal('19.0'), f"Error: {res['bayram_icap']} != 19.0"
     assert res['toplam_icap'] == Decimal('24.0'), f"Error: {res['toplam_icap']} != 24.0"

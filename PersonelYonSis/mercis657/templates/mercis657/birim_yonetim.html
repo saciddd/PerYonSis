@@ -26,7 +26,7 @@
                     <th>Birim</th>
                     <th>Kurum</th>
                     <th>Üst Birim</th>
-                    <th>Müdür Yrd.</th>
+                    <th>İdareci</th>
                     <th class="text-center">Yetkili</th>
                     <th>Yetkililer</th>
                     <th>Pasif?</th>
@@ -112,7 +112,7 @@
                         </select>
                     </div>
                     <div class="mb-2">
-                        <label for="mudurYrdEkle" class="form-label">Müdür Yardımcısı</label>
+                        <label for="mudurYrdEkle" class="form-label">İdareci</label>
                         <select class="form-select" id="mudurYrdEkle" name="MudurYrd">
                             <option value="">Seçiniz...</option>
                             {% for m in mudur_yrdler %}
@@ -185,11 +185,11 @@
     </div>
 </div>
 
-<!-- Müdür Yardımcısı Modal -->
+<!-- İdareci Modal -->
 <div class="modal fade" id="mudurYrdModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Müdür Yardımcıları</h5>
+            <div class="modal-header"><h5 class="modal-title">İdareciler</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -205,7 +205,7 @@
                     {% endfor %}
                 </ul>
                 <form id="mudurYrdEkleForm" class="input-group">
-                    <input type="text" class="form-control" name="mudur_yrd_ad" placeholder="Yeni müdür yrd. adı..." required>
+                    <input type="text" class="form-control" name="mudur_yrd_ad" placeholder="Yeni idareci adı..." required>
                     <button class="btn btn-success" type="submit">Ekle</button>
                 </form>
             </div>
@@ -280,7 +280,7 @@
                         </select>
                     </div>
                     <div class="mb-2">
-                        <label for="mudurYrdDuzenle" class="form-label">Müdür Yardımcısı</label>
+                        <label for="mudurYrdDuzenle" class="form-label">İdareci</label>
                         <select class="form-select" id="mudurYrdDuzenle" name="MudurYrd">
                             <option value="">Seçiniz...</option>
                             {% for idareci in idareciler %}

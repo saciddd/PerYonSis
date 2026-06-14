@@ -50,6 +50,7 @@
 </div>
 
 <script>
+    window.canEditManuelHours = {% if can_edit_manuel_hours %}true{% else %}false{% endif %};
     let riskliModalData = [];
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -159,83 +160,160 @@
             const tr = document.createElement('tr');
             tr.dataset.bildirimId = item.bildirim_id;
 
-            tr.innerHTML = `
-                <td class="fw-bold">${item.personel_name}</td>
-                
-                <!-- Normal -->
-                <td class="text-center align-middle">
-                    <div class="mb-1 text-warning fw-bold d-flex justify-content-between px-2">
-                        <span><i class="bi bi-sun-fill"></i></span>
-                        <span class="val-display" id="disp_n_${item.bildirim_id}">${Math.round(item.normal_mesai || 0)}</span>
-                    </div>
-                    <div class="text-primary fw-bold d-flex justify-content-between px-2">
-                        <span><i class="bi bi-moon-stars-fill"></i></span>
-                        <span class="val-display" id="disp_ng_${item.bildirim_id}">${Math.round(item.gece_normal_mesai || 0)}</span>
-                    </div>
-                </td>
-                <td class="text-center bg-warning bg-opacity-10 py-2">
-                    <div class="input-group input-group-sm mb-1 px-1">
-                        <span class="input-group-text"><i class="bi bi-sun-fill text-warning"></i></span>
-                        <input type="number" class="form-control r-input" min="0" step="1"
-                               data-type="n" 
-                               data-max="${totN}" 
-                               data-bid="${item.bildirim_id}" 
-                               value="${Math.round(item.riskli_normal || 0)}">
-                    </div>
-                    <div class="input-group input-group-sm px-1">
-                        <span class="input-group-text"><i class="bi bi-moon-stars-fill text-primary"></i></span>
-                        <input type="number" class="form-control r-input" min="0" step="1"
-                               data-type="ng" 
-                               data-max="${totNg}" 
-                               data-bid="${item.bildirim_id}" 
-                               value="${Math.round(item.gece_riskli_normal || 0)}">
-                    </div>
-                </td>
+            if (window.canEditManuelHours) {
+                tr.innerHTML = `
+                    <td class="fw-bold">${item.personel_name}</td>
+                    
+                    <!-- Normal -->
+                    <td class="text-center py-2">
+                        <div class="input-group input-group-sm mb-1 px-1">
+                            <span class="input-group-text"><i class="bi bi-sun-fill text-warning"></i></span>
+                            <input type="number" class="form-control m-input" min="0" step="1"
+                                   data-type="normal_n" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.normal_mesai || 0)}">
+                        </div>
+                        <div class="input-group input-group-sm px-1">
+                            <span class="input-group-text"><i class="bi bi-moon-stars-fill text-primary"></i></span>
+                            <input type="number" class="form-control m-input" min="0" step="1"
+                                   data-type="normal_ng" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.gece_normal_mesai || 0)}">
+                        </div>
+                    </td>
+                    <td class="text-center bg-warning bg-opacity-10 py-2">
+                        <div class="input-group input-group-sm mb-1 px-1">
+                            <span class="input-group-text"><i class="bi bi-sun-fill text-warning"></i></span>
+                            <input type="number" class="form-control r-input" min="0" step="1"
+                                   data-type="n" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.riskli_normal || 0)}">
+                        </div>
+                        <div class="input-group input-group-sm px-1">
+                            <span class="input-group-text"><i class="bi bi-moon-stars-fill text-primary"></i></span>
+                            <input type="number" class="form-control r-input" min="0" step="1"
+                                   data-type="ng" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.gece_riskli_normal || 0)}">
+                        </div>
+                    </td>
 
-                <!-- Bayram -->
-                <td class="text-center align-middle">
-                    <div class="mb-1 text-warning fw-bold d-flex justify-content-between px-2">
-                        <span><i class="bi bi-sun-fill"></i></span>
-                        <span class="val-display" id="disp_b_${item.bildirim_id}">${Math.round(item.bayram_mesai || 0)}</span>
-                    </div>
-                    <div class="text-primary fw-bold d-flex justify-content-between px-2">
-                        <span><i class="bi bi-moon-stars-fill"></i></span>
-                        <span class="val-display" id="disp_bg_${item.bildirim_id}">${Math.round(item.gece_bayram_mesai || 0)}</span>
-                    </div>
-                </td>
-                <td class="text-center bg-warning bg-opacity-10 py-2">
-                    <div class="input-group input-group-sm mb-1 px-1">
-                        <span class="input-group-text"><i class="bi bi-sun-fill text-warning"></i></span>
-                        <input type="number" class="form-control r-input" min="0" step="1"
-                               data-type="b" 
-                               data-max="${totB}" 
-                               data-bid="${item.bildirim_id}" 
-                               value="${Math.round(item.riskli_bayram || 0)}">
-                    </div>
-                    <div class="input-group input-group-sm px-1">
-                        <span class="input-group-text"><i class="bi bi-moon-stars-fill text-primary"></i></span>
-                        <input type="number" class="form-control r-input" min="0" step="1"
-                               data-type="bg" 
-                               data-max="${totBg}" 
-                               data-bid="${item.bildirim_id}" 
-                               value="${Math.round(item.gece_riskli_bayram || 0)}">
-                    </div>
-                </td>
-            `;
+                    <!-- Bayram -->
+                    <td class="text-center py-2">
+                        <div class="input-group input-group-sm mb-1 px-1">
+                            <span class="input-group-text"><i class="bi bi-sun-fill text-warning"></i></span>
+                            <input type="number" class="form-control m-input" min="0" step="1"
+                                   data-type="normal_b" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.bayram_mesai || 0)}">
+                        </div>
+                        <div class="input-group input-group-sm px-1">
+                            <span class="input-group-text"><i class="bi bi-moon-stars-fill text-primary"></i></span>
+                            <input type="number" class="form-control m-input" min="0" step="1"
+                                   data-type="normal_bg" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.gece_bayram_mesai || 0)}">
+                        </div>
+                    </td>
+                    <td class="text-center bg-warning bg-opacity-10 py-2">
+                        <div class="input-group input-group-sm mb-1 px-1">
+                            <span class="input-group-text"><i class="bi bi-sun-fill text-warning"></i></span>
+                            <input type="number" class="form-control r-input" min="0" step="1"
+                                   data-type="b" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.riskli_bayram || 0)}">
+                        </div>
+                        <div class="input-group input-group-sm px-1">
+                            <span class="input-group-text"><i class="bi bi-moon-stars-fill text-primary"></i></span>
+                            <input type="number" class="form-control r-input" min="0" step="1"
+                                   data-type="bg" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.gece_riskli_bayram || 0)}">
+                        </div>
+                    </td>
+                `;
+            } else {
+                tr.innerHTML = `
+                    <td class="fw-bold">${item.personel_name}</td>
+                    
+                    <!-- Normal -->
+                    <td class="text-center align-middle">
+                        <div class="mb-1 text-warning fw-bold d-flex justify-content-between px-2">
+                            <span><i class="bi bi-sun-fill"></i></span>
+                            <span class="val-display" id="disp_n_${item.bildirim_id}">${Math.round(item.normal_mesai || 0)}</span>
+                        </div>
+                        <div class="text-primary fw-bold d-flex justify-content-between px-2">
+                            <span><i class="bi bi-moon-stars-fill"></i></span>
+                            <span class="val-display" id="disp_ng_${item.bildirim_id}">${Math.round(item.gece_normal_mesai || 0)}</span>
+                        </div>
+                    </td>
+                    <td class="text-center bg-warning bg-opacity-10 py-2">
+                        <div class="input-group input-group-sm mb-1 px-1">
+                            <span class="input-group-text"><i class="bi bi-sun-fill text-warning"></i></span>
+                            <input type="number" class="form-control r-input" min="0" step="1"
+                                   data-type="n" 
+                                   data-max="${totN}" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.riskli_normal || 0)}">
+                        </div>
+                        <div class="input-group input-group-sm px-1">
+                            <span class="input-group-text"><i class="bi bi-moon-stars-fill text-primary"></i></span>
+                            <input type="number" class="form-control r-input" min="0" step="1"
+                                   data-type="ng" 
+                                   data-max="${totNg}" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.gece_riskli_normal || 0)}">
+                        </div>
+                    </td>
+
+                    <!-- Bayram -->
+                    <td class="text-center align-middle">
+                        <div class="mb-1 text-warning fw-bold d-flex justify-content-between px-2">
+                            <span><i class="bi bi-sun-fill"></i></span>
+                            <span class="val-display" id="disp_b_${item.bildirim_id}">${Math.round(item.bayram_mesai || 0)}</span>
+                        </div>
+                        <div class="text-primary fw-bold d-flex justify-content-between px-2">
+                            <span><i class="bi bi-moon-stars-fill"></i></span>
+                            <span class="val-display" id="disp_bg_${item.bildirim_id}">${Math.round(item.gece_bayram_mesai || 0)}</span>
+                        </div>
+                    </td>
+                    <td class="text-center bg-warning bg-opacity-10 py-2">
+                        <div class="input-group input-group-sm mb-1 px-1">
+                            <span class="input-group-text"><i class="bi bi-sun-fill text-warning"></i></span>
+                            <input type="number" class="form-control r-input" min="0" step="1"
+                                   data-type="b" 
+                                   data-max="${totB}" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.riskli_bayram || 0)}">
+                        </div>
+                        <div class="input-group input-group-sm px-1">
+                            <span class="input-group-text"><i class="bi bi-moon-stars-fill text-primary"></i></span>
+                            <input type="number" class="form-control r-input" min="0" step="1"
+                                   data-type="bg" 
+                                   data-max="${totBg}" 
+                                   data-bid="${item.bildirim_id}" 
+                                   value="${Math.round(item.gece_riskli_bayram || 0)}">
+                        </div>
+                    </td>
+                `;
+            }
 
             tbody.appendChild(tr);
         });
 
         // Event listeners for inputs to constrain values and update displays
-        const inputs = tbody.querySelectorAll('.r-input');
+        const inputs = tbody.querySelectorAll('.r-input, .m-input');
         inputs.forEach(inp => {
-            // Eğer max = 0 ise input readonly olsun
-            if (parseFloat(inp.dataset.max) === 0) {
+            // Eğer max = 0 ise input readonly olsun (canEditManuelHours değilse!)
+            if (!window.canEditManuelHours && inp.classList.contains('r-input') && parseFloat(inp.dataset.max) === 0) {
                 inp.readOnly = true;
                 inp.classList.add('bg-light');
             }
 
             inp.addEventListener('input', function() {
+                if (window.canEditManuelHours) {
+                    return;
+                }
                 let val = parseFloat(this.value);
                 const max = parseFloat(this.dataset.max);
                 const typ = this.dataset.type; // n, ng, b, bg
@@ -266,7 +344,7 @@
 
         rows.forEach(tr => {
             const bid = tr.dataset.bildirimId;
-            const inputs = tr.querySelectorAll('input.r-input');
+            const inputs = tr.querySelectorAll('input.r-input, input.m-input');
             let itemData = { bildirim_id: bid };
 
             inputs.forEach(inp => {
@@ -276,6 +354,11 @@
                 if (typ === 'ng') itemData.gece_riskli_normal = val;
                 if (typ === 'b') itemData.riskli_bayram = val;
                 if (typ === 'bg') itemData.gece_riskli_bayram = val;
+                
+                if (typ === 'normal_n') itemData.normal_mesai = val;
+                if (typ === 'normal_ng') itemData.gece_normal_mesai = val;
+                if (typ === 'normal_b') itemData.bayram_mesai = val;
+                if (typ === 'normal_bg') itemData.gece_bayram_mesai = val;
             });
             guncellemeler.push(itemData);
         });

@@ -159,6 +159,9 @@
             <button type="button" class="btn btn-outline-danger btn-sm" id="hataKontrolBtn_Trigger" title="Hata Kontrolü">
                 <i class="bi bi-exclamation-circle"></i> Hata Kontrolü
             </button>
+            <button type="button" class="btn btn-outline-success btn-sm" id="btnExcelAktar" title="Excel'e Aktar">
+                <i class="bi bi-file-earmark-excel"></i> Excel'e Aktar
+            </button>
         </div>
     </div>
 </form>
@@ -412,6 +415,155 @@
                         }
                     });
                 }
+            });
+        }
+
+        // Excel'e Aktar
+        const btnExcel = document.getElementById('btnExcelAktar');
+        if (btnExcel) {
+            btnExcel.addEventListener('click', function() {
+                const table = document.getElementById('cizelgeTable');
+                if (!table) {
+                    Swal.fire('Uyarı', 'Aktarılacak tablo bulunamadı.', 'warning');
+                    return;
+                }
+                
+                const clone = table.cloneNode(true);
+                clone.querySelectorAll('tr.d-none').forEach(row => row.remove());
+                
+                clone.querySelectorAll('thead th').forEach(th => {
+                    th.style.border = '0.5pt solid #c0c0c0';
+                    th.style.backgroundColor = '#e6e6e6';
+                    th.style.fontWeight = 'bold';
+                    th.style.textAlign = 'center';
+                    th.style.verticalAlign = 'middle';
+                    th.style.fontFamily = 'Arial, sans-serif';
+                    th.style.fontSize = '10pt';
+                    
+                    if (th.classList.contains('weekend')) {
+                        th.style.backgroundColor = '#d6d8db';
+                    } else if (th.classList.contains('resmi-tatil')) {
+                        th.style.backgroundColor = '#f5c6cb';
+                    }
+                });
+                
+                clone.querySelectorAll('tbody tr').forEach(row => {
+                    row.querySelectorAll('td').forEach((td, index) => {
+                        td.style.border = '0.5pt solid #c0c0c0';
+                        td.style.fontFamily = 'Arial, sans-serif';
+                        td.style.fontSize = '9pt';
+                        td.style.verticalAlign = 'middle';
+                        
+                        if (index === 0) {
+                            td.style.textAlign = 'center';
+                        } else if (index === 1) {
+                            td.style.textAlign = 'left';
+                            const profileIcon = td.querySelector('.person-profile-btn');
+                            if (profileIcon) profileIcon.remove();
+                            td.textContent = td.textContent.trim();
+                        } else if (index === 2) {
+                            td.style.textAlign = 'left';
+                            td.textContent = td.textContent.trim();
+                        } else if (index === 3) {
+                            td.style.textAlign = 'center';
+                            td.style.fontWeight = 'bold';
+                            if (td.classList.contains('fm-pos')) {
+                                td.style.color = '#198754';
+                            } else if (td.classList.contains('fm-neg')) {
+                                td.style.color = '#dc3545';
+                            }
+                        } else {
+                            td.style.textAlign = 'center';
+                            
+                            const mainValEl = td.querySelector('.mesai-main-value');
+                            let mainVal = mainValEl ? mainValEl.textContent.trim() : '';
+                            
+                            const noteBadge = td.querySelector('.mesai-notu-badge');
+                            let noteVal = (noteBadge && noteBadge.style.display !== 'none') ? noteBadge.textContent.trim() : '';
+                            
+                            let markers = [];
+                            if (td.dataset.icap === 'true' || td.querySelector('.icap-indicator')) {
+                                markers.push('İcap');
+                            }
+                            if (td.querySelector('.bi-pause-circle')) {
+                                markers.push('Stop');
+                            }
+                            if (td.querySelector('.bi-plus-circle')) {
+                                markers.push('Ek');
+                            }
+                            
+                            let cellText = '';
+                            if (noteVal) cellText += '[' + noteVal + '] ';
+                            cellText += mainVal;
+                            if (markers.length > 0) {
+                                cellText += ' (' + markers.join('+') + ')';
+                            }
+                            
+                            td.textContent = cellText.trim();
+                            
+                            const originalTd = table.querySelector(`tbody tr[id="${row.id}"] td:nth-child(${index + 1})`);
+                            if (originalTd) {
+                                if (originalTd.style.color) {
+                                    td.style.color = originalTd.style.color;
+                                }
+                                if (originalTd.style.fontWeight) {
+                                    td.style.fontWeight = originalTd.style.fontWeight;
+                                }
+                            }
+                            
+                            if (td.classList.contains('weekend')) {
+                                td.style.backgroundColor = '#f2f2f2';
+                            } else if (td.classList.contains('resmi-tatil')) {
+                                td.style.backgroundColor = '#ffd6d6';
+                            } else if (td.classList.contains('sistemdeki-izin')) {
+                                td.style.backgroundColor = '#e8f4fd';
+                            }
+                        }
+                    });
+                });
+                
+                const donemVal = document.getElementById('selectDonem')?.value || '';
+                const birimSelect = document.getElementById('selectBirim');
+                const birimVal = birimSelect ? birimSelect.options[birimSelect.selectedIndex]?.text || '' : '';
+                const title = `${birimVal.split('(')[0].trim()} - ${donemVal.replace('/', '-')} Çizelgesi`;
+                
+                let excelHtml = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head>
+                <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+                <!--[if gte mso 9]><xml>
+                <x:ExcelWorkbook>
+                <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                <x:Name>Çizelge</x:Name>
+                <x:WorksheetOptions>
+                <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+                </x:ExcelWorksheet>
+                </x:ExcelWorksheets>
+                </x:ExcelWorkbook>
+                </xml><![endif]-->
+                <style>
+                  table { border-collapse: collapse; }
+                  td, th { border: 0.5pt solid #c0c0c0; text-align: center; font-family: Arial, sans-serif; font-size: 9pt; }
+                </style>
+                </head>
+                <body>
+                  <h3>${title}</h3>
+                  ${clone.outerHTML}
+                </body>
+                </html>
+                `;
+                
+                const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${title.replace(/\s+/g, '_')}.xls`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             });
         }
 

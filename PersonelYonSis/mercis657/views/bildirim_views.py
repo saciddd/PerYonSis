@@ -164,6 +164,7 @@ def bildirimler(request):
     
     # Yetki kontrolünü context'e ekle
     can_approve_notifications = request.user.has_permission("ÇS 657 Bildirim Onaylama")
+    can_edit_manuel_hours = request.user.has_permission("ÇS 657 Manuel Bildirim Düzenleme")
     print ("", can_approve_notifications)
     context = {
         "donemler": get_donemler(),
@@ -175,6 +176,7 @@ def bildirimler(request):
         "current_month_label": calendar.month_name[month], # Ay adını şablonda göstermek için
         "current_year": year,
         "can_approve_notifications": can_approve_notifications,
+        "can_edit_manuel_hours": can_edit_manuel_hours,
     }
     return render(request, "mercis657/bildirimler.html", context)
 
@@ -835,6 +837,7 @@ def bildirim_riskli_sure_guncelle(request):
     except Exception:
         return JsonResponse({'status': 'error', 'message': 'Geçersiz parametre.'}, status=400)
 
+    has_manuel_edit_permission = request.user.has_permission('ÇS 657 Manuel Bildirim Düzenleme')
     count = 0
     with transaction.atomic():
         for item in guncellemeler:
@@ -852,30 +855,46 @@ def bildirim_riskli_sure_guncelle(request):
             grnormal = Decimal(str(item.get('gece_riskli_normal', 0.0)))
             grbayram = Decimal(str(item.get('gece_riskli_bayram', 0.0)))
             
-            # 1. Havuz mantığı: orijinal toplamı bul (Normal + Daha önce riskli yapılan)
-            original_normal = bildirim.NormalFazlaMesai + bildirim.RiskliNormalFazlaMesai
-            original_bayram = bildirim.BayramFazlaMesai + bildirim.RiskliBayramFazlaMesai
-            original_gnormal = bildirim.GeceNormalFazlaMesai + bildirim.GeceRiskliNormalFazlaMesai
-            original_gbayram = bildirim.GeceBayramFazlaMesai + bildirim.GeceRiskliBayramFazlaMesai
+            if has_manuel_edit_permission:
+                normal = Decimal(str(item.get('normal_mesai', 0.0)))
+                bayram = Decimal(str(item.get('bayram_mesai', 0.0)))
+                gnormal = Decimal(str(item.get('gece_normal_mesai', 0.0)))
+                gbayram = Decimal(str(item.get('gece_bayram_mesai', 0.0)))
 
-            # 2. Girilen sayı orijinali aşamaz, aşarsa cap'le
-            if rnormal > original_normal: rnormal = original_normal
-            if rbayram > original_bayram: rbayram = original_bayram
-            if grnormal > original_gnormal: grnormal = original_gnormal
-            if grbayram > original_gbayram: grbayram = original_gbayram
+                bildirim.NormalFazlaMesai = max(Decimal('0.0'), normal)
+                bildirim.BayramFazlaMesai = max(Decimal('0.0'), bayram)
+                bildirim.GeceNormalFazlaMesai = max(Decimal('0.0'), gnormal)
+                bildirim.GeceBayramFazlaMesai = max(Decimal('0.0'), gbayram)
 
-            # 3. Yeni değerleri tanımla ve normal sureleri azalt (original - riskli_yeni)
-            bildirim.RiskliNormalFazlaMesai = rnormal
-            bildirim.NormalFazlaMesai = original_normal - rnormal
+                bildirim.RiskliNormalFazlaMesai = max(Decimal('0.0'), rnormal)
+                bildirim.RiskliBayramFazlaMesai = max(Decimal('0.0'), rbayram)
+                bildirim.GeceRiskliNormalFazlaMesai = max(Decimal('0.0'), grnormal)
+                bildirim.GeceRiskliBayramFazlaMesai = max(Decimal('0.0'), grbayram)
+            else:
+                # 1. Havuz mantığı: orijinal toplamı bul (Normal + Daha önce riskli yapılan)
+                original_normal = bildirim.NormalFazlaMesai + bildirim.RiskliNormalFazlaMesai
+                original_bayram = bildirim.BayramFazlaMesai + bildirim.RiskliBayramFazlaMesai
+                original_gnormal = bildirim.GeceNormalFazlaMesai + bildirim.GeceRiskliNormalFazlaMesai
+                original_gbayram = bildirim.GeceBayramFazlaMesai + bildirim.GeceRiskliBayramFazlaMesai
 
-            bildirim.RiskliBayramFazlaMesai = rbayram
-            bildirim.BayramFazlaMesai = original_bayram - rbayram
+                # 2. Girilen sayı orijinali aşamaz, aşarsa cap'le
+                if rnormal > original_normal: rnormal = original_normal
+                if rbayram > original_bayram: rbayram = original_bayram
+                if grnormal > original_gnormal: grnormal = original_gnormal
+                if grbayram > original_gbayram: grbayram = original_gbayram
 
-            bildirim.GeceRiskliNormalFazlaMesai = grnormal
-            bildirim.GeceNormalFazlaMesai = original_gnormal - grnormal
+                # 3. Yeni değerleri tanımla ve normal sureleri azalt (original - riskli_yeni)
+                bildirim.RiskliNormalFazlaMesai = rnormal
+                bildirim.NormalFazlaMesai = original_normal - rnormal
 
-            bildirim.GeceRiskliBayramFazlaMesai = grbayram
-            bildirim.GeceBayramFazlaMesai = original_gbayram - grbayram
+                bildirim.RiskliBayramFazlaMesai = rbayram
+                bildirim.BayramFazlaMesai = original_bayram - rbayram
+
+                bildirim.GeceRiskliNormalFazlaMesai = grnormal
+                bildirim.GeceNormalFazlaMesai = original_gnormal - grnormal
+
+                bildirim.GeceRiskliBayramFazlaMesai = grbayram
+                bildirim.GeceBayramFazlaMesai = original_gbayram - grbayram
 
             bildirim.save()
             count += 1
